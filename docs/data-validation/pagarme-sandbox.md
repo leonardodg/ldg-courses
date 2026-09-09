@@ -73,6 +73,54 @@ curl -u "$PAGARME_SECRET_KEY:" https://api.pagar.me/core/v5/orders
 
 ---
 
+## O endereço precisa ser público
+
+O Pagar.me alcança o webhook de fora, então `https://localhost:8453` não serve.
+
+O túnel é o **mesmo do Mercado Pago**, `mp.leodg.dev`, reaproveitado de
+propósito — os caminhos não colidem, porque cada gateway tem o próprio
+`webhook.php`. É um `cloudflared` token-based (`/etc/cloudflared/token`, não
+`~/.cloudflared/config.yml`), e ele já entrega em `localhost:8453`.
+
+**O `wwwroot` precisa acompanhar, e a falta disso é sutil.** Sem ele o Moodle
+recebe a requisição com `Host: mp.leodg.dev`, compara com o `wwwroot` interno e
+responde `303` para `https://localhost:8453` — endereço que o Pagar.me não
+alcança. O webhook nunca chega, e o painel registra `failed` sem dizer por quê.
+
+Foi o que aconteceu: as dez primeiras entregas desta conta constam como
+`failed`, e a causa era o redirecionamento, não o endpoint.
+
+Em `config-local.php` da worktree (gitignored, `.gitignore:25`):
+
+```php
+$CFG->wwwroot = 'https://mp.leodg.dev';
+$CFG->sslproxy = true;
+```
+
+O `sslproxy` é obrigatório: o TLS termina no `cloudflared`, o PHP vê a
+requisição como `http`, e sem ele o Moodle monta URL `http` em página `https`.
+
+Como conferir que ficou certo — **o 401 é o resultado bom**:
+
+```
+/                                    HTTP 200   (antes: 303)
+/payment/gateway/asaas/webhook.php   HTTP 401   (antes: 303)
+```
+
+O `401` quer dizer que a requisição chegou ao código e foi recusada por falta
+de credencial. O `303` queria dizer que ela nem entrou.
+
+### A URL para cadastrar no painel
+
+```
+https://mp.leodg.dev/payment/gateway/pagarme/webhook.php
+```
+
+Enquanto o plugin não existir, ela responde `404` — e o painel vai acumular
+entrega falhada. Cadastre junto com a primeira versão do plugin, não antes.
+
+---
+
 ## Caminho rápido: o script
 
 ```bash
