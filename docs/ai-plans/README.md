@@ -90,4 +90,5 @@ ajuda ninguém; "abrir uma worktree existente leva ~1s, medido" ajuda.
 | 2026-09-04 | [`mod_ldgvideo` e os papéis de empresa](2026-09-04-mod-ldgvideo.md) | `executado` | plugin novo + a fronteira do plano Free nas duas camadas; 151 testes e 10 cenários verdes |
 | 2026-09-08 | [Provar o split do Mercado Pago com duas contas](2026-09-08-mercadopago-split-duas-contas.md) | `executado` | o plano da prova; a conta usada como controle era PF, e isso mudou o resultado |
 | 2026-09-09 | [Provas de pagamento e assinatura](2026-09-09-provas-de-pagamento-e-assinatura.md) | `executado` | PRs #77–#91 — split provado, assinatura, estorno, permissões; **leia antes de abrir a sessão do Pagar.me** |
-| 2026-09-09 | [Briefing para a sessão do `paygw_pagarme`](2026-09-09-briefing-para-a-sessao-do-pagarme.md) | `pendente` | o prompt inicial, o que ler, o que medir antes de codar e os cenários a reproduzir |
+| 2026-09-09 | [Briefing para a sessão do `paygw_pagarme`](2026-09-09-briefing-para-a-sessao-do-pagarme.md) | `executado` | o prompt inicial, o que ler, o que medir antes de codar e os cenários a reproduzir |
+| 2026-09-09 | [`paygw_pagarme` — o terceiro gateway](2026-09-09-paygw-pagarme.md) | **`inacabado`** | plugin completo e verde, mas **o split nunca foi exercitado**: a conta de homologação não cria recebedor nem processa cobrança. Bloqueio comercial, chamado aberto |
