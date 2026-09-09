@@ -21,6 +21,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/fixtures/fake_pagarme_client.php');
+require_once(__DIR__ . '/fixtures/documented_responses.php');
 
 /**
  * A camada HTTP, sem rede.
@@ -383,5 +384,53 @@ final class pagarme_client_test extends \advanced_testcase {
 
         $this->expectException(\moodle_exception::class);
         $client->get_charge('ch_1');
+    }
+
+    // --------------------------------------------------------------------
+
+    public function test_comissao_lida_da_resposta_documentada(): void {
+        // O exemplo de criar-pedido-2 divide 50/50; aqui esta com os valores
+        // que o nosso build_split produziria, em CENTAVOS.
+        $charge = documented_responses::cobranca_paga_com_split();
+
+        $this->assertSame(25.0, pagarme_client::commission_from($charge, 'rp_yLnAyVpHbQIqZxwO'));
+        $this->assertSame(75.0, pagarme_client::commission_from($charge, 'rp_5yGwpMGckBHVYmb6'));
+    }
+
+    public function test_veredito_da_cobranca_paga_documentada(): void {
+        [$status, $code, $message] = pagarme_client::charge_verdict(
+            documented_responses::cobranca_paga_com_split()
+        );
+
+        $this->assertSame('paid', $status);
+        $this->assertSame('201', $code);
+        $this->assertSame('', $message);
+    }
+
+    public function test_veredito_da_cobranca_que_falhou_de_verdade(): void {
+        // Resposta real da conta de homologacao, e o unico fracasso medido.
+        [$status, $code, $message] = pagarme_client::charge_verdict(
+            documented_responses::cobranca_que_falhou()
+        );
+
+        $this->assertSame('failed', $status);
+        $this->assertSame('500', $code);
+        $this->assertStringContainsString('Erro desconhecido no proxy', $message);
+    }
+
+    public function test_o_200_com_recebedor_inexistente_nao_engana(): void {
+        // A order voltou HTTP 200 e corpo completo. Se o codigo olhasse so o
+        // status HTTP, registraria venda de uma cobranca que nunca existiu.
+        $order = documented_responses::split_para_recebedor_inexistente();
+        $charge = $order['charges'][0];
+
+        [$status, $code, $message] = pagarme_client::charge_verdict($charge);
+
+        $this->assertSame('failed', $status);
+        $this->assertSame('404', $code);
+        $this->assertStringContainsString('Recipient not found', $message);
+
+        // E o mais importante: comissao ZERO, e nao "o gateway nao informou".
+        $this->assertSame(0.0, pagarme_client::commission_from($charge, 'rp_qualquer'));
     }
 }

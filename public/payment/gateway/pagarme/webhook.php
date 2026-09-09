@@ -93,15 +93,10 @@ $event = (string) ($payload['type'] ?? '');
 $data = $payload['data'] ?? [];
 $data = is_array($data) ? $data : [];
 
-// O evento pode ser de order ou de charge, e o formato difere. A cobranca e o
-// que interessa nos dois casos.
-$chargeid = (string) ($data['id'] ?? '');
-$subscriptionid = (string) (($data['subscription'] ?? [])['id'] ?? '');
-
-if (str_starts_with($event, 'order.')) {
-    $charge = ($data['charges'] ?? [null])[0] ?? [];
-    $chargeid = (string) ($charge['id'] ?? '');
-}
+// O formato difere entre evento de order e de charge, e a extracao vive no
+// payment_processor para ser testavel sem servidor.
+$chargeid = payment_processor::charge_id_from_event($event, $data);
+$subscriptionid = payment_processor::subscription_id_from_event($data);
 
 // Evento que nao interessa responde 200: um 4xx aqui faria o Pagar.me
 // reenfileirar para sempre algo que nunca vamos processar.

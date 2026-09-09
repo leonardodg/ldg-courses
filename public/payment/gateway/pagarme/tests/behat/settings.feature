@@ -71,3 +71,22 @@ Feature: Configuracao do gateway Pagar.me
     Then I should see "Sandbox"
     And I should see "Production"
     And I should see "No account linked for Sandbox."
+
+  # A chave do vendedor e guardada cifrada, e a chave de cifragem mora no
+  # moodledata. Sem ela o formulario nem aparece - e essa e a decisao certa:
+  # guardar credencial de conta bancaria em texto puro para nao incomodar
+  # ninguem seria trocar um aviso por um vazamento.
+  #
+  # Este cenario existe porque o site do behat nasce SEM a chave, entao ele
+  # mede o caminho que uma instalacao nova percorre de verdade.
+  @javascript
+  Scenario: O vinculo recusa acontecer sem chave de cifragem no site
+    Given the following "core_payment > payment accounts" exist:
+      | name     |
+      | Empresa1 |
+    When I navigate to "Payments > Payment accounts" in site administration
+    And I click on "Pagar.me" "link" in the "Empresa1" "table_row"
+    And I click on "Link account" "link"
+    Then I should see "Link a Pagar.me account"
+    And I should see "admin/cli/generate_key.php"
+    And "Secret key" "field" should not exist

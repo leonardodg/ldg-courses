@@ -56,12 +56,21 @@ class reconcile extends \core\task\scheduled_task {
         global $DB;
 
         $now = time();
+
+        // O status processing entra junto com pending por medicao: uma
+        // cobranca de cartao ficou nesse estado e nunca saiu de la sozinha.
+        [$insql, $inparams] = $DB->get_in_or_equal(
+            ['pending', 'processing'],
+            SQL_PARAMS_NAMED,
+            'st'
+        );
+
         $records = $DB->get_records_select(
             payment_processor::TABLE,
-            "status = 'pending' AND paymentid IS NULL
+            "status $insql AND paymentid IS NULL
              AND chargeid <> '' AND chargeid IS NOT NULL
              AND timecreated < :young AND timecreated > :old",
-            ['young' => $now - self::MIN_AGE, 'old' => $now - self::MAX_AGE],
+            $inparams + ['young' => $now - self::MIN_AGE, 'old' => $now - self::MAX_AGE],
             'timecreated ASC',
             'id, chargeid, subscriptionid',
             0,

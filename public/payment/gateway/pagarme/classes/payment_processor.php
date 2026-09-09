@@ -226,7 +226,7 @@ class payment_processor {
                 credentials::platform_recipient((int) $record->accountid, $record->environment)
             );
             $record->qrcode = (string) (($charge['last_transaction'] ?? [])['qr_code'] ?? '');
-            $record->checkouturl = self::transaction_url($charge);
+            $record->checkouturl = self::checkout_url_for((string) $record->paymentmethod, $charge);
         }
 
         $DB->update_record(self::TABLE, $record);
@@ -423,6 +423,13 @@ class payment_processor {
      */
     public static function process_notification(string $chargeid, string $subscriptionid = ''): bool {
         global $DB;
+
+        // Sem id nao ha o que procurar. O cartao cria a linha ANTES de existir
+        // cobranca, entao existem linhas com chargeid vazio - e uma busca por
+        // '' acharia uma delas, possivelmente a de outro aluno.
+        if ($chargeid === '') {
+            return false;
+        }
 
         $record = $DB->get_record(self::TABLE, ['chargeid' => $chargeid]);
 
@@ -698,6 +705,82 @@ class payment_processor {
     }
 
     /**
+     * Situacoes que a reconciliacao ainda precisa conferir.
+     *
+     * 'processing' entra junto com 'pending' por medicao, nao por teoria: em
+     * 09/09/2026 uma cobranca de cartao ficou em 'processing' e nunca saiu de
+     * la. Varrer so 'pending' deixaria a linha parada para sempre, e o aluno
+     * que pagou sem acesso.
+     *
+     * @param string $status
+     * @return bool
+     */
+    public static function is_sweepable(string $status): bool {
+        return in_array(strtolower($status), ['pending', 'processing'], true);
+    }
+
+    /**
+     * Id da cobranca que um evento de webhook aponta.
+     *
+     * O formato difere: evento de charge traz o proprio id, evento de order
+     * traz a cobranca dentro de charges[]. Um order sem charges devolve vazio
+     * de proposito - devolver o id da order faria procurar uma linha por
+     * or_..., que no melhor caso nao acha nada.
+     *
+     * @param string $event
+     * @param array $data
+     * @return string
+     */
+    public static function charge_id_from_event(string $event, array $data): string {
+        if (str_starts_with(strtolower($event), 'order.')) {
+            $charge = ($data['charges'] ?? [null])[0] ?? [];
+
+            return is_array($charge) ? (string) ($charge['id'] ?? '') : '';
+        }
+
+        return (string) ($data['id'] ?? '');
+    }
+
+    /**
+     * Id da assinatura que um evento de webhook carrega, se houver.
+     *
+     * Serve so para identificar o ciclo. Nunca e fonte da verdade: quem diz se
+     * foi pago e a releitura da cobranca na API.
+     *
+     * @param array $data
+     * @return string
+     */
+    public static function subscription_id_from_event(array $data): string {
+        $subscription = $data['subscription'] ?? [];
+
+        return is_array($subscription) ? (string) ($subscription['id'] ?? '') : '';
+    }
+
+    /**
+     * Para onde mandar o aluno, conforme a forma de pagamento.
+     *
+     * O Pix quer a IMAGEM do QR Code, porque a pagina que a mostra e nossa. O
+     * boleto quer a pagina do Pagar.me, que ja traz codigo de barras e PDF. A
+     * ordem generica de transaction_url() serve ao boleto e atrapalha o Pix.
+     *
+     * @param string $method
+     * @param array $charge
+     * @return string
+     */
+    public static function checkout_url_for(string $method, array $charge): string {
+        $transaction = $charge['last_transaction'] ?? [];
+        if (!is_array($transaction)) {
+            return '';
+        }
+
+        if ($method === 'pix') {
+            return (string) ($transaction['qr_code_url'] ?? '');
+        }
+
+        return self::transaction_url($charge);
+    }
+
+    /**
      * Onde o aluno paga esta cobranca.
      *
      * @param array $charge
@@ -741,20 +824,57 @@ class payment_processor {
             throw new moodle_exception('errornodocument', 'paygw_pagarme');
         }
 
-        return [
+        $customer = [
             'name' => fullname($user),
             'email' => $user->email,
             'type' => strlen($document) > 11 ? 'company' : 'individual',
             'document' => $document,
             'document_type' => strlen($document) > 11 ? 'CNPJ' : 'CPF',
-            'phones' => [
-                'mobile_phone' => [
-                    'country_code' => '55',
-                    'area_code' => '11',
-                    'number' => '999999999',
-                ],
-            ],
         ];
+
+        // Telefone so entra quando existe de verdade. Numero inventado num
+        // registro de pagamento e pior que campo ausente: ele passa na
+        // validacao e vira dado errado no cadastro do vendedor, onde ninguem
+        // vai procurar depois.
+        $phone = self::buyer_phone($user);
+        if ($phone) {
+            $customer['phones'] = ['mobile_phone' => $phone];
+        }
+
+        return $customer;
+    }
+
+    /**
+     * Telefone do comprador, quebrado no formato da API.
+     *
+     * @param \stdClass $user
+     * @return array Vazio quando o usuario nao tem telefone utilizavel.
+     */
+    public static function buyer_phone(\stdClass $user): array {
+        foreach (['phone2', 'phone1'] as $field) {
+            $digits = preg_replace('/\D/', '', (string) ($user->{$field} ?? ''));
+            if ($digits === '') {
+                continue;
+            }
+
+            // Numero brasileiro com codigo do pais colado na frente.
+            if (strlen($digits) > 11 && str_starts_with($digits, '55')) {
+                $digits = substr($digits, 2);
+            }
+
+            // Sem DDD nao da para montar o objeto que a API espera.
+            if (strlen($digits) < 10) {
+                continue;
+            }
+
+            return [
+                'country_code' => '55',
+                'area_code' => substr($digits, 0, 2),
+                'number' => substr($digits, 2),
+            ];
+        }
+
+        return [];
     }
 
     /**
@@ -815,13 +935,17 @@ class payment_processor {
      * @return bool
      */
     public static function is_relevant_event(string $event): bool {
+        // O evento subscription.canceled fica de FORA de proposito. O 'data'
+        // dele e a assinatura, entao o id seria sub_... e seria procurado como
+        // se fosse cobranca. E nao ha o que fazer com ele: assinatura
+        // cancelada apenas deixa de gerar cobranca, e o acesso ja pago corre
+        // ate vencer pelo direito, nao por aviso do gateway.
         return in_array(strtolower($event), [
             'order.paid',
             'charge.paid',
             'charge.refunded',
             'order.payment_failed',
             'charge.payment_failed',
-            'subscription.canceled',
         ], true);
     }
 

@@ -18,6 +18,10 @@ namespace paygw_pagarme;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/fixtures/documented_responses.php');
+
 /**
  * As regras de dinheiro e de acesso.
  *
@@ -404,5 +408,173 @@ final class payment_processor_test extends \advanced_testcase {
 
     public function test_transacao_sem_url_devolve_vazio(): void {
         $this->assertSame('', payment_processor::transaction_url([]));
+    }
+
+    public function test_o_pix_quer_a_imagem_do_qrcode_e_nao_a_pagina(): void {
+        // A ordem de preferencia generica devolveria 'url', e a pagina do Pix
+        // e NOSSA - o que ela precisa e da imagem para renderizar.
+        $charge = ['last_transaction' => [
+            'url' => 'https://exemplo.test/qualquer',
+            'qr_code_url' => 'https://exemplo.test/qr.png',
+        ]];
+
+        $this->assertSame(
+            'https://exemplo.test/qr.png',
+            payment_processor::checkout_url_for('pix', $charge)
+        );
+    }
+
+    public function test_o_boleto_quer_a_pagina(): void {
+        $charge = ['last_transaction' => [
+            'url' => 'https://exemplo.test/boleto',
+            'pdf' => 'https://exemplo.test/boleto.pdf',
+        ]];
+
+        $this->assertSame(
+            'https://exemplo.test/boleto',
+            payment_processor::checkout_url_for('boleto', $charge)
+        );
+    }
+
+    // --------------------------------------------------------------------
+
+    public function test_evento_de_order_traz_a_cobranca_de_dentro(): void {
+        $this->assertSame('ch_de_dentro', payment_processor::charge_id_from_event(
+            'order.paid',
+            ['id' => 'or_1', 'charges' => [['id' => 'ch_de_dentro']]]
+        ));
+    }
+
+    public function test_evento_de_charge_traz_o_proprio_id(): void {
+        $this->assertSame('ch_1', payment_processor::charge_id_from_event(
+            'charge.paid',
+            ['id' => 'ch_1']
+        ));
+    }
+
+    public function test_evento_de_order_sem_cobranca_nao_inventa_id(): void {
+        // Um order.paid sem charges nao pode devolver o id da ORDER: procurar
+        // uma linha por or_... nao acha nada, e no pior caso acha a errada.
+        $this->assertSame('', payment_processor::charge_id_from_event(
+            'order.paid',
+            ['id' => 'or_1']
+        ));
+    }
+
+    public function test_evento_sem_dados_devolve_vazio(): void {
+        $this->assertSame('', payment_processor::charge_id_from_event('charge.paid', []));
+    }
+
+    public function test_id_de_assinatura_sai_do_evento(): void {
+        $this->assertSame('sub_1', payment_processor::subscription_id_from_event([
+            'id' => 'ch_1',
+            'subscription' => ['id' => 'sub_1'],
+        ]));
+        $this->assertSame('', payment_processor::subscription_id_from_event(['id' => 'ch_1']));
+    }
+
+    // --------------------------------------------------------------------
+
+    public function test_cobranca_sem_id_nao_procura_linha(): void {
+        // O cartao cria a linha ANTES de existir cobranca, entao ha linhas com
+        // chargeid vazio. Procurar por '' acharia uma delas - e possivelmente
+        // a de outro aluno.
+        $this->linha(['chargeid' => '', 'status' => 'pending', 'paymentid' => null]);
+        $this->linha(['chargeid' => '', 'status' => 'pending', 'paymentid' => null]);
+
+        $this->assertFalse(payment_processor::process_notification(''));
+    }
+
+    public function test_a_reconciliacao_alcanca_o_que_ficou_processando(): void {
+        // Medido em 09/09/2026: uma cobranca de cartao ficou em 'processing' e
+        // nunca saiu de la. Varrer so 'pending' deixaria essa linha parada
+        // para sempre.
+        $this->assertTrue(payment_processor::is_sweepable('pending'));
+        $this->assertTrue(payment_processor::is_sweepable('processing'));
+        $this->assertFalse(payment_processor::is_sweepable('paid'));
+        $this->assertFalse(payment_processor::is_sweepable('canceled'));
+    }
+
+    // --------------------------------------------------------------------
+
+    public function test_a_resposta_documentada_do_pix_da_o_qrcode(): void {
+        $order = documented_responses::pix_pendente();
+        $charge = $order['charges'][0];
+
+        $this->assertStringContainsString(
+            'qrcode.png',
+            payment_processor::checkout_url_for('pix', $charge)
+        );
+        $this->assertStringStartsWith(
+            '00020101',
+            (string) $charge['last_transaction']['qr_code']
+        );
+    }
+
+    public function test_o_status_da_transacao_nao_e_o_status_da_cobranca(): void {
+        // Na resposta documentada a cobranca esta 'pending' e a transacao,
+        // 'waiting_payment'. Ler o campo errado faria o Pix parecer recusado.
+        $charge = documented_responses::pix_pendente()['charges'][0];
+
+        $this->assertSame('pending', $charge['status']);
+        $this->assertSame('waiting_payment', $charge['last_transaction']['status']);
+        $this->assertFalse(payment_processor::is_paid((string) $charge['status']));
+    }
+
+    public function test_a_forma_de_pagamento_pode_vir_com_maiuscula(): void {
+        // A documentacao devolve "Pix", com inicial maiuscula, onde a
+        // requisicao manda "pix". Comparacao sensivel a caixa quebraria aqui.
+        $charge = documented_responses::pix_pendente()['charges'][0];
+
+        $this->assertSame('Pix', $charge['payment_method']);
+        $this->assertSame(
+            'pix',
+            strtolower((string) $charge['payment_method'])
+        );
+    }
+
+    public function test_a_cobranca_documentada_paga_libera_acesso(): void {
+        $charge = documented_responses::cobranca_paga_com_split();
+
+        $this->assertTrue(payment_processor::is_paid((string) $charge['status']));
+    }
+
+    // --------------------------------------------------------------------
+
+    public function test_telefone_do_usuario_e_quebrado_em_ddd_e_numero(): void {
+        $user = (object) ['phone1' => '(11) 98765-4321', 'phone2' => ''];
+
+        $this->assertSame([
+            'country_code' => '55',
+            'area_code' => '11',
+            'number' => '987654321',
+        ], payment_processor::buyer_phone($user));
+    }
+
+    public function test_telefone_com_codigo_do_pais_colado_e_aparado(): void {
+        $user = (object) ['phone1' => '5511987654321', 'phone2' => ''];
+
+        $this->assertSame('11', payment_processor::buyer_phone($user)['area_code']);
+        $this->assertSame('987654321', payment_processor::buyer_phone($user)['number']);
+    }
+
+    public function test_telefone_sem_ddd_nao_e_usado(): void {
+        // Sem DDD nao da para montar o objeto que a API espera, e inventar um
+        // seria gravar dado errado no cadastro do vendedor.
+        $user = (object) ['phone1' => '98765432', 'phone2' => ''];
+
+        $this->assertSame([], payment_processor::buyer_phone($user));
+    }
+
+    public function test_usuario_sem_telefone_nao_produz_telefone(): void {
+        $user = (object) ['phone1' => '', 'phone2' => ''];
+
+        $this->assertSame([], payment_processor::buyer_phone($user));
+    }
+
+    public function test_o_celular_tem_precedencia_sobre_o_fixo(): void {
+        $user = (object) ['phone1' => '1133334444', 'phone2' => '11987654321'];
+
+        $this->assertSame('987654321', payment_processor::buyer_phone($user)['number']);
     }
 }
