@@ -9,6 +9,7 @@
 public/local/marketplace
 public/payment/gateway/mercadopago
 public/payment/gateway/asaas
+public/payment/gateway/pagarme
 public/enrol/marketplace
 public/availability/condition/marketplace
 public/blocks/marketplace
