@@ -77,10 +77,18 @@ curl -u "$PAGARME_SECRET_KEY:" https://api.pagar.me/core/v5/orders
 
 O Pagar.me alcança o webhook de fora, então `https://localhost:8453` não serve.
 
-O túnel é o **mesmo do Mercado Pago**, `mp.leodg.dev`, reaproveitado de
-propósito — os caminhos não colidem, porque cada gateway tem o próprio
-`webhook.php`. É um `cloudflared` token-based (`/etc/cloudflared/token`, não
-`~/.cloudflared/config.yml`), e ele já entrega em `localhost:8453`.
+O túnel é um `cloudflared` **token-based** — a configuração vive no painel do
+Cloudflare Zero Trust, não num `config.yml` desta máquina. Não adianta procurar
+arquivo em `~/.cloudflared`: só existe `/etc/cloudflared/token`, e acrescentar
+hostname é operação de painel.
+
+`pagarme.leodg.dev` foi criado assim, apontando para `localhost:8453`. O
+`mp.leodg.dev` continua existindo e serve a mesma porta — os caminhos nunca
+colidem, porque cada gateway tem o próprio `webhook.php`.
+
+Ao criar o hostname, **ligue o `No TLS Verify`**: a porta responde com o
+certificado auto-assinado do devcontainer, e sem essa opção o `cloudflared`
+recusa a origem e o hostname sobe respondendo `502`.
 
 **O `wwwroot` precisa acompanhar, e a falta disso é sutil.** Sem ele o Moodle
 recebe a requisição com `Host: mp.leodg.dev`, compara com o `wwwroot` interno e
@@ -112,12 +120,15 @@ de credencial. O `303` queria dizer que ela nem entrou.
 
 ### A URL para cadastrar no painel
 
+Desde 09/09/2026 há hostname próprio, `pagarme.leodg.dev`, criado no painel do
+Cloudflare e apontando para a mesma porta:
+
 ```
-https://mp.leodg.dev/payment/gateway/pagarme/webhook.php
+https://pagarme.leodg.dev/payment/gateway/pagarme/webhook.php
 ```
 
-Enquanto o plugin não existir, ela responde `404` — e o painel vai acumular
-entrega falhada. Cadastre junto com a primeira versão do plugin, não antes.
+Com o plugin instalado, ela responde `401` a quem chega sem credencial — que é
+o resultado bom. Antes de o plugin existir ela respondia `404`.
 
 ---
 
@@ -220,6 +231,36 @@ Conta `acc_EgeXMOdFOCrKvpNJ`, chave `sk_test_…`, oferta de R$ 100,00 e comiss�
 de 25%. A conta estava limpa: `orders`, `charges`, `customers`, `plans` e
 `subscriptions` voltaram todos `{"data": []}` antes da primeira chamada, então
 tudo abaixo nasceu aqui.
+
+### Segunda conta, mesma resposta
+
+Uma conta nova (`acc_Xv3ne2OsOXCJd4GB`), criada declaradamente **com permissão
+de criar recebedor**, respondeu exatamente igual. Vale registrar o que foi
+descartado antes de culpar a permissão:
+
+| Hipótese testada | Resultado |
+|---|---|
+| A chave nova não estava em uso | Descartada — conferida no ambiente, `sk_test_1c0181ef…593a2d` |
+| O payload estava no formato antigo | Descartada — o formato novo, com `register_information`, dá o mesmo `412` |
+| A recusa é do tipo de documento | Descartada — `individual` e `company`, CPF e CNPJ, os quatro recusam |
+| A conta tinha sujeira de teste anterior | Descartada — zero recipients, orders, charges e subscriptions |
+
+As duas contas, lado a lado, com o mesmo corpo de requisição:
+
+```
+conta-1 (acc_EgeX...)   412  action_forbidden | This company it not allowed to create a recipient
+conta-2 (acc_Xv3n...)   412  action_forbidden | This company it not allowed to create a recipient
+```
+
+A documentação explica: *"Esta funcionalidade está disponível apenas para
+clientes PSP"*. Split não é recurso que se liga num interruptor de painel — é
+contrato comercial.
+
+**Achado lateral que vai importar em produção:** `GET /transfers` responde
+`401 "IP de origem não autorizado a realizar essa operação."` Existe allowlist
+de IP para algumas operações, e o IP da VPS vai precisar entrar nela — senão
+transferência e consulta de extrato falham com um erro que não parece de
+permissão.
 
 | Medição | O que respondeu |
 |---|---|
@@ -419,3 +460,32 @@ O que **está** provado, e vale guardar: o host, o formato da autenticação, a
 obrigatoriedade do `items[].code`, os valores aceitos em `type`, o fato de a
 tokenização com `pk_test_` funcionar, o de o webhook disparar, e o protocolo de
 leitura que separa um `200` de uma cobrança viva.
+
+## O plugin, escrito antes da prova
+
+Em 09/09/2026 o usuário decidiu não esperar a liberação e mandou implementar
+pela documentação, corrigindo depois com os testes reais. O `paygw_pagarme`
+existe e está completo — Pix com página própria, boleto, cartão tokenizado,
+assinatura com ciclos, estorno, cancelamento e fatura em aberto.
+
+**Isso muda o que este roteiro serve para fazer.** Ele deixa de ser "o que
+medir antes de codar" e passa a ser **a lista de verificação que vai derrubar
+as suposições**. Cada item da seção anterior está marcado no código com
+`NAO MEDIDO`, e a primeira rodada com a conta liberada deve conferir, nesta
+ordem:
+
+1. `pagarme_client::build_split()` — se o `percentage` incidir sobre o bruto e
+   não sobre o líquido, a base `net` entrega comissão maior que a pedida.
+2. Se uma regra só bastar, as duas regras somando 100% viram complicação
+   desnecessária — mas se forem exigidas, o vendedor precisa mesmo do `rp_`
+   dele, e o `link.php` já o descobre pelo `GET /recipients/default`.
+3. `payment_processor::PAID_STATUSES` — confirmar que `overpaid` existe mesmo e
+   que `underpaid` não deve liberar acesso.
+4. `REFUNDABLE_METHODS` — hoje boleto está de fora por analogia com o Asaas.
+   Medir se o Pagar.me estorna boleto muda a lista.
+5. Se estornar um ciclo **não** cancelar a assinatura, o `refund()` já cancela
+   antes de estornar, e a ordem está certa. Se cancelar sozinho, o cancelamento
+   vira redundante — e a redundância é inofensiva, mas merece comentário.
+6. Os nomes de evento em `is_relevant_event()` foram tirados da documentação;
+   os medidos nesta conta foram só `order.created`, `order_item.created` e
+   `order.payment_failed`, porque nada foi pago.
