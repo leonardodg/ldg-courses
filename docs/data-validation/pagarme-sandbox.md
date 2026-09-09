@@ -270,19 +270,75 @@ enterrado no `gateway_response`. Mesma armadilha, custo menor.
 
 ## O que precisa ser pedido ao Pagar.me
 
-O bloqueio é comercial, não técnico — nenhuma mudança de código o resolve. Ao
-abrir o chamado, peça as duas coisas, separadamente, para a conta
-`acc_EgeXMOdFOCrKvpNJ`:
+O bloqueio é comercial, não técnico — nenhuma mudança de código o resolve. São
+**dois pedidos distintos**, e é importante que o chamado os separe: atender
+apenas um não destrava a integração, e um suporte que leia "não consigo criar
+recebedor" costuma resolver só isso.
 
-1. **Habilitar split / recebedores** (`POST /recipients`), hoje recusado com
-   `action_forbidden`. É o produto de marketplace, e costuma exigir análise
-   comercial e o CNPJ da plataforma.
-2. **Habilitar o processamento no ambiente de teste** — Pix, cartão e boleto
-   voltam `internal_error | Erro desconhecido no proxy`, que é a conta sem
-   adquirente configurado.
+Texto pronto para colar no chamado:
 
-Vale mandar junto os `charge_id` da tabela acima: eles mostram o erro do lado
-deles, com data e hora.
+> **Assunto:** Habilitar split (recebedores) e processamento em ambiente de
+> teste — conta `acc_EgeXMOdFOCrKvpNJ`
+>
+> Olá,
+>
+> Estou integrando a API v5 do Pagar.me a uma plataforma de cursos que opera
+> como marketplace, com split de pagamento entre o vendedor do curso e a
+> plataforma. Estou usando a chave de teste (`sk_test_…`) da conta
+> `acc_EgeXMOdFOCrKvpNJ` e esbarrei em dois bloqueios que parecem ser de
+> habilitação da conta, não de uso da API. Seguem os dois, com as respostas que
+> recebi.
+>
+> **1. A conta não pode criar recebedores.**
+>
+> `POST /core/v5/recipients` responde:
+>
+> ```
+> HTTP 412
+> {"message": "The recipient could not be created : action_forbidden |  |
+>              This company it not allowed to create a recipient"}
+> ```
+>
+> Testei com `type: "individual"` e `type: "company"`, com CPF e com CNPJ, e a
+> resposta é a mesma nos quatro casos. `GET /core/v5/recipients/default` também
+> responde `412 There is no default recipient registered for this account.`
+>
+> Como o split acontece entre recebedores, sem essa habilitação não consigo
+> montar nem testar a divisão de valores, que é a razão de a integração existir.
+>
+> **2. Nenhuma forma de pagamento processa no ambiente de teste.**
+>
+> `POST /core/v5/orders` responde `HTTP 200`, mas a cobrança nasce `failed` e o
+> `gateway_response` traz erro 500. Acontece igual em Pix, cartão e boleto:
+>
+> ```
+> ch_N6XEkm8ivuxnRPY8   pix           failed       500  internal_error |  | Erro desconhecido no proxy
+> ch_RLOboaQCZAF1o5eZ   credit_card   processing   500  internal_error |  | Erro desconhecido no proxy
+> ch_pLMZz9SGNi04DKQR   boleto        failed       500  internal_error |  | Erro desconhecido no proxy
+> ```
+>
+> Todas em 09/09/2026, por volta das 15:20 UTC. A do cartão
+> (`ch_RLOboaQCZAF1o5eZ`) ficou presa em `processing` e permanecia assim quando
+> reconsultei.
+>
+> O corpo das requisições está sendo aceito — o cliente é criado, o item fica
+> `active` e a order recebe id. A tokenização de cartão com a chave pública
+> (`POST /core/v5/tokens` com `pk_test_…`) funciona e devolve `200`. O erro
+> aparece só no processamento.
+>
+> **O que preciso:**
+>
+> 1. Habilitar a criação de recebedores (split / marketplace) para esta conta.
+> 2. Habilitar o processamento de Pix, cartão e boleto no ambiente de teste.
+>
+> Se alguma das duas exigir análise comercial, documentação ou contrato
+> específico, me diga o que enviar que eu providencio.
+>
+> Obrigado.
+
+Se pedirem o CNPJ da plataforma, é o mesmo caso do Asaas e do Mercado Pago: o
+CNPJ é exigido de quem opera o marketplace, não de quem vende — ver
+[ADR-0010](../adr/0010-vendedor-pessoa-fisica-no-mercado-pago.md).
 
 ---
 
