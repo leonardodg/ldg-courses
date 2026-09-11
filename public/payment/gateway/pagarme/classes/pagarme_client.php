@@ -126,18 +126,22 @@ class pagarme_client {
      * tres coisas, e a regra fiscal do projeto ja dizia que quem vende arca
      * com o custo, porque e quem emite a nota (ADR-0003).
      *
-     * A base decide o tipo, e por um motivo concreto:
+     * A comissao e SEMPRE calculada sobre o bruto, e vai como 'flat' em
+     * centavos. Isto foi medido, nao suposto.
      *
-     * - 'gross' vira 'flat' com o valor calculado por nos. Determinista, e
-     *   imune a duvida sobre o que a API entende por percentual.
-     * - 'net' vira 'percentage' e deixa o Pagar.me dividir.
+     * Em 11/09/2026 uma cobranca de R$ 100,00 com 25% de 'percentage' pagou
+     * exatamente R$ 25,00 a plataforma: o percentual do Pagar.me incide sobre
+     * o BRUTO. E o oposto do Asaas, onde percentualValue incide sobre o
+     * liquido - e e o que torna a base 'net' inatendivel aqui, porque a taxa
+     * so se conhece depois da liquidacao.
      *
-     * NAO MEDIDO: sobre o que o 'percentage' do Pagar.me incide - bruto ou
-     * liquido. A documentacao nao diz, e a conta de homologacao nao processou
-     * cobranca nenhuma ate agora. No Asaas o percentual incide sobre o
-     * liquido; se aqui for sobre o bruto, a base 'net' entrega comissao maior
-     * que a pedida e este metodo precisa mudar. Ver
-     * docs/data-validation/pagarme-sandbox.md.
+     * Pedir 'net' entao produz o mesmo split do bruto, e a venda registra
+     * 'gross' via applied_base(). E a mesma divergencia que o
+     * paygw_mercadopago ja expoe: grava-se o que aconteceu, nao o que foi
+     * pedido (ADR-0007).
+     *
+     * O 'flat' e preferido ao 'percentage' mesmo dando no mesmo: o valor sai
+     * daqui em centavos fechados, sem depender de como o outro lado arredonda.
      *
      * @param string $sellerrecipient Recebedor do vendedor (rp_...).
      * @param string $platformrecipient Recebedor da plataforma (rp_...).
@@ -184,34 +188,6 @@ class pagarme_client {
             'charge_remainder_fee' => false,
         ];
 
-        if ($base === 'net') {
-            $platformshare = round($percent, 2);
-            $sellershare = round(100 - $platformshare, 2);
-
-            // Comissao de 100% deixaria o vendedor com uma regra de valor
-            // zero, e regra zerada e recusada pela API. Mesma guarda que o
-            // ramo do bruto ja tinha - a falta dela aqui foi achada por
-            // teste, nao por leitura.
-            if ($sellershare <= 0) {
-                return [];
-            }
-
-            return [
-                [
-                    'amount' => $sellershare,
-                    'recipient_id' => $sellerrecipient,
-                    'type' => 'percentage',
-                    'options' => $sellingoptions,
-                ],
-                [
-                    'amount' => $platformshare,
-                    'recipient_id' => $platformrecipient,
-                    'type' => 'percentage',
-                    'options' => $platformoptions,
-                ],
-            ];
-        }
-
         $total = self::to_cents($grossvalue);
         $commission = (int) round($total * ($percent / 100));
 
@@ -243,6 +219,26 @@ class pagarme_client {
     }
 
     /**
+     * Base que o Pagar.me consegue aplicar, qualquer que seja a pedida.
+     *
+     * Sempre 'gross'. O percentual dele incide sobre o bruto (medido em
+     * 11/09/2026), e nao ha como expressar "percentual do liquido" na API -
+     * a taxa so existe depois da liquidacao.
+     *
+     * Existe para a venda gravar o que ACONTECEU. Uma empresa configurada com
+     * base liquida continua vendendo pelo Pagar.me; o que ela nao pode e achar
+     * que a comissao saiu do liquido.
+     *
+     * @param string $requested Base pedida pelo marketplace.
+     * @return string Sempre 'gross'.
+     */
+    public static function applied_base(string $requested): string {
+        unset($requested);
+
+        return 'gross';
+    }
+
+    /**
      * O que de fato aconteceu com uma cobranca.
      *
      * Existe porque o status HTTP do POST /orders nao vale como sinal.
@@ -271,11 +267,63 @@ class pagarme_client {
     }
 
     /**
-     * Comissao efetivamente destinada a plataforma numa cobranca.
+     * Comissao que a plataforma recebeu de fato numa cobranca.
      *
-     * Le o split de volta em vez de recalcular. Split recusado, cancelado ou
-     * ausente precisa aparecer como zero, e nao como o valor que se pediu -
-     * foi a leitura de volta que separou o Asaas do Mercado Pago.
+     * Esta e a fonte da verdade, e a unica. MEDIDO em 11/09/2026: uma cobranca
+     * de cartao de R$ 100,00 com split de 25% foi paga, o extrato dos dois
+     * recebedores se moveu - R$ 25,00 para a plataforma, R$ 70,51 para o
+     * vendedor depois dos R$ 4,49 de taxa - e mesmo assim o `GET` da cobranca
+     * devolveu `splits: null`.
+     *
+     * E o caso mais perigoso ja visto neste projeto. O `preapproval` do Mercado
+     * Pago e o `PUT /subscriptions` do Asaas aceitavam o campo e o descartavam;
+     * aqui a API faz o trabalho direito e **nao conta**. Confiar no `GET`
+     * concluiria que o split falhou quando ele funcionou.
+     *
+     * O filtro por `charge_id` na API nao funciona - devolve lista vazia. O
+     * payable e listado por recebedor e traz o `charge_id` dentro, entao a
+     * separacao e feita aqui.
+     *
+     * @param string $chargeid Cobranca de interesse.
+     * @param string $platformrecipient Recebedor da plataforma.
+     * @return float Em moeda, ja liquido da taxa que a plataforma pagar.
+     */
+    public function commission_for_charge(string $chargeid, string $platformrecipient): float {
+        $chargeid = trim($chargeid);
+        $platformrecipient = trim($platformrecipient);
+        if ($chargeid === '' || $platformrecipient === '') {
+            return 0.0;
+        }
+
+        $response = $this->request(
+            'GET',
+            '/payables?recipient_id=' . rawurlencode($platformrecipient) . '&size=100'
+        );
+
+        $cents = 0;
+        foreach (($response['data'] ?? []) as $payable) {
+            if (!is_array($payable)) {
+                continue;
+            }
+            if ((string) ($payable['charge_id'] ?? '') !== $chargeid) {
+                continue;
+            }
+            // O que a plataforma RECEBE, e nao o bruto da regra: hoje ela tem
+            // charge_processing_fee false e a taxa e zero, mas gravar o
+            // liquido sobrevive a mudanca dessa opcao.
+            $cents += (int) ($payable['amount'] ?? 0) - (int) ($payable['fee'] ?? 0);
+        }
+
+        return self::from_cents($cents);
+    }
+
+    /**
+     * Comissao lida do split embutido na cobranca.
+     *
+     * Fica como caminho secundario. MEDIDO: `charge.splits` vem `null` mesmo
+     * quando o split acontece, entao quem decide o valor gravado e o
+     * commission_for_charge(). Este metodo continua porque e puro, e porque
+     * split ausente precisa dar ZERO e nunca "o gateway nao informou".
      *
      * @param array $charge Cobranca vinda da API.
      * @param string $platformrecipient Recebedor da plataforma.

@@ -124,19 +124,26 @@ final class pagarme_client_test extends \advanced_testcase {
 
     // --------------------------------------------------------------------
 
-    public function test_split_sobre_o_liquido_vira_percentage(): void {
-        $split = pagarme_client::build_split(self::SELLER, self::PLATFORM, 25.0, 100.00, 'net');
+    public function test_o_pagarme_nao_consegue_cobrar_sobre_o_liquido(): void {
+        // MEDIDO em 11/09/2026: o 'percentage' do Pagar.me incide sobre o
+        // BRUTO - 25% de R$ 100,00 deram exatamente R$ 25,00 no extrato. E o
+        // oposto do Asaas, onde percentualValue incide sobre o liquido.
+        //
+        // Entao pedir 'net' aqui nao tem como ser atendido: a taxa so se
+        // conhece depois da liquidacao. O split sai igual ao do bruto, e o
+        // registro da venda expoe a divergencia.
+        $bruto = pagarme_client::build_split(self::SELLER, self::PLATFORM, 25.0, 100.00, 'gross');
+        $liquido = pagarme_client::build_split(self::SELLER, self::PLATFORM, 25.0, 100.00, 'net');
 
-        $this->assertSame('percentage', $split[0]['type']);
-        $this->assertSame('percentage', $split[1]['type']);
-        $this->assertSame(75.0, $split[0]['amount']);
-        $this->assertSame(25.0, $split[1]['amount']);
+        $this->assertSame($bruto, $liquido);
     }
 
-    public function test_as_porcentagens_somam_cem(): void {
-        $split = pagarme_client::build_split(self::SELLER, self::PLATFORM, 12.5, 100.00, 'net');
-
-        $this->assertSame(100.0, $split[0]['amount'] + $split[1]['amount']);
+    public function test_a_base_aplicada_e_sempre_bruta(): void {
+        // Mesma decisao do paygw_mercadopago: gravamos o que aconteceu, nao o
+        // que foi pedido.
+        $this->assertSame('gross', pagarme_client::applied_base('gross'));
+        $this->assertSame('gross', pagarme_client::applied_base('net'));
+        $this->assertSame('gross', pagarme_client::applied_base('inventada'));
     }
 
     public function test_base_desconhecida_cai_no_bruto(): void {
@@ -416,6 +423,89 @@ final class pagarme_client_test extends \advanced_testcase {
         $this->assertSame('failed', $status);
         $this->assertSame('500', $code);
         $this->assertStringContainsString('Erro desconhecido no proxy', $message);
+    }
+
+    public function test_a_cobranca_paga_esconde_o_split_que_aconteceu(): void {
+        // MEDIDO em 11/09/2026: o split rodou, o extrato dos dois recebedores
+        // se moveu, e mesmo assim o GET da cobranca traz splits null. Ler
+        // daqui concluiria que a comissao foi zero - e ela foi R$ 25,00.
+        $charge = documented_responses::cobranca_paga_sem_splits_no_get();
+
+        $this->assertSame('paid', $charge['status']);
+        $this->assertNull($charge['splits']);
+        $this->assertSame(0.0, pagarme_client::commission_from($charge, 're_cmtxd5ug80hhv0m9ttcbnek5w'));
+    }
+
+    public function test_a_comissao_de_verdade_sai_dos_payables(): void {
+        $client = new fake_pagarme_client('sk_test_x');
+        $client->nextresponse = ['data' => [documented_responses::payable_da_plataforma()]];
+
+        $this->assertSame(25.0, $client->commission_for_charge(
+            'ch_KME2JgJuJnT1XlX7',
+            're_cmtxd5ug80hhv0m9ttcbnek5w'
+        ));
+        $this->assertSame([['GET', '/payables?recipient_id=re_cmtxd5ug80hhv0m9ttcbnek5w&size=100']], $client->calls);
+    }
+
+    public function test_payable_de_outra_cobranca_nao_entra_na_conta(): void {
+        // O filtro por charge_id nao funciona na API - o payable e listado por
+        // recebedor e traz o charge_id dentro. A separacao e nossa.
+        $outro = documented_responses::payable_da_plataforma();
+        $outro['charge_id'] = 'ch_de_outra_venda';
+
+        $client = new fake_pagarme_client('sk_test_x');
+        $client->nextresponse = ['data' => [$outro]];
+
+        $this->assertSame(0.0, $client->commission_for_charge(
+            'ch_KME2JgJuJnT1XlX7',
+            're_cmtxd5ug80hhv0m9ttcbnek5w'
+        ));
+    }
+
+    public function test_a_comissao_desconta_a_taxa_que_a_plataforma_pagar(): void {
+        // Hoje a plataforma tem charge_processing_fee false e fee zero. Se um
+        // dia carregar taxa, o que ela RECEBE e amount menos fee - e e isso
+        // que precisa ser gravado, nao o bruto da regra.
+        $payable = documented_responses::payable_da_plataforma();
+        $payable['fee'] = 300;
+
+        $client = new fake_pagarme_client('sk_test_x');
+        $client->nextresponse = ['data' => [$payable]];
+
+        $this->assertSame(22.0, $client->commission_for_charge(
+            'ch_KME2JgJuJnT1XlX7',
+            're_cmtxd5ug80hhv0m9ttcbnek5w'
+        ));
+    }
+
+    public function test_a_taxa_saiu_inteira_do_vendedor(): void {
+        // R$ 100,00: vendedor 7500 bruto com 449 de taxa, plataforma 2500 com
+        // zero. Soma 70,51 + 25,00 = 95,51, e os 4,49 que faltam sao a taxa.
+        $vendedor = documented_responses::payable_do_vendedor();
+        $plataforma = documented_responses::payable_da_plataforma();
+
+        $this->assertSame(449, $vendedor['fee']);
+        $this->assertSame(0, $plataforma['fee']);
+        $this->assertSame(10000, $vendedor['amount'] + $plataforma['amount']);
+    }
+
+    public function test_sem_payable_a_comissao_e_zero(): void {
+        $client = new fake_pagarme_client('sk_test_x');
+        $client->nextresponse = ['data' => []];
+
+        $this->assertSame(0.0, $client->commission_for_charge('ch_1', 're_1'));
+    }
+
+    public function test_o_pix_recusa_com_ambiente_nao_configurado(): void {
+        // MEDIDO em 11/09/2026, depois de os recebedores serem liberados:
+        // cartao e boleto passaram, e so o Pix continuou barrado.
+        [$status, $code, $message] = pagarme_client::charge_verdict(
+            documented_responses::pix_sem_ambiente()
+        );
+
+        $this->assertSame('failed', $status);
+        $this->assertSame('400', $code);
+        $this->assertStringContainsString('Sem ambiente configurado', $message);
     }
 
     public function test_o_200_com_recebedor_inexistente_nao_engana(): void {

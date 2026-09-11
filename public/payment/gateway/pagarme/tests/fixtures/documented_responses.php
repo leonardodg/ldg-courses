@@ -160,6 +160,122 @@ class documented_responses {
     }
 
     /**
+     * O payable da plataforma, MEDIDO em 11/09/2026.
+     *
+     * Esta e a resposta real de `GET /payables?recipient_id=`, e e a unica
+     * fonte que conta a verdade sobre o split. A cobranca de origem
+     * (ch_KME2JgJuJnT1XlX7) foi paga, o extrato dos dois recebedores se moveu,
+     * e mesmo assim `charge.splits` voltou **null** no GET.
+     *
+     * @return array
+     */
+    public static function payable_da_plataforma(): array {
+        return [
+            'id' => 4325808524,
+            'status' => 'waiting_funds',
+            'amount' => 2500,
+            'fee' => 0,
+            'anticipation_fee' => 0,
+            'fraud_coverage_fee' => 0,
+            'installment' => 1,
+            'gateway_id' => 2213672702,
+            'charge_id' => 'ch_KME2JgJuJnT1XlX7',
+            'split_id' => 'sr_cmtxd6wq10hjb0m9te1qyc6oy',
+            'recipient_id' => 're_cmtxd5ug80hhv0m9ttcbnek5w',
+            'payment_date' => '2026-10-14T03:00:00Z',
+            'type' => 'credit',
+            'payment_method' => 'credit_card',
+            'accrual_at' => '2026-09-11T19:44:00Z',
+            'created_at' => '2026-09-11T19:44:04Z',
+        ];
+    }
+
+    /**
+     * O payable do vendedor da mesma cobranca, MEDIDO em 11/09/2026.
+     *
+     * Repare no `fee`: os R$ 4,49 de taxa sairam INTEIROS do vendedor, porque
+     * e ele que carrega `charge_processing_fee: true`. A plataforma recebeu os
+     * R$ 25,00 cheios.
+     *
+     * @return array
+     */
+    public static function payable_do_vendedor(): array {
+        return [
+            'id' => 4325808523,
+            'status' => 'waiting_funds',
+            'amount' => 7500,
+            'fee' => 449,
+            'anticipation_fee' => 0,
+            'fraud_coverage_fee' => 0,
+            'installment' => 1,
+            'charge_id' => 'ch_KME2JgJuJnT1XlX7',
+            'split_id' => 'sr_cmtxd6wq10hja0m9t1v3jsfu6',
+            'recipient_id' => 're_cmtxcoc0u0ggu0m9t4w24tacd',
+            'type' => 'credit',
+            'payment_method' => 'credit_card',
+        ];
+    }
+
+    /**
+     * A cobranca paga cujo split ACONTECEU, e que mesmo assim volta sem ele.
+     *
+     * MEDIDA em 11/09/2026. E o caso mais perigoso ja visto neste projeto: as
+     * outras APIs aceitavam o campo e o descartavam; esta faz o trabalho
+     * direito e **nao conta**. Confiar no GET aqui concluiria que o split
+     * falhou quando ele funcionou.
+     *
+     * @return array
+     */
+    public static function cobranca_paga_sem_splits_no_get(): array {
+        return [
+            'id' => 'ch_KME2JgJuJnT1XlX7',
+            'amount' => 10000,
+            'paid_amount' => 10000,
+            'status' => 'paid',
+            'currency' => 'BRL',
+            'payment_method' => 'credit_card',
+            'splits' => null,
+            'last_transaction' => [
+                'transaction_type' => 'credit_card',
+                'amount' => 10000,
+                'status' => 'captured',
+                'success' => true,
+                'gateway_response' => ['code' => '200', 'errors' => []],
+            ],
+        ];
+    }
+
+    /**
+     * A recusa do Pix, MEDIDA em 11/09/2026.
+     *
+     * Depois de os recebedores serem liberados, cartao e boleto passaram a
+     * processar e o Pix continuou barrado - com mensagem nova e mais
+     * especifica que o "Erro desconhecido no proxy" de 09/09.
+     *
+     * @return array
+     */
+    public static function pix_sem_ambiente(): array {
+        return [
+            'id' => 'ch_yBrRwbnT2khbaJgP',
+            'amount' => 10000,
+            'status' => 'failed',
+            'payment_method' => 'pix',
+            'splits' => null,
+            'last_transaction' => [
+                'transaction_type' => 'pix',
+                'status' => 'failed',
+                'success' => false,
+                'gateway_response' => [
+                    'code' => '400',
+                    'errors' => [
+                        ['message' => 'action_forbidden |  | Sem ambiente configurado para este tipo de transação.'],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
      * A cobranca que falhou no adquirente, medida em 09/09/2026.
      *
      * Esta NAO vem da documentacao: e resposta real da conta de homologacao,

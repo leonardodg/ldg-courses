@@ -103,8 +103,19 @@ class payment_processor {
         if (class_exists('\local_marketplace\api')) {
             $terms = \local_marketplace\api::commission_terms_for($component, $itemid);
             $feepercent = (float) $terms->percent;
-            $feebase = (string) $terms->base;
             $feesource = (string) $terms->source;
+
+            // A base gravada e a APLICADA, nao a pedida. O Pagar.me so cobra
+            // sobre o bruto, e a venda tem que contar o que aconteceu - e para
+            // isso que o feebase existe (ADR-0007).
+            $feebase = pagarme_client::applied_base((string) $terms->base);
+            if ($feebase !== (string) $terms->base) {
+                debugging(
+                    'paygw_pagarme: comissao pedida sobre ' . $terms->base
+                        . ' mas o Pagar.me so cobra sobre o bruto; a venda registra gross.',
+                    DEBUG_DEVELOPER
+                );
+            }
         }
 
         $reference = 'mdl-' . $userid . '-' . $itemid . '-' . random_string(12);
@@ -447,7 +458,8 @@ class payment_processor {
             throw new moodle_exception('errornotlinked', 'paygw_pagarme', '', $record->environment);
         }
 
-        $charge = (new pagarme_client($apikey))->get_charge($chargeid);
+        $client = new pagarme_client($apikey);
+        $charge = $client->get_charge($chargeid);
         $status = strtolower((string) ($charge['status'] ?? ''));
 
         // Replay do mesmo evento.
@@ -464,7 +476,17 @@ class payment_processor {
         }
 
         $platformrecipient = credentials::platform_recipient((int) $record->accountid, $record->environment);
-        $record->feeamount = pagarme_client::commission_from($charge, $platformrecipient);
+
+        // A comissao sai do EXTRATO, nao da cobranca. Medido em 11/09/2026: o
+        // split acontece e `charge.splits` volta null do mesmo jeito - ler dali
+        // gravaria zero em toda venda.
+        $record->feeamount = $client->commission_for_charge($chargeid, $platformrecipient);
+
+        // O payable pode demorar a aparecer. Antes de aceitar zero, tenta o
+        // split embutido, que e o caminho que a documentacao descreve.
+        if ($record->feeamount <= 0) {
+            $record->feeamount = pagarme_client::commission_from($charge, $platformrecipient);
+        }
 
         // Comissao esperada que voltou zero quer dizer split recusado ou
         // ausente. A venda entra assim mesmo - o aluno pagou - mas o registro
