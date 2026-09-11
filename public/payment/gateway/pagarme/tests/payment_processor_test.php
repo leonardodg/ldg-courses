@@ -497,6 +497,23 @@ final class payment_processor_test extends \advanced_testcase {
 
     // --------------------------------------------------------------------
 
+    public function test_assinatura_com_split_nao_e_atendida(): void {
+        // MEDIDO em 11/09/2026: POST /subscriptions com split responde 400 em
+        // QUATRO formatos diferentes - v5 padrao, estilo v4, sem options, e
+        // com options alternativas. Dentro de items[] o 200 volta com o split
+        // descartado: nenhum payable e gerado.
+        //
+        // Sem split, uma venda recorrente renderia comissao ZERO sem acusar
+        // erro. Recusar na porta e a unica saida honesta.
+        $this->assertFalse(payment_processor::supports_recurring());
+    }
+
+    public function test_o_motivo_da_recusa_e_nomeado(): void {
+        // A mensagem vai para o gerente, nao para o aluno: ela tem que dizer
+        // o que fazer, e nao so que deu errado.
+        $this->assertSame('errorrecurringunsupported', payment_processor::recurring_blocker());
+    }
+
     public function test_a_resposta_documentada_do_pix_da_o_qrcode(): void {
         $order = documented_responses::pix_pendente();
         $charge = $order['charges'][0];

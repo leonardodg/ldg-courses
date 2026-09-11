@@ -57,6 +57,7 @@ $string['errornodocument'] = 'Your profile has no CPF. Add it before buying.';
 $string['errornoencryptionkey'] = 'This site has no encryption key. Run admin/cli/generate_key.php before linking an account.';
 $string['errornotlinked'] = 'No Pagar.me account is linked for {$a}.';
 $string['errorrecipientrejected'] = 'Pagar.me does not recognise that recipient in this account.';
+$string['errorrecurringunsupported'] = 'Pagar.me cannot split a subscription yet, so a recurring offer would earn no commission. Use a one-off offer, or ask Pagar.me to enable split on subscriptions for this account.';
 $string['errorrefundalready'] = 'This charge has already been refunded.';
 $string['errorrefundmethod'] = 'Pagar.me does not refund this payment method.';
 $string['errorrefundnotfirstcycle'] = 'Only the first cycle of a subscription can be refunded.';

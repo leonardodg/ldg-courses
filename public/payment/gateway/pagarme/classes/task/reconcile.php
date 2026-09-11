@@ -96,10 +96,86 @@ class reconcile extends \core\task\scheduled_task {
             }
         }
 
+        $corrigidas = $this->fix_missing_commission();
+
         mtrace(sprintf(
-            'paygw_pagarme: %d cobrancas conferidas, %d entregues agora.',
+            'paygw_pagarme: %d cobrancas conferidas, %d entregues agora, %d comissoes corrigidas.',
             $checked,
-            $delivered
+            $delivered,
+            $corrigidas
         ));
+    }
+
+    /**
+     * Preenche a comissao das vendas que foram entregues antes do extrato.
+     *
+     * O payable nasce cerca de 16 segundos depois do pagamento, e o webhook
+     * chega antes. A venda entra com feeamount zero de proposito - gravar o
+     * valor esperado seria registrar dinheiro que ninguem viu - e e aqui que
+     * ele e corrigido, lendo o extrato de verdade.
+     *
+     * Uma linha que continuar zerada depois disso nao e atraso: e split que
+     * nao aconteceu, e ai o zero e a informacao certa.
+     *
+     * @return int Quantas linhas foram corrigidas.
+     */
+    protected function fix_missing_commission(): int {
+        global $DB;
+
+        $records = $DB->get_records_select(
+            payment_processor::TABLE,
+            "paymentid IS NOT NULL AND feeamount <= 0 AND feepercent > 0
+             AND chargeid <> '' AND chargeid IS NOT NULL
+             AND timemodified > :desde",
+            ['desde' => time() - self::MAX_AGE],
+            'timemodified ASC',
+            '*',
+            0,
+            self::BATCH
+        );
+
+        $corrigidas = 0;
+
+        foreach ($records as $record) {
+            try {
+                $apikey = \paygw_pagarme\credentials::api_key(
+                    (int) $record->accountid,
+                    $record->environment
+                );
+                if ($apikey === '') {
+                    continue;
+                }
+
+                $recipient = \paygw_pagarme\credentials::platform_recipient(
+                    (int) $record->accountid,
+                    $record->environment
+                );
+                $comissao = (new \paygw_pagarme\pagarme_client($apikey))
+                    ->commission_for_charge((string) $record->chargeid, $recipient);
+
+                if ($comissao <= 0) {
+                    continue;
+                }
+
+                $record->feeamount = $comissao;
+                $record->timemodified = time();
+                $DB->update_record(payment_processor::TABLE, $record);
+                $corrigidas++;
+
+                // A venda no marketplace tambem guarda o valor, e ela e a que
+                // o relatorio le.
+                if (class_exists('\local_marketplace\sale')) {
+                    $venda = \local_marketplace\sale::get_record(['paymentid' => (int) $record->paymentid]);
+                    if ($venda) {
+                        $venda->set('feeamount', $comissao);
+                        $venda->update();
+                    }
+                }
+            } catch (\Throwable $e) {
+                mtrace('paygw_pagarme: comissao de ' . $record->chargeid . ' - ' . $e->getMessage());
+            }
+        }
+
+        return $corrigidas;
     }
 }

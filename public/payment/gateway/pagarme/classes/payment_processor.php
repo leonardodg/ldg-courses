@@ -204,6 +204,11 @@ class payment_processor {
             $recurrence = \local_marketplace\api::recurrence_for($record->component, (int) $record->itemid);
         }
 
+        // Recusa na porta, e nao no extrato. Ver supports_recurring().
+        if ($recurrence && !self::supports_recurring()) {
+            throw new moodle_exception(self::recurring_blocker(), 'paygw_pagarme');
+        }
+
         if ($recurrence) {
             $response = $client->create_subscription(self::subscription_body(
                 $record,
@@ -488,12 +493,19 @@ class payment_processor {
             $record->feeamount = pagarme_client::commission_from($charge, $platformrecipient);
         }
 
-        // Comissao esperada que voltou zero quer dizer split recusado ou
-        // ausente. A venda entra assim mesmo - o aluno pagou - mas o registro
-        // precisa gritar, senao vira venda sem comissao que ninguem percebe.
+        // Zero aqui quase sempre quer dizer "ainda nao", e nao "nunca": o
+        // payable leva cerca de 16 segundos para nascer depois do pagamento
+        // (medido em 11/09/2026), e o webhook chega antes disso.
+        //
+        // Mesmo assim NAO gravamos a comissao esperada no lugar. Gravar o que
+        // ainda nao se viu e o erro que este projeto persegue desde o
+        // marketplace_fee do Mercado Pago: o numero pareceria certo e ninguem
+        // reconferiria. Fica zero, e a reconciliacao corrige quando o extrato
+        // existir - ver task\reconcile::fix_missing_commission().
         if ($record->feeamount <= 0 && (float) $record->feepercent > 0) {
             debugging(
-                'paygw_pagarme: cobranca ' . $chargeid . ' paga sem split - comissao zero.',
+                'paygw_pagarme: cobranca ' . $chargeid . ' paga e ainda sem payable; '
+                    . 'a comissao fica zero ate a reconciliacao ler o extrato.',
                 DEBUG_NORMAL
             );
         }
@@ -724,6 +736,46 @@ class payment_processor {
             'value' => pagarme_client::from_cents((int) ($target['amount'] ?? 0)),
             'line' => (string) (($target['last_transaction'] ?? [])['line'] ?? ''),
         ];
+    }
+
+    /**
+     * Este gateway consegue cobrar assinatura com split?
+     *
+     * NAO, e a recusa e medida. Em 11/09/2026, com os recebedores ja
+     * liberados e o split provado na venda avulsa, o `POST /subscriptions`
+     * com split respondeu 400 "The request is invalid" em quatro formatos:
+     * v5 padrao, estilo v4 (`percentage`/`liable` soltos), sem `options`, e
+     * com `charge_remainder` no singular. Dentro de `items[]` o `200` volta
+     * com o split **descartado** - nenhum payable e gerado.
+     *
+     * O `PATCH /subscriptions/{id}/split` responde 412 "Can't update the
+     * split on subscription because doesn't has split", o que indica que a
+     * capacidade existe e precisa ser habilitada na conta - como os
+     * recebedores precisaram.
+     *
+     * Ha ainda um segundo impedimento, independente deste: o filtro
+     * `?subscription_id=` de `GET /charges` e **ignorado** - um id inventado
+     * devolve a conta inteira - e as cobrancas nao carregam vinculo com a
+     * assinatura. Nao ha como listar as cobrancas de uma assinatura, o que
+     * derruba pending_invoice() e a escolha do vencimento mais proximo.
+     *
+     * Enquanto isso, cobrar recorrencia aqui renderia comissao ZERO sem
+     * acusar erro. Recusar na porta e a saida honesta - e e o mesmo lugar em
+     * que o paygw_mercadopago esta, que nao tem recorrencia nenhuma.
+     *
+     * @return bool
+     */
+    public static function supports_recurring(): bool {
+        return false;
+    }
+
+    /**
+     * Chave de idioma que explica a recusa da recorrencia.
+     *
+     * @return string
+     */
+    public static function recurring_blocker(): string {
+        return 'errorrecurringunsupported';
     }
 
     /**

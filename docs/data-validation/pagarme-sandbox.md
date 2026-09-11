@@ -1,13 +1,27 @@
-# Medir o Pagar.me em homologação
+# Provar o split no Pagar.me
 
-Como provar que o `paygw_pagarme` funciona — e o registro de por que, em
-09/09/2026, **não foi possível provar nada**. A conta de sandbox recusa criar
-recebedor e nenhuma forma de pagamento processa, então o split, que é o coração
-do modelo, continua sem prova neste gateway.
+Como provar que o `paygw_pagarme` divide o dinheiro — e **ele divide**, provado
+em 11/09/2026 depois de dois dias travado numa liberação de conta.
 
 O irmão deste documento é [`asaas-sandbox.md`](asaas-sandbox.md), que prova o
-split da cobrança avulsa e é o formato que este segue. A diferença é que lá o
-roteiro termina com um número, e aqui termina com um pedido ao suporte.
+mesmo no Asaas. A diferença que mais importa entre os dois está aqui: no Asaas
+o `GET` da cobrança mostra o split; **aqui ele mente**, e quem olhar só para
+ele vai concluir que o split falhou quando funcionou.
+
+## O resultado, primeiro
+
+```
+cobranca ... ch_KME2JgJuJnT1XlX7 | paid | R$ 100,00
+vendedor ... amount R$ 75,00 | taxa R$ 4,49 | liquido R$ 70,51
+plataforma . amount R$ 25,00 | taxa R$ 0,00 | liquido R$ 25,00
+```
+
+Comissão de 25% sobre R$ 100,00 entregou **exatamente R$ 25,00**. A taxa de
+R$ 4,49 saiu inteira do vendedor, porque é ele que carrega
+`charge_processing_fee: true`. A soma fecha em R$ 100,00.
+
+**O `percentage` do Pagar.me incide sobre o BRUTO** — o oposto do Asaas, onde
+`percentualValue` incide sobre o líquido.
 
 > **Credenciais não vivem neste arquivo.** Ele está versionado e o repositório
 > está no GitHub. As chaves ficam em
@@ -31,10 +45,14 @@ cobrança nasce na conta do **vendedor**, e a plataforma é um recebedor dentro
 dela. A consequência incômoda e assumida é que o `recipient_id` da plataforma
 **é diferente em cada vendedor**.
 
-### A conta precisa estar liberada para recebedor e para adquirente
+### A conta precisa estar liberada, e são liberações separadas
 
-São duas liberações distintas, e **esta conta não tem nenhuma das duas**. É o
-achado principal deste documento; a seção de resultado traz as respostas cruas.
+Split não é um interruptor de painel: é capacidade comercial, e vem em pedaços.
+A conta `acc_Xv3ne2OsOXCJd4GB` tem **recebedores, cartão e boleto** desde
+11/09/2026, e continua **sem Pix e sem split em assinatura**.
+
+A primeira conta (`acc_EgeXMOdFOCrKvpNJ`) não tem nenhuma delas, e é por isso
+que este documento começou como registro de bloqueio.
 
 ---
 
@@ -141,8 +159,19 @@ python3 docs/data-validation/scripts/provar-split-pagarme.py
 
 Sem dependência externa — só a biblioteca padrão do Python.
 
-Hoje ele para no passo 0, e **é para parar mesmo**: contornar a recusa seria
-medir outra coisa.
+Ele cria dois recebedores novos, cobra R$ 100,00 no cartão com split de 25%,
+espera o payable nascer e fecha a conta. Termina assim:
+
+```
+Comissao pedida .... R$ 25.00  (25.0% de R$ 100.00)
+Comissao recebida .. R$ 25.00
+
+BATE. O percentual do Pagar.me incide sobre o BRUTO.
+```
+
+Usa **cartão, não Pix**, porque o Pix ainda não processa nesta conta. Quando
+liberar, troque — o Pix é o caminho principal do plugin, e a prova dele vale
+mais que a do cartão.
 
 ---
 
@@ -174,7 +203,11 @@ como **a confirmar**. Está confirmado: não há. Se as regras de split precisam
 somar 100%, a parte do vendedor não tem para onde ir enquanto ninguém criar o
 recebedor dele.
 
-### 3. Criar o recebedor — onde tudo para
+### 3. Criar o recebedor — onde tudo parava até 11/09
+
+Na conta liberada isto responde `200` e devolve um id `re_…`. O que segue é a
+recusa da conta **não** liberada, guardada porque é como o bloqueio se
+apresenta:
 
 ```bash
 curl -s -u "$PAGARME_SECRET_KEY:" -H 'Content-Type: application/json' \
@@ -300,6 +333,65 @@ Liberar só o primeiro não destrava a prova.
 
 ---
 
+---
+
+## Resultado — 11/09/2026: o split funciona, e o `GET` não conta
+
+Conta `acc_Xv3ne2OsOXCJd4GB`, com os recebedores liberados.
+
+| Medição | Resposta |
+|---|---|
+| `POST /recipients` | **`200`** — destravou. Id sai como `re_…`, não `rp_…` |
+| Split numa cobrança de cartão | **funciona**, provado pelo extrato |
+| Base do percentual | **bruto**. 25% de R$ 100,00 = R$ 25,00 exatos |
+| Quem paga a taxa | o vendedor, inteira, por `charge_processing_fee: true` |
+| Regras somando 100% | aceitas |
+| `charge.splits` no `GET` | **`null`, mesmo com o split tendo acontecido** |
+| Estorno | reverte o split: nasce um payable **negativo**, `type: refund` |
+| `amount` do split | precisa ser **inteiro**; `75.0` é recusado com `400` |
+| Atraso do payable | **~16 segundos** depois do pagamento |
+| Pix | **`400 action_forbidden`** — "Sem ambiente configurado para este tipo de transação" |
+| Assinatura com split | **`400`** em todos os formatos testados |
+
+### O `charge.splits` mente, e é a armadilha mais cara daqui
+
+Esta é a quarta vez que uma API deste projeto responde `2xx` sobre um campo de
+dinheiro sem contar a verdade, e é a **mais perigosa das quatro**:
+
+| Gateway | O que fez |
+|---|---|
+| Mercado Pago, `preapproval` | aceitou `marketplace_fee` e **descartou** — errou para menos |
+| Asaas, `PUT /subscriptions` | aceitou `creditCard` e **não guardou** — errou para menos |
+| Pagar.me, recebedor inexistente | aceitou, e o `GET` **denunciou** — comportamento bom |
+| Pagar.me, split válido | **fez o trabalho e não contou** — erra para mais |
+
+As três primeiras fazem você achar que deu certo quando não deu. A quarta faz
+você achar que deu errado quando deu — e a reação natural, "o split falhou,
+vou desligar", custaria a comissão de todas as vendas.
+
+**Onde ler, então:**
+
+```bash
+curl -s -u "$PAGARME_SECRET_KEY:" \
+  "https://api.pagar.me/core/v5/payables?recipient_id=<rp>&size=100" \
+  | python3 -m json.tool
+```
+
+O filtro `?charge_id=` **não funciona** — devolve lista vazia. O payable é
+listado por recebedor e traz o `charge_id` dentro, então a separação é sua.
+
+### Duas armadilhas de formato que custam tempo
+
+**`amount` precisa ser inteiro.** Um `75.0` float volta `400 "The request is
+invalid."` sem dizer qual campo. Foi o que derrubou a primeira rodada deste
+script, e a mensagem não ajuda em nada.
+
+**O payable demora.** Medido: ~16 segundos. Uma leitura única logo após a
+cobrança mostra zero e parece falha de split. O plugin trata isso na
+reconciliação, e o script faz polling.
+
+---
+
 ## O que este roteiro encontrou
 
 **O `200` do `POST /orders` não significa nada.** Uma order com `split[]`
@@ -364,7 +456,41 @@ O bloqueio é comercial, não técnico — nenhuma mudança de código o resolve
 apenas um não destrava a integração, e um suporte que leia "não consigo criar
 recebedor" costuma resolver só isso.
 
-Texto pronto para colar no chamado:
+**Em 11/09/2026 o primeiro pedido foi atendido** para a conta
+`acc_Xv3ne2OsOXCJd4GB`: recebedores criam, cartão e boleto processam, e o split
+foi provado. Sobraram dois pedidos menores, e o texto abaixo continua servindo
+de modelo para eles:
+
+> **Assunto:** Habilitar Pix e split em assinatura — conta `acc_Xv3ne2OsOXCJd4GB`
+>
+> Olá,
+>
+> Os recebedores foram liberados nesta conta e o split já funciona em cobrança
+> de cartão — obrigado. Sobraram duas coisas:
+>
+> **1. Pix não processa.** `POST /core/v5/orders` com
+> `payment_method: "pix"` devolve `200`, mas a cobrança nasce `failed`:
+>
+> ```
+> gateway_response 400
+> action_forbidden |  | Sem ambiente configurado para este tipo de transação.
+> ```
+>
+> Exemplo: `ch_yBrRwbnT2khbaJgP`. Cartão e boleto, na mesma conta e no mesmo
+> momento, processam normalmente.
+>
+> **2. Assinatura não aceita split.** `POST /core/v5/subscriptions` com o
+> campo `split` responde `400 "The request is invalid."` em todos os formatos
+> que testei. E `PATCH /core/v5/subscriptions/{id}/split` responde
+> `412 "Can't update the split on subscription because doesn't has split."`,
+> o que sugere que a assinatura precisa nascer com o split — mas a criação o
+> recusa. Preciso saber se isso é uma habilitação de conta, como os
+> recebedores eram, ou se o formato de criação é outro.
+>
+> Obrigado.
+
+<details>
+<summary>O chamado original, de 09/09, que destravou os recebedores</summary>
 
 > **Assunto:** Habilitar split (recebedores) e processamento em ambiente de
 > teste — conta `acc_EgeXMOdFOCrKvpNJ`
@@ -425,6 +551,8 @@ Texto pronto para colar no chamado:
 >
 > Obrigado.
 
+</details>
+
 Se pedirem o CNPJ da plataforma, é o mesmo caso do Asaas e do Mercado Pago: o
 CNPJ é exigido de quem opera o marketplace, não de quem vende — ver
 [ADR-0010](../adr/0010-vendedor-pessoa-fisica-no-mercado-pago.md).
@@ -433,33 +561,61 @@ CNPJ é exigido de quem opera o marketplace, não de quem vende — ver
 
 ## O que continua sem prova
 
-Tudo que dependia da cobrança processar. Nenhum destes foi medido, e **nenhum
-deve ser presumido a partir da documentação** — foi presumir da documentação que
-produziu o ADR-0001 errado sobre o `preapproval`:
+### Pix — e é o caminho principal do plugin
 
-- **O split chega na cobrança?** Não se sabe. O único `split[]` que a conta
-  aceitou foi um com recebedores inexistentes, e ele voltou `null`.
-- **`type: percentage` incide sobre o bruto ou sobre o líquido?** No Asaas é o
-  líquido, e isso obrigou a comissão sobre o bruto a virar valor fixo. Aqui, sem
-  medição.
-- **As regras precisam somar 100%?** O plano original afirma que sim. Não
-  confirmado.
-- **Quem paga a taxa**, e o que `liable`, `charge_processing_fee` e
-  `charge_remainder_fee` fazem com o valor que chega em cada extrato.
-- **Há assinatura com split, e ele vale em cada ciclo** ou só na primeira
-  cobrança.
-- **Quantas cobranças a assinatura gera de uma vez, e em que ordem a lista
-  volta.** No Asaas vêm quatro ou cinco, da mais distante para a mais próxima, e
-  isso virou bug real.
-- **O estorno reverte o split**, e para quais formas de pagamento.
-- **Estornar um ciclo cancela a assinatura?**
-- **Pix serve para assinatura?**
-- **Qual é o valor mínimo** em que a taxa não come a comissão.
+```
+400 action_forbidden | Sem ambiente configurado para este tipo de transação.
+```
 
-O que **está** provado, e vale guardar: o host, o formato da autenticação, a
-obrigatoriedade do `items[].code`, os valores aceitos em `type`, o fato de a
-tokenização com `pk_test_` funcionar, o de o webhook disparar, e o protocolo de
-leitura que separa um `200` de uma cobrança viva.
+Cartão e boleto processam nesta conta; só o Pix não. A mensagem é mais
+específica que o `500 Erro desconhecido no proxy` de 09/09, e nomeia a causa:
+falta habilitar o **tipo de transação** Pix.
+
+Pesa mais do que parece. O Pix é a forma padrão do plugin, é a única com página
+própria (`pix.php`, com QR Code e polling), e foi por causa dele que o desenho
+recusou o Link de Pagamento hospedado. Enquanto não liberar, o caminho
+principal segue sem prova — e o que está provado é o caminho do cartão.
+
+### Assinatura com split — e isto muda o escopo
+
+`POST /subscriptions` com `split` responde `400 "The request is invalid."` em
+**quatro formatos**: v5 padrão, estilo v4 (`percentage`/`liable` soltos), sem
+`options`, e com `charge_remainder` no singular. Dentro de `items[]` o `200`
+volta com o split **descartado** — nenhum payable nasce.
+
+Mas o `PATCH /subscriptions/{id}/split` responde:
+
+> `412 Can't update the split on subscription because doesn't has split.`
+
+Ou seja: a capacidade **existe** e a assinatura precisa nascer com ela. O mais
+provável é ser outra habilitação de conta, como os recebedores foram.
+
+Há um segundo impedimento, independente: o filtro `?subscription_id=` de
+`GET /charges` é **ignorado** — um id inventado devolve a conta inteira — e as
+cobranças não carregam vínculo com a assinatura. Sem isso não há como listar as
+cobranças de uma assinatura, o que derruba a fatura em aberto e a escolha do
+vencimento mais próximo.
+
+**Por isso o plugin recusa oferta recorrente na porta.** Cobrar sem split
+renderia comissão zero em silêncio, que é pior que recusar.
+
+### Ainda não medido
+
+- **Estorno parcial** reduz a comissão? O total reverte (payable negativo);
+  o parcial não foi testado.
+- **Boleto estorna?** Está fora de `REFUNDABLE_METHODS` por analogia com o
+  Asaas, não por medição.
+- **Valor mínimo** em que a taxa não come a comissão.
+- **O ciclo da assinatura inteiro** — bloqueado pelo acima.
+
+## O que está provado
+
+O host único e o ambiente pelo prefixo da chave; a autenticação Basic; a
+obrigatoriedade do `items[].code`; `type` aceitando `individual`/`company`; o
+prefixo `re_` do recebedor; a tokenização com `pk_test_`; o webhook disparando;
+o protocolo de leitura que separa um `200` de uma cobrança viva; **o split, com
+o extrato dos dois lados**; a base bruta do percentual; quem paga a taxa; e o
+estorno revertendo o split.
 
 ## O plugin, escrito antes da prova
 

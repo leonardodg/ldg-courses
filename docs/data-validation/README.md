@@ -8,7 +8,7 @@ Como se verifica que o sistema funciona — e o que ainda não foi visto funcion
 | [`asaas-sandbox.md`](asaas-sandbox.md) | provar o **split** no Asaas: contas, webhook, script e passo a passo com `curl` |
 | [`asaas-assinatura.md`](asaas-assinatura.md) | provar o **ciclo** da assinatura no Asaas: cobranca automatica, corte por falta de pagamento e volta ao pagar a atrasada |
 | [`mercadopago-split.md`](mercadopago-split.md) | provar o **split** no Mercado Pago: as três contas, painel, túnel e as três rodadas |
-| [`pagarme-sandbox.md`](pagarme-sandbox.md) | medir o Pagar.me — e o registro de **por que a conta de sandbox não deixou provar nada**, com o que pedir ao suporte |
+| [`pagarme-sandbox.md`](pagarme-sandbox.md) | provar o **split** no Pagar.me: os payables, e por que o `GET` da cobrança não serve de prova |
 | [`local-partners-layout.md`](local-partners-layout.md) | provar o **layout** da landing e do cadastro nas cinco larguras e nos três temas |
 
 Scripts em [`scripts/`](scripts/). Credenciais **nunca** entram aqui: ficam em
@@ -34,10 +34,20 @@ A **compra pelo Moodle com comissão maior que zero** foi provada em 2026-09-08,
 pela vitrine e com o webhook chegando sozinho: R$ 5,00 → R$ 1,25 de comissão,
 `feesource = company`, direito de 30 dias e matrícula.
 
-No **Pagar.me** o split continua **sem prova**, e não por falta de tentativa: a
-conta de sandbox recusa criar recebedor (`action_forbidden`) e nenhuma forma de
-pagamento processa (`Erro desconhecido no proxy`). São dois bloqueios comerciais
-independentes, e liberar só um não destrava a medição — o detalhe e o que pedir
-ao suporte estão em [`pagarme-sandbox.md`](pagarme-sandbox.md).
+No **Pagar.me** o split foi provado em 2026-09-11: R$ 100,00 com comissão de
+25% entregaram **R$ 25,00 exatos** à plataforma e R$ 70,51 ao vendedor, com a
+taxa de R$ 4,49 saindo inteira dele. O percentual lá incide sobre o **bruto**,
+ao contrário do Asaas.
+
+A armadilha daquele gateway merece ser sabida antes de abrir o roteiro: o `GET`
+da cobrança devolve `splits: null` **mesmo quando o split aconteceu**. A prova
+está em `GET /payables?recipient_id=`. Quem olhar só a cobrança conclui que
+falhou quando funcionou — e desligar o split por causa disso custaria a
+comissão de todas as vendas.
+
+Continuam sem prova no Pagar.me: **Pix** (a conta responde "Sem ambiente
+configurado para este tipo de transação") e **assinatura com split** (recusada
+em todos os formatos). Por isso o plugin recusa oferta recorrente na porta —
+cobrar sem split renderia comissão zero em silêncio.
 
 Continua **sem prova**: o vendedor pessoa jurídica no Mercado Pago.

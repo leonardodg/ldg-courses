@@ -9,11 +9,35 @@ comum aceitou creditCard e nao guardou nada. Nos dois casos a resposta foi 2xx.
 O que este script mede, e o motivo de cada medicao estar aqui:
 
     0. criar os dois recebedores          sem eles nao existe split
-    1. o split chega na cobranca?         ler de volta, nao confiar no POST
-    2. as regras precisam somar 100%?     decide se o vendedor precisa de re_
-    3. percentage incide sobre o que?     bruto ou liquido muda a comissao
-    4. quem paga a taxa?                  charge_processing_fee e liable
-    5. o extrato bate?                    o GET diz o combinado, o extrato o que veio
+    1. a cobranca com split               o POST nao e prova
+    2. ler a cobranca de volta            e ver que ela NAO conta o split
+    3. por que o charge.splits nao serve  medido: vem null mesmo funcionando
+    4. os payables                        a unica fonte da verdade
+    5. os saldos                          fecha a conta
+
+ESTADO EM 11/09/2026: o script roda ate o fim e PROVA o split.
+
+    cobranca ... R$ 100,00 | paid
+    vendedor ... amount R$ 75,00 | taxa R$ 4,49 | liquido R$ 70,51
+    plataforma . amount R$ 25,00 | taxa R$ 0,00 | liquido R$ 25,00
+
+O percentual do Pagar.me incide sobre o BRUTO - 25% de R$ 100,00 deram
+exatamente R$ 25,00. E o oposto do Asaas, onde percentualValue incide sobre o
+liquido.
+
+Tres armadilhas que este script ja tropecou, e por isso trata:
+
+  * `charge.splits` volta NULL mesmo quando o split acontece. Procurar ali
+    concluiria que falhou. A verdade esta em GET /payables?recipient_id=.
+  * O payable nasce cerca de 16 SEGUNDOS depois do pagamento. Ler uma vez so,
+    logo apos a cobranca, mostra zero e parece falha.
+  * `amount` do split precisa ser INTEIRO. Um 75.0 float e recusado com HTTP
+    400 "The request is invalid." sem dizer qual campo.
+
+O que ainda NAO da para medir aqui: Pix (a conta responde 400 "Sem ambiente
+configurado para este tipo de transacao") e assinatura com split (o POST
+/subscriptions recusa o campo em todos os formatos). Por isso a cobranca
+abaixo e de cartao.
 
 Como usar:
 
@@ -21,13 +45,6 @@ Como usar:
     python3 docs/data-validation/scripts/provar-split-pagarme.py
 
 Sem dependencia externa - so a biblioteca padrao do Python.
-
-ESTADO EM 09/09/2026: o script nao chega ao fim nesta conta. O passo 0 morre
-com "This company it not allowed to create a recipient", e nenhuma forma de
-pagamento processa - Pix, cartao e boleto voltam com "Erro desconhecido no
-proxy". Ver ../pagarme-sandbox.md. O script fica pronto para o dia em que a
-conta for liberada; nao o adapte para contornar a recusa, porque contornar
-seria medir outra coisa.
 """
 
 import base64
@@ -35,6 +52,7 @@ import json
 import os
 import random
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -76,7 +94,7 @@ def call(method, path, body=None):
             "Authorization": "Basic " + token,
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": "courses-free split proof",
+            "User-Agent": "ldg-courses split proof",
         },
     )
     try:
@@ -86,9 +104,13 @@ def call(method, path, body=None):
         detalhe = error.read().decode(errors="replace")
         try:
             corpo = json.loads(detalhe)
-            detalhe = corpo.get("message") or detalhe
-            if corpo.get("errors"):
-                detalhe += " | " + json.dumps(corpo["errors"], ensure_ascii=False)
+            # O Pagar.me as vezes devolve uma string crua no lugar do objeto -
+            # "The request is invalid." sem mais nada. Um json.loads sobre isso
+            # da certo e devolve str, entao o isinstance nao e paranoia.
+            if isinstance(corpo, dict):
+                detalhe = corpo.get("message") or detalhe
+                if corpo.get("errors"):
+                    detalhe += " | " + json.dumps(corpo["errors"], ensure_ascii=False)
         except ValueError:
             pass
         sys.exit(f"\n  FALHOU {method} {path}\n  HTTP {error.code} - {detalhe}\n")
@@ -231,9 +253,13 @@ itens = [{
 
 # As duas regras somam 100%. A parte do vendedor e o resto, e e ele quem arca
 # com a taxa - quem vende emite a nota, entao quem vende paga o custo.
+#
+# O int() NAO e enfeite: medido em 11/09/2026, um amount float (75.0) e
+# recusado com HTTP 400 "The request is invalid." sem dizer qual campo. Com
+# 75 inteiro a mesma requisicao passa.
 split = [
     {
-        "amount": 100 - COMMISSION,
+        "amount": int(100 - COMMISSION),
         "recipient_id": id_vendedor,
         "type": "percentage",
         "options": {
@@ -243,7 +269,7 @@ split = [
         },
     },
     {
-        "amount": COMMISSION,
+        "amount": int(COMMISSION),
         "recipient_id": id_plataforma,
         "type": "percentage",
         "options": {
@@ -254,12 +280,29 @@ split = [
     },
 ]
 
+# Cartao, e nao Pix, por um motivo medido: em 11/09/2026 o Pix ainda respondia
+# 400 "Sem ambiente configurado para este tipo de transacao" nesta conta,
+# enquanto cartao e boleto ja processavam. O cartao de teste liquida na hora,
+# o que torna a prova imediata - com Pix seria preciso pagar de verdade.
+#
+# Quando o Pix for liberado, troque este bloco: e o caminho principal do
+# plugin, e a prova dele vale mais que a do cartao.
 order = call("POST", "/orders", {
     "items": itens,
     "customer": comprador,
     "payments": [{
-        "payment_method": "pix",
-        "pix": {"expires_in": 3600},
+        "payment_method": "credit_card",
+        "credit_card": {
+            "installments": 1,
+            "card": {
+                "number": "4000000000000010",
+                "holder_name": "Aluno Sandbox",
+                "exp_month": 12,
+                "exp_year": 30,
+                "cvv": "123",
+                "billing_address": endereco,
+            },
+        },
         "split": split,
     }],
 })
@@ -271,6 +314,10 @@ print(f"  order ............ {id_order}")
 # --- 2. Ler de volta --------------------------------------------------------
 
 passo(2, "Lendo a cobranca de volta - o POST nao e prova")
+
+# O payable nao nasce junto com o pagamento: ele leva alguns segundos. Ler
+# cedo demais mostra zero e parece falha de split.
+time.sleep(5)
 
 order = call("GET", f"/orders/{id_order}")
 cobrancas = order.get("charges") or []
@@ -291,40 +338,105 @@ if transacao.get("qr_code"):
     print(f"  qr_code .......... {str(transacao['qr_code'])[:60]}...")
 
 
-# --- 3. O SPLIT -------------------------------------------------------------
+# --- 3. O SPLIT, que NAO esta na cobranca -----------------------------------
 
-passo(3, "O SPLIT")
+passo(3, "O SPLIT - e por que nao adianta procurar na cobranca")
 
-splits = cobranca.get("splits") or []
-if not splits:
-    erro("a cobranca voltou SEM splits, e o POST tinha devolvido 200.\n"
-         "E exatamente o caso do marketplace_fee no preapproval do Mercado Pago:\n"
-         "campo aceito, campo descartado, nenhum erro no caminho.")
+# MEDIDO em 11/09/2026: `charge.splits` volta null MESMO QUANDO o split
+# acontece. Uma cobranca de R$ 100,00 com 25% pagou, o extrato dos dois
+# recebedores se moveu, e o GET continuou dizendo null.
+#
+# E o caso mais perigoso ja visto neste projeto. O preapproval do Mercado Pago
+# e o PUT /subscriptions do Asaas aceitavam o campo e o descartavam - errar
+# para menos. Este faz o trabalho direito e nao conta - errar para mais. Quem
+# olhasse so aqui concluiria que o split falhou quando ele funcionou.
+if cobranca.get("splits"):
+    print("  a cobranca trouxe splits - anote, porque em 11/09/2026 ela nao trazia:")
+    print("  " + json.dumps(cobranca["splits"], ensure_ascii=False)[:300])
+else:
+    print("  charge.splits ... null   (esperado - nao e sinal de falha)")
 
-for regra in splits:
-    da_plataforma = regra.get("recipient_id") == id_plataforma
-    print(f"    recebedor ........ {regra.get('recipient_id')}")
-    print(f"    e a plataforma? .. {'SIM' if da_plataforma else 'nao'}")
-    print(f"    tipo ............. {regra.get('type')}")
-    print(f"    valor ............ {regra.get('amount')}")
-    print(f"    opcoes ........... {json.dumps(regra.get('options') or {}, ensure_ascii=False)}")
-    print()
-
-if not any(r.get("recipient_id") == id_plataforma for r in splits):
-    erro("nenhuma regra aponta para a plataforma - a comissao nao foi para lugar nenhum")
+print("\n  A prova esta no extrato. Seguindo.")
 
 
-# --- 4. Os extratos ---------------------------------------------------------
+# --- 4. Os payables, que sao a verdade --------------------------------------
 
-passo(4, "Os extratos - o GET diz o combinado, o extrato diz o que chegou")
+passo(4, "Os payables - onde o dinheiro realmente aparece")
+
+# O filtro por charge_id NAO funciona: devolve lista vazia. O payable e
+# listado por recebedor e traz o charge_id dentro, entao a separacao e feita
+# aqui. O mesmo vale para ?subscription_id= em /charges, que e simplesmente
+# ignorado - um id inventado devolve a conta inteira.
+def comissao_de(identificador, cobranca_id, tentativas=12, intervalo=10):
+    """Centavos que este recebedor tem a receber por esta cobranca.
+
+    Tenta varias vezes porque o payable NAO nasce junto com o pagamento:
+    medido em 11/09/2026, ele apareceu cerca de 16 segundos depois. Uma
+    leitura unica logo apos a cobranca mostra zero e parece falha de split -
+    foi o que aconteceu na primeira rodada deste script.
+    """
+    for tentativa in range(tentativas):
+        pagina = call("GET", f"/payables?recipient_id={identificador}&size=100")
+        total = 0
+        linhas = []
+        for p in pagina.get("data", []):
+            if p.get("charge_id") != cobranca_id:
+                continue
+            linhas.append(p)
+            # Estorno entra como payable NEGATIVO, type 'refund'. Somar tudo faz
+            # a comissao voltar a zero depois de um estorno, que e o certo.
+            total += int(p.get("amount", 0)) - int(p.get("fee", 0))
+        if linhas:
+            return total, linhas
+        if tentativa == 0:
+            print(f"    aguardando o payable nascer (ate {tentativas * intervalo}s)...")
+        time.sleep(intervalo)
+
+    return 0, []
+
+
+id_cobranca = cobranca.get("id", "")
+resultados = {}
 
 for nome, identificador in (("vendedor", id_vendedor), ("plataforma", id_plataforma)):
-    saldo = call("GET", f"/recipients/{identificador}/balances")
+    centavos, linhas = comissao_de(identificador, id_cobranca)
+    resultados[nome] = centavos
+    print(f"  {nome}")
+    if not linhas:
+        print("    nenhum payable ainda - eles demoram alguns segundos a aparecer")
+    for p in linhas:
+        print(f"    amount ........... R$ {int(p.get('amount', 0)) / 100:.2f}")
+        print(f"    taxa ............. R$ {int(p.get('fee', 0)) / 100:.2f}")
+        print(f"    tipo ............. {p.get('type')}")
+        print(f"    situacao ......... {p.get('status')}")
+    print(f"    LIQUIDO .......... R$ {centavos / 100:.2f}")
+    print()
+
+if resultados.get("plataforma", 0) <= 0:
+    erro("a plataforma nao tem payable desta cobranca.\n"
+         "Ou o split nao pegou, ou o payable ainda nao apareceu - espere alguns\n"
+         "segundos e rode de novo antes de concluir que falhou.")
+
+
+# --- 5. Os saldos -----------------------------------------------------------
+
+passo(5, "Os saldos, para fechar a conta")
+
+for nome, identificador in (("vendedor", id_vendedor), ("plataforma", id_plataforma)):
+    saldo = call("GET", f"/recipients/{identificador}/balance")
     print(f"  {nome:11} disponivel R$ {saldo.get('available_amount', 0) / 100:.2f}"
           f" | a receber R$ {saldo.get('waiting_funds_amount', 0) / 100:.2f}")
 
+esperado = int(round(PRICE * 100 * COMMISSION / 100))
+obtido = resultados.get("plataforma", 0)
+
 print("\n" + "=" * 68)
-print("Se o split acima mostrar a plataforma com valor, E o extrato dela tiver")
-print("se movido, o split do Pagar.me esta provado. Uma coisa sem a outra nao e")
-print("prova: o combinado aparece no GET mesmo quando o dinheiro nao anda.")
+print(f"Comissao pedida .... R$ {esperado / 100:.2f}  ({COMMISSION}% de R$ {PRICE:.2f})")
+print(f"Comissao recebida .. R$ {obtido / 100:.2f}")
+if obtido == esperado:
+    print("\nBATE. O percentual do Pagar.me incide sobre o BRUTO - ao contrario do")
+    print("Asaas, onde percentualValue incide sobre o liquido.")
+else:
+    print("\nNAO BATE. Se o recebido for menor, o percentual incide sobre o liquido")
+    print("e a base do build_split() precisa mudar. Anote o numero no roteiro.")
 print("=" * 68)

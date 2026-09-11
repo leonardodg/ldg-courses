@@ -108,6 +108,18 @@ final class pagarme_client_test extends \advanced_testcase {
         );
     }
 
+    public function test_o_valor_do_split_e_inteiro(): void {
+        // MEDIDO em 11/09/2026: um amount float (75.0) e recusado com HTTP 400
+        // "The request is invalid." sem dizer qual campo. Com 75 inteiro a
+        // mesma requisicao passa. Este teste existe para um refactor futuro
+        // nao reintroduzir float sem ninguem perceber.
+        $split = pagarme_client::build_split(self::SELLER, self::PLATFORM, 33.0, 19.99, 'gross');
+
+        foreach ($split as $regra) {
+            $this->assertIsInt($regra['amount'], 'o Pagar.me recusa amount float com 400 sem detalhe');
+        }
+    }
+
     public function test_o_vendedor_e_o_responsavel(): void {
         // A documentacao exige que ao menos um recebedor responda pelas tres
         // coisas, e a regra fiscal diz que e quem vende - ele emite a nota.

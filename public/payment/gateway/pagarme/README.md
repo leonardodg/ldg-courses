@@ -86,17 +86,40 @@ que é quem vende.
 | `Section error` | A seção é `paymentgatewaypagarme`, não `paygw_pagarme` |
 | Webhook sempre `failed` no painel | O `wwwroot` não bate com o host público, e o Moodle responde `303` antes de a requisição entrar no código |
 
-## O que ainda não foi medido
+## O que foi medido, em 11/09/2026
 
-Este plugin foi escrito **pela documentação**, porque a conta de homologação não
-processa cobrança. Estas decisões são suposições até o primeiro teste real, e
-estão marcadas no código com `NAO MEDIDO`:
+O split está **provado**: R$ 100,00 com 25% entregaram R$ 25,00 exatos à
+plataforma e R$ 70,51 ao vendedor, com a taxa de R$ 4,49 saindo inteira dele.
 
-- Sobre o que o `percentage` incide — bruto ou líquido. No Asaas é o líquido.
-- Se as regras de split precisam somar 100%.
-- Se o split vale em **cada ciclo** da assinatura ou só na primeira cobrança.
-- Se o estorno reverte o split, e para quais formas de pagamento.
-- Se estornar um ciclo cancela a assinatura.
+| Pergunta | Resposta |
+|---|---|
+| O `percentage` incide sobre o quê? | **Bruto.** O oposto do Asaas |
+| As regras somam 100%? | Sim, aceitas |
+| Quem paga a taxa? | O vendedor, por `charge_processing_fee: true` |
+| O estorno reverte o split? | Sim — nasce um payable **negativo**, `type: refund` |
+| Onde se lê a comissão? | `GET /payables?recipient_id=`. **Nunca** em `charge.splits` |
+
+**A armadilha que vale saber antes de mexer aqui:** `charge.splits` volta
+`null` mesmo quando o split aconteceu. Quem ler dali conclui que falhou quando
+funcionou — e o `commission_from()` existe só como caminho secundário por isso.
+O valor gravado vem de `commission_for_charge()`, que lê o extrato.
+
+E o payable **demora ~16 segundos** a nascer. O webhook chega antes, então a
+venda entra com comissão zero e a `task\reconcile` corrige depois. Gravar o
+valor esperado no lugar seria registrar dinheiro que ninguém viu.
+
+## O que continua sem prova
+
+- **Pix.** `400 action_forbidden — "Sem ambiente configurado para este tipo de
+  transação"`. Cartão e boleto processam; só o Pix não. É o caminho padrão do
+  plugin, e o único com página própria.
+- **Assinatura com split.** `POST /subscriptions` recusa o campo em quatro
+  formatos, e o `PATCH …/split` responde que a assinatura "doesn't has split" —
+  ou seja, ela teria que nascer com ele. Enquanto isso, **oferta recorrente é
+  recusada na porta**: cobrar sem split renderia comissão zero em silêncio.
+- **Estorno parcial** reduz a comissão? Só o total foi medido.
+- **Boleto estorna?** Está fora de `REFUNDABLE_METHODS` por analogia com o
+  Asaas, não por medição.
 
 O roteiro para medir tudo isso está em
 [`docs/data-validation/pagarme-sandbox.md`](../../../../docs/data-validation/pagarme-sandbox.md),

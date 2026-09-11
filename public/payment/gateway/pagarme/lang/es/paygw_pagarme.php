@@ -57,6 +57,7 @@ $string['errornodocument'] = 'Su perfil no tiene CPF. Complételo antes de compr
 $string['errornoencryptionkey'] = 'Este sitio no tiene clave de cifrado. Ejecute admin/cli/generate_key.php antes de vincular una cuenta.';
 $string['errornotlinked'] = 'No hay ninguna cuenta Pagar.me vinculada en {$a}.';
 $string['errorrecipientrejected'] = 'Pagar.me no reconoce ese receptor en esta cuenta.';
+$string['errorrecurringunsupported'] = 'Pagar.me todavía no divide una suscripción, así que una oferta recurrente quedaría sin comisión. Use una oferta única, o pida a Pagar.me habilitar split en suscripciones para esta cuenta.';
 $string['errorrefundalready'] = 'Este cobro ya fue reembolsado.';
 $string['errorrefundmethod'] = 'Pagar.me no reembolsa este medio de pago.';
 $string['errorrefundnotfirstcycle'] = 'Solo se puede reembolsar el primer ciclo de una suscripción.';
