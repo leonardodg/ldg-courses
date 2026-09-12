@@ -43,6 +43,12 @@ class submit_card extends external_api {
         return new external_function_parameters([
             'reference' => new external_value(PARAM_ALPHANUMEXT, 'Nossa referencia da cobranca'),
             'cardtoken' => new external_value(PARAM_ALPHANUMEXT, 'Token devolvido pelo Pagar.me'),
+            // O endereco de cobranca nao vai no token, e a cobranca nao nasce
+            // sem ele. Vem daqui porque o perfil do Moodle nao tem CEP.
+            'zipcode' => new external_value(PARAM_ALPHANUMEXT, 'CEP, so digitos'),
+            'line1' => new external_value(PARAM_TEXT, 'Logradouro, numero e bairro'),
+            'city' => new external_value(PARAM_TEXT, 'Cidade'),
+            'state' => new external_value(PARAM_ALPHA, 'UF'),
         ]);
     }
 
@@ -51,17 +57,36 @@ class submit_card extends external_api {
      *
      * @param string $reference
      * @param string $cardtoken
+     * @param string $zipcode
+     * @param string $line1
+     * @param string $city
+     * @param string $state
      * @return array
      */
-    public static function execute(string $reference, string $cardtoken): array {
+    public static function execute(
+        string $reference,
+        string $cardtoken,
+        string $zipcode,
+        string $line1,
+        string $city,
+        string $state
+    ): array {
         global $DB, $USER;
 
         [
             'reference' => $reference,
             'cardtoken' => $cardtoken,
+            'zipcode' => $zipcode,
+            'line1' => $line1,
+            'city' => $city,
+            'state' => $state,
         ] = self::validate_parameters(self::execute_parameters(), [
             'reference' => $reference,
             'cardtoken' => $cardtoken,
+            'zipcode' => $zipcode,
+            'line1' => $line1,
+            'city' => $city,
+            'state' => $state,
         ]);
 
         self::validate_context(\context_system::instance());
@@ -84,8 +109,16 @@ class submit_card extends external_api {
             ];
         }
 
+        $billing = [
+            'line_1' => $line1,
+            'zip_code' => preg_replace('/\D/', '', $zipcode),
+            'city' => $city,
+            'state' => strtoupper($state),
+            'country' => 'BR',
+        ];
+
         try {
-            payment_processor::create_charge_for($record, $cardtoken);
+            payment_processor::create_charge_for($record, $cardtoken, $billing);
         } catch (\Throwable $e) {
             debugging('paygw_pagarme: ' . $e->getMessage(), DEBUG_DEVELOPER);
 

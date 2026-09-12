@@ -589,6 +589,20 @@ final class payment_processor_test extends \advanced_testcase {
         $this->assertSame([], payment_processor::buyer_phone($user));
     }
 
+    public function test_compra_sem_telefone_e_recusada_antes_da_cobranca(): void {
+        // MEDIDO na prova de ponta a ponta em 11/09/2026: sem telefone o
+        // adquirente recusa com "412 At least one customer phone is required"
+        // DEPOIS de a linha ja existir. Recusar aqui manda a falha para a tela
+        // do aluno, com o que ele precisa fazer, e nao deixa cobranca orfa.
+        $this->resetAfterTest();
+
+        $aluno = $this->getDataGenerator()->create_user(['phone1' => '', 'phone2' => '']);
+        set_config('documentfield', '', 'paygw_pagarme');
+
+        $this->expectException(\moodle_exception::class);
+        payment_processor::build_customer((int) $aluno->id);
+    }
+
     public function test_o_celular_tem_precedencia_sobre_o_fixo(): void {
         $user = (object) ['phone1' => '1133334444', 'phone2' => '11987654321'];
 

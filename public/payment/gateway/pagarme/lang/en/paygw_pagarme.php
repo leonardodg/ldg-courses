@@ -26,6 +26,10 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['apikey'] = 'Secret key';
 $string['apikey_help'] = 'The seller\'s secret key, starting with sk_. It is stored encrypted and never shown again.';
+$string['billingcity'] = 'City';
+$string['billingline1'] = 'Street, number and district';
+$string['billingstate'] = 'State (two letters)';
+$string['billingzipcode'] = 'Postcode';
 $string['boletoinstructions'] = 'Payment for course access';
 $string['cardcvv'] = 'Security code';
 $string['cardexpiry'] = 'Expiry date (MM/YY)';
@@ -55,6 +59,7 @@ $string['errorkeyenvironment'] = 'That key belongs to the other environment. Key
 $string['errorkeyrejected'] = 'Pagar.me rejected this key.';
 $string['errornodocument'] = 'Your profile has no CPF. Add it before buying.';
 $string['errornoencryptionkey'] = 'This site has no encryption key. Run admin/cli/generate_key.php before linking an account.';
+$string['errornophone'] = 'Your profile has no phone number. Add one before buying — Pagar.me requires it.';
 $string['errornotlinked'] = 'No Pagar.me account is linked for {$a}.';
 $string['errorrecipientrejected'] = 'Pagar.me does not recognise that recipient in this account.';
 $string['errorrecurringunsupported'] = 'Pagar.me cannot split a subscription yet, so a recurring offer would earn no commission. Use a one-off offer, or ask Pagar.me to enable split on subscriptions for this account.';

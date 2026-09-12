@@ -62,11 +62,18 @@ echo html_writer::tag('p', get_string('cardintro', 'paygw_pagarme'));
 
 echo html_writer::start_div('', ['id' => 'paygw-pagarme-cardform', 'style' => 'max-width: 420px;']);
 
+// O endereco de cobranca entra aqui, e nao no perfil: o Moodle nao tem campo
+// de CEP, e sem ele a cobranca de cartao e recusada com "billing value is
+// required".
 $fields = [
     'number' => 'cardnumber',
     'holder' => 'cardholder',
     'expiry' => 'cardexpiry',
     'cvv' => 'cardcvv',
+    'zipcode' => 'billingzipcode',
+    'line1' => 'billingline1',
+    'city' => 'billingcity',
+    'state' => 'billingstate',
 ];
 
 foreach ($fields as $field => $stringkey) {

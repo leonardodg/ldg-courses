@@ -61,12 +61,20 @@ define(['core/ajax'], function(Ajax) {
          *
          * @param {String} reference
          * @param {String} cardToken
+         * @param {Object} billing
          * @return {Promise}
          */
-        submitCard: function(reference, cardToken) {
+        submitCard: function(reference, cardToken, billing) {
             return Ajax.call([{
                 methodname: 'paygw_pagarme_submit_card',
-                args: {reference: reference, cardtoken: cardToken}
+                args: {
+                    reference: reference,
+                    cardtoken: cardToken,
+                    zipcode: billing.zipcode,
+                    line1: billing.line1,
+                    city: billing.city,
+                    state: billing.state
+                }
             }])[0];
         }
     };

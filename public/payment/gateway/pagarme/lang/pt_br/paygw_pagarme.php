@@ -26,6 +26,10 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['apikey'] = 'Chave secreta';
 $string['apikey_help'] = 'A chave secreta do vendedor, começando com sk_. Ela é guardada cifrada e não é mostrada de novo.';
+$string['billingcity'] = 'Cidade';
+$string['billingline1'] = 'Rua, número e bairro';
+$string['billingstate'] = 'UF (duas letras)';
+$string['billingzipcode'] = 'CEP';
 $string['boletoinstructions'] = 'Pagamento de acesso a curso';
 $string['cardcvv'] = 'Código de segurança';
 $string['cardexpiry'] = 'Validade (MM/AA)';
@@ -55,6 +59,7 @@ $string['errorkeyenvironment'] = 'Essa chave é do outro ambiente. Chave que com
 $string['errorkeyrejected'] = 'O Pagar.me recusou esta chave.';
 $string['errornodocument'] = 'Seu perfil está sem CPF. Preencha antes de comprar.';
 $string['errornoencryptionkey'] = 'Este site não tem chave de cifragem. Rode admin/cli/generate_key.php antes de vincular uma conta.';
+$string['errornophone'] = 'Seu perfil está sem telefone. Preencha antes de comprar — o Pagar.me exige.';
 $string['errornotlinked'] = 'Nenhuma conta Pagar.me vinculada em {$a}.';
 $string['errorrecipientrejected'] = 'O Pagar.me não reconhece esse recebedor nesta conta.';
 $string['errorrecurringunsupported'] = 'O Pagar.me ainda não divide assinatura, então uma oferta recorrente ficaria sem comissão. Use uma oferta avulsa, ou peça ao Pagar.me para habilitar split em assinatura nesta conta.';

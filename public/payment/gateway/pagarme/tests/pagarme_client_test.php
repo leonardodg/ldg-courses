@@ -304,14 +304,32 @@ final class pagarme_client_test extends \advanced_testcase {
         $this->assertSame([['DELETE', '/subscriptions/sub_1']], $client->calls);
     }
 
-    public function test_estorno_parcial_manda_o_valor_em_centavos(): void {
-        $client = new fake_pagarme_client('sk_test_x');
-        $client->nextresponse = ['id' => 'ch_1', 'status' => 'partial_canceled'];
+    public function test_o_estorno_e_sempre_total(): void {
+        // MEDIDO em 11/09/2026: pedir R$ 40,00 de uma cobranca de R$ 100,00
+        // devolve 200, marca canceled_amount 4000, e deixa os DOIS payables
+        // intactos - o comprador recebe e nenhum recebedor devolve nada. O
+        // dinheiro sai do saldo da conta.
+        //
+        // Por isso cancel_charge() nao aceita valor: parametro que existe
+        // acaba usado, e aqui usar significaria pagar o estorno do proprio
+        // bolso sem nada na tela dizendo isso.
+        $metodo = new \ReflectionMethod(pagarme_client::class, 'cancel_charge');
 
-        $client->cancel_charge('ch_1', 40.00);
+        $this->assertSame(
+            1,
+            $metodo->getNumberOfParameters(),
+            'cancel_charge nao pode aceitar valor parcial'
+        );
+    }
+
+    public function test_estorno_total_usa_delete_sem_corpo(): void {
+        $client = new fake_pagarme_client('sk_test_x');
+        $client->nextresponse = ['id' => 'ch_1', 'status' => 'canceled'];
+
+        $client->cancel_charge('ch_1');
 
         $this->assertSame([['DELETE', '/charges/ch_1']], $client->calls);
-        $this->assertSame(['amount' => 4000], $client->lastbody);
+        $this->assertSame([], $client->lastbody);
     }
 
     public function test_trocar_cartao_usa_patch(): void {

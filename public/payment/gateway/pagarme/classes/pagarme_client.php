@@ -385,28 +385,34 @@ class pagarme_client {
     }
 
     /**
-     * Estorna uma cobranca.
+     * Estorna uma cobranca, sempre por inteiro.
      *
      * O Pagar.me nao separa cancelar de estornar: o DELETE serve para os dois,
-     * e o que muda e o estado em que a cobranca estava. Sem $amount o estorno
-     * e total.
+     * e o que muda e o estado em que a cobranca estava.
      *
-     * NAO MEDIDO: se o estorno reverte o split, e se o parcial reduz a
-     * comissao. No Asaas o parcial devolveu sucesso e deixou o split cheio,
-     * e por isso la so existe estorno total. Ate medir, o payment_processor
-     * so oferece o total.
+     * NAO ha estorno parcial aqui, e a ausencia e deliberada. Medido em
+     * 11/09/2026, pedindo R$ 40,00 de uma cobranca de R$ 100,00 com split:
+     *
+     *     DELETE {"amount": 4000}  ->  HTTP 200
+     *     charge.status ......... paid      (nao muda)
+     *     charge.canceled_amount  4000      (o estorno foi aceito)
+     *     payable do vendedor ... R$ 75,00  INTACTO
+     *     payable da plataforma . R$ 25,00  INTACTO
+     *
+     * Ou seja: o comprador recebe de volta e NENHUM recebedor devolve nada -
+     * o dinheiro sai do saldo da conta. Quem clicasse "estornar metade"
+     * pagaria a metade do proprio bolso sem que nada na tela dissesse isso.
+     * E o mesmo comportamento do Asaas, onde por isso so existe estorno
+     * total.
+     *
+     * O parametro foi removido em vez de ficar documentado como perigoso:
+     * parametro que existe acaba usado.
      *
      * @param string $chargeid
-     * @param float|null $amount Valor parcial, em moeda. Null estorna tudo.
      * @return array
      */
-    public function cancel_charge(string $chargeid, ?float $amount = null): array {
-        $body = null;
-        if ($amount !== null && $amount > 0) {
-            $body = ['amount' => self::to_cents($amount)];
-        }
-
-        return $this->request('DELETE', '/charges/' . rawurlencode($chargeid), $body);
+    public function cancel_charge(string $chargeid): array {
+        return $this->request('DELETE', '/charges/' . rawurlencode($chargeid));
     }
 
     /**

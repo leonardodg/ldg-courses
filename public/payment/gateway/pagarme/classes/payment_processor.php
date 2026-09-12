@@ -45,10 +45,16 @@ class payment_processor {
     /**
      * Meios que aceitam estorno.
      *
-     * Boleto fica de fora: no Asaas ele nao estorna em circunstancia nenhuma,
-     * e ate medir aqui o botao nao aparece. Errar para o lado de nao oferecer
-     * custa um clique; errar para o outro custa um erro cru da API na cara do
-     * gerente, que ja aconteceu neste projeto.
+     * Boleto fica de fora, e agora por medicao e nao por analogia com o Asaas.
+     * Em 11/09/2026 o DELETE de uma cobranca de boleto respondeu:
+     *
+     *     412 BankAccount information is required to refund boleto payment
+     *         method.
+     *
+     * Ou seja: ele ATE estorna, mas exige os dados bancarios de quem vai
+     * receber de volta - e o Moodle nao pede conta bancaria a aluno nenhum,
+     * nem deveria. Sem esses dados o botao so produziria um erro cru na cara
+     * do gerente, que e exatamente o bug #89 deste projeto.
      *
      * @var string[]
      */
@@ -92,6 +98,19 @@ class payment_processor {
         $apikey = credentials::api_key($accountid, $environment);
         if ($apikey === '') {
             throw new moodle_exception('errornotlinked', 'paygw_pagarme', '', $environment);
+        }
+
+        // A recusa da recorrencia vem ANTES de a linha existir.
+        //
+        // Ela ja morava em create_charge_for(), e nao bastava: com cartao o
+        // start_payment volta cedo, mandando o aluno para a pagina de
+        // tokenizacao, e create_charge_for so roda depois. A oferta recorrente
+        // passava pela porta e deixava uma linha orfa para tras - achado na
+        // prova de ponta a ponta em 11/09/2026.
+        if (class_exists('\local_marketplace\api') && !self::supports_recurring()) {
+            if (\local_marketplace\api::recurrence_for($component, $itemid)) {
+                throw new moodle_exception(self::recurring_blocker(), 'paygw_pagarme');
+            }
         }
 
         // Termos da comissao. Os valores de queda existem para o gateway
@@ -177,9 +196,14 @@ class payment_processor {
      *
      * @param \stdClass $record Linha da tabela.
      * @param string $cardtoken Token do cartao, quando houver.
+     * @param array $billing Endereco de cobranca, exigido pelo cartao.
      * @return \stdClass Linha atualizada.
      */
-    public static function create_charge_for(\stdClass $record, string $cardtoken = ''): \stdClass {
+    public static function create_charge_for(
+        \stdClass $record,
+        string $cardtoken = '',
+        array $billing = []
+    ): \stdClass {
         global $DB;
 
         $apikey = credentials::api_key((int) $record->accountid, $record->environment);
@@ -226,7 +250,9 @@ class payment_processor {
             $charges = $client->subscription_charges((string) $record->subscriptionid);
             $charge = self::earliest_charge($charges);
         } else {
-            $response = $client->create_order(self::order_body($record, $customer, $split, $cardtoken));
+            $response = $client->create_order(
+                self::order_body($record, $customer, $split, $cardtoken, $billing)
+            );
             $record->orderid = (string) ($response['id'] ?? '');
             $charge = ($response['charges'] ?? [null])[0] ?? [];
         }
@@ -265,13 +291,15 @@ class payment_processor {
      * @param array $customer
      * @param array $split
      * @param string $cardtoken
+     * @param array $billing Endereco de cobranca, exigido pelo cartao.
      * @return array
      */
     public static function order_body(
         \stdClass $record,
         array $customer,
         array $split,
-        string $cardtoken = ''
+        string $cardtoken = '',
+        array $billing = []
     ): array {
         $payment = ['payment_method' => $record->paymentmethod];
 
@@ -290,6 +318,15 @@ class payment_processor {
                     'installments' => 1,
                     'card_token' => $cardtoken,
                 ];
+
+                // O endereco de cobranca NAO vai no token, e a cobranca nao
+                // nasce sem ele: medido em 11/09/2026, um token sozinho
+                // produz "400 validation_error | billing | value is required".
+                // Ele vem da pagina do cartao, onde o aluno digita - o perfil
+                // do Moodle nao tem CEP.
+                if ($billing) {
+                    $payment['credit_card']['card'] = ['billing_address' => $billing];
+                }
                 break;
         }
 
@@ -467,14 +504,20 @@ class payment_processor {
         $charge = $client->get_charge($chargeid);
         $status = strtolower((string) ($charge['status'] ?? ''));
 
-        // Replay do mesmo evento.
-        if (self::is_paid((string) $record->status) && self::is_paid($status)) {
-            return false;
-        }
-
         $record->status = $status;
         $record->timemodified = time();
 
+        // O que diz se ja entregamos e o paymentid, NAO o status.
+        //
+        // Havia aqui uma guarda de replay que comparava os dois status e
+        // desistia quando os dois estavam pagos. Ela quebrava o cartao: o
+        // cartao liquida na CRIACAO, entao create_charge_for() ja grava
+        // 'paid', e o webhook seguinte concluia "isto ja estava pago" e ia
+        // embora sem nunca ter entregue o curso. O aluno pagava e nao
+        // recebia nada.
+        //
+        // Achado na prova de ponta a ponta em 11/09/2026; nenhum teste com
+        // dublê pegaria, porque depende de a cobranca nascer paga.
         if (!self::is_paid($status) || !empty($record->paymentid)) {
             $DB->update_record(self::TABLE, $record);
             return false;
@@ -906,14 +949,18 @@ class payment_processor {
             'document_type' => strlen($document) > 11 ? 'CNPJ' : 'CPF',
         ];
 
-        // Telefone so entra quando existe de verdade. Numero inventado num
-        // registro de pagamento e pior que campo ausente: ele passa na
-        // validacao e vira dado errado no cadastro do vendedor, onde ninguem
-        // vai procurar depois.
+        // O telefone e OBRIGATORIO, e isso foi medido: sem ele a cobranca
+        // nasce e o adquirente recusa com "412 At least one customer phone is
+        // required". Inventar um numero seria pior - passaria na validacao e
+        // viraria dado errado no cadastro do vendedor, onde ninguem procura.
+        //
+        // Entao recusa aqui, como no CPF: a falha vai para a tela do aluno
+        // antes de qualquer cobranca existir, com o que ele precisa fazer.
         $phone = self::buyer_phone($user);
-        if ($phone) {
-            $customer['phones'] = ['mobile_phone' => $phone];
+        if (!$phone) {
+            throw new moodle_exception('errornophone', 'paygw_pagarme');
         }
+        $customer['phones'] = ['mobile_phone' => $phone];
 
         return $customer;
     }
