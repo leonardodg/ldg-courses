@@ -23,6 +23,52 @@ flowchart LR
 
 ---
 
+## A ordem que impede commit órfão
+
+Commit empurrado depois do merge **não entra em lugar nenhum**. Ele fica na
+branch, o PR já fechou, e ninguém percebe até a funcionalidade faltar em
+produção. Já aconteceu **seis vezes** neste projeto — é o erro mais repetido do
+histórico, e ele não vem de descuido: vem de abrir o PR cedo demais.
+
+A ordem existe para tornar o erro impossível, não para lembrar de evitá-lo:
+
+```
+1. terminar TUDO          codigo, teste, phpcs, behat, documentacao
+2. rodar a verificacao    o que o CI vai rodar, lido por inteiro
+3. commitar tudo          git status tem que sair vazio
+4. so entao: push + PR
+5. CI verde
+6. merge
+```
+
+**O passo 1 é o que falha.** "Abro o PR e depois acerto a documentação" é
+exatamente como o commit órfão nasce. Se faltar qualquer coisa, o PR ainda não
+pode existir.
+
+### Se precisar mesmo empurrar depois
+
+Acontece — revisão pediu mudança, o CI pegou algo. Aí a regra é **conferir que o
+PR ainda está aberto antes de empurrar**:
+
+```bash
+gh pr view <numero> --json state -q .state     # tem que dizer OPEN
+git push
+```
+
+`MERGED` ali quer dizer que o commit vai ficar órfão. Nesse caso, não empurre:
+abra uma branch nova a partir de `dev` já atualizada e leve a mudança nela.
+
+### Como saber que já aconteceu
+
+```bash
+git log --oneline origin/dev..<sua-branch>     # vazio = tudo chegou em dev
+```
+
+Se sobrar commit aí depois do merge, ele é órfão. Recuperar é `git cherry-pick`
+numa branch nova — foi assim que o PR #79 salvou dois commits perdidos.
+
+---
+
 ## 1. Antes de abrir
 
 ```bash
@@ -182,8 +228,10 @@ docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest .github/workflo
 
 ## Erros que já aconteceram aqui
 
-**Commits empurrados depois do merge ficam órfãos.** Aconteceu quatro vezes.
-Avise antes de merjear, ou segure o commit.
+**Commits empurrados depois do merge ficam órfãos.** Aconteceu **seis vezes**, e
+é o erro mais repetido daqui. A ordem que o impede está no topo deste documento;
+a regra curta é: só abra o PR quando **tudo** estiver pronto, e confirme
+`gh pr view <n> --json state` antes de qualquer push adicional.
 
 **Abrir PR de uma base errada.** A branch nasce de `origin/dev` por padrão; se
 você usou `--from` apontando para outra coisa, o PR carrega commits que não são
