@@ -10,6 +10,8 @@ ele vai concluir que o split falhou quando funcionou.
 
 ## O resultado, primeiro
 
+Em homologação, 11/09/2026:
+
 ```
 cobranca ... ch_KME2JgJuJnT1XlX7 | paid | R$ 100,00
 vendedor ... amount R$ 75,00 | taxa R$ 4,49 | liquido R$ 70,51
@@ -22,6 +24,46 @@ R$ 4,49 saiu inteira do vendedor, porque é ele que carrega
 
 **O `percentage` do Pagar.me incide sobre o BRUTO** — o oposto do Asaas, onde
 `percentualValue` incide sobre o líquido.
+
+### E com dinheiro real, em produção — 14/09/2026
+
+Pix de R$ 5,00 pago de verdade, pelo app do banco, na conta
+`DG Tecnologia LTDA.`:
+
+```
+cobranca ..... ch_4WDo30rCJ4SlY1vN | paid | R$ 5,00 | 14/09 13:22 UTC
+DG Tecnologia  bruto R$ 4,95 | taxa R$ 0,05 | liquido R$ 4,90   (99%)
+IVANA          bruto R$ 0,05 | taxa R$ 0,00 | liquido R$ 0,05   (1%)
+                                              soma  R$ 4,95
+```
+
+A divisão foi **99/1 de propósito**, para o dinheiro voltar quase todo à conta
+de quem pagou o teste. Isso prova o mecanismo, não o número do negócio — a
+comissão real é 25%, e é a rodada de homologação que prova a aritmética dela.
+
+Três coisas que esta rodada confirmou fora do sandbox:
+
+- **O percentual incide sobre o bruto também em produção.** 99% de R$ 5,00 deram
+  R$ 4,95 exatos.
+- **A responsabilidade da taxa funciona como declarada.** Aqui ela foi invertida
+  — posta na plataforma — e foi a plataforma que pagou os R$ 0,05. O
+  `charge_processing_fee` não é decorativo.
+- **O `charge.splits` voltou `null` com dinheiro real.** Terceira confirmação, e
+  a que fecha o [ADR-0011](../adr/0011-o-extrato-e-a-fonte-da-comissao.md): se o
+  código lesse a cobrança, registraria comissão zero numa venda que moveu
+  R$ 5,00.
+
+### Duas armadilhas que só aparecem deixando o tempo passar
+
+**Pix pendente não cancela.** `DELETE` numa cobrança Pix ainda não paga responde
+`412 "This charge cannot be canceled because is pending."` Ela só expira. O
+`refund_blocker` já recusa estorno de cobrança não paga, então o plugin nunca
+tenta — mas quem for limpar cobrança de teste pela API vai esbarrar nisso.
+
+**E o status não vira "expirado".** Três dias depois do `expires_at`, duas
+cobranças de teste continuavam `pending`. A `task\reconcile` varre `pending` por
+até 30 dias, então ela segue consultando cobranças que nunca serão pagas — não é
+dano, é chamada desperdiçada.
 
 > **Credenciais não vivem neste arquivo.** Ele está versionado e o repositório
 > está no GitHub. As chaves ficam em

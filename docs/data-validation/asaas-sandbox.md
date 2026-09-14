@@ -495,6 +495,42 @@ Todas encontradas contra a API real, e todas já tratadas no plugin.
 
 ---
 
+## Provar em produção: o que a conta precisa ter
+
+Levantado em 14/09/2026, quando a prova de Pix com dinheiro real foi montada.
+Nada aqui é opinião — é o estado que a API devolveu.
+
+**Duas contas Asaas distintas, e de verdade.** O split para a própria carteira é
+recusado, e é o mesmo erro que o Mercado Pago cometeu em silêncio na primeira
+tentativa deste projeto. Com uma conta só não há prova possível.
+
+**A segunda conta não pode ser subconta, se a primeira for pessoa física.** O
+Asaas recusa com *"Contas de pessoa física (CPF) não podem criar subcontas"*. O
+truque que funcionou em homologação não serve em produção quando a conta é PF —
+precisa ser uma conta independente, tipicamente a CNPJ da plataforma.
+
+**Confira o `bankAccountInfo` antes de cobrar.** `GET /myAccount/status`
+devolve quatro campos, e os quatro importam:
+
+```json
+{
+  "commercialInfo": "APPROVED",
+  "bankAccountInfo": "PENDING",
+  "documentation": "APPROVED",
+  "general": "APPROVED"
+}
+```
+
+Com `bankAccountInfo` pendente o dinheiro entra e não sai. A chave Pix pode
+estar `ACTIVE` e o recebimento funcionar — o que trava é o saque.
+
+**Confira a chave Pix:** `GET /pix/addressKeys`. Uma chave `EVP` com status
+`ACTIVE` basta para receber.
+
+O webhook de produção usa o mesmo caminho do de homologação, com o header
+`asaas-access-token`, e os eventos continuam sendo só `PAYMENT_RECEIVED` e
+`PAYMENT_CONFIRMED`.
+
 ## O que continua sem prova
 
 - **A liquidação do split.** Ele foi visto sendo *atribuído* — `AWAITING_CREDIT`,

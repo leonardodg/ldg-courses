@@ -37,7 +37,9 @@ pela vitrine e com o webhook chegando sozinho: R$ 5,00 → R$ 1,25 de comissão,
 No **Pagar.me** o split foi provado em 2026-09-11: R$ 100,00 com comissão de
 25% entregaram **R$ 25,00 exatos** à plataforma e R$ 70,51 ao vendedor, com a
 taxa de R$ 4,49 saindo inteira dele. O percentual lá incide sobre o **bruto**,
-ao contrário do Asaas.
+ao contrário do Asaas. Em 2026-09-14 a prova foi repetida **em produção, com
+Pix e dinheiro real** — R$ 5,00 divididos 99/1, e os R$ 0,05 de taxa saindo de
+quem foi declarado responsável por ela.
 
 A armadilha daquele gateway merece ser sabida antes de abrir o roteiro: o `GET`
 da cobrança devolve `splits: null` **mesmo quando o split aconteceu**. A prova
