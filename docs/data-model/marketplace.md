@@ -309,6 +309,27 @@ A credencial do vendedor **não** fica aqui: vive cifrada no
 `payment_gateways.config` do core, por ambiente. Ver
 [ADR-0003](../adr/0003-quem-cria-a-cobranca-emite-a-nota.md).
 
+### `paygw_pagarme`
+
+Transações do Pagar.me. Uma linha por cobrança; assinatura tem uma linha por
+ciclo, ligadas pelo `subscriptionid`.
+
+| Campo | Para que serve |
+|---|---|
+| `orderid` | `or_…`. Vazio em cobrança de assinatura, que nasce sem order. |
+| `chargeid` | `ch_…`. É por ele que o webhook encontra a linha. |
+| `paymentmethod` | `pix` · `boleto` · `credit_card`. Diferente do Asaas, **não há opção "o aluno escolhe"**: o split de Pix exige o `POST /orders` transparente, e cada meio tem uma página nossa diferente. |
+| `qrcode` | O copia-e-cola do Pix, guardado para a página própria não depender de nova chamada à API a cada recarregamento. |
+| `checkouturl` | Página do boleto, ou imagem do QR Code. |
+| `feebase` | Base aplicada. **Decide o tipo do split:** `gross` vira `flat` em centavos calculado por nós, `net` vira `percentage` para o Pagar.me dividir. |
+| `environment` | Na linha, como no Asaas — mas aqui o ambiente vem do **prefixo da chave** (`sk_test_` × `sk_`), não de um host separado: `sdx-api.pagar.me` não existe. |
+
+O que **não** fica aqui, e é a diferença que mais surpreende: o recebedor da
+plataforma. No Asaas a carteira da plataforma é uma só e vive nas settings do
+site; no Pagar.me um `recipient` é objeto **interno a uma conta**, então o `rp_`
+da plataforma é diferente dentro de cada vendedor. Ele acompanha a conta de
+pagamento, cifrado junto com a chave.
+
 ### `format_ldg_lesson`
 
 A duração de cada aula, no formato de curso **Portal LDG**.

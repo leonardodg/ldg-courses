@@ -15,6 +15,7 @@ matriculado.
 | `theme_ldg` | tema filho do Moove: dark e claro, menu lateral recolhivel, landing como home |
 | `paygw_mercadopago` | OAuth com PKCE, vincular/desvincular, `marketplace_fee`, webhook, modo de teste |
 | `paygw_asaas` | Pix, boleto e cartao, split provado, credencial cifrada, webhook autenticado |
+| `paygw_pagarme` | codigo completo - Pix com pagina propria, boleto, cartao tokenizado, assinatura, estorno. **Nada foi exercitado contra a API**: a conta de homologacao nao processa cobranca |
 | `enrol_marketplace` | matricula por diferenca, a partir dos direitos vigentes |
 | `availability_marketplace` | secao liberada por oferta especifica, com botao de compra |
 | `block_marketplace` | assinaturas do aluno no Dashboard |
@@ -53,6 +54,20 @@ dinheiro real:
 
 O vendedor daquela rodada e **pessoa fisica**, e isso so foi descoberto depois:
 o CNPJ nao e exigido de quem vende. Ver `../adr/0010-vendedor-pessoa-fisica-no-mercado-pago.md`.
+
+**O split do Pagar.me - SEM PROVA em 2026-09-09**, e nao por falta de tentativa.
+Duas contas de homologacao responderam igual:
+
+    recebedor .. POST /recipients | 412 action_forbidden
+                 "This company it not allowed to create a recipient"
+    cobranca ... pix, cartao e boleto | 200 no HTTP, failed na cobranca
+                 500 "internal_error | Erro desconhecido no proxy"
+    split ...... nunca chegou a existir - sem recebedor nao ha o que dividir
+
+Sao dois bloqueios comerciais independentes, e liberar so um nao destrava a
+medicao. O codigo do plugin esta pronto e foi escrito pela DOCUMENTACAO, com
+cada suposicao marcada; o roteiro para medir, o script de prova e o texto do
+chamado ao suporte estao em `../data-validation/pagarme-sandbox.md`.
 
 No mesmo dia, a **compra pela vitrine** fechou a cadeia inteira, com o webhook
 chegando sozinho:

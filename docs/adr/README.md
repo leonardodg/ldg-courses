@@ -47,3 +47,4 @@ Pago, já foi superada pelos ADRs abaixo.
 | [0008](0008-embed-multiplataforma-pelo-core.md) | O embed multiplataforma é do core, e a fronteira é "menos o próprio site" | Aceita |
 | [0009](0009-papeis-de-empresa-sem-upload.md) | Dois papéis de empresa, e a proibição de upload como lista estática | Aceita |
 | [0010](0010-vendedor-pessoa-fisica-no-mercado-pago.md) | Vendedor pessoa física é aceito no Mercado Pago | Aceita |
+| [0011](0011-o-extrato-e-a-fonte-da-comissao.md) | O extrato é a fonte da comissão, não a cobrança | Aceita |

@@ -1,6 +1,6 @@
 > **Situação:** inacabado · **Início:** 2026-08-27
 > **Origem:** `~/.claude/plans/vast-splashing-pascal.md` — copiado literalmente, sem edição do corpo.
-> **Resultado:** Fase 0 e Fase 1 entregues (PRs #53 a #59). **A Fase 2, `paygw_pagarme`, nunca foi executada — o Pagar.me exige CNPJ para abrir conta, e ele ainda não saiu.** Os dois itens "Em aberto" do fim são do `paygw_mercadopago`. O registro do ciclo é o [2026-08-27-gateways-asaas-e-pagarme.md](2026-08-27-gateways-asaas-e-pagarme.md).
+> **Resultado:** Fase 0 e Fase 1 entregues (PRs #53 a #59). **A Fase 2, `paygw_pagarme`, rodou em 09/09/2026** — ver [2026-09-09-paygw-pagarme.md](2026-09-09-paygw-pagarme.md). Três coisas escritas aqui se mostraram falsas ao medir: o host `sdx-api.pagar.me` **não existe**, o prefixo do recebedor é `rp_` e não `re_`, e o `type` dele aceita `individual`/`company`, não `corporation`. Os dois itens "Em aberto" do fim são do `paygw_mercadopago`. O registro do ciclo é o [2026-08-27-gateways-asaas-e-pagarme.md](2026-08-27-gateways-asaas-e-pagarme.md).
 
 # Dois gateways novos (Asaas e Pagar.me) e a refatoração de país no núcleo
 

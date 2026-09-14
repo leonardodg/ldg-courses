@@ -1,7 +1,7 @@
 # Documentação do ldg-courses
 
 Plataforma Moodle 5.2 onde qualquer pessoa publica curso gratuito ou pago, com
-split de pagamento. Gateways: Mercado Pago e Asaas.
+split de pagamento. Gateways: Mercado Pago, Asaas e Pagar.me.
 
 ## Por onde começar
 
@@ -33,6 +33,7 @@ configurado e as armadilhas dele:
 | tema | [`public/theme/ldg/`](../public/theme/ldg/README.md) |
 | gateway Asaas | [`public/payment/gateway/asaas/`](../public/payment/gateway/asaas/README.md) |
 | gateway Mercado Pago | [`public/payment/gateway/mercadopago/`](../public/payment/gateway/mercadopago/README.md) |
+| gateway Pagar.me | [`public/payment/gateway/pagarme/`](../public/payment/gateway/pagarme/README.md) |
 | matrícula | [`public/enrol/marketplace/`](../public/enrol/marketplace/README.md) |
 | liberação de seção | [`public/availability/condition/marketplace/`](../public/availability/condition/marketplace/README.md) |
 | bloco de assinaturas | [`public/blocks/marketplace/`](../public/blocks/marketplace/README.md) |
