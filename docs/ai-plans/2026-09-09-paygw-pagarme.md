@@ -1,6 +1,6 @@
-> **Situação:** inacabado · **Início:** 2026-09-09
+> **Situação:** executado · **Início:** 2026-09-09 · **Fim:** 2026-09-14
 > **Origem:** `~/.claude/plans/tranquil-conjuring-quiche.md` — o corpo do plano aprovado está preservado na seção "O plano aprovado, e onde ele foi desviado".
-> **Resultado:** o plugin está completo e verde, mas **o split nunca foi exercitado**: a conta de homologação do Pagar.me recusa criar recebedor e não processa nenhuma forma de pagamento. Falta a liberação comercial, pedida ao suporte.
+> **Resultado:** o plugin está completo e verde, e **o split foi provado — em homologação e em produção, com dinheiro real**. O que não existe é assinatura com split: o Pagar.me recusa o campo, e por isso o gateway recusa oferta recorrente na porta. A conclusão do ciclo é que **o Asaas continua sendo o único gateway que atende o modelo completo**.
 
 # `paygw_pagarme` — o terceiro gateway, escrito antes da prova
 
@@ -177,14 +177,123 @@ dado fabricado.
 
 ---
 
+## O que a liberação da conta mudou — 11 a 14/09
+
+O plano foi escrito supondo que a conta ficaria bloqueada. Ela destravou em
+etapas, e cada etapa derrubou algo do código.
+
+### 11/09 — recebedores liberados, e o split provado
+
+A conta `acc_Xv3ne2OsOXCJd4GB` passou a criar recebedores. Com dois distintos,
+uma cobrança de cartão de R$ 100,00 com split de 25% foi paga e o extrato se
+moveu: R$ 25,00 exatos para a plataforma, R$ 70,51 para o vendedor depois dos
+R$ 4,49 de taxa.
+
+**Duas suposições caíram, e as duas estavam no código:**
+
+**O `charge.splits` volta `null` mesmo quando o split acontece.** O
+`commission_from()` lia dali e gravaria comissão zero em toda venda. A verdade
+está em `GET /payables?recipient_id=` — virou o
+[ADR-0011](../adr/0011-o-extrato-e-a-fonte-da-comissao.md).
+
+**O `percentage` incide sobre o bruto**, não sobre o líquido — o oposto do
+Asaas. Isso tornou a base `net` inatendível, o ramo saiu do `build_split()` e o
+`applied_base()` passou a devolver sempre `gross`.
+
+### 11/09 — assinatura com split: não existe
+
+`POST /subscriptions` com `split` recusa em **quatro formatos**. Dentro de
+`items[]` o `200` volta com o campo descartado e nenhum payable nasce. E o
+`PATCH …/split` responde `412 "Can't update the split on subscription because
+doesn't has split"` — a capacidade existe, mas a assinatura teria que nascer
+com ela.
+
+Segundo impedimento, independente: o filtro `?subscription_id=` de
+`GET /charges` é **ignorado**, e as cobranças não carregam vínculo com a
+assinatura. Sem isso não há como listar as cobranças de uma assinatura.
+
+**Consequência:** `supports_recurring()` devolve `false` e o `start_payment`
+recusa na porta. Cobrar recorrência sem split renderia comissão zero em
+silêncio.
+
+### 11/09 — a prova de ponta a ponta achou três bugs
+
+Nenhum apareceria com dublê, porque todos dependem de a cobrança nascer paga ou
+de o fluxo real ter etapas.
+
+1. **A guarda de replay impedia a entrega no cartão.** O cartão liquida na
+   criação, então a linha já nascia `paid` — e o webhook concluía "já estava
+   pago" e ia embora sem entregar. O aluno pagava e não recebia nada.
+2. **A recusa da recorrência estava no lugar errado**, depois do ponto em que o
+   cartão desvia para a página de tokenização. A oferta recorrente passava e
+   deixava linha órfã.
+3. **Telefone é obrigatório**, e eu tinha acabado de fazer o campo ser omitido.
+
+E uma lacuna de desenho: **cartão tokenizado exige endereço de cobrança**, que
+não vai no token e não podia sair do perfil do Moodle, que não tem CEP. A página
+do cartão passou a coletá-lo.
+
+### 14/09 — produção, com Pix e dinheiro real
+
+Pix de R$ 5,00 pago de verdade, dividido 99/1 para o dinheiro voltar a quem
+pagou o teste:
+
+```
+DG Tecnologia  bruto R$ 4,95 | taxa R$ 0,05 | liquido R$ 4,90
+IVANA          bruto R$ 0,05 | taxa R$ 0,00 | liquido R$ 0,05
+```
+
+Confirmou fora do sandbox que o percentual incide sobre o bruto, que a
+responsabilidade da taxa funciona como declarada — foi invertida nesta rodada e
+a plataforma pagou —, e que o `charge.splits` volta `null` com dinheiro real.
+
+### 14/09 — e o Asaas foi provado com Pix, o que fechou a decisão
+
+Com duas contas de produção distintas, um Pix de R$ 5,00 liquidou com
+`split status DONE`. **O Pix do Asaas nunca tinha sido visto liquidar**, nem em
+homologação, onde o sandbox não liquida e a baixa manual cancela o split.
+
+O extrato revelou o que a cobrança escondia:
+
+```
++5,00  PAYMENT_RECEIVED
+-1,99  PAYMENT_FEE (Pix)
+-1,25  INTERNAL_TRANSFER_DEBIT (a comissao)
+-0,99  PAYMENT_MESSAGING_NOTIFICATION_FEE
+```
+
+A **taxa de mensageria não entra no `netValue`**: ele dizia R$ 3,01 e o vendedor
+ficou com R$ 0,77. Eu estimei a taxa errada antes de ler o extrato. Virou o
+PR #101, que desliga a notificação na criação do cliente.
+
+### O que isso decidiu sobre o produto
+
+Com tudo medido, o quadro é:
+
+| | Pix real | Split real | Split em assinatura |
+|---|---|---|---|
+| **Asaas** | sim | sim, `DONE` | **sim** |
+| Mercado Pago | sim | sim | impossível |
+| Pagar.me | sim | sim | recusado |
+
+**O Asaas é o gateway do produto**, porque assinatura é o coração do modelo. O
+Pagar.me entra como alternativa para venda avulsa — completo, verde, e com
+recorrência recusada explicitamente.
+
+Isso não torna o ciclo um desperdício: o ADR-0011, a guarda de replay e o
+telefone obrigatório são lições que valem para o projeto inteiro.
+
 ## Verificação
 
 | Prova | Resultado |
 |---|---|
-| PHPUnit `paygw_pagarme_testsuite` | **104 testes, 188 asserções, OK** |
-| PHPUnit `local_marketplace_testsuite` | **129 testes, 392 asserções, OK** |
+| PHPUnit `paygw_pagarme_testsuite` | **116 testes, 207 asserções, OK** |
+| PHPUnit `local_marketplace_testsuite` | **138 testes, 500 asserções, OK** |
+| PHPUnit `paygw_asaas_testsuite` | **69 testes, 157 asserções, OK** |
 | phpcs `--standard=moodle` | **saída vazia** em 31 arquivos |
 | Behat `--profile=chrome` | **6 cenários, 45 passos**, 3 deles `@javascript` |
+| Split, homologação | R$ 100,00 → R$ 25,00 exatos no extrato da plataforma |
+| Split, **produção, dinheiro real** | R$ 5,00 → R$ 4,90 e R$ 0,05, taxa saindo de quem foi declarado |
 | Upgrade | limpo, plugin instalado |
 | AMD | os 8 arquivos parseiam, zero ES6 |
 | Webhook pelo túnel | `401` sem credencial, `401` com credencial errada |
@@ -211,55 +320,36 @@ cobrança processou, então nada do que envolve dinheiro foi exercitado.
 
 ### Bloqueado no Pagar.me — não é trabalho de código
 
-O chamado ao suporte está escrito, com a evidência e os `charge_id`, em
-`../data-validation/pagarme-sandbox.md`. São **dois pedidos**, e atender só um
-não destrava:
+Duas habilitações de conta, e o texto do chamado está pronto em
+[`../data-validation/pagarme-sandbox.md`](../data-validation/pagarme-sandbox.md):
 
-1. habilitar criação de recebedores (split / PSP);
-2. habilitar o processamento em ambiente de teste.
-
-### Para a próxima sessão, quando a conta abrir
-
-O roteiro traz a lista em ordem. O resumo:
-
-1. Rodar `provar-split-pagarme.py` inteiro — ele responde sete perguntas de uma
-   vez e aborta se os recebedores forem o mesmo.
-2. Trocar as fixtures de `tests/fixtures/documented_responses.php` pelas
-   respostas **medidas**. Todo teste que mudar de resultado aponta onde a
-   documentação mentia.
-3. Conferir, nesta ordem, o que está marcado `NAO MEDIDO` no código:
-   - sobre o que o `percentage` incide — bruto ou líquido;
-   - se as regras de split precisam somar 100%;
-   - se o split vale em **cada ciclo** da assinatura;
-   - se o estorno reverte o split, e para quais formas;
-   - se estornar um ciclo cancela a assinatura;
-   - se `overpaid` existe mesmo, e se boleto estorna.
-4. Prova de ponta a ponta pelo Moodle, com o túnel: compra pela vitrine,
-   webhook chegando sozinho, `local_marketplace_sale`, direito e matrícula;
-   reenvio respondendo `ignored`; reconciliação achando a pendente órfã;
-   estorno revogando acesso.
-5. O ciclo da assinatura, com o roteiro do Asaas como espelho: cobrança de
-   vencimento mais próximo, ciclo 2 adotado pelo webhook, renovação que **soma**,
-   corte por diferença, e volta ao pagar a atrasada.
+1. **Pix em homologação.** Cartão e boleto processam; só o Pix responde
+   `400 action_forbidden — "Sem ambiente configurado para este tipo de
+   transação"`. Em **produção** o Pix funciona, o que prova que não é limitação
+   da API nem do código.
+2. **Split em assinatura.** Se liberar, o gateway ganha recorrência sem
+   trabalho novo — a estrutura já está escrita e só o
+   `supports_recurring()` precisa mudar.
 
 ### Decidido e não feito
 
-- **ADR do recebedor por vendedor.** O próximo número é `0011`. Vale a pena
-  porque o `rp_` diferente em cada vendedor é consequência de modelagem que
-  ninguém adivinha lendo o código. Fica para quando o desenho estiver provado —
-  ADR sobre suposição envelhece mal.
 - **Allowlist de IP da VPS** no painel do Pagar.me, antes do primeiro repasse.
-- **Roteiro `pagarme-assinatura.md`**, irmão do `asaas-assinatura.md`. Não
-  nasceu porque não há ciclo para descrever ainda.
+  `GET /transfers` responde `401 "IP de origem não autorizado"`.
+- **Roteiro `pagarme-assinatura.md`** não nasce: não há ciclo para descrever
+  enquanto o gateway não aceitar split em assinatura. Escrever roteiro de algo
+  que não existe é pior que não ter.
+- **A reconciliação varre cobrança que nunca será paga.** Pix pendente não
+  cancela (`412 "cannot be canceled because is pending"`) e o status não vira
+  "expirado" — três dias depois, cobranças de teste seguiam `pending`. A tarefa
+  as consulta por até 30 dias. É desperdício de chamada, não dano.
 
 ### Fora de escopo, e continua
 
 - Cifrar os tokens do `paygw_mercadopago`, hoje em texto puro. O plugin está em
   produção e funcionando.
 - Vendedor pessoa jurídica no Mercado Pago.
-- Pix e boleto liquidando de verdade — nenhum sandbox do projeto liquida.
-
----
+- **Débito automático de ponta a ponta no Asaas**: ninguém viu o segundo mês
+  ser cobrado sozinho.
 
 ## O plano aprovado, e onde ele foi desviado
 
