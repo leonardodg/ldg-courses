@@ -157,7 +157,19 @@ class asaas_client {
             }
         }
 
-        $body = ['name' => $name, 'email' => $email];
+        // Cliente novo nasce com OITO regras de notificacao ligadas, e o Asaas
+        // cobra "taxa de mensageria" por cada aviso que manda ao comprador.
+        //
+        // Medido em 14/09/2026, numa venda real de R$ 5,00: alem dos R$ 1,99
+        // de taxa de Pix, o extrato levou R$ 0,99 de
+        // PAYMENT_MESSAGING_NOTIFICATION_FEE - para o Asaas mandar um e-mail
+        // que o Moodle ja manda.
+        //
+        // E ela NAO aparece no netValue da cobranca, so no extrato: quem
+        // calcular o liquido do vendedor pelo netValue erra para mais, em
+        // R$ 0,99, toda vez. O flag vai na CRIACAO porque desligar depois ja
+        // pagou a primeira.
+        $body = ['name' => $name, 'email' => $email, 'notificationDisabled' => true];
         if ($cpfcnpj !== '') {
             $body['cpfCnpj'] = $cpfcnpj;
         }

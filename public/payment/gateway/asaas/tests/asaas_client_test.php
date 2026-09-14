@@ -325,6 +325,30 @@ final class asaas_client_test extends \advanced_testcase {
     }
 
     /**
+     * Cliente novo nasce sem as notificacoes do Asaas.
+     *
+     * MEDIDO em 14/09/2026, numa venda real de R$ 5,00: alem da taxa de Pix,
+     * o extrato levou R$ 0,99 de PAYMENT_MESSAGING_NOTIFICATION_FEE - o Asaas
+     * cobra para avisar o comprador por e-mail, coisa que o Moodle ja faz.
+     *
+     * Cliente novo nasce com oito regras de notificacao ligadas, entao o
+     * flag precisa ir na CRIACAO: desligar depois ja pagou a primeira.
+     *
+     * @return void
+     */
+    public function test_new_customer_is_created_without_notifications(): void {
+        $client = new fake_asaas_client('chave', asaas_client::ENV_SANDBOX);
+        $client->nextresponse = ['data' => []];
+
+        $client->find_or_create_customer('Aluno', 'aluno@example.com', '24971563792');
+
+        $this->assertTrue(
+            $client->lastbody['notificationDisabled'] ?? false,
+            'sem isto o Asaas cobra R$ 0,99 de mensageria por venda'
+        );
+    }
+
+    /**
      * O erro do Asaas vira mensagem legivel, e nao "erro na API".
      *
      * @return void
