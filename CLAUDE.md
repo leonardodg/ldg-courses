@@ -131,6 +131,11 @@ Moodle 5.2 usa layout `public/` — os plugins ficam em `public/local/…`,
 **Fluxo:** commit no branch de feature → PR para `dev` → merge dispara deploy
 automático para a VPS. Não há PR `dev`→`main` no caminho normal.
 
+**A ordem não é negociável, e existe para impedir commit órfão:** terminar tudo
+→ verificar → commitar → *só então* abrir o PR → CI verde → merge. Abrir o PR
+antes de terminar é como o commit órfão nasce, e já aconteceu seis vezes.
+Detalhe em `docs/dev/fluxo-de-contribuicao.md`.
+
 **ANTES DE ABRIR FEATURE NOVA, SINCRONIZE COM O UPSTREAM DO MOODLE.** Não é
 sugestão: este projeto acompanha o Moodle em vez de forkar, e uma feature que
 nasce de um `dev` atrasado vai encontrar o merge do upstream depois — com o
@@ -213,8 +218,10 @@ fora do ar. O usuário havia apontado isso antes.
 **Strings de idioma têm ordem alfabética obrigatória.** Inserir por âncora quebra
 o `phpcs`. Reordene o arquivo inteiro depois de acrescentar.
 
-**Commits empurrados depois de o PR ser merjeado ficam órfãos.** Aconteceu quatro
-vezes. Avise antes de o usuário merjear, ou segure o commit.
+**Commits empurrados depois de o PR ser merjeado ficam órfãos.** Aconteceu
+**seis vezes** — o erro mais repetido daqui. Não abra o PR com nada pendente, e
+antes de qualquer push adicional confirme que ele ainda está aberto:
+`gh pr view <n> --json state -q .state` tem que dizer `OPEN`.
 
 ## Armadilhas do Moodle nesta base
 
