@@ -485,6 +485,57 @@ final class payment_processor_test extends \advanced_testcase {
         $this->assertFalse(payment_processor::process_notification(''));
     }
 
+    public function test_a_janela_da_reconciliacao_segue_a_forma_de_pagamento(): void {
+        $this->resetAfterTest();
+
+        // MEDIDO em 14/09/2026: Pix pendente nao cancela (412 "cannot be
+        // canceled because is pending") e o status NAO vira expirado - as
+        // cobrancas de teste de 11/09 seguiam 'pending' tres dias depois.
+        //
+        // Sem janela por forma de pagamento, um checkout abandonado seria
+        // consultado de hora em hora por 30 dias: ~720 chamadas a API do
+        // VENDEDOR, por cobranca que nunca vai ser paga.
+        set_config('pixexpiresin', '30', 'paygw_pagarme');
+        set_config('duedays', '3', 'paygw_pagarme');
+
+        $pix = payment_processor::sweep_window_for('pix');
+        $boleto = payment_processor::sweep_window_for('boleto');
+        $cartao = payment_processor::sweep_window_for('credit_card');
+
+        // O Pix expira em 30 min; a janela cobre isso mais a folga da
+        // liquidacao, e fica MUITO abaixo do boleto.
+        $this->assertGreaterThan(30 * MINSECS, $pix);
+        $this->assertLessThan($boleto, $pix);
+
+        // O boleto e pago ate o vencimento e leva dias para compensar.
+        $this->assertGreaterThan(3 * DAYSECS, $boleto);
+
+        // Cartao liquida na hora; o que passa de um dia esta travado.
+        $this->assertLessThan($boleto, $cartao);
+    }
+
+    public function test_a_janela_acompanha_a_validade_configurada(): void {
+        $this->resetAfterTest();
+
+        set_config('pixexpiresin', '15', 'paygw_pagarme');
+        $curta = payment_processor::sweep_window_for('pix');
+
+        set_config('pixexpiresin', '60', 'paygw_pagarme');
+        $longa = payment_processor::sweep_window_for('pix');
+
+        $this->assertGreaterThan($curta, $longa);
+    }
+
+    public function test_forma_desconhecida_nao_varre_para_sempre(): void {
+        $this->resetAfterTest();
+
+        // Queda segura: janela curta, e nao MAX_AGE.
+        $this->assertLessThan(
+            \paygw_pagarme\task\reconcile::MAX_AGE,
+            payment_processor::sweep_window_for('inventada')
+        );
+    }
+
     public function test_a_reconciliacao_alcanca_o_que_ficou_processando(): void {
         // Medido em 09/09/2026: uma cobranca de cartao ficou em 'processing' e
         // nunca saiu de la. Varrer so 'pending' deixaria essa linha parada
