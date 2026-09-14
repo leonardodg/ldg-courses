@@ -837,6 +837,49 @@ class payment_processor {
     }
 
     /**
+     * Por quanto tempo vale continuar perguntando por uma cobranca.
+     *
+     * Existe porque o Pagar.me nunca diz que a cobranca venceu. MEDIDO em
+     * 14/09/2026: Pix pendente nao cancela - `412 "This charge cannot be
+     * canceled because is pending"` - e o status NAO vira expirado. As
+     * cobrancas de teste de 11/09 seguiam 'pending' tres dias depois.
+     *
+     * Sem isto, um checkout abandonado seria consultado de hora em hora por 30
+     * dias: cerca de 720 chamadas a API do VENDEDOR por cobranca que nunca vai
+     * ser paga. A conta e dele, nao nossa.
+     *
+     * A janela sai da propria forma de pagamento, e nao de um numero redondo:
+     * o Pix expira no prazo do QR Code, o boleto e pago ate o vencimento e
+     * ainda leva dias para compensar, e o cartao liquida na hora.
+     *
+     * @param string $method pix|boleto|credit_card
+     * @return int Segundos desde a criacao.
+     */
+    public static function sweep_window_for(string $method): int {
+        switch ($method) {
+            case 'pix':
+                // A validade do QR Code mais uma hora: o payable demora, e
+                // um Pix pago no ultimo minuto ainda precisa ser visto.
+                return self::pix_expires_in() + HOURSECS;
+
+            case 'boleto':
+                // O vencimento mais tres dias, que e a compensacao bancaria.
+                return (self::due_days() * DAYSECS) + (3 * DAYSECS);
+
+            case 'credit_card':
+                // Liquida na hora. O que passa de um dia esta travado, e
+                // insistir nao resolve - foi o caso da cobranca que ficou em
+                // 'processing' e nunca saiu de la.
+                return DAYSECS;
+        }
+
+        // Forma desconhecida cai no menor prazo util, e nao no maior: errar
+        // para menos custa uma venda reconciliada pelo webhook, que e o
+        // caminho normal. Errar para mais custa chamada na conta do vendedor.
+        return DAYSECS;
+    }
+
+    /**
      * Id da cobranca que um evento de webhook aponta.
      *
      * O formato difere: evento de charge traz o proprio id, evento de order

@@ -32,7 +32,16 @@ class reconcile extends \core\task\scheduled_task {
     /** @var int Mais novo que isto, o aluno ainda esta na tela de pagamento. */
     const MIN_AGE = 5 * MINSECS;
 
-    /** @var int Mais velho que isto, a cobranca ja expirou. */
+    /**
+     * Ate quando vale corrigir a comissao de uma venda ja entregue.
+     *
+     * NAO e o limite da varredura de pendentes - esse sai de
+     * payment_processor::sweep_window_for(), por forma de pagamento. Aqui a
+     * janela e longa de proposito: a venda ja aconteceu, e uma comissao que
+     * ficou zero merece semanas de tentativa, nao horas.
+     *
+     * @var int
+     */
     const MAX_AGE = 30 * DAYSECS;
 
     /** @var int Teto por rodada. */
@@ -65,12 +74,25 @@ class reconcile extends \core\task\scheduled_task {
             'st'
         );
 
+        // A janela de cada forma de pagamento entra na propria consulta, em
+        // vez de carregar tudo e descartar em PHP. Ver
+        // payment_processor::sweep_window_for(): o Pagar.me nunca diz que a
+        // cobranca venceu, entao o limite tem que sair daqui.
+        $janelas = [];
+        $prazos = [];
+        foreach (['pix', 'boleto', 'credit_card'] as $i => $metodo) {
+            $janelas[] = "(paymentmethod = :m$i AND timecreated > :t$i)";
+            $prazos["m$i"] = $metodo;
+            $prazos["t$i"] = $now - payment_processor::sweep_window_for($metodo);
+        }
+        $dentrodajanela = '(' . implode(' OR ', $janelas) . ')';
+
         $records = $DB->get_records_select(
             payment_processor::TABLE,
             "status $insql AND paymentid IS NULL
              AND chargeid <> '' AND chargeid IS NOT NULL
-             AND timecreated < :young AND timecreated > :old",
-            $inparams + ['young' => $now - self::MIN_AGE, 'old' => $now - self::MAX_AGE],
+             AND timecreated < :young AND $dentrodajanela",
+            $inparams + $prazos + ['young' => $now - self::MIN_AGE],
             'timecreated ASC',
             'id, chargeid, subscriptionid',
             0,
