@@ -15,11 +15,12 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Configuracao da APLICACAO da plataforma no Mercado Pago.
+ * Configuracao das APLICACOES da plataforma no Mercado Pago.
  *
  * Estes valores sao do dono da plataforma, nao do vendedor: e a aplicacao
- * registrada no painel do Mercado Pago que autoriza o marketplace_fee. O
- * token de cada vendedor fica na conta de pagamento dele, obtido por OAuth.
+ * registrada no painel do Mercado Pago que autoriza a comissao. O token de cada
+ * vendedor fica na conta de pagamento dele, obtido por OAuth - e ha um token
+ * POR APLICACAO, porque cada uma exige a sua autorizacao.
  *
  * @package    paygw_mercadopago
  * @copyright  2026 LeoDG <callme@leodg.dev>
@@ -28,35 +29,75 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+use paygw_mercadopago\application;
+
 if ($ADMIN->fulltree) {
+    $callbackurl = (new moodle_url('/payment/gateway/mercadopago/oauth_callback.php'))->out(false);
+    $webhookurl = (new moodle_url('/payment/gateway/mercadopago/webhook.php'))->out(false);
+
     $settings->add(new admin_setting_heading(
         'paygw_mercadopago/appheading',
         get_string('appheading', 'paygw_mercadopago'),
-        get_string('appheading_desc', 'paygw_mercadopago', (new moodle_url(
-            '/payment/gateway/mercadopago/oauth_callback.php'
-        ))->out(false))
+        get_string('appheading_desc', 'paygw_mercadopago', (object) [
+            'callback' => $callbackurl,
+            'webhook' => $webhookurl,
+        ])
     ));
 
-    $settings->add(new admin_setting_configtext(
-        'paygw_mercadopago/clientid',
-        get_string('clientid', 'paygw_mercadopago'),
-        get_string('clientid_desc', 'paygw_mercadopago'),
-        '',
-        PARAM_ALPHANUMEXT
-    ));
+    // Um bloco por tipo de aplicacao, gerado da constante.
+    //
+    // Escrever os tres a mao convidaria a divergencia: o dia em que um tipo
+    // ganhasse campo novo, faltaria em dois lugares e ninguem veria - a tela
+    // simplesmente nao mostraria o campo, e o vinculo iria para uma
+    // configuracao que ninguem le.
+    foreach (application::TYPES as $type) {
+        $settings->add(new admin_setting_heading(
+            'paygw_mercadopago/apptype_' . $type,
+            get_string('apptype_' . $type, 'paygw_mercadopago'),
+            get_string('apptype_' . $type . '_desc', 'paygw_mercadopago')
+        ));
 
-    // Configpasswordunmask esconde o valor na tela e no log de alteracoes.
-    $settings->add(new admin_setting_configpasswordunmask(
-        'paygw_mercadopago/clientsecret',
-        get_string('clientsecret', 'paygw_mercadopago'),
-        get_string('clientsecret_desc', 'paygw_mercadopago'),
-        ''
+        $settings->add(new admin_setting_configtext(
+            'paygw_mercadopago/' . application::config_key($type, 'clientid'),
+            get_string('clientid', 'paygw_mercadopago'),
+            get_string('clientid_desc', 'paygw_mercadopago'),
+            '',
+            PARAM_ALPHANUMEXT
+        ));
+
+        // Configpasswordunmask esconde o valor na tela e no log de alteracoes.
+        $settings->add(new admin_setting_configpasswordunmask(
+            'paygw_mercadopago/' . application::config_key($type, 'clientsecret'),
+            get_string('clientsecret', 'paygw_mercadopago'),
+            get_string('clientsecret_desc', 'paygw_mercadopago'),
+            ''
+        ));
+
+        // A assinatura secreta e POR APLICACAO, e nao do site: cada uma tem a
+        // sua no painel. Uma so para todas faria a validacao do webhook
+        // recusar as notificacoes das outras duas, o que aparece como venda
+        // que nao entrega - o pior desfecho possivel.
+        $settings->add(new admin_setting_configpasswordunmask(
+            'paygw_mercadopago/' . application::config_key($type, 'webhooksecret'),
+            get_string('webhooksecret', 'paygw_mercadopago'),
+            get_string('webhooksecret_desc', 'paygw_mercadopago'),
+            ''
+        ));
+    }
+
+    $settings->add(new admin_setting_heading(
+        'paygw_mercadopago/commonheading',
+        get_string('commonheading', 'paygw_mercadopago'),
+        get_string('commonheading_desc', 'paygw_mercadopago')
     ));
 
     // O pais da aplicacao decide em que dominio o vendedor autoriza e quais
     // contas podem ser vinculadas. Nao e cosmetico: o split so acontece entre
     // contas do MESMO pais, porque a comissao cai na conta da plataforma e uma
     // conta so guarda a moeda do proprio pais. Nao ha cambio no meio.
+    //
+    // E e UM para as tres aplicacoes, e nao um por aplicacao: um por tipo
+    // permitiria justamente a mistura de paises que o Mercado Pago recusa.
     $sites = [];
     foreach (\paygw_mercadopago\mp_client::SITE_CURRENCY as $siteid => $currency) {
         $sites[$siteid] = $siteid . ' - ' . $currency;
