@@ -77,6 +77,7 @@ $string['privacy:metadata:paygw_mercadopago:timecreated'] = 'Quando o pagamento 
 $string['privacy:metadata:paygw_mercadopago:userid'] = 'Quem pagou.';
 $string['relinkaccount'] = 'Vincular outra conta';
 $string['savebeforelinking'] = 'Salve este gateway primeiro e volte para vincular a conta do Mercado Pago.';
+$string['settingforapp'] = '{$a->setting} · {$a->app}';
 $string['taskreconcile'] = 'Conciliar transações pendentes do Mercado Pago';
 $string['taskrefreshtokens'] = 'Renovar tokens de vendedores do Mercado Pago';
 $string['testmode'] = 'Modo de teste';

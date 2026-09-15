@@ -51,15 +51,30 @@ if ($ADMIN->fulltree) {
     // simplesmente nao mostraria o campo, e o vinculo iria para uma
     // configuracao que ninguem le.
     foreach (application::TYPES as $type) {
+        $rotulo = get_string('apptype_' . $type, 'paygw_mercadopago');
+
+        // O nome da aplicacao entra em CADA rotulo, e nao so no cabecalho.
+        //
+        // Sao tres blocos com os mesmos tres campos: com o rotulo cru, a tela
+        // teria tres "Client ID" indistinguiveis fora do contexto visual - o
+        // que e ruim para quem usa leitor de tela, ambiguo para o behat, e
+        // convida a colar a credencial da aplicacao errada. Errar isso nao da
+        // erro: da OAuth que falha com mensagem generica.
+        $nomear = static fn(string $chave): string => get_string(
+            'settingforapp',
+            'paygw_mercadopago',
+            (object) ['setting' => get_string($chave, 'paygw_mercadopago'), 'app' => $rotulo]
+        );
+
         $settings->add(new admin_setting_heading(
             'paygw_mercadopago/apptype_' . $type,
-            get_string('apptype_' . $type, 'paygw_mercadopago'),
+            $rotulo,
             get_string('apptype_' . $type . '_desc', 'paygw_mercadopago')
         ));
 
         $settings->add(new admin_setting_configtext(
             'paygw_mercadopago/' . application::config_key($type, 'clientid'),
-            get_string('clientid', 'paygw_mercadopago'),
+            $nomear('clientid'),
             get_string('clientid_desc', 'paygw_mercadopago'),
             '',
             PARAM_ALPHANUMEXT
@@ -68,7 +83,7 @@ if ($ADMIN->fulltree) {
         // Configpasswordunmask esconde o valor na tela e no log de alteracoes.
         $settings->add(new admin_setting_configpasswordunmask(
             'paygw_mercadopago/' . application::config_key($type, 'clientsecret'),
-            get_string('clientsecret', 'paygw_mercadopago'),
+            $nomear('clientsecret'),
             get_string('clientsecret_desc', 'paygw_mercadopago'),
             ''
         ));
@@ -79,7 +94,7 @@ if ($ADMIN->fulltree) {
         // que nao entrega - o pior desfecho possivel.
         $settings->add(new admin_setting_configpasswordunmask(
             'paygw_mercadopago/' . application::config_key($type, 'webhooksecret'),
-            get_string('webhooksecret', 'paygw_mercadopago'),
+            $nomear('webhooksecret'),
             get_string('webhooksecret_desc', 'paygw_mercadopago'),
             ''
         ));

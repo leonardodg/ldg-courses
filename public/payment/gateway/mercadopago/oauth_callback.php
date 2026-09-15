@@ -27,6 +27,7 @@
 
 require(__DIR__ . '/../../../config.php');
 
+use paygw_mercadopago\application;
 use paygw_mercadopago\mp_client;
 
 $code = optional_param('code', '', PARAM_RAW_TRIMMED);
@@ -45,12 +46,19 @@ unset($SESSION->paygw_mercadopago_oauth);
 // A ausencia do code_verifier entra na mesma checagem: ou a sessao e de um
 // fluxo iniciado antes do PKCE existir, ou nao veio daqui. Nos dois casos a
 // troca falharia adiante - melhor recusar agora, com mensagem clara.
+// O apptype entra na MESMA checagem, e nao numa validacao a parte: ele decide
+// em que campos o token vai ser gravado. Sessao sem tipo, ou com tipo que o
+// plugin nao conhece, gravaria o vinculo num campo que ninguem le - perda
+// silenciosa, que e o modo de falha caro deste plugin.
 if (
     empty($pending) || empty($state) || !hash_equals($pending->state, $state)
         || empty($pending->codeverifier)
+        || empty($pending->apptype) || !application::is_valid($pending->apptype)
 ) {
     throw new moodle_exception('errorstatemismatch', 'paygw_mercadopago');
 }
+
+$apptype = (string) $pending->apptype;
 
 $account = new \core_payment\account((int) $pending->accountid);
 $context = $account->get_context();
@@ -76,11 +84,29 @@ if ($error !== '' || $code === '') {
 }
 
 $config = get_config('paygw_mercadopago');
+$credentials = application::credentials($apptype);
+if (!$credentials) {
+    // A aplicacao foi despreenchida entre o inicio e a volta.
+    redirect(
+        $returnurl,
+        get_string(
+            'errormissingappconfig',
+            'paygw_mercadopago',
+            get_string('apptype_' . $apptype, 'paygw_mercadopago')
+        ),
+        null,
+        \core\output\notification::NOTIFY_ERROR
+    );
+}
+
 $redirecturi = (new moodle_url('/payment/gateway/mercadopago/oauth_callback.php'))->out(false);
 
+// As credenciais sao as DAQUELA aplicacao. Trocar o codigo com o client_secret
+// de outra devolve erro generico do Mercado Pago, e a causa - o par errado -
+// nao aparece em lugar nenhum da mensagem.
 $token = mp_client::exchange_code(
-    $config->clientid,
-    $config->clientsecret,
+    $credentials->clientid,
+    $credentials->clientsecret,
     $code,
     $redirecturi,
     $pending->codeverifier,
@@ -152,13 +178,17 @@ $currency = mp_client::currency_for_site($siteid);
 // duracao, evita ter que lembrar quando o token foi emitido.
 $expires = time() + (int) ($token['expires_in'] ?? 0);
 
+// Grava SO os campos deste tipo, por cima do que ja existe. Um vendedor pode
+// ter autorizado Preferencias antes e Bricks agora, e sobrescrever o conjunto
+// inteiro apagaria o vinculo anterior sem nenhum aviso - a empresa pararia de
+// vender avulso no instante em que habilitasse a assinatura.
 $gateway->set('config', json_encode(array_merge($existing, [
-    'mpuserid' => (string) ($token['user_id'] ?? ''),
-    'accesstoken' => (string) ($token['access_token'] ?? ''),
-    'refreshtoken' => (string) ($token['refresh_token'] ?? ''),
-    'tokenexpires' => $expires,
-    'siteid' => $siteid,
-    'currency' => $currency,
+    application::token_field($apptype, 'mpuserid') => (string) ($token['user_id'] ?? ''),
+    application::token_field($apptype, 'accesstoken') => (string) ($token['access_token'] ?? ''),
+    application::token_field($apptype, 'refreshtoken') => (string) ($token['refresh_token'] ?? ''),
+    application::token_field($apptype, 'tokenexpires') => $expires,
+    application::token_field($apptype, 'siteid') => $siteid,
+    application::token_field($apptype, 'currency') => $currency,
 ])));
 
 if ($gateway->get('id')) {

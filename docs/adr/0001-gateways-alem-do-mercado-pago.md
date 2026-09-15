@@ -124,3 +124,46 @@ estava registrada como fato, sem evidência de ter sido exercitada. No mesmo dia
 descobriu-se que o tipo de uma conta também estava escrito como fato e nunca
 tinha sido verificado (ver ADR-0010). Afirmação que decide arquitetura precisa
 de uma chamada à API anexada, e não de uma leitura de documentação.
+
+## Correção de 2026-09-15 — a suspeita era boa, e a conclusão sobreviveu
+
+A medição de 08/09 foi feita com a aplicação de **Checkout Transparente**, e
+neste projeto já está registrado que o modelo declarado da aplicação muda o
+comportamento da API em silêncio. A dúvida era legítima: e se o `preapproval`
+honrasse a comissão quando chamado por uma aplicação do tipo **Assinaturas**?
+
+Em 15/09/2026 a pergunta foi refeita com a aplicação do tipo certo
+(`6990306155285574`, conta CNPJ `3675841384`) e contas distintas. Cinco
+formatos, um por vez, com `GET` logo depois:
+
+| Campo enviado | Resposta | Eco no `GET` |
+|---|---|---|
+| `marketplace_fee` na raiz | `201` | nenhum |
+| `application_fee` na raiz | `201` | nenhum |
+| `marketplace` na raiz | `201` | nenhum |
+| `marketplace_fee` em `auto_recurring` | `201` | nenhum |
+| `application_fee` em `auto_recurring` | `201` | nenhum |
+
+O `GET` completo devolve o recurso inteiro e **não há nenhum campo de taxa**. O
+SDK oficial concorda: `Resources/PreApproval.php` e
+`Resources/PreApproval/AutoRecurring.php` não declaram nada do gênero.
+
+**A conclusão deste ADR continua valendo, e agora com a causa certa.** Não era o
+tipo da aplicação: o recurso simplesmente não tem onde guardar comissão. Ids e
+roteiro em [`../data-validation/mercadopago-assinatura.md`](../data-validation/mercadopago-assinatura.md).
+
+Duas coisas mudam, e as duas viraram ADR próprio:
+
+- **o `preapproval` deixa de ser proscrito no `paygw_mercadopago`.** O parágrafo
+  acima dizia que ele "não aparece em linha nenhuma do plugin, e não deve
+  aparecer". Isso valia quando "assinatura" era uma coisa só. Separadas as duas
+  — a mensalidade que a empresa paga à plataforma **não tem terceiro, logo não
+  tem split** —, o `preapproval` é a ferramenta certa para ela. Ver
+  [ADR-0012](0012-duas-assinaturas-e-so-uma-tem-split.md);
+- **a assinatura com comissão passa a sair por `/v1/payments`**, com
+  `application_fee` em cada ciclo sobre um cartão guardado no próprio Mercado
+  Pago. Ver [ADR-0013](0013-uma-aplicacao-por-tipo-de-integracao.md).
+
+Um terceiro caminho foi medido e descartado: `/v1/advanced_payments`, que tem
+`disbursements[]` com `application_fee` por recebedor, responde **403 de
+política** em todos os tokens, teste e produção. Precisa de liberação comercial.

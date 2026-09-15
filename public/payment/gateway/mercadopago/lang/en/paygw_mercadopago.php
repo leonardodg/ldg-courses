@@ -77,6 +77,7 @@ $string['privacy:metadata:paygw_mercadopago:timecreated'] = 'When the payment wa
 $string['privacy:metadata:paygw_mercadopago:userid'] = 'The person who paid.';
 $string['relinkaccount'] = 'Link a different account';
 $string['savebeforelinking'] = 'Save this gateway first, then come back to link the Mercado Pago account.';
+$string['settingforapp'] = '{$a->setting} · {$a->app}';
 $string['taskreconcile'] = 'Reconcile pending Mercado Pago transactions';
 $string['taskrefreshtokens'] = 'Refresh Mercado Pago seller tokens';
 $string['testmode'] = 'Test mode';

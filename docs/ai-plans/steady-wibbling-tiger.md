@@ -21,12 +21,12 @@ offset 0 (stack `ldg-courses`, `https://localhost:8443`).
 | Fase 1 — M1, M2, M7 | **feitas e conclusivas** |
 | Fase 1 — M4 | **parcial**: dois pilares provados, falta a cobrança aprovada |
 | Fase 1 — M3, M5, M6 | **pendentes**: dependem do OAuth no navegador |
-| Fase 2 — documentação | **parcial**: roteiro de medição escrito; faltam ADR-0001, ADR-0012, comparação e CLAUDE.md |
-| Fase 3a — multi-aplicação | **em curso**: `application.php`, `settings.php` e as três `lang/` prontos; **falta a fiação do OAuth por tipo** |
+| Fase 2 — documentação | **quase**: roteiro, ADR-0012, ADR-0013 e a correção datada do ADR-0001 escritos; faltam `comparacao-medida.md` e `CLAUDE.md` |
+| Fase 3a — multi-aplicação | **feita**: `application.php`, `settings.php`, as três `lang/`, OAuth por tipo (`start`, `callback`, `unlink`), tela do gateway e `refresh_tokens` |
 | Fases 3b, 3c, 4, 5 | não começaram |
 
-**Verde neste ponto:** PHPUnit `36/36` (eram 27; 9 novos em
-`tests/application_test.php`), phpcs limpo nos 26 arquivos.
+**Verde neste ponto:** PHPUnit `36/36` (eram 27), phpcs limpo nos 26 arquivos,
+behat `7/7` — 4 sem JS e 3 com Chrome (eram 4 cenários; 3 novos).
 
 ### O que a medição decidiu, e não se re-discute
 
@@ -46,19 +46,25 @@ offset 0 (stack `ldg-courses`, `https://localhost:8443`).
 
 ### Próximo passo exato
 
-Terminar a fiação do OAuth por tipo, que é o que falta da Fase 3a:
+A Fase 3a acabou. O próximo é a **Fase 3b**, na ordem:
 
-| Arquivo | O que falta |
-|---|---|
-| `oauth_start.php` | receber `apptype`, validar por `application::is_valid()`, usar `application::credentials()` e guardar o tipo na sessão ao lado do `state` |
-| `oauth_callback.php` | ler o tipo da sessão, trocar o código com as credenciais **daquela** aplicação e gravar por `application::token_field()` |
-| `oauth_unlink.php` | receber `apptype` e limpar só os campos daquele tipo |
-| `classes/gateway.php` | `describe_oauth_status()` com uma linha por tipo configurado; campos escondidos de **todos** os tipos (campo ausente é apagado ao salvar) |
-| `classes/task/refresh_tokens.php` | iterar `application::TYPES` |
+1. **`db/install.xml` + `db/upgrade.php`** — as colunas novas em
+   `paygw_mercadopago` (`apptype`, `subscriptionid`, `cycles`, `mpcustomerid`,
+   `mpcardid`, `paymentmethod`). Sem guarda `table_exists()` antes de
+   `add_field`, e depois `php admin/cli/check_database_schema.php`.
+2. **`mp_client`** — `PUT` no `request()`, e os métodos novos espelhando o SDK.
+3. **`payment_processor::start_payment()`** — ramo de assinatura por
+   `api::recurrence_for()`, como em `asaas/classes/payment_processor.php:145`.
+4. **`gateway`** — `cancel_recurring`, `pending_invoice`, `refund`,
+   `refund_blocker`.
+5. **`task/charge_due_cycles`** e **`amd/src/bricks_card.js`**.
 
-As strings já existem: `linkaccounttype`, `oauthnotlinked`,
-`errorunknownapptype`, e `errormissingappconfig` **passou a receber `{$a}`** com
-o nome da aplicação — o `oauth_start.php` ainda não passa esse parâmetro.
+Teste vermelho antes de cada um.
+
+**Detalhe que já está no lugar e não se deve desfazer:**
+`payment_processor` lê `config['accesstoken']` sem sufixo, e isso está **certo** —
+é o token de Preferências, que é quem cria a preferência do Checkout Pro. O ramo
+de assinatura vai ler o de Bricks, por `application::token_field()`.
 
 ### Bloqueado em você
 
