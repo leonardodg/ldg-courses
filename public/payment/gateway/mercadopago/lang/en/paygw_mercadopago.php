@@ -52,6 +52,7 @@ $string['clientsecret_desc'] = 'Used only to exchange the authorisation code for
 $string['commonheading'] = 'Settings shared by every application';
 $string['commonheading_desc'] = 'These are properties of the marketplace as a whole, not of one integration. Having them per application would allow exactly the mixes Mercado Pago refuses.';
 $string['errorapi'] = 'Mercado Pago rejected the request. {$a}';
+$string['errorapistep'] = 'Mercado Pago rejected the request at step "{$a->step}". {$a->message}';
 $string['errorauthorisationrefused'] = 'The authorisation was not completed at Mercado Pago. Nothing was linked; you can try again.';
 $string['errorcardtokenmissing'] = 'The card could not be read. Check the details and try again.';
 $string['errorcreatingpreference'] = 'Could not start the payment. Try again in a moment.';

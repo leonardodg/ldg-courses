@@ -52,6 +52,7 @@ $string['clientsecret_desc'] = 'Usado apenas para trocar o código de autorizaç
 $string['commonheading'] = 'Configurações comuns a todas as aplicações';
 $string['commonheading_desc'] = 'São propriedades do marketplace como um todo, e não de uma integração. Tê-las por aplicação permitiria justamente as misturas que o Mercado Pago recusa.';
 $string['errorapi'] = 'O Mercado Pago recusou a requisição. {$a}';
+$string['errorapistep'] = 'O Mercado Pago recusou a requisição no passo "{$a->step}". {$a->message}';
 $string['errorauthorisationrefused'] = 'A autorização não foi concluída no Mercado Pago. Nada foi vinculado; você pode tentar de novo.';
 $string['errorcardtokenmissing'] = 'Não foi possível ler o cartão. Confira os dados e tente de novo.';
 $string['errorcreatingpreference'] = 'Não foi possível iniciar o pagamento. Tente de novo em instantes.';

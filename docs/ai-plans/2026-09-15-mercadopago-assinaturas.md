@@ -1,6 +1,10 @@
 # Mercado Pago: assinatura com split, e uma aplicação por tipo de integração
 
-**Situação:** em execução · **Início:** 2026-09-15
+**Situação:** inacabado · **Início:** 2026-09-15 · **Última sessão:** 2026-09-16
+
+> **Por que inacabado:** tudo foi implementado, testado e documentado, mas a
+> **prova de ponta a ponta com dinheiro real não passou**. O ponto exato de
+> retomada está na seção seguinte.
 
 ---
 
@@ -50,6 +54,26 @@ A compra da assinatura morre com `400: invalid parameter in payment method`,
 com token criado por API.** O que falha é o token vindo do **navegador**, pelos
 Secure Fields.
 
+**O erro agora diz QUAL passo falhou.** Cada uma das quatro chamadas do
+`charge_first_cycle()` roda dentro de `step()`, e a mensagem passa a ser
+*"recusou a requisição no passo X"*. Sem isso, as três primeiras deixam a linha
+do banco **idêntica** quando falham — ela só é gravada depois —, e a mensagem do
+Mercado Pago se repete entre endpoints. Custou três rodadas de prova real.
+
+**Na próxima tentativa, o passo no texto do erro resolve o caso**, porque as
+três primeiras chamadas já foram medidas isoladamente e **todas passam** com o
+token de produção do vendedor:
+
+| Passo | Medido isoladamente |
+|---|---|
+| `customer` | ok — cliente existe e é encontrado |
+| `savecard` | ok — `card_id=9854896121` |
+| `tokenizesaved` | ok — token `active`, sem CVV |
+| `payment` | **não medido com token do navegador** |
+
+Se o passo vier `payment`, a causa está no corpo da cobrança. Se vier
+`savecard`, está no token que o navegador produz.
+
 **Medir a seguir:** comparar os dois tokens. Registrar o token que o
 `subscribe.php` recebe e consultá-lo com `GET /v1/card_tokens/{id}` usando o
 token de acesso do vendedor. Se vier incompleto, a causa está na chamada
@@ -82,12 +106,6 @@ comprar.
   conta; falta papel e ponto de entrada, no `local_marketplace`.
 - **Liberação do `advanced_payments`** no suporte do MP.
 - **Cancelar assinatura**: implementado, sem prova — depende de uma compra.
-
----
-
-> Nome gerado. Renomear para `2026-09-15-mercadopago-assinaturas.md` **só** quando
-> o trabalho entrar no índice de [`README.md`](README.md) — renomear no meio quebra
-> o arquivo que a sessão em curso está escrevendo.
 
 ---
 

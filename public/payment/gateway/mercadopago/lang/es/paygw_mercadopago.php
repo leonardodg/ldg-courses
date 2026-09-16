@@ -52,6 +52,7 @@ $string['clientsecret_desc'] = 'Se usa solo para intercambiar el código de auto
 $string['commonheading'] = 'Ajustes comunes a todas las aplicaciones';
 $string['commonheading_desc'] = 'Son propiedades del marketplace en conjunto, no de una integracion. Tenerlas por aplicacion permitiria justo las mezclas que Mercado Pago rechaza.';
 $string['errorapi'] = 'Mercado Pago rechazó la solicitud. {$a}';
+$string['errorapistep'] = 'Mercado Pago rechazo la solicitud en el paso "{$a->step}". {$a->message}';
 $string['errorauthorisationrefused'] = 'La autorizacion no se completo en Mercado Pago. No se vinculo nada; puede intentarlo de nuevo.';
 $string['errorcardtokenmissing'] = 'No se pudo leer la tarjeta. Revise los datos e intentelo de nuevo.';
 $string['errorcreatingpreference'] = 'No se pudo iniciar el pago. Probá de nuevo en unos instantes.';

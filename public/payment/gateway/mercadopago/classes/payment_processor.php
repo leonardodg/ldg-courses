@@ -212,8 +212,17 @@ class payment_processor {
 
         $user = \core_user::get_user((int) $record->userid, 'id, email, firstname, lastname', MUST_EXIST);
 
-        $customerid = self::ensure_customer($client, $user->email);
-        $card = $client->save_card($customerid, $cardtoken);
+        // CADA CHAMADA DIZ O PROPRIO NOME AO FALHAR.
+        //
+        // Sao quatro no caminho, e o Mercado Pago devolve a mesma mensagem
+        // generica em mais de uma. Sem o nome do passo, "400: invalid parameter
+        // in payment method" nao diz se o problema foi criar o cliente, guardar
+        // o cartao, tokenizar o guardado ou cobrar - e a linha no banco fica
+        // igual nos tres primeiros casos, porque so e gravada depois. Custou
+        // tres rodadas de prova real em 16/09/2026.
+        $customerid = self::step('customer', fn() => self::ensure_customer($client, $user->email));
+
+        $card = self::step('savecard', fn() => $client->save_card($customerid, $cardtoken));
         $cardid = (string) ($card['id'] ?? '');
 
         if ($cardid === '') {
@@ -224,7 +233,10 @@ class payment_processor {
         // caminho que os ciclos seguintes vao usar - exercitar o ciclo 2 ja no
         // ciclo 1 significa que uma falha ali aparece AGORA, com o aluno na
         // tela, e nao daqui a um mes num cron silencioso.
-        $chargetoken = (string) ($client->tokenize_saved_card($cardid)['id'] ?? '');
+        $chargetoken = (string) (self::step(
+            'tokenizesaved',
+            fn() => $client->tokenize_saved_card($cardid)
+        )['id'] ?? '');
 
         $record->mpcustomerid = $customerid;
         // O id do cartao NO MERCADO PAGO. Nao e o cartao: e o endereco dele la.
@@ -233,7 +245,7 @@ class payment_processor {
         $record->timemodified = time();
         $DB->update_record(self::TABLE, $record);
 
-        $payment = $client->create_payment(self::build_cycle_payment_body(
+        $corpo = self::build_cycle_payment_body(
             (float) $record->amount,
             (string) $record->currency,
             (string) $record->externalreference,
@@ -249,7 +261,9 @@ class payment_processor {
             $user->email,
             $CFG->wwwroot,
             self::describe_subscription($record)
-        ));
+        );
+
+        $payment = self::step('payment', fn() => $client->create_payment($corpo));
 
         $record->mppaymentid = (string) ($payment['id'] ?? '');
         $record->status = (string) ($payment['status'] ?? 'pending');
@@ -265,6 +279,31 @@ class payment_processor {
         // portas para a mesma entrega acabariam discordando com o tempo, e a
         // idempotencia ja mora la.
         return self::process_notification($record->mppaymentid);
+    }
+
+    /**
+     * Roda um passo do fluxo dizendo o NOME dele quando falha.
+     *
+     * O Mercado Pago repete a mesma mensagem generica em endpoints diferentes,
+     * e as tres primeiras chamadas deste fluxo deixam a linha do banco
+     * identica quando falham - ela so e gravada depois. O resultado e um erro
+     * que nao localiza nada.
+     *
+     * @param string $step Nome curto do passo
+     * @param callable $call
+     * @return array
+     */
+    protected static function step(string $step, callable $call): array {
+        try {
+            return $call();
+        } catch (moodle_exception $e) {
+            throw new moodle_exception(
+                'errorapistep',
+                'paygw_mercadopago',
+                '',
+                (object) ['step' => $step, 'message' => $e->getMessage()]
+            );
+        }
     }
 
     /**
