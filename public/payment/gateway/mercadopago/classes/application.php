@@ -172,6 +172,28 @@ class application {
     }
 
     /**
+     * A chave publica da aplicacao, usada para MONTAR os campos do cartao.
+     *
+     * Fica separada do par de OAuth de proposito. Ela nao autoriza vendedor
+     * nenhum: serve ao navegador, para tokenizar o cartao. Exigi-la junto do
+     * client_id faria uma aplicacao que so vende avulso - onde nao ha campo de
+     * cartao - parecer mal configurada.
+     *
+     * E ela e PUBLICA no sentido literal: vai para o HTML e qualquer um a le.
+     * Por isso e configtext, e nao configpasswordunmask - esconder na tela de
+     * administracao um valor que aparece no fonte da pagina do aluno seria
+     * teatro.
+     *
+     * @param string $type
+     * @return string Vazio quando nao configurada
+     */
+    public static function public_key(string $type): string {
+        self::guard($type);
+
+        return trim((string) get_config('paygw_mercadopago', self::config_key($type, 'publickey')));
+    }
+
+    /**
      * Os tipos efetivamente configurados, na ordem de TYPES.
      *
      * A ordem sai da constante, e nao da ordem em que o administrador

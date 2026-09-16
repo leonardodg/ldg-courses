@@ -173,6 +173,124 @@ class payment_processor {
     }
 
     /**
+     * Cobra o primeiro ciclo e guarda o cartao para os seguintes.
+     *
+     * E aqui que a assinatura passa a existir de verdade. O que chega e um
+     * card_token - NUNCA um numero de cartao -, e ele e de uso unico: um token
+     * guarda o cartao, outro cobra. Reusar devolve cc_rejected_other_reason, e
+     * o sintoma parece recusa do banco.
+     *
+     * A ordem importa e nao e reversivel: guarda-se o cartao ANTES de cobrar.
+     * Se a cobranca falhar, o cartao guardado permite tentar de novo sem pedir
+     * os dados outra vez; se fosse ao contrario, uma cobranca aprovada com
+     * cartao nao guardado deixaria a assinatura sem como cobrar o ciclo 2 - e o
+     * aluno pagou por uma assinatura que nao renova.
+     *
+     * @param \stdClass $record Linha do ciclo 1, ja criada por start_payment()
+     * @param string $savetoken Token para GUARDAR o cartao
+     * @param string $chargetoken Token para COBRAR, diferente do anterior
+     * @param string $paymentmethod Bandeira, como o Mercado Pago a nomeia
+     * @return bool Verdadeiro quando a entrega aconteceu agora
+     */
+    public static function charge_first_cycle(
+        \stdClass $record,
+        string $savetoken,
+        string $chargetoken,
+        string $paymentmethod
+    ): bool {
+        global $DB, $CFG;
+
+        $config = self::get_gateway_config((int) $record->accountid, (string) $record->apptype);
+        $client = new mp_client($config['accesstoken']);
+
+        $user = \core_user::get_user((int) $record->userid, 'id, email, firstname, lastname', MUST_EXIST);
+
+        $customerid = self::ensure_customer($client, $user->email);
+        $card = $client->save_card($customerid, $savetoken);
+
+        $record->mpcustomerid = $customerid;
+        // O id do cartao NO MERCADO PAGO. Nao e o cartao: e o endereco dele la.
+        $record->mpcardid = (string) ($card['id'] ?? '');
+        $record->paymentmethod = $paymentmethod;
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE, $record);
+
+        $payment = $client->create_payment(self::build_cycle_payment_body(
+            (float) $record->amount,
+            (string) $record->currency,
+            (string) $record->externalreference,
+            (float) $record->feeamount,
+            [
+                'token' => $chargetoken,
+                // SEM customerid, e de proposito: neste ciclo o cartao acabou
+                // de ser tokenizado, e mandar o cliente junto faz o Mercado
+                // Pago RECUSAR a cobranca. Ver build_payer().
+                'paymentmethod' => $paymentmethod,
+            ],
+            $user->email,
+            $CFG->wwwroot,
+            self::describe_subscription($record)
+        ));
+
+        $record->mppaymentid = (string) ($payment['id'] ?? '');
+        $record->status = (string) ($payment['status'] ?? 'pending');
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE, $record);
+
+        if ($record->mppaymentid === '') {
+            throw new moodle_exception('errorinvalidresponse', 'paygw_mercadopago', '', 'payment');
+        }
+
+        // A entrega passa pelo process_notification, e nao acontece aqui.
+        // Cartao aprova na hora, mas o webhook chega de qualquer jeito - duas
+        // portas para a mesma entrega acabariam discordando com o tempo, e a
+        // idempotencia ja mora la.
+        return self::process_notification($record->mppaymentid);
+    }
+
+    /**
+     * O cliente do aluno na conta do vendedor, criando se preciso.
+     *
+     * O Mercado Pago recusa dois clientes com o mesmo e-mail na mesma conta,
+     * entao "criar" e "procurar" sao o mesmo passo visto de dois lados. Tratar
+     * a recusa como erro faria a segunda assinatura do mesmo aluno falhar.
+     *
+     * @param mp_client $client
+     * @param string $email
+     * @return string
+     */
+    protected static function ensure_customer(mp_client $client, string $email): string {
+        try {
+            $customer = $client->create_customer($email);
+            $id = (string) ($customer['id'] ?? '');
+            if ($id !== '') {
+                return $id;
+            }
+        } catch (moodle_exception $e) {
+            // Ja existe, ou a criacao falhou por outro motivo. A busca decide.
+            $e->getMessage();
+        }
+
+        $encontrados = $client->search_customer($email);
+        $id = (string) ($encontrados[0]['id'] ?? '');
+        if ($id === '') {
+            throw new moodle_exception('errorcustomer', 'paygw_mercadopago');
+        }
+
+        return $id;
+    }
+
+    /**
+     * Texto que descreve a assinatura no extrato do aluno.
+     *
+     * @param \stdClass $record
+     * @return string
+     */
+    protected static function describe_subscription(\stdClass $record): string {
+        return get_string('subscriptioncycle', 'paygw_mercadopago', (int) $record->cycles);
+    }
+
+    /**
      * A referencia externa, que e a chave de ligacao da transacao.
      *
      * O ID do pagamento so existe DEPOIS que o aluno paga, entao precisamos de
@@ -237,15 +355,7 @@ class payment_processor {
             'installments' => 1,
             'token' => (string) ($card['token'] ?? ''),
             'payment_method_id' => (string) ($card['paymentmethod'] ?? ''),
-            // O pagador e o CLIENTE do vendedor, e e esse vinculo que alcanca o
-            // cartao guardado: o cartao pertence a um cliente, e o cliente a
-            // conta que recebe. Sem payer.type=customer o Mercado Pago trata
-            // como compra avulsa e o cartao guardado nao entra.
-            'payer' => [
-                'type' => 'customer',
-                'id' => (string) ($card['customerid'] ?? ''),
-                'email' => $payeremail,
-            ],
+            'payer' => self::build_payer($card, $payeremail),
             'external_reference' => $reference,
             'description' => $description . ' (' . $currency . ')',
             // O webhook e a fonte da verdade, e nao a resposta desta chamada: a
@@ -262,6 +372,43 @@ class payment_processor {
         }
 
         return $body;
+    }
+
+    /**
+     * Quem paga, e a forma MUDA conforme o cartao ser novo ou ja guardado.
+     *
+     * Medido em 16/09/2026, mesma conta, mesmo cartao, mesma chamada, so
+     * variando o payer:
+     *
+     *   payer: {email}                      -> approved
+     *   payer: {type: customer, id, email}  -> REJECTED cc_rejected_other_reason
+     *   payer: {id, email}                  -> REJECTED cc_rejected_other_reason
+     *
+     * Ou seja: mandar o cliente junto de um token RECEM-CRIADO faz a cobranca
+     * ser recusada, e a recusa chega disfarcada de problema com o cartao. O
+     * vinculo com o cliente so vale quando o token nasceu de um cartao que ja
+     * pertence a ele.
+     *
+     * Dai as duas formas: o ciclo 1 cobra um cartao novo e manda so o e-mail; o
+     * cartao e guardado no cliente em outra chamada. Do ciclo 2 em diante o
+     * token vem do card_id, e ai o cliente entra.
+     *
+     * @param array $card token, customerid e paymentmethod
+     * @param string $payeremail
+     * @return array
+     */
+    protected static function build_payer(array $card, string $payeremail): array {
+        $customerid = (string) ($card['customerid'] ?? '');
+
+        if ($customerid === '') {
+            return ['email' => $payeremail];
+        }
+
+        return [
+            'type' => 'customer',
+            'id' => $customerid,
+            'email' => $payeremail,
+        ];
     }
 
     /**

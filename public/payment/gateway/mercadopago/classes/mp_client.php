@@ -431,6 +431,34 @@ class mp_client {
     }
 
     /**
+     * Troca dados de cartao por um token - SO no modo de captura nativo.
+     *
+     * E ESTATICA E NAO USA BEARER de proposito, e as duas coisas dizem a mesma
+     * verdade sobre este endpoint: ele autentica pela chave PUBLICA, na query
+     * string, porque foi desenhado para ser chamado do NAVEGADOR.
+     *
+     * Medido em 16/09/2026: chamar /v1/card_tokens com token de ACESSO devolve
+     * 403 unexpected_processing. O Mercado Pago recusa que o servidor tokenize
+     * com credencial de servidor - o caminho normal e o cartao virar token no
+     * navegador, e o numero nunca chegar ate nos.
+     *
+     * Esta funcao existe porque o modo nativo foi pedido, e ela e a fronteira
+     * do escopo PCI DSS do projeto. O numero do cartao passa por aqui e morre
+     * no fim da requisicao: nao vai para o banco, nao vai para a sessao e nao
+     * entra em log. Ver docs/legal/pci-dss-captura-de-cartao.md.
+     *
+     * @param string $publickey Chave publica da aplicacao que vai cobrar
+     * @param array $card Dados do cartao, no formato da API
+     * @return array Inclui id e payment_method_id
+     */
+    public static function tokenize_card(string $publickey, array $card): array {
+        return self::post_json(
+            self::API_BASE . '/v1/card_tokens?public_key=' . rawurlencode($publickey),
+            $card
+        );
+    }
+
+    /**
      * Constroi o transporte HTTP.
      *
      * Existe para ser SOBRESCRITA no teste. Enquanto o curl era instanciado

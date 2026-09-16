@@ -195,4 +195,38 @@ final class application_test extends \advanced_testcase {
         $this->assertSame(application::TYPE_BRICKS, application::type_for_recurring());
         $this->assertNotSame(application::TYPE_SUBSCRIPTIONS, application::type_for_recurring());
     }
+
+    /**
+     * A chave publica e separada do par de OAuth, e a separacao tem razao.
+     *
+     * Ela e necessaria para MONTAR os campos do cartao, e nao para autorizar
+     * vendedor nenhum. Exigi-la junto do client_id faria uma aplicacao que so
+     * vende avulso - onde nao ha campo de cartao - parecer mal configurada.
+     *
+     * @return void
+     */
+    public function test_a_chave_publica_e_opcional_e_separada(): void {
+        $this->resetAfterTest();
+
+        set_config('clientid_bricks', '4205369394622168', 'paygw_mercadopago');
+        set_config('clientsecret_bricks', 'segredo', 'paygw_mercadopago');
+
+        $this->assertNotNull(
+            application::credentials(application::TYPE_BRICKS),
+            'sem chave publica a aplicacao continua configurada para OAuth'
+        );
+        $this->assertSame('', application::public_key(application::TYPE_BRICKS));
+
+        set_config('publickey_bricks', 'TEST-c5e86647', 'paygw_mercadopago');
+        $this->assertSame('TEST-c5e86647', application::public_key(application::TYPE_BRICKS));
+    }
+
+    /**
+     * A chave publica de Preferencias tambem usa o nome legado.
+     *
+     * @return void
+     */
+    public function test_a_chave_publica_de_preferencias_usa_o_nome_legado(): void {
+        $this->assertSame('publickey', application::config_key(application::TYPE_PREFERENCES, 'publickey'));
+    }
 }

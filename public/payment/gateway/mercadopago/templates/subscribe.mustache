@@ -1,0 +1,148 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template paygw_mercadopago/subscribe
+
+    Onde o aluno informa o cartao da assinatura.
+
+    Tres modos, e a diferenca nao e visual: ela decide o caminho que o numero
+    do cartao percorre. No brick e no direto o formulario sai daqui vazio e o
+    JavaScript o preenche; no nativo os campos sao deste arquivo, e e o unico
+    caso em que o numero chega ao nosso servidor.
+
+    Os dois campos escondidos recebem os tokens que o navegador produz. Sao
+    dois porque o token do Mercado Pago e de uso unico - um guarda o cartao, o
+    outro cobra.
+
+    Classes required for JS:
+    * none
+
+    Data attributes required for JS:
+    * data-region=mp-card-fields
+
+    Context variables required for this template:
+    * formaction string
+    * sesskey string
+    * amount string
+    * brick bool
+    * direct bool
+    * native bool
+
+    Example context (json):
+    {
+        "formaction": "https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc",
+        "sesskey": "abc123",
+        "amount": "R$ 49,90",
+        "brick": true,
+        "direct": false,
+        "native": false
+    }
+}}
+<div class="paygw-mercadopago-subscribe">
+    <p class="lead">{{#str}} subscribeamount, paygw_mercadopago, {{amount}} {{/str}}</p>
+
+    <form method="post" action="{{formaction}}" data-region="mp-card-form">
+        <input type="hidden" name="sesskey" value="{{sesskey}}">
+        <input type="hidden" name="savetoken" value="">
+        <input type="hidden" name="chargetoken" value="">
+        <input type="hidden" name="paymentmethod" value="">
+
+        {{#brick}}
+            {{! O Card Payment Brick se monta inteiro aqui dentro. }}
+            <div data-region="mp-card-fields" id="mp-card-brick"></div>
+        {{/brick}}
+
+        {{#direct}}
+            {{!
+                Os campos sao iframes do Mercado Pago, montados pelo SDK, com o
+                nosso CSS em volta. O numero nao entra neste DOM como valor - o
+                que existe aqui sao os recipientes.
+            }}
+            <div data-region="mp-card-fields" class="row g-3">
+                <div class="col-12">
+                    <label for="mp-field-number" class="form-label">{{#str}} cardnumber, paygw_mercadopago {{/str}}</label>
+                    <div id="mp-field-number" class="form-control"></div>
+                </div>
+                <div class="col-6">
+                    <label for="mp-field-expiration" class="form-label">{{#str}} cardexpiration, paygw_mercadopago {{/str}}</label>
+                    <div id="mp-field-expiration" class="form-control"></div>
+                </div>
+                <div class="col-6">
+                    <label for="mp-field-security" class="form-label">{{#str}} cardsecuritycode, paygw_mercadopago {{/str}}</label>
+                    <div id="mp-field-security" class="form-control"></div>
+                </div>
+                <div class="col-12">
+                    <label for="mp-holdername" class="form-label">{{#str}} cardholder, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-holdername" autocomplete="cc-name">
+                </div>
+                <div class="col-12">
+                    <label for="mp-holderdoc" class="form-label">{{#str}} cardholderdoc, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-holderdoc" inputmode="numeric">
+                </div>
+            </div>
+        {{/direct}}
+
+        {{#native}}
+            {{!
+                O UNICO caso em que o numero do cartao e enviado ao nosso
+                servidor. O autocomplete segue o padrao do navegador porque
+                atrapalhar o preenchimento automatico nao protege ninguem e so
+                aumenta erro de digitacao.
+            }}
+            <div class="row g-3">
+                <div class="col-12">
+                    <label for="mp-cardnumber" class="form-label">{{#str}} cardnumber, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-cardnumber" name="cardnumber"
+                        inputmode="numeric" autocomplete="cc-number" required>
+                </div>
+                <div class="col-4">
+                    <label for="mp-expirationmonth" class="form-label">{{#str}} cardmonth, paygw_mercadopago {{/str}}</label>
+                    <input type="number" class="form-control" id="mp-expirationmonth" name="expirationmonth"
+                        min="1" max="12" autocomplete="cc-exp-month" required>
+                </div>
+                <div class="col-4">
+                    <label for="mp-expirationyear" class="form-label">{{#str}} cardyear, paygw_mercadopago {{/str}}</label>
+                    <input type="number" class="form-control" id="mp-expirationyear" name="expirationyear"
+                        min="2026" max="2099" autocomplete="cc-exp-year" required>
+                </div>
+                <div class="col-4">
+                    <label for="mp-securitycode" class="form-label">{{#str}} cardsecuritycode, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-securitycode" name="securitycode"
+                        inputmode="numeric" autocomplete="cc-csc" required>
+                </div>
+                <div class="col-12">
+                    <label for="mp-holdername-native" class="form-label">{{#str}} cardholder, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-holdername-native" name="holdername"
+                        autocomplete="cc-name" required>
+                </div>
+                <div class="col-12">
+                    <label for="mp-holderdoc-native" class="form-label">{{#str}} cardholderdoc, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-holderdoc-native" name="holderdoc"
+                        inputmode="numeric" required>
+                </div>
+            </div>
+        {{/native}}
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary" data-action="mp-pay">
+                {{#str}} subscribeconfirm, paygw_mercadopago {{/str}}
+            </button>
+        </div>
+    </form>
+
+    <p class="text-muted small mt-3">{{#str}} subscribecardnotstored, paygw_mercadopago {{/str}}</p>
+</div>

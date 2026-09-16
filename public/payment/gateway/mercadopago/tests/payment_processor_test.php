@@ -242,16 +242,46 @@ final class payment_processor_test extends \advanced_testcase {
     }
 
     /**
-     * O pagador e o CLIENTE do vendedor, e nao um e-mail solto.
+     * Cartao NOVO cobra so com o e-mail, sem o cliente junto.
      *
-     * E o vinculo que permite cobrar o cartao guardado: o cartao pertence a um
-     * cliente, e o cliente pertence a conta que recebe. Sem o payer.type
-     * customer o Mercado Pago trata como compra avulsa e o cartao guardado nao
-     * e alcancado.
+     * Medido em 16/09/2026, variando apenas o payer na mesma chamada:
+     *
+     *   payer: {email}                      -> approved
+     *   payer: {type: customer, id, email}  -> REJECTED cc_rejected_other_reason
+     *   payer: {id, email}                  -> REJECTED cc_rejected_other_reason
+     *
+     * Mandar o cliente junto de um token recem-criado faz a cobranca ser
+     * RECUSADA, e a recusa chega disfarcada de problema com o cartao - o tipo
+     * de defeito que se descobre com o aluno na tela.
      *
      * @return void
      */
-    public function test_o_pagador_e_o_cliente_guardado_no_gateway(): void {
+    public function test_cartao_novo_cobra_so_com_o_email(): void {
+        $corpo = payment_processor::build_cycle_payment_body(
+            50.0,
+            'BRL',
+            'ref',
+            5.0,
+            ['token' => 'tok', 'paymentmethod' => 'visa'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame(['email' => 'aluno@exemplo.test'], $corpo['payer']);
+        $this->assertArrayNotHasKey('type', $corpo['payer']);
+        $this->assertSame('visa', $corpo['payment_method_id']);
+    }
+
+    /**
+     * Cartao JA GUARDADO cobra com o cliente junto.
+     *
+     * Do ciclo 2 em diante o token nasce do card_id, e ai o vinculo com o
+     * cliente e o que alcanca o cartao guardado.
+     *
+     * @return void
+     */
+    public function test_cartao_guardado_cobra_com_o_cliente(): void {
         $corpo = payment_processor::build_cycle_payment_body(
             50.0,
             'BRL',
@@ -265,7 +295,6 @@ final class payment_processor_test extends \advanced_testcase {
 
         $this->assertSame('customer', $corpo['payer']['type']);
         $this->assertSame('cus_9', $corpo['payer']['id']);
-        $this->assertSame('visa', $corpo['payment_method_id']);
     }
 
     /**

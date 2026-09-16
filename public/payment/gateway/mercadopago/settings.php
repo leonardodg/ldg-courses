@@ -88,6 +88,18 @@ if ($ADMIN->fulltree) {
             ''
         ));
 
+        // Publica no sentido literal: vai para o HTML e qualquer um a le.
+        // Por isso configtext, e nao configpasswordunmask - esconder na tela de
+        // administracao um valor que aparece no fonte da pagina do aluno seria
+        // teatro.
+        $settings->add(new admin_setting_configtext(
+            'paygw_mercadopago/' . application::config_key($type, 'publickey'),
+            $nomear('publickey'),
+            get_string('publickey_desc', 'paygw_mercadopago'),
+            '',
+            PARAM_RAW_TRIMMED
+        ));
+
         // A assinatura secreta e POR APLICACAO, e nao do site: cada uma tem a
         // sua no painel. Uma so para todas faria a validacao do webhook
         // recusar as notificacoes das outras duas, o que aparece como venda
