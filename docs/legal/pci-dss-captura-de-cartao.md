@@ -2,7 +2,7 @@
 
 O `paygw_mercadopago` tem uma configuração — *Onde o cartão é digitado* — que
 decide quem hospeda os três campos do cartão. A página de pagamento é **nossa
-nos dois casos**, com o nosso layout e a nossa marca; o que muda é o caminho que
+nos três modos**, com o nosso layout e a nossa marca; o que muda é o caminho que
 o número do cartão percorre.
 
 Essa escolha **não é técnica**. Ela muda o seu enquadramento no PCI DSS, e com
@@ -86,6 +86,24 @@ de terceiro que injete JavaScript.
 
 ---
 
+## O caminho para habilitar o modo B
+
+Bem mais curto que o do C, e é por isso que ele existe:
+
+1. **Confirmar o SAQ com o adquirente** — A-EP, e não D.
+2. **Montar o inventário de scripts** da página de pagamento e a detecção de
+   alteração (6.4.3 e 11.6.1). **É o item que mais dá trabalho aqui**, e o que
+   mais se esquece: num Moodle, qualquer plugin de terceiro que injete
+   JavaScript naquela página entra na conta.
+3. **Varredura ASV trimestral**, que o A-EP também exige.
+4. **Políticas formais**, em escopo menor que o do D.
+5. **Preencher o SAQ A-EP e assinar o AoC.**
+
+Não há teste de intrusão anual obrigatório, e o escopo de servidores é bem
+menor — o número do cartão nunca chega ao backend, então ele fica fora.
+
+---
+
 ## O caminho para habilitar o modo C
 
 Na ordem, porque cada passo depende do anterior:
@@ -128,7 +146,7 @@ cartão nunca toca o nosso servidor. O C acrescenta apenas a capacidade de o
 Mercado Pago devolve o `card_token_id`, e é com ele que a assinatura é criada.
 
 Enquanto não houver uma necessidade que só o C atenda, ele é custo sem
-contrapartida. A configuração existe porque foi pedida e porque medir os dois
+contrapartida. A configuração existe porque foi pedida e porque medir os três
 caminhos tem valor — **não porque o C seja recomendado**.
 
 ---
