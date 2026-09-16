@@ -59,6 +59,21 @@ Feature: Configuracao do gateway do Mercado Pago
     And the field "Client ID · Subscriptions" matches value "6990306155285574"
     And the field "Client ID · Checkout Bricks" matches value "2598194068751669"
 
+  # Abrir o callback direto e o que qualquer um faz depois de cadastrar o
+  # redirect_uri no painel do Mercado Pago: cola o endereco no navegador para
+  # ver se responde. Ate 15/09/2026 isso devolvia uma EXCECAO dizendo "nao foi
+  # possivel verificar a autorizacao" - a mesma mensagem de quando o state nao
+  # confere, que e suspeita de ataque. Duas causas opostas, um recado so, e um
+  # beco sem saida.
+  #
+  # Este cenario so e possivel porque a resposta virou redirecionamento com
+  # aviso: asserção em pagina de excecao sempre falha no behat, porque o
+  # behat_hooks procura excecoes depois de cada passo.
+  Scenario: Abrir o retorno do OAuth diretamente explica o que aconteceu
+    When I visit "/payment/gateway/mercadopago/oauth_callback.php"
+    Then I should see "There is no authorisation in progress in this browser"
+    And I should not see "The authorisation could not be verified"
+
   # A comissao nao mora neste plugin. O campo existiu, nao era lido por ninguem,
   # e saiu em 08/09/2026 - ver o README do plugin.
   Scenario: A tela da aplicacao nao oferece campo de comissao
