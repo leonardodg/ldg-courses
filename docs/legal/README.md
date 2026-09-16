@@ -5,6 +5,7 @@
 | [`mapa-de-dados-pessoais.md`](mapa-de-dados-pessoais.md) | **interno e técnico**: o que o código coleta, onde guarda, por quanto tempo e quem apaga |
 | [`politica-de-privacidade.md`](politica-de-privacidade.md) | minuta da política pública |
 | [`termos-de-uso.md`](termos-de-uso.md) | minuta dos termos |
+| [`pci-dss-captura-de-cartao.md`](pci-dss-captura-de-cartao.md) | **o que muda ao digitar o cartão na nossa página**: os três enquadramentos, o que o código garante e o que só a empresa pode fazer |
 
 ## As duas minutas não estão prontas para publicar
 

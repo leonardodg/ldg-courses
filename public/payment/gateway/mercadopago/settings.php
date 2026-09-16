@@ -125,6 +125,32 @@ if ($ADMIN->fulltree) {
         $sites
     ));
 
+    // Onde o aluno digita o cartao. A pagina e nossa nos dois casos; o que
+    // muda e quem hospeda os tres campos - e com isso se o projeto entra em
+    // escopo PCI DSS.
+    //
+    // O padrao e o modo que NAO toca no cartao, e isso importa: quem instala o
+    // plugin sem ler a documentacao nao pode acabar com numero de cartao
+    // trafegando pelo proprio servidor sem ter escolhido isso.
+    $settings->add(new admin_setting_configselect(
+        'paygw_mercadopago/cardcapture',
+        get_string('cardcapture', 'paygw_mercadopago'),
+        get_string('cardcapture_desc', 'paygw_mercadopago')
+            . (\paygw_mercadopago\card_capture::native_is_blocked()
+                ? \html_writer::div(
+                    get_string('cardcapturenativeblocked', 'paygw_mercadopago'),
+                    'alert alert-danger mt-2'
+                )
+                : ''),
+        \paygw_mercadopago\card_capture::MODE_BRICK,
+        [
+            \paygw_mercadopago\card_capture::MODE_BRICK =>
+                get_string('cardcapturebrick', 'paygw_mercadopago'),
+            \paygw_mercadopago\card_capture::MODE_NATIVE =>
+                get_string('cardcapturenative', 'paygw_mercadopago'),
+        ]
+    ));
+
     // Vale para o SITE inteiro, e nao por conta, porque o ambiente e uma
     // propriedade do conjunto: comprador, vendedor e aplicacao precisam estar
     // todos do mesmo lado. Uma chave por vendedor permitiria a mistura que o
