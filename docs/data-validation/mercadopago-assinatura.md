@@ -36,13 +36,19 @@ Resultado de 15/09/2026:
 |---|---|---|---|---|
 | Preferências (`2401225442871147`) | `3675841384` | MLB | CNPJ | business |
 | **Assinaturas** (`6990306155285574`) | `3675841384` | MLB | CNPJ | business |
-| **Bricks** (`2598194068751669`) | `3675841384` | MLB | CNPJ | business |
+| **Bricks** (`4205369394622168`) | `3675841384` | MLB | CNPJ | business |
 | Bricks, credencial `TEST-` | `3675841384` | MLB | CNPJ | business |
 | "Assinaturas, credenciais de teste" | **`3672982509`** | MLB | **CPF** | **pessoa física** |
 
 **As três aplicações de produção pertencem à mesma conta CNPJ**, que é o arranjo
 correto: a comissão volta para o dono da **aplicação**, não para quem criou a
 cobrança.
+
+> **A aplicação de Bricks foi trocada em 16/09/2026.** A primeira
+> (`2598194068751669`) foi excluída no painel e substituída por
+> `4205369394622168`, na mesma conta. M1 e M7 foram **refeitos** com a nova e
+> deram o mesmo resultado. Medição feita sobre aplicação excluída não vale nada,
+> e refazer custou dois `curl` — é o tipo de conferência que se paga sozinha.
 
 > **A quinta linha é uma armadilha, e tem nome.** O que o painel entregou como
 > "credenciais de teste" da aplicação de Assinaturas **não são credenciais de
@@ -141,11 +147,12 @@ split **1:N**, com comissão por recebedor.
 
 | Token | Resposta |
 |---|---|
-| Bricks `TEST-` | **403** `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` |
-| Bricks produção | **403** `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` |
+| Bricks `4205369394622168`, produção | **403** `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` |
+| Bricks `4205369394622168`, `TEST-` | **403** `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` |
+| Bricks `2598194068751669` (excluída), produção e teste | **403**, idem |
 | Preferências produção | **403** `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` |
 
-**Teste e produção, nas três aplicações.** Não é limitação de credencial: é
+**Teste e produção, em quatro aplicações.** Não é limitação de credencial: é
 política de conta. O produto precisa ser liberado comercialmente pelo Mercado
 Pago — mesma forma do bloqueio do Pagar.me.
 
@@ -194,6 +201,65 @@ ponto do fluxo.
 **3. Token de cartão é de uso ÚNICO.** Salvar o cartão consome o token; cobrar
 com o mesmo token depois devolve `cc_rejected_other_reason` (pagamento
 `1328177450`). Cada cobrança precisa do seu token.
+
+### 16/09/2026 — com o token de OAuth de verdade
+
+O vendedor autorizou as três aplicações pelo Moodle, com `testmode` ligado. Saiu
+**um token `TEST-` por aplicação, para o mesmo vendedor** (`3672982509`), o que
+já responde M5: cada aplicação exige mesmo o seu OAuth, e a premissa do
+[ADR-0013](../adr/0013-uma-aplicacao-por-tipo-de-integracao.md) está medida.
+
+**4. Tokenizar cartão no servidor é proibido.** `POST /v1/card_tokens` com o
+token de acesso do vendedor devolve **403 `unexpected_processing`**; com a
+`public_key`, devolve token `active`.
+
+Não é obstáculo: é o desenho. O cartão é tokenizado **no navegador**, pelo Card
+Payment Brick, com a chave pública — e por isso o PAN nunca chega ao servidor do
+Moodle. A consequência para o código é direta: **o plugin não deve ter nenhuma
+linha que tokenize cartão**, e se alguém escrever uma, ela vai tomar 403.
+
+**5. O `/v1/payments` HONRA o `application_fee`.** É o contraste que sustenta
+todo o desenho, e agora está medido dos dois lados:
+
+```
+pagamento 1352076103   status: approved
+fee_details:
+  mercadopago_fee    0,15   (collector)
+  application_fee    1,25   (collector)
+```
+
+Enquanto o `preapproval` aceita cinco formatos de campo de taxa e **descarta
+todos**, o pagamento devolve a comissão calculada e atribuída. Um guarda valor, o
+outro não.
+
+> **Isto NÃO é prova de split, e a diferença importa.** O `collector_id` deste
+> pagamento é `3675841384` — o dono da aplicação. Vendedor e marketplace são a
+> mesma conta, exatamente a armadilha que fez o `marketplace_fee` "funcionar" da
+> primeira vez sem transferir centavo nenhum. A guarda do
+> `provar-split-mercadopago.py` recusaria este resultado como prova.
+>
+> O que ele prova é o **mecanismo**: o campo existe, é aceito e é honrado por
+> este endpoint. O que falta é vê-lo atravessar de uma conta para outra.
+
+**6. O sandbox não fecha a travessia entre contas.** Com o vendedor sendo um
+usuário de teste, a cobrança é recusada antes de nascer:
+
+| Token do cartão | Comerciante | Resultado |
+|---|---|---|
+| `public_key` da plataforma (`TEST-`) | vendedor, OAuth `TEST-` | **400** `Invalid users involved` |
+| idem, **sem** `application_fee` | vendedor, OAuth `TEST-` | **400** `Invalid users involved` |
+| `public_key` do vendedor (`APP_USR-`) | vendedor, OAuth `TEST-` | **404** `Card Token not found` |
+| `public_key` da plataforma (`TEST-`) | **a própria plataforma** | **201 approved**, com `application_fee` |
+
+A segunda linha é a que elimina a hipótese fácil: **sem a comissão dá o mesmo
+erro**, então não é o `application_fee` — é a mistura de partes. E a terceira
+mostra a outra ponta da mesma coisa: chave pública de produção não encontra
+token em ambiente de teste.
+
+É a mesma parede já registrada para o Checkout Pro em
+[`mercadopago-split.md`](mercadopago-split.md): **prova de split no Mercado Pago
+é com conta real**. A rodada de 08/09/2026 fez isso com dinheiro de verdade
+(pagamento `178004552586`), e é esse o caminho para fechar o que falta.
 
 ### O que M4 ainda não fecha, e por quê
 

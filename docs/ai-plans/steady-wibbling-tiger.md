@@ -18,9 +18,9 @@ offset 0 (stack `ldg-courses`, `https://localhost:8443`).
 |---|---|
 | Fase 0 — upstream e worktree | **feita**. `dev` mesclado com Moodle **5.2.3** e empurrado; upgrade rodado |
 | Fase 1 — script da bateria | **feita**. `docs/data-validation/scripts/provar-assinatura-mercadopago.py` |
-| Fase 1 — M1, M2, M7 | **feitas e conclusivas** |
-| Fase 1 — M4 | **parcial**: dois pilares provados, falta a cobrança aprovada |
-| Fase 1 — M3, M5, M6 | **pendentes**: dependem do OAuth no navegador |
+| Fase 1 — M1, M2, M5, M7 | **feitas e conclusivas** |
+| Fase 1 — M4 | **quase**: mecanismo provado (`application_fee` honrado em pagamento aprovado); falta a travessia entre contas, que o sandbox não permite |
+| Fase 1 — M3, M6 | **pendentes**: M3 depende de assinatura autorizada; M6 de um evento real chegando |
 | Fase 2 — documentação | **quase**: roteiro, ADR-0012, ADR-0013 e a correção datada do ADR-0001 escritos; faltam `comparacao-medida.md` e `CLAUDE.md` |
 | Fase 3a — multi-aplicação | **feita**: `application.php`, `settings.php`, as três `lang/`, OAuth por tipo (`start`, `callback`, `unlink`), tela do gateway e `refresh_tokens` |
 | Fase 3b — recorrência | **em curso**: esquema pronto e conferido; faltam `mp_client`, `payment_processor`, contrato e a tarefa de ciclo |
@@ -47,7 +47,16 @@ behat `7/7` — 4 sem JS e 3 com Chrome (eram 4 cenários; 3 novos).
 6. **O suporte do MP confirmou a M2** e colocou a escolha em dois caminhos. O
    usuário decidiu em 15/09: **a comissão sai de cada ciclo**, o que confirma o
    Plano B e descarta cobrar do vendedor por fora.
-7. **Risco novo, que nenhuma chamada de API revela**: cobrança disparada pelo
+7. **O `/v1/payments` honra o `application_fee`** — pagamento `1352076103`,
+   `approved`, com `application_fee 1,25` em `fee_details`. É o contraste com o
+   `preapproval`, que descarta. **Não é prova de split**: o `collector_id` é o
+   dono da aplicação. Prova o mecanismo, não a travessia.
+8. **Tokenizar cartão no servidor é 403.** Só com `public_key`, no navegador.
+   O plugin não deve ter linha nenhuma que tokenize — é o Brick que faz.
+9. **O sandbox não fecha a travessia entre contas**: vendedor de teste devolve
+   `Invalid users involved`, com e sem comissão. Mesma parede do Checkout Pro —
+   prova de split no MP é com conta real.
+10. **Risco novo, que nenhuma chamada de API revela**: cobrança disparada pelo
    nosso backend pode ter aprovação pior que a do motor de assinaturas. A prova
    de tokenização sem CVV **não** é prova de aprovação. Vira número a medir em
    produção — e, se for ruim, o caminho de volta é o Asaas.
