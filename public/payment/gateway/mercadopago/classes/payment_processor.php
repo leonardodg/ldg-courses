@@ -220,9 +220,9 @@ class payment_processor {
         // o cartao, tokenizar o guardado ou cobrar - e a linha no banco fica
         // igual nos tres primeiros casos, porque so e gravada depois. Custou
         // tres rodadas de prova real em 16/09/2026.
-        $customerid = self::step('customer', fn() => self::ensure_customer($client, $user->email));
+        $customerid = (string) self::step('customer', fn() => self::ensure_customer($client, $user->email));
 
-        $card = self::step('savecard', fn() => $client->save_card($customerid, $cardtoken));
+        $card = (array) self::step('savecard', fn() => $client->save_card($customerid, $cardtoken));
         $cardid = (string) ($card['id'] ?? '');
 
         if ($cardid === '') {
@@ -233,10 +233,8 @@ class payment_processor {
         // caminho que os ciclos seguintes vao usar - exercitar o ciclo 2 ja no
         // ciclo 1 significa que uma falha ali aparece AGORA, com o aluno na
         // tela, e nao daqui a um mes num cron silencioso.
-        $chargetoken = (string) (self::step(
-            'tokenizesaved',
-            fn() => $client->tokenize_saved_card($cardid)
-        )['id'] ?? '');
+        $novotoken = (array) self::step('tokenizesaved', fn() => $client->tokenize_saved_card($cardid));
+        $chargetoken = (string) ($novotoken['id'] ?? '');
 
         $record->mpcustomerid = $customerid;
         // O id do cartao NO MERCADO PAGO. Nao e o cartao: e o endereco dele la.
@@ -263,7 +261,7 @@ class payment_processor {
             self::describe_subscription($record)
         );
 
-        $payment = self::step('payment', fn() => $client->create_payment($corpo));
+        $payment = (array) self::step('payment', fn() => $client->create_payment($corpo));
 
         $record->mppaymentid = (string) ($payment['id'] ?? '');
         $record->status = (string) ($payment['status'] ?? 'pending');
@@ -289,11 +287,16 @@ class payment_processor {
      * identica quando falham - ela so e gravada depois. O resultado e um erro
      * que nao localiza nada.
      *
+     * O retorno e MIXED, e nao array: os passos devolvem coisas diferentes -
+     * o cliente e uma string com o id, os outros sao a resposta da API. Um
+     * "array" aqui derrubou a primeira tentativa com TypeError antes mesmo de
+     * o Mercado Pago ser chamado.
+     *
      * @param string $step Nome curto do passo
      * @param callable $call
-     * @return array
+     * @return mixed O que o passo devolver
      */
-    protected static function step(string $step, callable $call): array {
+    protected static function step(string $step, callable $call) {
         try {
             return $call();
         } catch (moodle_exception $e) {
