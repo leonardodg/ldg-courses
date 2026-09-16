@@ -231,27 +231,42 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
      * @param {HTMLFormElement} form
      */
     var mountFields = function(mp, form) {
-        var fields = mp.fields;
-
-        fields.create('cardNumber').mount('mp-field-number');
-        fields.create('expirationDate').mount('mp-field-expiration');
-        fields.create('securityCode').mount('mp-field-security');
+        try {
+            mp.fields.create('cardNumber').mount('mp-field-number');
+            mp.fields.create('expirationDate').mount('mp-field-expiration');
+            mp.fields.create('securityCode').mount('mp-field-security');
+        } catch (error) {
+            fail(form, error);
+            return;
+        }
 
         form.addEventListener('submit', function(event) {
             event.preventDefault();
-            setBusy(form, true);
 
             var holder = form.querySelector('#mp-holdername');
             var doc = form.querySelector('#mp-holderdoc');
+            var nome = holder ? holder.value.trim() : '';
+            var documento = doc ? doc.value.replace(/\D/g, '') : '';
 
-            var data = {
-                cardholderName: holder ? holder.value : '',
+            // Validado AQUI porque o erro do Mercado Pago para nome vazio nao
+            // diz que e o nome: ele volta como falha generica de tokenizacao,
+            // e o aluno fica tentando trocar de cartao.
+            if (nome === '' || documento === '') {
+                fail(form, new Error('Informe o nome impresso no cartao e o CPF do titular'));
+                return;
+            }
+
+            setBusy(form, true);
+
+            mp.createCardToken({
+                cardholderName: nome,
                 identificationType: 'CPF',
-                identificationNumber: doc ? doc.value : ''
-            };
-
-            mp.createCardToken(data)
+                identificationNumber: documento
+            })
                 .then(function(token) {
+                    if (!token || !token.id) {
+                        throw new Error('O Mercado Pago nao devolveu token para este cartao');
+                    }
                     submitWith(form, token.id, '');
                     return token;
                 })

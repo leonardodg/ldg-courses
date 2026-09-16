@@ -630,4 +630,53 @@ final class payment_processor_test extends \advanced_testcase {
             'cada ciclo precisa da propria referencia, senao o webhook nao sabe qual linha e'
         );
     }
+
+    /**
+     * Sem bandeira conhecida, o campo NAO vai vazio - ele nao vai.
+     *
+     * Medido em 16/09/2026, na primeira compra real:
+     *
+     *   payment_method_id ausente -> approved, e o MP preenche "master" sozinho
+     *   payment_method_id = ""    -> 400 Invalid payment_method_id
+     *
+     * O token de cartao NAO devolve a bandeira - o campo volta nulo -, entao
+     * mandar o que se tem era garantia de recusa. E a mesma regra do
+     * application_fee: ausente e diferente de vazio.
+     *
+     * @return void
+     */
+    public function test_sem_bandeira_o_campo_nao_vai_no_corpo(): void {
+        $corpo = payment_processor::build_cycle_payment_body(
+            5.0,
+            'BRL',
+            'ref',
+            4.0,
+            ['token' => 'tok', 'paymentmethod' => ''],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertArrayNotHasKey('payment_method_id', $corpo);
+    }
+
+    /**
+     * Com bandeira conhecida, ela vai.
+     *
+     * @return void
+     */
+    public function test_com_bandeira_conhecida_o_campo_vai(): void {
+        $corpo = payment_processor::build_cycle_payment_body(
+            5.0,
+            'BRL',
+            'ref',
+            4.0,
+            ['token' => 'tok', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame('master', $corpo['payment_method_id']);
+    }
 }

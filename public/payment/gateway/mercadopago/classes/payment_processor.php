@@ -373,7 +373,6 @@ class payment_processor {
             // o aluno passa a dever mais do que assinou.
             'installments' => 1,
             'token' => (string) ($card['token'] ?? ''),
-            'payment_method_id' => (string) ($card['paymentmethod'] ?? ''),
             'payer' => self::build_payer($card, $payeremail),
             'external_reference' => $reference,
             'description' => $description . ' (' . $currency . ')',
@@ -388,6 +387,17 @@ class payment_processor {
         // alguma.
         if ($fee > 0) {
             $body['application_fee'] = $fee;
+        }
+
+        // A bandeira segue a MESMA regra, e por uma razao medida: o token de
+        // cartao NAO devolve payment_method_id - o campo volta nulo. Mandar o
+        // que se tem, que e vazio, devolve 400 Invalid payment_method_id;
+        // omitir faz o Mercado Pago inferir do proprio token e aprovar.
+        //
+        // Medido em 16/09/2026, na primeira compra real desta rodada.
+        $paymentmethod = (string) ($card['paymentmethod'] ?? '');
+        if ($paymentmethod !== '') {
+            $body['payment_method_id'] = $paymentmethod;
         }
 
         return $body;

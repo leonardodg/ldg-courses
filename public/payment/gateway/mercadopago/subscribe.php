@@ -121,6 +121,22 @@ if (data_submitted() && confirm_sesskey()) {
 
 echo $OUTPUT->header();
 
+// O aluno precisa saber o que esta assinando ANTES de digitar o cartao: de
+// quanto em quanto tempo sera cobrado, e quantas vezes. Uma tela que so diz o
+// valor esconde justamente o que diferencia assinatura de compra avulsa.
+$recorrencia = class_exists('\local_marketplace\api')
+    ? \local_marketplace\api::recurrence_for($record->component, (int) $record->itemid)
+    : null;
+
+$periodo = '';
+$ciclos = '';
+if ($recorrencia) {
+    $periodo = get_string('subscribeevery', 'paygw_mercadopago', (int) $recorrencia->days);
+    $ciclos = (int) $recorrencia->maxcycles > 0
+        ? get_string('subscribecycles', 'paygw_mercadopago', (int) $recorrencia->maxcycles)
+        : get_string('subscribeuntilcancelled', 'paygw_mercadopago');
+}
+
 echo $OUTPUT->render_from_template('paygw_mercadopago/subscribe', [
     'formaction' => $url->out(false),
     'sesskey' => sesskey(),
@@ -128,6 +144,9 @@ echo $OUTPUT->render_from_template('paygw_mercadopago/subscribe', [
         (float) $record->amount,
         (string) $record->currency
     ),
+    'periodo' => $periodo,
+    'ciclos' => $ciclos,
+    'cancelurl' => (new moodle_url('/local/marketplace/mysubscriptions.php'))->out(false),
     'brick' => $modo === card_capture::MODE_BRICK,
     'direct' => $modo === card_capture::MODE_DIRECT,
     'native' => $modo === card_capture::MODE_NATIVE,

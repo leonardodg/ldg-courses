@@ -43,6 +43,9 @@
     * formaction string
     * sesskey string
     * amount string
+    * periodo string
+    * ciclos string
+    * cancelurl string
     * brick bool
     * direct bool
     * native bool
@@ -52,6 +55,9 @@
         "formaction": "https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc",
         "sesskey": "abc123",
         "amount": "R$ 49,90",
+        "periodo": "Cobranca a cada 30 dias.",
+        "ciclos": "Ate voce cancelar.",
+        "cancelurl": "https://exemplo.test/local/marketplace/mysubscriptions.php",
         "brick": true,
         "direct": false,
         "native": false
@@ -59,6 +65,15 @@
 }}
 <div class="paygw-mercadopago-subscribe">
     <p class="lead">{{#str}} subscribeamount, paygw_mercadopago, {{amount}} {{/str}}</p>
+
+    {{#periodo}}
+        <ul class="list-unstyled text-muted small">
+            <li>{{periodo}}</li>
+            <li>{{ciclos}}</li>
+            <li>{{#str}} subscribecardonly, paygw_mercadopago {{/str}}</li>
+            <li><a href="{{cancelurl}}">{{#str}} subscribewheretocancel, paygw_mercadopago {{/str}}</a></li>
+        </ul>
+    {{/periodo}}
 
     {{#brick}}
         {{!
