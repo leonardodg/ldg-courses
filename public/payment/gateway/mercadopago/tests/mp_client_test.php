@@ -386,4 +386,92 @@ final class mp_client_test extends \advanced_testcase {
 
         $this->assertSame([], $client->search_by_reference('mdl-1-2-abc'));
     }
+
+    /**
+     * A assinatura nasce num POST /preapproval.
+     *
+     * @return void
+     */
+    public function test_a_assinatura_e_criada_no_endpoint_de_preapproval(): void {
+        fake_mp_client::$nextresponse = ['id' => 'abc123', 'status' => 'pending'];
+
+        $resposta = (new fake_mp_client('token'))->create_preapproval(['reason' => 'Curso']);
+
+        $this->assertSame('abc123', $resposta['id']);
+        $this->assertSame('POST', fake_mp_client::$calls[0][0]);
+        $this->assertStringEndsWith('/preapproval', fake_mp_client::$calls[0][1]);
+        $this->assertSame('Curso', fake_mp_client::$lastbody['reason']);
+    }
+
+    /**
+     * Cancelar e pausar a assinatura sao PUT, e nao POST.
+     *
+     * O mp_client so sabia GET e POST. Mandar POST no /preapproval/{id} cria
+     * outra assinatura em vez de alterar a existente - e o aluno passaria a ser
+     * cobrado duas vezes, sem erro nenhum na tela.
+     *
+     * @return void
+     */
+    public function test_alterar_assinatura_usa_put(): void {
+        fake_mp_client::$nextresponse = ['id' => 'abc123', 'status' => 'cancelled'];
+
+        (new fake_mp_client('token'))->cancel_preapproval('abc123');
+
+        $this->assertSame('PUT', fake_mp_client::$calls[0][0]);
+        $this->assertStringEndsWith('/preapproval/abc123', fake_mp_client::$calls[0][1]);
+        $this->assertSame('cancelled', fake_mp_client::$lastbody['status']);
+    }
+
+    /**
+     * O id da assinatura e escapado na URL.
+     *
+     * @return void
+     */
+    public function test_o_id_da_assinatura_e_escapado(): void {
+        fake_mp_client::$nextresponse = ['id' => 'x'];
+
+        (new fake_mp_client('token'))->get_preapproval('a b/c');
+
+        $this->assertStringEndsWith('/preapproval/a%20b%2Fc', fake_mp_client::$calls[0][1]);
+    }
+
+    /**
+     * A cobranca do ciclo leva o application_fee.
+     *
+     * E o unico numero deste plugin que move dinheiro na assinatura, e a razao
+     * de make_curl() ser sobrescrevivel: sem esta costura ele so seria
+     * exercitavel batendo na API de verdade.
+     *
+     * Medido em 16/09/2026: diferente do preapproval, que aceita cinco formatos
+     * de campo de taxa e descarta todos, o /v1/payments HONRA este campo - ele
+     * volta em fee_details. Ver docs/data-validation/mercadopago-assinatura.md.
+     *
+     * @return void
+     */
+    public function test_a_cobranca_do_ciclo_leva_a_comissao(): void {
+        fake_mp_client::$nextresponse = ['id' => 1352076103, 'status' => 'approved'];
+
+        (new fake_mp_client('token'))->create_payment([
+            'transaction_amount' => 5.0,
+            'application_fee' => 1.25,
+            'token' => 'tok',
+        ]);
+
+        $this->assertStringEndsWith('/v1/payments', fake_mp_client::$calls[0][1]);
+        $this->assertEquals(1.25, fake_mp_client::$lastbody['application_fee']);
+    }
+
+    /**
+     * O cliente e o cartao guardado vivem no Mercado Pago.
+     *
+     * @return void
+     */
+    public function test_o_cartao_e_guardado_na_conta_do_vendedor(): void {
+        fake_mp_client::$nextresponse = ['id' => '1789552967889', 'last_four_digits' => '3311'];
+
+        (new fake_mp_client('token'))->save_card('3694589152-7R6', 'cardtoken');
+
+        $this->assertStringEndsWith('/v1/customers/3694589152-7R6/cards', fake_mp_client::$calls[0][1]);
+        $this->assertSame('cardtoken', fake_mp_client::$lastbody['token']);
+    }
 }

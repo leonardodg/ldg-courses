@@ -303,6 +303,134 @@ class mp_client {
     }
 
     /**
+     * Cria a assinatura no Mercado Pago.
+     *
+     * Espelha PreApprovalClient::create() do SDK oficial (lido em 16/09/2026).
+     *
+     * NAO MANDE CAMPO DE COMISSAO AQUI. Medido em 15/09/2026, com a aplicacao
+     * do tipo Assinaturas e contas distintas: marketplace_fee, application_fee
+     * e marketplace, na raiz e dentro de auto_recurring, sao aceitos com 201 e
+     * DESCARTADOS - nenhum volta no GET seguinte. O recurso nao tem onde
+     * guardar comissao. Ver docs/adr/0012 e o roteiro de medicao.
+     *
+     * Serve a assinatura SEM split: a mensalidade que a empresa paga a
+     * plataforma, onde nao ha terceiro e portanto nao ha comissao a reter.
+     *
+     * @param array $body Corpo da assinatura
+     * @return array
+     */
+    public function create_preapproval(array $body): array {
+        return $this->request('POST', '/preapproval', $body);
+    }
+
+    /**
+     * Consulta uma assinatura.
+     *
+     * @param string $id
+     * @return array
+     */
+    public function get_preapproval(string $id): array {
+        return $this->request('GET', '/preapproval/' . rawurlencode($id));
+    }
+
+    /**
+     * Altera uma assinatura - e o verbo e PUT.
+     *
+     * Espelha PreApprovalClient::update(), que e PUT /preapproval/{id}. Mandar
+     * POST no mesmo caminho CRIA outra assinatura em vez de alterar a que
+     * existe, e o aluno passaria a ser cobrado duas vezes sem erro nenhum na
+     * tela. Foi por isso que o request() ganhou PUT.
+     *
+     * @param string $id
+     * @param array $body
+     * @return array
+     */
+    public function update_preapproval(string $id, array $body): array {
+        return $this->request('PUT', '/preapproval/' . rawurlencode($id), $body);
+    }
+
+    /**
+     * Para de cobrar uma assinatura.
+     *
+     * @param string $id
+     * @return array
+     */
+    public function cancel_preapproval(string $id): array {
+        return $this->update_preapproval($id, ['status' => 'cancelled']);
+    }
+
+    /**
+     * Cria o cliente do aluno na conta do VENDEDOR.
+     *
+     * O cartao guardado pertence a um cliente, e o cliente pertence a conta que
+     * vai receber - por isso esta chamada usa o token do vendedor, e nao o da
+     * plataforma.
+     *
+     * @param string $email
+     * @param array $extra Campos opcionais, como first_name
+     * @return array
+     */
+    public function create_customer(string $email, array $extra = []): array {
+        return $this->request('POST', '/v1/customers', array_merge($extra, ['email' => $email]));
+    }
+
+    /**
+     * Procura o cliente pelo e-mail.
+     *
+     * O Mercado Pago recusa criar dois clientes com o mesmo e-mail na mesma
+     * conta, entao o fluxo e sempre "tenta criar, e se ja existir, procura".
+     *
+     * @param string $email
+     * @return array Lista de clientes, vazia quando nao ha
+     */
+    public function search_customer(string $email): array {
+        $resposta = $this->request('GET', '/v1/customers/search?email=' . rawurlencode($email));
+
+        return $resposta['results'] ?? [];
+    }
+
+    /**
+     * Guarda um cartao no cliente - NO MERCADO PAGO.
+     *
+     * O que entra aqui e um card_token, e nao o numero do cartao. A diferenca
+     * nao e de estilo: medido em 16/09/2026, POST /v1/card_tokens com token de
+     * ACESSO devolve 403 unexpected_processing; so a public_key tokeniza. Ou
+     * seja, o Mercado Pago recusa que o servidor tokenize com a credencial de
+     * servidor - o token nasce no navegador, e o numero do cartao nao passa por
+     * aqui.
+     *
+     * @param string $customerid
+     * @param string $cardtoken
+     * @return array Inclui id e last_four_digits
+     */
+    public function save_card(string $customerid, string $cardtoken): array {
+        return $this->request(
+            'POST',
+            '/v1/customers/' . rawurlencode($customerid) . '/cards',
+            ['token' => $cardtoken]
+        );
+    }
+
+    /**
+     * Cria um pagamento avulso - e e aqui que a comissao funciona.
+     *
+     * Espelha PaymentClient::create(). O campo e application_fee, e o SDK o
+     * documenta como "fee charged by the marketplace to the seller on this
+     * payment".
+     *
+     * Medido em 16/09/2026, pagamento 1352076103: aprovado, com
+     * application_fee 1,25 em fee_details ao lado do mercadopago_fee. E o
+     * contraste que sustenta o desenho - o preapproval aceita o mesmo campo e
+     * descarta; este endpoint o honra.
+     *
+     * @param array $body Corpo do pagamento
+     * @return array
+     */
+    public function create_payment(array $body): array {
+        return $this->request('POST', '/v1/payments', $body);
+    }
+
+    /**
      * Constroi o transporte HTTP.
      *
      * Existe para ser SOBRESCRITA no teste. Enquanto o curl era instanciado
@@ -345,11 +473,15 @@ class mp_client {
         ];
 
         $url = self::API_BASE . $path;
-        if ($method === 'GET') {
-            $response = $curl->get($url, [], $options);
-        } else {
-            $response = $curl->post($url, json_encode($body), $options);
-        }
+
+        // O put() do curl do Moodle so trata upload de arquivo quando recebe
+        // ['file' => ...]; com uma string ele define CUSTOMREQUEST=PUT e manda
+        // o corpo em POSTFIELDS, que e exatamente o que a API espera.
+        $response = match ($method) {
+            'GET' => $curl->get($url, [], $options),
+            'PUT' => $curl->put($url, json_encode($body), $options),
+            default => $curl->post($url, json_encode($body), $options),
+        };
 
         return self::decode($curl, $response, $url);
     }

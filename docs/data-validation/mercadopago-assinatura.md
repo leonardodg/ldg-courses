@@ -261,6 +261,39 @@ token em ambiente de teste.
 é com conta real**. A rodada de 08/09/2026 fez isso com dinheiro de verdade
 (pagamento `178004552586`), e é esse o caminho para fechar o que falta.
 
+### 16/09/2026 — a assinatura pode nascer JÁ com o cartão
+
+Pergunta levantada pelo usuário: e se a página de pagamento fosse nossa, com os
+dados do cartão indo daqui para o Mercado Pago, e a assinatura nascendo pronta
+para cobrar sozinha?
+
+**A parte que funciona.** `POST /preapproval` aceita `card_token_id`, e com ele o
+aluno não precisa ir à página do Mercado Pago. Mas há uma condição, e ela custou
+três tentativas para aparecer:
+
+| Public key do token | Token da chamada | Resultado |
+|---|---|---|
+| — (sem cartão) | Bricks | **201**, assinatura `pending` |
+| **Bricks** | Bricks | **400** `Resource not found` |
+| **Bricks** | Bricks, `status: authorized` | **400** `Resource not found` |
+| **Assinaturas** | Assinaturas | **400** `Unsupported_credit_card_for_recurring_payment` |
+
+A quarta linha é a que responde: **o erro mudou de natureza**. Deixou de ser
+"não encontrei o token" e passou a ser "este cartão não serve para recorrência"
+— ou seja, o token **foi encontrado**. É a mesma armadilha de sempre, numa
+roupa nova: **o token do cartão precisa nascer da `public_key` da MESMA
+aplicação** que vai criar a assinatura. Misturar aplicações devolve `Resource
+not found`, que parece defeito do token e é desencontro de escopo.
+
+(O `Unsupported_credit_card_for_recurring_payment` restante é esperado: cartão
+de teste com credencial de produção.)
+
+**A parte que NÃO muda, e é a que importa.** Esta mesma chamada levou
+`marketplace_fee` **e** `application_fee`. A assinatura continua sem campo de
+taxa: de onde vem o cartão não tem relação nenhuma com o split. São perguntas
+independentes, e confundi-las levaria a construir a página inteira para
+descobrir no fim que a comissão continua não saindo.
+
 ### O que M4 ainda não fecha, e por quê
 
 A cobrança com o token sem CVV **não foi aprovada nesta rodada**, e o motivo é
