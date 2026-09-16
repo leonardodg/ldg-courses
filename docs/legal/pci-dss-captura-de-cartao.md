@@ -24,10 +24,20 @@ incidente. Este documento existe para que a decisão seja tomada sabendo o preç
 | **B** | formulário nosso, JS envia direto ao MP | **não**, mas o nosso JS monta o campo | **SAQ A-EP** | ~150 perguntas |
 | **C** | formulário nosso, backend nosso envia ao MP | **sim** | **SAQ D** | 300+ perguntas |
 
-**O plugin implementa hoje A e C**, que são os dois extremos — foi o que se
-pediu. O **B existe e é o meio-termo honesto**: dá controle total do HTML sem
-que o número do cartão toque o servidor. Se o motivo de querer o C é
-aparência, o B entrega a mesma aparência por uma fração do custo.
+**Os três estão implementados**, e a configuração *Onde o cartão é digitado* os
+apresenta **nessa ordem** — quem desce a lista está escolhendo mais exposição a
+cada linha. O rótulo de cada opção traz o SAQ correspondente, porque a escolha é
+feita naquela tela e o custo precisa estar visível ali, não num documento que
+ninguém abre na hora.
+
+**O B é o meio-termo honesto.** Dá controle total do HTML e do CSS sem que o
+número do cartão toque o servidor. Se o motivo de querer o C é aparência, o B
+entrega a mesma aparência por uma fração do custo.
+
+> **O B não é "quase o A".** No modo direto o número **passa pelo nosso DOM**,
+> e é isso que traz as exigências 6.4.3 e 11.6.1 para cima de nós: todo script
+> carregado naquela página precisa de inventário e de controle de integridade.
+> A diferença para o C é grande; a diferença para o A também.
 
 ---
 
@@ -37,8 +47,10 @@ aparência, o B entrega a mesma aparência por uma fração do custo.
 
 - o padrão é o modo A, para que quem instala sem ler isto não acabe em escopo
   sem ter escolhido;
-- o modo C **é ignorado sem HTTPS** — o código cai no modo A sozinho, e a tela
-  diz por quê. Não é aviso: é recusa. `card_capture::current()`;
+- **B e C são ignorados sem HTTPS** — o código cai no modo A sozinho, e a tela
+  diz por quê. Não é aviso: é recusa (`card_capture::current()`). Vale para o B
+  também, e a razão merece ser dita: o PAN não passar pelo nosso backend **não
+  protege de nada** se a página que o coleta pode ser reescrita em trânsito;
 - a tabela do gateway **não tem coluna capaz de guardar dado de cartão**, e o
   teste lê o texto do `install.xml` para impedir que alguém acrescente uma
   amanhã (`card_capture_test::test_nao_ha_coluna_capaz_de_guardar_cartao`);

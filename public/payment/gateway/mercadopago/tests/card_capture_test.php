@@ -87,7 +87,75 @@ final class card_capture_test extends \advanced_testcase {
             card_capture::current(),
             'sem HTTPS o modo nativo nao pode valer, mesmo configurado'
         );
-        $this->assertFalse(card_capture::native_is_allowed());
+        $this->assertFalse(card_capture::mode_is_allowed(card_capture::MODE_NATIVE));
+    }
+
+    /**
+     * Sao TRES modos, e a ordem da lista e a da exposicao crescente.
+     *
+     * Nao e estetica: a tela apresenta nesta ordem, e quem escolhe desce a
+     * lista sabendo que esta escolhendo mais risco a cada linha.
+     *
+     * @return void
+     */
+    public function test_os_modos_estao_em_ordem_de_exposicao(): void {
+        $this->assertSame(
+            ['brick', 'direct', 'native'],
+            card_capture::MODES
+        );
+    }
+
+    /**
+     * Cada modo declara em que enquadramento do PCI DSS ele coloca o projeto.
+     *
+     * O numero vive no codigo, e nao so na documentacao, porque e ele que a
+     * tela mostra ao lado da opcao. Documentacao que o administrador nao le na
+     * hora de escolher nao protege ninguem.
+     *
+     * @return void
+     */
+    public function test_cada_modo_declara_o_proprio_enquadramento(): void {
+        $this->assertSame('A', card_capture::scope_of(card_capture::MODE_BRICK));
+        $this->assertSame('A-EP', card_capture::scope_of(card_capture::MODE_DIRECT));
+        $this->assertSame('D', card_capture::scope_of(card_capture::MODE_NATIVE));
+    }
+
+    /**
+     * O meio-termo tambem exige HTTPS.
+     *
+     * No modo direto o numero do cartao nao toca o nosso servidor, mas sai do
+     * navegador do aluno a partir de uma pagina NOSSA. Sem TLS, qualquer um no
+     * caminho reescreve o JavaScript daquela pagina e passa a receber o cartao
+     * antes do Mercado Pago - o PAN nao passar pelo nosso backend nao protege
+     * de nada nesse cenario.
+     *
+     * @return void
+     */
+    public function test_o_modo_direto_tambem_e_ignorado_sem_https(): void {
+        $this->resetAfterTest();
+
+        set_config('cardcapture', card_capture::MODE_DIRECT, 'paygw_mercadopago');
+
+        $this->set_https(true);
+        $this->assertSame(card_capture::MODE_DIRECT, card_capture::current());
+
+        $this->set_https(false);
+        $this->assertSame(
+            card_capture::MODE_BRICK,
+            card_capture::current(),
+            'sem TLS o JavaScript da pagina pode ser reescrito no caminho'
+        );
+    }
+
+    /**
+     * So o modo brick dispensa HTTPS, porque e o unico que nao expoe nada.
+     *
+     * @return void
+     */
+    public function test_so_o_brick_vale_sem_https(): void {
+        $this->assertFalse(card_capture::requires_https(card_capture::MODE_BRICK));
+        $this->assertTrue(card_capture::requires_https(card_capture::MODE_DIRECT));
+        $this->assertTrue(card_capture::requires_https(card_capture::MODE_NATIVE));
     }
 
     /**

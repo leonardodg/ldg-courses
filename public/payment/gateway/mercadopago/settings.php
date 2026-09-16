@@ -125,30 +125,36 @@ if ($ADMIN->fulltree) {
         $sites
     ));
 
-    // Onde o aluno digita o cartao. A pagina e nossa nos dois casos; o que
-    // muda e quem hospeda os tres campos - e com isso se o projeto entra em
-    // escopo PCI DSS.
+    // Onde o aluno digita o cartao. A pagina e nossa nos TRES modos; o que
+    // muda e o caminho que o numero percorre, e com ele o enquadramento do
+    // projeto no PCI DSS.
     //
     // O padrao e o modo que NAO toca no cartao, e isso importa: quem instala o
-    // plugin sem ler a documentacao nao pode acabar com numero de cartao
-    // trafegando pelo proprio servidor sem ter escolhido isso.
+    // plugin sem ler a documentacao nao pode acabar em escopo sem ter
+    // escolhido isso.
+    //
+    // Gerado do proprio conjunto, e com o enquadramento PCI no rotulo: a
+    // escolha e feita nesta tela, e o custo dela precisa estar visivel aqui, e
+    // nao num documento que ninguem abre na hora de escolher.
+    $modoscartao = [];
+    foreach (\paygw_mercadopago\card_capture::MODES as $modo) {
+        $modoscartao[$modo] = get_string('cardcapture' . $modo, 'paygw_mercadopago', (object) [
+            'scope' => \paygw_mercadopago\card_capture::scope_of($modo),
+        ]);
+    }
+
     $settings->add(new admin_setting_configselect(
         'paygw_mercadopago/cardcapture',
         get_string('cardcapture', 'paygw_mercadopago'),
         get_string('cardcapture_desc', 'paygw_mercadopago')
-            . (\paygw_mercadopago\card_capture::native_is_blocked()
+            . (\paygw_mercadopago\card_capture::is_blocked()
                 ? \html_writer::div(
-                    get_string('cardcapturenativeblocked', 'paygw_mercadopago'),
+                    get_string('cardcaptureblocked', 'paygw_mercadopago'),
                     'alert alert-danger mt-2'
                 )
                 : ''),
         \paygw_mercadopago\card_capture::MODE_BRICK,
-        [
-            \paygw_mercadopago\card_capture::MODE_BRICK =>
-                get_string('cardcapturebrick', 'paygw_mercadopago'),
-            \paygw_mercadopago\card_capture::MODE_NATIVE =>
-                get_string('cardcapturenative', 'paygw_mercadopago'),
-        ]
+        $modoscartao
     ));
 
     // Vale para o SITE inteiro, e nao por conta, porque o ambiente e uma
