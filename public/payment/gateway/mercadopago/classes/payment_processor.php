@@ -31,13 +31,22 @@ class payment_processor {
     const TABLE = 'paygw_mercadopago';
 
     /**
-     * Cria a preferencia e devolve para onde mandar o aluno.
+     * Abre a cobranca e devolve para onde mandar o aluno.
+     *
+     * Sao dois destinos, e eles nao sao variacao do mesmo: dependem de o item
+     * ser assinatura ou venda avulsa.
+     *
+     *   AVULSA     - cria a preferencia e devolve o init_point do Checkout Pro.
+     *                O aluno sai do site e paga no Mercado Pago.
+     *   ASSINATURA - devolve uma pagina NOSSA. Nao ha o que criar no Mercado
+     *                Pago ainda: um ciclo so pode ser cobrado com um cartao
+     *                guardado, e o cartao so vira token no navegador do aluno.
      *
      * @param string $component
      * @param string $paymentarea
      * @param int $itemid
      * @param int $userid
-     * @return string init_point do Checkout Pro
+     * @return string Endereco para onde redirecionar o aluno
      */
     public static function start_payment(string $component, string $paymentarea, int $itemid, int $userid): string {
         global $DB, $CFG;
@@ -47,13 +56,24 @@ class payment_processor {
         $amount = (float) $payable->get_amount();
         $currency = $payable->get_currency();
 
-        $config = self::get_gateway_config($accountid);
         $appconfig = get_config('paygw_mercadopago');
 
-        // A referencia externa e a chave de ligacao: o ID do pagamento so
-        // existe DEPOIS que o aluno paga, entao precisamos de algo nosso que
-        // acompanhe a transacao desde a criacao da preferencia.
-        $reference = 'mdl-' . $userid . '-' . $itemid . '-' . random_string(12);
+        // Assinatura ou venda avulsa? Quem sabe e o MARKETPLACE - o gateway nao
+        // tem como saber o que e uma "oferta recorrente". Sem ele instalado, ou
+        // para item que nao e assinatura, recurrence_for() devolve null e nada
+        // muda em relacao ao que existia antes.
+        //
+        // Vem ANTES da configuracao porque decide qual APLICACAO precisa estar
+        // vinculada. Conferir a de Preferencias e depois cobrar por Bricks
+        // deixaria a venda falhar adiante, com o aluno ja decidido a comprar.
+        $recorrencia = self::recurrence_for($component, $itemid);
+        $apptype = $recorrencia
+            ? application::type_for_recurring()
+            : application::TYPE_PREFERENCES;
+
+        $config = self::get_gateway_config($accountid, $apptype);
+
+        $reference = self::build_reference($userid, $itemid, (bool) $recorrencia);
 
         // A comissao e regra do marketplace, nao do gateway. Perguntamos a ele
         // quando ele esta presente, e caimos no padrao de fabrica quando outro
@@ -93,10 +113,33 @@ class payment_processor {
             'feebase' => $feebase,
             'feesource' => $feesource,
             'status' => 'pending',
+            // Qual APLICACAO cria esta cobranca. A avulsa sai por Preferencias,
+            // com marketplace_fee na preferencia; o ciclo de assinatura sai por
+            // Bricks, com application_fee no pagamento. Sem esta coluna nao se
+            // sabe com que token consultar o pagamento de volta.
+            'apptype' => $apptype,
+            'subscriptionid' => $recorrencia ? $reference : null,
+            'cycles' => $recorrencia ? 1 : 0,
             'timecreated' => time(),
             'timemodified' => time(),
         ];
         $record->id = $DB->insert_record(self::TABLE, $record);
+
+        if ($recorrencia) {
+            // A assinatura NAO comeca no Mercado Pago, e essa e a diferenca
+            // estrutural para a venda avulsa. Para cobrar um ciclo e preciso um
+            // cartao guardado, e o cartao so nasce token no navegador do aluno
+            // - o servidor nao pode tokenizar: medido em 16/09/2026, o
+            // /v1/card_tokens devolve 403 para token de acesso.
+            //
+            // Entao o aluno vai para uma pagina NOSSA, que monta os campos do
+            // cartao conforme o card_capture, e e de la que sai a primeira
+            // cobranca.
+            return (new \moodle_url(
+                '/payment/gateway/mercadopago/subscribe.php',
+                ['ref' => $reference]
+            ))->out(false);
+        }
 
         $client = new mp_client($config['accesstoken']);
 
@@ -127,6 +170,98 @@ class payment_processor {
         }
 
         return $point;
+    }
+
+    /**
+     * A referencia externa, que e a chave de ligacao da transacao.
+     *
+     * O ID do pagamento so existe DEPOIS que o aluno paga, entao precisamos de
+     * algo nosso que acompanhe a transacao desde a criacao.
+     *
+     * O PREFIXO distingue assinatura de venda avulsa. O webhook chega sem
+     * contexto nenhum e precisa saber que linha procurar; duas familias de
+     * referencia com o mesmo formato obrigariam a consultar o banco so para
+     * descobrir de que tipo era - e a consulta erraria justamente no caso em
+     * que a linha ainda nao existe.
+     *
+     * @param int $userid
+     * @param int $itemid
+     * @param bool $recurring
+     * @return string
+     */
+    public static function build_reference(int $userid, int $itemid, bool $recurring = false): string {
+        return ($recurring ? 'mdlsub-' : 'mdl-') . $userid . '-' . $itemid . '-' . random_string(12);
+    }
+
+    /**
+     * Corpo da cobranca de UM ciclo de assinatura.
+     *
+     * Separado do resto para ser testavel, pela mesma razao do
+     * build_preference_body(): e aqui que mora o application_fee, o numero que
+     * move dinheiro na assinatura.
+     *
+     * O application_fee e HONRADO por este endpoint - medido em 16/09/2026,
+     * pagamento 1352076103, aprovado, com a comissao em fee_details ao lado da
+     * taxa do Mercado Pago. E o contraste com o preapproval, que aceita cinco
+     * formatos do mesmo campo e descarta todos: por isso a assinatura com
+     * comissao e uma sequencia de cobrancas, e nao um preapproval.
+     *
+     * Nao vai currency_id: no /v1/payments a moeda e a da conta que recebe, e
+     * mandar outra nao converte nada - so produz recusa.
+     *
+     * @param float $amount Valor bruto do ciclo
+     * @param string $currency Moeda da conta, para o descritivo
+     * @param string $reference Referencia externa da linha deste ciclo
+     * @param float $fee Comissao absoluta, ja calculada por fee_for()
+     * @param array $card token, customerid e paymentmethod
+     * @param string $payeremail E-mail do aluno
+     * @param string $wwwroot Endereco do site
+     * @param string $description O que esta sendo cobrado
+     * @return array
+     */
+    public static function build_cycle_payment_body(
+        float $amount,
+        string $currency,
+        string $reference,
+        float $fee,
+        array $card,
+        string $payeremail,
+        string $wwwroot,
+        string $description
+    ): array {
+        $body = [
+            'transaction_amount' => $amount,
+            // Nunca parcelado, e nao ha configuracao para isso. Parcelar uma
+            // cobranca que se repete todo mes empilha parcela sobre parcela, e
+            // o aluno passa a dever mais do que assinou.
+            'installments' => 1,
+            'token' => (string) ($card['token'] ?? ''),
+            'payment_method_id' => (string) ($card['paymentmethod'] ?? ''),
+            // O pagador e o CLIENTE do vendedor, e e esse vinculo que alcanca o
+            // cartao guardado: o cartao pertence a um cliente, e o cliente a
+            // conta que recebe. Sem payer.type=customer o Mercado Pago trata
+            // como compra avulsa e o cartao guardado nao entra.
+            'payer' => [
+                'type' => 'customer',
+                'id' => (string) ($card['customerid'] ?? ''),
+                'email' => $payeremail,
+            ],
+            'external_reference' => $reference,
+            'description' => $description . ' (' . $currency . ')',
+            // O webhook e a fonte da verdade, e nao a resposta desta chamada: a
+            // cobranca pode ser aprovada depois, por analise de risco.
+            'notification_url' => $wwwroot . '/payment/gateway/mercadopago/webhook.php',
+        ];
+
+        // Ausente, e nao zero. Mandar zero e pedir ao Mercado Pago que reparta
+        // nada: uma empresa isenta viraria uma cobranca com repasse de valor
+        // zero no extrato, o que polui a conciliacao sem significar coisa
+        // alguma.
+        if ($fee > 0) {
+            $body['application_fee'] = $fee;
+        }
+
+        return $body;
     }
 
     /**
@@ -244,8 +379,13 @@ class payment_processor {
         // ate uma responder - sao poucas, e so na primeira notificacao.
         $existing = $DB->get_record(self::TABLE, ['mppaymentid' => $mppaymentid]);
         if ($existing) {
-            $payment = (new mp_client(self::get_gateway_config((int) $existing->accountid)['accesstoken']))
-                ->get_payment($mppaymentid);
+            // O token e o da aplicacao que CRIOU esta linha. Consultar um
+            // pagamento de assinatura com o token de Preferencias devolve 404,
+            // e o sintoma seria "o webhook nao encontrou o pagamento".
+            $payment = (new mp_client(self::get_gateway_config(
+                (int) $existing->accountid,
+                (string) ($existing->apptype ?? application::TYPE_PREFERENCES)
+            )['accesstoken']))->get_payment($mppaymentid);
             $record = $existing;
         } else {
             [$payment, $record] = self::locate_transaction($mppaymentid);
@@ -334,7 +474,10 @@ class payment_processor {
      * @return bool Verdadeiro se a entrega aconteceu agora.
      */
     public static function reconcile_transaction(\stdClass $record): bool {
-        $config = self::get_gateway_config((int) $record->accountid);
+        $config = self::get_gateway_config(
+            (int) $record->accountid,
+            (string) ($record->apptype ?? application::TYPE_PREFERENCES)
+        );
         $pagamentos = (new mp_client($config['accesstoken']))
             ->search_by_reference((string) $record->externalreference);
 
@@ -390,12 +533,37 @@ class payment_processor {
     }
 
     /**
+     * O item e uma assinatura?
+     *
+     * Existe como metodo proprio, e nao como chamada direta, por duas razoes.
+     * A primeira e a costura de teste, a mesma do make_curl(): sem ela, o ramo
+     * de assinatura so seria exercitavel montando empresa, oferta e conta de
+     * pagamento. A segunda e o class_exists(), que mantem o plugin servindo a
+     * QUALQUER componente do core_payment - quem nao tem o marketplace
+     * instalado simplesmente nunca entra no ramo recorrente.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @return \stdClass|null days e maxcycles, ou null para venda avulsa
+     */
+    protected static function recurrence_for(string $component, int $itemid): ?\stdClass {
+        if (!class_exists('\local_marketplace\api')) {
+            return null;
+        }
+
+        return \local_marketplace\api::recurrence_for($component, $itemid);
+    }
+
+    /**
      * Configuracao do gateway numa conta.
      *
      * @param int $accountid
      * @return array
      */
-    protected static function get_gateway_config(int $accountid): array {
+    protected static function get_gateway_config(
+        int $accountid,
+        string $apptype = application::TYPE_PREFERENCES
+    ): array {
         $gateway = \core_payment\account_gateway::get_record([
             'accountid' => $accountid,
             'gateway' => 'mercadopago',
@@ -403,10 +571,23 @@ class payment_processor {
         if (!$gateway) {
             throw new moodle_exception('errornotlinked', 'paygw_mercadopago');
         }
+
         $config = $gateway->get_configuration();
-        if (empty($config['accesstoken'])) {
+
+        // O token e o DAQUELA aplicacao. Uma conta pode ter autorizado
+        // Preferencias e nao Bricks: nesse caso ela vende avulso e nao vende
+        // assinatura, e recusar aqui e melhor do que criar a linha e falhar na
+        // pagina do cartao, com o aluno ja decidido a comprar.
+        $token = (string) ($config[application::token_field($apptype, 'accesstoken')] ?? '');
+        if ($token === '') {
             throw new moodle_exception('errornotlinked', 'paygw_mercadopago');
         }
+
+        // Normaliza para que quem chama nao precise repetir o sufixo. A chave
+        // sem sufixo e a de Preferencias, entao sobrescrever aqui e seguro: o
+        // valor e o mesmo quando o apptype E preferencias.
+        $config['accesstoken'] = $token;
+
         return $config;
     }
 }

@@ -23,7 +23,7 @@ offset 0 (stack `ldg-courses`, `https://localhost:8443`).
 | Fase 1 — M3, M6 | **pendentes**: M3 depende de assinatura autorizada; M6 de um evento real chegando |
 | Fase 2 — documentação | **quase**: roteiro, ADR-0012, ADR-0013 e a correção datada do ADR-0001 escritos; faltam `comparacao-medida.md` e `CLAUDE.md` |
 | Fase 3a — multi-aplicação | **feita**: `application.php`, `settings.php`, as três `lang/`, OAuth por tipo (`start`, `callback`, `unlink`), tela do gateway e `refresh_tokens` |
-| Fase 3b — recorrência | **em curso**: esquema pronto e conferido; faltam `mp_client`, `payment_processor`, contrato e a tarefa de ciclo |
+| Fase 3b — recorrência | **em curso**: esquema, `mp_client`, captura de cartão e o ramo de assinatura no `payment_processor` prontos; faltam `subscribe.php`, os módulos AMD, o contrato no `gateway` e a tarefa de ciclo |
 | Fases 3c, 4, 5 | não começaram |
 
 **Verde neste ponto:** PHPUnit `36/36` (eram 27), phpcs limpo nos 26 arquivos,
@@ -68,12 +68,15 @@ A Fase 3a acabou. O próximo é a **Fase 3b**, na ordem:
 1. ~~`db/install.xml` + `db/upgrade.php`~~ — **feito**. Seis colunas e o índice
    de `subscriptionid`; `check_database_schema.php` diz `Database structure is
    ok.` e o `db_schema_test` passa nos dez plugins.
-2. **`mp_client`** — `PUT` no `request()`, e os métodos novos espelhando o SDK.
-3. **`payment_processor::start_payment()`** — ramo de assinatura por
-   `api::recurrence_for()`, como em `asaas/classes/payment_processor.php:145`.
-4. **`gateway`** — `cancel_recurring`, `pending_invoice`, `refund`,
+2. ~~`mp_client`~~ — **feito**. `PUT` no `request()` e seis métodos novos.
+3. ~~`payment_processor::start_payment()`~~ — **feito**. Ramo por
+   `api::recurrence_for()`, com `apptype`/`subscriptionid`/`cycles` na linha e
+   o `get_gateway_config()` exigindo o token **da aplicação certa**.
+4. **`subscribe.php`** — a página que coleta o cartão, nos três modos, e dispara
+   o ciclo 1. É o que falta para o fluxo fechar.
+5. **`gateway`** — `cancel_recurring`, `pending_invoice`, `refund`,
    `refund_blocker`.
-5. **`task/charge_due_cycles`** e **`amd/src/bricks_card.js`**.
+6. **`task/charge_due_cycles`** e os módulos AMD.
 
 Teste vermelho antes de cada um.
 

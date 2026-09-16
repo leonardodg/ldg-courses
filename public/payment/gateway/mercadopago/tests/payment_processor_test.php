@@ -187,4 +187,147 @@ final class payment_processor_test extends \advanced_testcase {
         $this->assertSame('wallet_purchase', $teste['purpose']);
         $this->assertArrayNotHasKey('purpose', $producao);
     }
+
+    /**
+     * A cobranca do ciclo leva a comissao no application_fee.
+     *
+     * E o numero que move dinheiro na assinatura. Medido em 16/09/2026: este
+     * campo e HONRADO pelo /v1/payments - volta em fee_details do pagamento
+     * aprovado -, ao contrario do preapproval, que aceita cinco formatos do
+     * mesmo campo e descarta todos.
+     *
+     * @return void
+     */
+    public function test_a_cobranca_do_ciclo_leva_a_comissao(): void {
+        $corpo = payment_processor::build_cycle_payment_body(
+            100.0,
+            'BRL',
+            'mdlsub-1-2-abc',
+            25.0,
+            ['token' => 'tok', 'customerid' => 'cus_1', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertEquals(100.0, $corpo['transaction_amount']);
+        $this->assertEquals(25.0, $corpo['application_fee']);
+        $this->assertSame('tok', $corpo['token']);
+        $this->assertSame('mdlsub-1-2-abc', $corpo['external_reference']);
+    }
+
+    /**
+     * Sem comissao, o campo nao e enviado.
+     *
+     * Mandar application_fee zero nao e o mesmo que nao mandar: e pedir ao
+     * Mercado Pago que reparta nada, e uma empresa isenta viraria uma cobranca
+     * com repasse de valor zero no extrato. Ausente e mais honesto, e e o que o
+     * fee_for() ja sinaliza ao devolver zero.
+     *
+     * @return void
+     */
+    public function test_sem_comissao_o_campo_nao_vai_no_corpo(): void {
+        $corpo = payment_processor::build_cycle_payment_body(
+            100.0,
+            'BRL',
+            'ref',
+            0.0,
+            ['token' => 'tok', 'customerid' => 'cus_1', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertArrayNotHasKey('application_fee', $corpo);
+    }
+
+    /**
+     * O pagador e o CLIENTE do vendedor, e nao um e-mail solto.
+     *
+     * E o vinculo que permite cobrar o cartao guardado: o cartao pertence a um
+     * cliente, e o cliente pertence a conta que recebe. Sem o payer.type
+     * customer o Mercado Pago trata como compra avulsa e o cartao guardado nao
+     * e alcancado.
+     *
+     * @return void
+     */
+    public function test_o_pagador_e_o_cliente_guardado_no_gateway(): void {
+        $corpo = payment_processor::build_cycle_payment_body(
+            50.0,
+            'BRL',
+            'ref',
+            5.0,
+            ['token' => 'tok', 'customerid' => 'cus_9', 'paymentmethod' => 'visa'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame('customer', $corpo['payer']['type']);
+        $this->assertSame('cus_9', $corpo['payer']['id']);
+        $this->assertSame('visa', $corpo['payment_method_id']);
+    }
+
+    /**
+     * O ciclo nunca e parcelado.
+     *
+     * Parcelar uma cobranca que se repete todo mes empilha parcelas em cima de
+     * parcelas, e o aluno passa a dever mais do que assinou. Nao ha
+     * configuracao para isso de proposito.
+     *
+     * @return void
+     */
+    public function test_o_ciclo_nao_e_parcelado(): void {
+        $corpo = payment_processor::build_cycle_payment_body(
+            100.0,
+            'BRL',
+            'ref',
+            0.0,
+            ['token' => 'tok', 'customerid' => 'c', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame(1, $corpo['installments']);
+    }
+
+    /**
+     * O webhook sai do wwwroot, e nao escrito a mao.
+     *
+     * @return void
+     */
+    public function test_o_webhook_do_ciclo_sai_do_wwwroot(): void {
+        $corpo = payment_processor::build_cycle_payment_body(
+            10.0,
+            'BRL',
+            'ref',
+            1.0,
+            ['token' => 'tok', 'customerid' => 'c', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://outro.exemplo',
+            'Assinatura'
+        );
+
+        $this->assertStringStartsWith('https://outro.exemplo/', $corpo['notification_url']);
+        $this->assertStringEndsWith('/payment/gateway/mercadopago/webhook.php', $corpo['notification_url']);
+    }
+
+    /**
+     * A referencia da assinatura se distingue da avulsa pelo prefixo.
+     *
+     * O webhook chega sem contexto e precisa saber que linha procurar. Duas
+     * familias de referencia com o mesmo formato obrigariam a consultar o banco
+     * so para descobrir de que tipo era.
+     *
+     * @return void
+     */
+    public function test_a_referencia_da_assinatura_tem_prefixo_proprio(): void {
+        $avulsa = payment_processor::build_reference(7, 3, false);
+        $assinatura = payment_processor::build_reference(7, 3, true);
+
+        $this->assertStringStartsWith('mdl-7-3-', $avulsa);
+        $this->assertStringStartsWith('mdlsub-7-3-', $assinatura);
+        $this->assertNotSame($assinatura, payment_processor::build_reference(7, 3, true));
+    }
 }
