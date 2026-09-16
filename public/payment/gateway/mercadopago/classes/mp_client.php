@@ -442,11 +442,28 @@ class mp_client {
             $body['issuer_id'] = (int) $issuerid;
         }
 
-        return $this->request(
-            'POST',
-            '/v1/customers/' . rawurlencode($customerid) . '/cards',
-            $body
-        );
+        try {
+            return $this->request(
+                'POST',
+                '/v1/customers/' . rawurlencode($customerid) . '/cards',
+                $body
+            );
+        } catch (moodle_exception $e) {
+            // O QUE FOI TENTADO viaja com o erro. "Cannot resolve the payment
+            // method of card, check the payment_method_id and issuer_id" NAO
+            // diz que valores foram enviados - e sem isso, cada rodada nova
+            // de "ainda falha" custa outra bateria de curl so para redescobrir
+            // o que o codigo ja sabia na hora da chamada. payment_method_id e
+            // issuer_id nao sao dado de cartao: sao codigo de bandeira e de
+            // banco, seguros de aparecer numa mensagem de erro.
+            throw new moodle_exception(
+                'errorapi',
+                'paygw_mercadopago',
+                '',
+                $e->a . ' (payment_method_id=' . ($body['payment_method_id'] ?? '<ausente>')
+                    . ', issuer_id=' . ($body['issuer_id'] ?? '<ausente>') . ')'
+            );
+        }
     }
 
     /**

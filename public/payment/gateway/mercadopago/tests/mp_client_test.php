@@ -541,4 +541,36 @@ final class mp_client_test extends \advanced_testcase {
         $this->assertArrayNotHasKey('payment_method_id', fake_mp_client::$lastbody);
         $this->assertArrayNotHasKey('issuer_id', fake_mp_client::$lastbody);
     }
+
+    /**
+     * Quando o Mercado Pago recusa o cartao, o erro leva o que foi tentado.
+     *
+     * "Cannot resolve the payment method of card, check the payment_method_id
+     * and issuer_id" nao diz que valores foram mandados. Sem isso, "ainda
+     * falha" vira outra rodada de curl so para redescobrir o que o codigo ja
+     * sabia na hora da chamada - custou duas rodadas de prova real em
+     * 16/09/2026.
+     *
+     * @return void
+     */
+    public function test_erro_do_savecard_leva_o_que_foi_tentado(): void {
+        fake_mp_client::$nextstatus = 400;
+        fake_mp_client::$nextresponse = [
+            'message' => 'invalid parameter in payment method',
+            'cause' => [
+                ['code' => '127', 'description' => 'Cannot resolve the payment method of card'],
+            ],
+        ];
+
+        $client = new fake_mp_client('token');
+
+        try {
+            $client->save_card('cus', 'cardtoken', 'visa', '25');
+            $this->fail('status fora de 2xx tem que virar excecao');
+        } catch (\moodle_exception $e) {
+            $this->assertStringContainsString('127: Cannot resolve', $e->getMessage());
+            $this->assertStringContainsString('payment_method_id=visa', $e->getMessage());
+            $this->assertStringContainsString('issuer_id=25', $e->getMessage());
+        }
+    }
 }
