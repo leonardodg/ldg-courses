@@ -179,21 +179,25 @@ class payment_processor {
      * navegador e UM card_token - nunca um numero de cartao -, e ele e de USO
      * UNICO.
      *
-     * DAI A ORDEM, que e a parte nao obvia deste metodo: guarda-se o cartao
-     * primeiro, consumindo o token, e o token que COBRA nasce depois, do
-     * card_id. Medido em 16/09/2026: POST /v1/card_tokens com apenas
-     * {"card_id": ...}, sem security_code, devolve token com status active.
+     * ESTE CICLO NAO RE-TOKENIZA O CARTAO GUARDADO - cobra com o MESMO token
+     * que o navegador criou, o que ainda carrega o codigo de seguranca por
+     * dentro. Medido em 16/09/2026, e contradiz o que este metodo fazia ate
+     * aqui: POST /v1/card_tokens com so {"card_id": ...} (sem security_code)
+     * devolve token com status "active", mas COBRAR com ele devolve "400
+     * security_code_id can't be null" (causa 3031) - o "active" do token nao
+     * significa "cobravel". O mesmo teste, com security_code incluido na
+     * tokenizacao, cobra normalmente.
      *
-     * A alternativa - pedir dois tokens ao navegador - foi descartada por uma
-     * razao concreta: o Card Payment Brick devolve UM token por submissao e nao
-     * entrega os dados do cartao, entao no modo brick nao ha como produzir o
-     * segundo. Um desenho que so funcionasse em dois dos tres modos seria pior
-     * que este.
-     *
-     * E a ordem tambem e a mais segura das duas: se a cobranca falhar, o cartao
-     * ja guardado permite tentar de novo sem pedir os dados outra vez. O
-     * inverso deixaria uma cobranca aprovada com cartao nao guardado - o aluno
-     * teria pago por uma assinatura que nao renova.
+     * ISSO NAO EXISTE nos ciclos 2 em diante - ver charge_due_cycles() e
+     * build_next_cycle(): la nao ha aluno na tela para digitar o CVV de novo,
+     * entao a mesma re-tokenizacao sem security_code que falha aqui falha lá
+     * TAMBEM. Medido: mesmo depois de uma cobranca aprovada no cartao, uma
+     * nova tokenizacao por card_id sem CVV continua "security_code_id can't
+     * be null" - o Mercado Pago nao ativa cobranca sem CVV (ESC) sozinho por
+     * historico de pagamento. Fica em aberto: pedir ESC ao suporte do
+     * Mercado Pago, ou redesenhar o ciclo 2+ para pedir uma acao do aluno
+     * (o mesmo modelo já aceito para Pix/boleto). Ver
+     * docs/data-validation/mercadopago-assinatura.md.
      *
      * @param \stdClass $record Linha do ciclo 1, ja criada por start_payment()
      * @param string $cardtoken Token vindo do navegador, de uso unico
@@ -234,12 +238,11 @@ class payment_processor {
             throw new moodle_exception('errorinvalidresponse', 'paygw_mercadopago', '', 'card');
         }
 
-        // O token que cobra nasce do cartao ja guardado, e sem CVV. E o mesmo
-        // caminho que os ciclos seguintes vao usar - exercitar o ciclo 2 ja no
-        // ciclo 1 significa que uma falha ali aparece AGORA, com o aluno na
-        // tela, e nao daqui a um mes num cron silencioso.
-        $novotoken = (array) self::step('tokenizesaved', fn() => $client->tokenize_saved_card($cardid));
-        $chargetoken = (string) ($novotoken['id'] ?? '');
+        // O MESMO token que guardou o cartao cobra o ciclo 1 - ver o porque no
+        // docblock do metodo. Re-tokenizar por card_id aqui devolveria
+        // "security_code_id can't be null", porque esse token novo nao carrega
+        // CVV nenhum.
+        $chargetoken = $cardtoken;
 
         $record->mpcustomerid = $customerid;
         // O id do cartao NO MERCADO PAGO. Nao e o cartao: e o endereco dele la.

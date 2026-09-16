@@ -122,9 +122,23 @@ monitora limpeza de cache.
 - o `preapproval` não carrega comissão — cinco formatos, `201`, zero ecos;
 - o `/v1/payments` **honra** o `application_fee` — pagamento `1352076103`,
   aprovado, comissão em `fee_details`;
-- o Mercado Pago emite token de cartão guardado **sem CVV** (`status: active`);
 - tokenizar no servidor com token de acesso é **403** — só a `public_key`;
 - cada aplicação exige o seu OAuth.
+
+**Provado, e CONTRÁRIO ao que este documento afirmava até 16/09/2026
+(tarde)**: o Mercado Pago emite token de cartão guardado sem CVV
+(`POST /v1/card_tokens` com só `card_id` devolve `status: active`), **mas
+esse token não serve para cobrar**. Cobrar com ele devolve `400
+security_code_id can't be null`, MESMO depois de uma cobrança aprovada no
+mesmo cartão. `status: active` prova que o token existe, não que o
+Mercado Pago aceita cobrar sem o código de segurança — os dois fatos
+pareciam a mesma coisa e não são. Medição completa em
+[`mercadopago-assinatura.md`](../data-validation/mercadopago-assinatura.md).
+**Isto muda a linha "Quem dispara o ciclo" da tabela acima**: o ciclo 1
+cobra com o token que o navegador criou (que carrega o CVV por dentro);
+os ciclos 2+ não têm esse token, e travam nesta validação até o Mercado
+Pago habilitar ESC nesta conta, ou o ciclo 2+ ser redesenhado para pedir
+ação do aluno.
 
 **Não provado, e não se deve tratar como se fosse:**
 
@@ -132,7 +146,8 @@ monitora limpeza de cache.
   No pagamento medido, o `collector_id` era o dono da aplicação — vendedor e
   marketplace na mesma conta, que é a armadilha que já fez o split "funcionar"
   sem transferir nada. Prova de split no MP é com conta real;
-- **a cobrança do cartão guardado**: no arranjo do sandbox devolve `500`;
+- **a cobrança automática do ciclo 2+**: trava em `security_code_id can't be
+  null` até ESC ser habilitado ou o desenho mudar — ver acima;
 - **a taxa de aprovação** de cobrança iniciada pelo estabelecimento. O suporte
   do MP avisa que pode ser pior, e prova de tokenização **não é** prova de
   aprovação;

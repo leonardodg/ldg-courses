@@ -711,3 +711,53 @@ linha por cobrança, ver `install.xml`), então reenviar a mesma requisição
 (um timeout que o cliente retenta, por exemplo) devolve o pagamento que já
 existe em vez de cobrar duas vezes. Gerar uma chave aleatória a cada
 chamada anularia essa proteção contra cobrança duplicada.
+
+### `security_code_id can't be null`: a premissa central da assinatura estava errada
+
+Depois do `X-Idempotency-Key`, novo erro no mesmo passo `payment`: `400
+security_code_id can't be null` (causa 3031). Este é o mais sério dos
+achados desta rodada - **derruba uma frase que este documento tratava como
+fato medido**: "o Mercado Pago emite token de cartão guardado sem CVV".
+
+**O que a medição de 16/09/2026 (manhã) provou de verdade**: que
+`POST /v1/card_tokens` com só `{"card_id": ...}` devolve `status: active`.
+**O que ela não provou**, e que esta rodada corrigiu: que esse token serve
+para COBRAR. `status: active` é sobre o token existir, não sobre o
+Mercado Pago aceitar cobrar com ele sem o código de segurança.
+
+Isolado com curl, contra a conta real, três cenários:
+
+| Tokenização do card_id | Cobrança com o token |
+|---|---|
+| sem `security_code` | **400** `security_code_id can't be null` |
+| com `security_code` (CVV real) | **in_process / pending_review_manual** - sem erro técnico |
+| card_id sem `security_code`, **depois** de uma cobrança aprovada no mesmo cartão | **400**, o MESMO erro - não muda com histórico |
+
+A terceira linha é a que fecha a questão: não é um "aquecimento" do
+cartão. É um recurso do Mercado Pago chamado **ESC** (visto no bundle do
+SDK - `has_esc`, `security_code_settings.mode === "mandatory"`) que
+precisa estar **habilitado na conta do vendedor**, e não se liga sozinho
+por comportamento. Sem ele, o Mercado Pago exige o CVV em TODA cobrança
+com cartão - inclusive as automáticas.
+
+**Corrigido para o ciclo 1**: `charge_first_cycle()` não re-tokeniza mais
+o cartão guardado. Cobra com o MESMO token que o navegador criou - esse
+token nasceu junto com o CVV que o aluno digitou, e ainda é válido para
+cobrar (não é consumido pelo `save_card()`, testado reutilizando o mesmo
+token nas duas chamadas). Resolve o ciclo 1, que tem o aluno na tela.
+
+**Não corrigido, e é uma decisão que falta tomar**: os ciclos 2 em diante
+(`charge_due_cycles()`) continuam re-tokenizando por `card_id` sem CVV,
+porque não há aluno na tela para digitar nada um mês depois - e essa
+chamada vai continuar devolvendo `security_code_id can't be null` até que
+uma das duas coisas aconteça:
+
+1. **Pedir ao suporte do Mercado Pago para habilitar ESC** nesta conta de
+   vendedor - se for possível, é a única forma de manter a cobrança
+   realmente automática, sem o aluno agir todo mês;
+2. **Redesenhar o ciclo 2+ para pedir uma ação do aluno** - mesmo modelo
+   já aceito para Pix/boleto (gerar uma cobrança nova por ciclo e
+   notificar), só que agora também para cartão, se o ESC não for viável.
+
+Sem uma das duas, a assinatura por cartão cobra o ciclo 1 e trava no
+ciclo 2 - o pior tipo de falha, porque não aparece no ato da compra.
