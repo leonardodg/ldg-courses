@@ -466,3 +466,32 @@ Se o token do navegador vier incompleto, a causa está na chamada
 `mp.createCardToken()` do `card_form.js` — que hoje manda só `cardholderName`,
 `identificationType` e `identificationNumber`, deixando número, validade e CVV
 por conta dos Secure Fields montados.
+
+### A causa real, medida em 16/09/2026: o primeiro resultado não é cartão
+
+O `card_form.js` descobria a bandeira certo — o evento `binChange` funciona, o
+BIN chega — mas escolhia `metodos[0].id` sem olhar o tipo. Testado com curl,
+a própria chamada que o SDK faz:
+
+```
+GET /v1/payment_methods/search?bin=411111&public_key=<publickey_bricks>
+```
+
+Para um BIN de vários emissores a lista devolve **Pix, boleto, Mercado
+Crédito e várias bandeiras de cartão misturados**, nessa ordem — não é uma
+lista ordenada com cartão primeiro:
+
+| posição | `id` | `payment_type_id` |
+|---|---|---|
+| 0 | `consumer_credits` | `digital_currency` |
+| 1 | `consumer_credits` | `digital_currency` |
+| 2 | `pix` | `bank_transfer` |
+| 3 | `master` | `credit_card` |
+
+`metodos[0].id` valia `consumer_credits`, e o `/customers/{id}/cards`
+recusava com a mesma mensagem do caso "vazio": `400 invalid parameter in
+payment method` — só que agora com um valor preenchido, só que errado.
+
+**Corrigido**: filtrar por `payment_type_id === 'credit_card' ||
+'debit_card'` antes de pegar o primeiro item. O `save_card` exige cartão
+mesmo, então filtrar por tipo não é perda de generalidade.

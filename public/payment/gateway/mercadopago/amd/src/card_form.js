@@ -321,8 +321,22 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
 
             mp.getPaymentMethods({bin: bin})
                 .then(function(resposta) {
+                    // O PRIMEIRO RESULTADO NAO E, NECESSARIAMENTE, UM CARTAO.
+                    //
+                    // Medido em 16/09/2026: para um BIN comum a varios emissores
+                    // o Mercado Pago devolve tambem Pix, boleto e Mercado
+                    // Credito na mesma lista, e o primeiro item pode ser
+                    // "consumer_credits" - que o /customers/{id}/cards recusa
+                    // com "400 invalid parameter in payment method", porque nao
+                    // e bandeira de cartao nenhuma.
                     var metodos = (resposta && resposta.results) || [];
-                    if (!metodos.length) {
+                    var cartoes = metodos.filter(function(metodo) {
+                        return metodo && (
+                            metodo.payment_type_id === 'credit_card' ||
+                            metodo.payment_type_id === 'debit_card'
+                        );
+                    });
+                    if (!cartoes.length) {
                         throw new Error('Cartao nao reconhecido pelo Mercado Pago');
                     }
 
@@ -334,7 +348,7 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
                         if (!token || !token.id) {
                             throw new Error('O Mercado Pago nao devolveu token para este cartao');
                         }
-                        submitWith(form, token.id, metodos[0].id);
+                        submitWith(form, token.id, cartoes[0].id);
                         return token;
                     });
                 })
