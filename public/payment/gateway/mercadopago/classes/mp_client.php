@@ -456,14 +456,48 @@ class mp_client {
             // o que o codigo ja sabia na hora da chamada. payment_method_id e
             // issuer_id nao sao dado de cartao: sao codigo de bandeira e de
             // banco, seguros de aparecer numa mensagem de erro.
+            //
+            // O BIN DO PROPRIO TOKEN TAMBEM, e essa e a pergunta que faltava
+            // responder: visa/25 (o que o navegador GUESSOU) bate com o que o
+            // Mercado Pago acha que o token E? GET /v1/card_tokens/{id} com o
+            // token de ACESSO devolve o first_six_digits que o servidor
+            // enxerga - sem isso, "ainda falha com os mesmos valores" nao diz
+            // se o palpite era o do cartao errado desde o inicio.
+            $bin = '<nao verificado>';
+            try {
+                $tokeninfo = $this->get_card_token($cardtoken);
+                $bin = ($tokeninfo['first_six_digits'] ?? '?') . ' status=' . ($tokeninfo['status'] ?? '?');
+            } catch (moodle_exception $ignorada) {
+                $bin = '<token nao encontrado: ' . $ignorada->getMessage() . '>';
+            }
+
             throw new moodle_exception(
                 'errorapi',
                 'paygw_mercadopago',
                 '',
                 $e->a . ' (payment_method_id=' . ($body['payment_method_id'] ?? '<ausente>')
-                    . ', issuer_id=' . ($body['issuer_id'] ?? '<ausente>') . ')'
+                    . ', issuer_id=' . ($body['issuer_id'] ?? '<ausente>')
+                    . ', token bin=' . $bin . ')'
             );
         }
+    }
+
+    /**
+     * Consulta um card_token pelo id - o que o navegador realmente tokenizou,
+     * segundo o proprio Mercado Pago.
+     *
+     * Existe para diagnostico: medido em 16/09/2026, o `payment_method_id` e o
+     * `issuer_id` corretos para o catalogo geral ainda assim voltaram "Cannot
+     * resolve the payment method of card" numa compra real. Esta chamada
+     * revela se o BIN que o navegador capturou bate com o BIN que o Mercado
+     * Pago enxerga no token - sem ela, cada "ainda falha" e uma suposicao
+     * nova sobre qual das duas pontas esta errada.
+     *
+     * @param string $cardtoken
+     * @return array Inclui first_six_digits, last_four_digits e status
+     */
+    public function get_card_token(string $cardtoken): array {
+        return $this->request('GET', '/v1/card_tokens/' . rawurlencode($cardtoken));
     }
 
     /**

@@ -575,6 +575,37 @@ final class mp_client_test extends \advanced_testcase {
     }
 
     /**
+     * O erro tambem leva o BIN que o Mercado Pago enxerga NO TOKEN - a
+     * pergunta que faltava responder depois de payment_method_id e issuer_id
+     * ja virem corretos e o erro continuar o mesmo: o palpite do navegador
+     * batia com o cartao de verdade?
+     *
+     * @return void
+     */
+    public function test_erro_do_savecard_leva_o_bin_do_token(): void {
+        fake_mp_client::$statusqueue = [400, 200];
+        fake_mp_client::$responsequeue = [
+            [
+                'message' => 'invalid parameter in payment method',
+                'cause' => [
+                    ['code' => '127', 'description' => 'Cannot resolve the payment method of card'],
+                ],
+            ],
+            ['first_six_digits' => '548083', 'status' => 'active'],
+        ];
+
+        $client = new fake_mp_client('token');
+
+        try {
+            $client->save_card('cus', 'cardtoken', 'visa', '25');
+            $this->fail('status fora de 2xx tem que virar excecao');
+        } catch (\moodle_exception $e) {
+            $this->assertStringContainsString('token bin=548083 status=active', $e->getMessage());
+            $this->assertStringContainsString('/v1/card_tokens/cardtoken', fake_mp_client::$calls[1][1]);
+        }
+    }
+
+    /**
      * O emissor vem do endpoint DEDICADO, e nao do campo "issuer" generico da
      * busca por BIN.
      *

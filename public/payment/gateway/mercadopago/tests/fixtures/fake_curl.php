@@ -120,6 +120,10 @@ class fake_curl extends \curl {
      * @return array
      */
     public function get_info() {
+        if (fake_mp_client::$statusqueue) {
+            return ['http_code' => array_shift(fake_mp_client::$statusqueue)];
+        }
+
         return ['http_code' => fake_mp_client::$nextstatus];
     }
 

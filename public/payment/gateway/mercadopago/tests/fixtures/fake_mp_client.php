@@ -58,6 +58,10 @@ class fake_mp_client extends mp_client {
     /** @var int Codigo HTTP da proxima resposta. */
     public static int $nextstatus = 200;
 
+    /** @var int[] Fila de codigos HTTP, um por chamada - anda junto de
+     * $responsequeue. Vazia, cai em $nextstatus para todas as chamadas. */
+    public static array $statusqueue = [];
+
     /** @var int Erro de curl da proxima chamada. 0 = sem erro. */
     public static int $nexterrno = 0;
 
@@ -77,6 +81,7 @@ class fake_mp_client extends mp_client {
         self::$responsequeue = [];
         self::$rawresponse = null;
         self::$nextstatus = 200;
+        self::$statusqueue = [];
         self::$nexterrno = 0;
         self::$lastbody = [];
         self::$calls = [];
