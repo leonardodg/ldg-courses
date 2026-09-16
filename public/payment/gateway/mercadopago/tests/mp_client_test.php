@@ -504,4 +504,37 @@ final class mp_client_test extends \advanced_testcase {
         $this->assertStringEndsWith('/v1/customers/3694589152-7R6/cards', fake_mp_client::$calls[0][1]);
         $this->assertSame('cardtoken', fake_mp_client::$lastbody['token']);
     }
+
+    /**
+     * A bandeira e o emissor vao no corpo quando conhecidos.
+     *
+     * Medido em 16/09/2026: com so a bandeira, uma compra real ainda voltou
+     * "Cannot resolve the payment method of card, check the payment_method_id
+     * and issuer_id" - o proprio Mercado Pago apontando o campo que faltava.
+     *
+     * @return void
+     */
+    public function test_bandeira_e_emissor_vao_no_corpo(): void {
+        fake_mp_client::$nextresponse = ['id' => '1'];
+
+        (new fake_mp_client('token'))->save_card('cus', 'cardtoken', 'visa', '25');
+
+        $this->assertSame('visa', fake_mp_client::$lastbody['payment_method_id']);
+        $this->assertSame('25', fake_mp_client::$lastbody['issuer_id']);
+    }
+
+    /**
+     * Sem bandeira ou emissor, os campos ficam de fora - ausente e diferente
+     * de vazio para este endpoint (ver decode() e o teste da causa 128).
+     *
+     * @return void
+     */
+    public function test_sem_bandeira_ou_emissor_os_campos_ficam_de_fora(): void {
+        fake_mp_client::$nextresponse = ['id' => '1'];
+
+        (new fake_mp_client('token'))->save_card('cus', 'cardtoken');
+
+        $this->assertArrayNotHasKey('payment_method_id', fake_mp_client::$lastbody);
+        $this->assertArrayNotHasKey('issuer_id', fake_mp_client::$lastbody);
+    }
 }

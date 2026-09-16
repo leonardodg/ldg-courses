@@ -198,12 +198,14 @@ class payment_processor {
      * @param \stdClass $record Linha do ciclo 1, ja criada por start_payment()
      * @param string $cardtoken Token vindo do navegador, de uso unico
      * @param string $paymentmethod Bandeira, como o Mercado Pago a nomeia
+     * @param string $issuerid Emissor, como o Mercado Pago o nomeia - ver save_card()
      * @return bool Verdadeiro quando a entrega aconteceu agora
      */
     public static function charge_first_cycle(
         \stdClass $record,
         string $cardtoken,
-        string $paymentmethod
+        string $paymentmethod,
+        string $issuerid = ''
     ): bool {
         global $DB, $CFG;
 
@@ -222,7 +224,10 @@ class payment_processor {
         // tres rodadas de prova real em 16/09/2026.
         $customerid = (string) self::step('customer', fn() => self::ensure_customer($client, $user->email));
 
-        $card = (array) self::step('savecard', fn() => $client->save_card($customerid, $cardtoken, $paymentmethod));
+        $card = (array) self::step(
+            'savecard',
+            fn() => $client->save_card($customerid, $cardtoken, $paymentmethod, $issuerid)
+        );
         $cardid = (string) ($card['id'] ?? '');
 
         if ($cardid === '') {

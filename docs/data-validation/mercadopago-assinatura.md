@@ -545,3 +545,46 @@ continua nulo). Medido de novo, com curl, direto contra a conta da Ivana:
    distingue (visto acima: duas causas diferentes, mesma frase
    `"payment method response is empty"`). A próxima falha real chega com o
    `code` junto, sem precisar de outra rodada de curl para adivinhar.
+
+### O `cause` chegou, e apontou o campo que faltava
+
+A próxima tentativa real trouxe o diagnóstico direto, sem precisar de mais
+curl: `400 invalid parameter [127: invalid parameter. Cannot resolve the
+payment method of card, check the payment_method_id and issuer_id]`. O
+próprio Mercado Pago nomeou o campo que faltava.
+
+**Dois defeitos, um sobre o outro, os dois medidos:**
+
+1. **A documentação oficial do endpoint está errada.** A página do
+   `POST /v1/customers/{id}/cards` mostra um exemplo só com `token`, sem
+   `payment_method_id`. Testado direto, com um cartão de teste NUNCA salvo
+   antes nesse customer (Hipercard, `606282...`): `token` sozinho devolve
+   `400 payment method response is empty` (causa 128) — a doc não bate com
+   o comportamento real da conta.
+
+2. **A busca por BIN que o `card_form.js` chamava usava o parâmetro
+   ERRADO.** O `bin` (singular) que testei manualmente na rodada anterior
+   não é o que o SDK oficial usa — lido direto do bundle
+   (`sdk.mercadopago.com/js/v2`): o método real chama
+   `GET /v1/payment_methods/search` com **`bins`, no plural**, e o BIN
+   cortado em até 8 dígitos, mais `marketplace=NONE` e `status=active`.
+   Com o parâmetro certo, a busca FILTRA de verdade — testado com
+   `bins=45399800` (só `visa`) e `bins=55556600` (só `master`), um
+   resultado cada, não mais o catálogo genérico. Como o `card_form.js`
+   chama `mp.getPaymentMethods({bin: bin})` pelo MÉTODO do SDK (não por
+   HTTP cru), essa parte já traduzia certo por baixo — o erro do parâmetro
+   era só do meu teste manual anterior, não do código do plugin.
+
+3. **O emissor (`issuer_id`) é o campo que faltava de verdade**, e a
+   própria busca por BIN já o devolve, no mesmo resultado (`issuer.id`) —
+   visto no exemplo oficial da doc também (`"issuer": {"id": 25, "name":
+   "visa"}`). Cartões de teste `APRO` NÃO reproduzem a exigência — testado
+   trocando a bandeira deliberadamente errada (Amex declarado como
+   `visa`) e o Mercado Pago corrigiu sozinho, sem exigir `issuer_id`. Para
+   o cartão real do aluno, corrigiu não: exigiu.
+
+**Corrigido**: `payment_method_id` e `issuer_id` agora viajam juntos, do
+mesmo resultado da busca por BIN, nos três modos de captura —
+`card_form.js` (brick e direto) e `mp_client::guess_payment_method()`,
+novo, para o modo nativo (que tem o número do cartão no servidor e não
+precisa do navegador para descobrir nada).

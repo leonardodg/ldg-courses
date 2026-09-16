@@ -91,6 +91,7 @@ if (data_submitted() && confirm_sesskey()) {
     // payment_processor::charge_first_cycle().
     $cardtoken = optional_param('cardtoken', '', PARAM_ALPHANUMEXT);
     $paymentmethod = optional_param('paymentmethod', '', PARAM_ALPHANUMEXT);
+    $issuerid = optional_param('issuerid', '', PARAM_ALPHANUMEXT);
 
     if ($modo === card_capture::MODE_NATIVE) {
         // AQUI, e so aqui, o numero do cartao passa pelo nosso servidor.
@@ -98,7 +99,7 @@ if (data_submitted() && confirm_sesskey()) {
         // Ele nao e gravado em lugar nenhum: nao vai para o banco, nao vai para
         // a sessao e nao entra em log. As variaveis morrem no fim da
         // requisicao, e o que sobra e o token.
-        [$cardtoken, $paymentmethod] = paygw_mercadopago_tokenize_native($publickey);
+        [$cardtoken, $paymentmethod, $issuerid] = paygw_mercadopago_tokenize_native($publickey);
     }
 
     if ($cardtoken === '') {
@@ -111,7 +112,7 @@ if (data_submitted() && confirm_sesskey()) {
     }
 
     try {
-        payment_processor::charge_first_cycle($record, $cardtoken, $paymentmethod);
+        payment_processor::charge_first_cycle($record, $cardtoken, $paymentmethod, $issuerid);
     } catch (moodle_exception $e) {
         redirect($url, $e->getMessage(), null, \core\output\notification::NOTIFY_ERROR);
     }
@@ -176,7 +177,7 @@ echo $OUTPUT->footer();
  * variaveis morrem no fim da requisicao, e o que sobra e o token.
  *
  * @param string $publickey Chave publica da aplicacao que vai cobrar
- * @return array [token, bandeira]
+ * @return array [token, bandeira, emissor]
  */
 function paygw_mercadopago_tokenize_native(string $publickey): array {
     $cardnumber = optional_param('cardnumber', '', PARAM_ALPHANUM);
@@ -199,8 +200,17 @@ function paygw_mercadopago_tokenize_native(string $publickey): array {
 
     $resposta = \paygw_mercadopago\mp_client::tokenize_card($publickey, $corpo);
 
+    // O /v1/card_tokens NAO devolve bandeira nem emissor - so o token. Quem
+    // tem o numero do cartao aqui (SO no modo nativo) pode descobrir os dois
+    // pelo BIN, sem depender do navegador.
+    $metodo = \paygw_mercadopago\mp_client::guess_payment_method(
+        $publickey,
+        substr($cardnumber, 0, 8)
+    );
+
     return [
         (string) ($resposta['id'] ?? ''),
-        (string) ($resposta['payment_method_id'] ?? ''),
+        (string) ($metodo['id'] ?? ''),
+        (string) ($metodo['issuerid'] ?? ''),
     ];
 }

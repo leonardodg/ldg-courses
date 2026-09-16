@@ -405,16 +405,34 @@ class mp_client {
      * payment method" sem ela - enquanto a cobranca infere do proprio token.
      * Quem descobre a bandeira e o navegador, pelo BIN.
      *
+     * O EMISSOR TAMBEM, para uma parte dos cartoes. Medido em 16/09/2026: uma
+     * compra real com bandeira preenchida ainda assim voltou "400 invalid
+     * parameter. Cannot resolve the payment method of card, check the
+     * payment_method_id and issuer_id" - a propria mensagem do Mercado Pago
+     * aponta o campo que faltava. A busca por BIN que descobre a bandeira
+     * devolve o emissor no mesmo resultado (`issuer.id`), entao quem chama
+     * ja tem os dois a mao.
+     *
      * @param string $customerid
      * @param string $cardtoken
      * @param string $paymentmethod Bandeira, ou vazio quando desconhecida
+     * @param string $issuerid Emissor, ou vazio quando desconhecido
      * @return array Inclui id e last_four_digits
      */
-    public function save_card(string $customerid, string $cardtoken, string $paymentmethod = ''): array {
+    public function save_card(
+        string $customerid,
+        string $cardtoken,
+        string $paymentmethod = '',
+        string $issuerid = ''
+    ): array {
         $body = ['token' => $cardtoken];
 
         if ($paymentmethod !== '') {
             $body['payment_method_id'] = $paymentmethod;
+        }
+
+        if ($issuerid !== '') {
+            $body['issuer_id'] = $issuerid;
         }
 
         return $this->request(
@@ -507,6 +525,47 @@ class mp_client {
     }
 
     /**
+     * Descobre a bandeira e o emissor de um cartao pelo BIN - o que o
+     * save_card() exige e o /v1/card_tokens NAO devolve.
+     *
+     * O PARAMETRO E "bins", NO PLURAL, e isso nao e detalhe: medido em
+     * 16/09/2026, "bin" no singular devolve o MESMO catalogo generico do site
+     * para BINs diferentes - nao filtra nada, e foi assim que uma correcao
+     * anterior mandou a bandeira errada sem que nenhum teste acusasse. O
+     * parametro certo, lido do proprio bundle do SDK oficial
+     * (`sdk.mercadopago.com/js/v2`), e "bins", e o BIN pode ter 6 ou 8
+     * digitos - os dois filtram certo.
+     *
+     * So CREDIT_CARD e DEBIT_CARD contam: a mesma busca tambem devolve Pix,
+     * boleto e Mercado Credito misturados, e nenhum dos tres serve para
+     * guardar cartao.
+     *
+     * @param string $publickey Chave publica da aplicacao que vai cobrar
+     * @param string $bin Os 6 a 8 primeiros digitos do cartao
+     * @return array{id: string, issuerid: string} Vazio quando nao reconhecido
+     */
+    public static function guess_payment_method(string $publickey, string $bin): array {
+        $resposta = self::get_json(self::API_BASE . '/v1/payment_methods/search?' . http_build_query([
+            'marketplace' => 'NONE',
+            'status' => 'active',
+            'bins' => $bin,
+            'public_key' => $publickey,
+        ]));
+
+        foreach (($resposta['results'] ?? []) as $metodo) {
+            $tipo = (string) ($metodo['payment_type_id'] ?? '');
+            if ($tipo === 'credit_card' || $tipo === 'debit_card') {
+                return [
+                    'id' => (string) ($metodo['id'] ?? ''),
+                    'issuerid' => (string) ($metodo['issuer']['id'] ?? ''),
+                ];
+            }
+        }
+
+        return [];
+    }
+
+    /**
      * Constroi o transporte HTTP.
      *
      * Existe para ser SOBRESCRITA no teste. Enquanto o curl era instanciado
@@ -573,6 +632,23 @@ class mp_client {
         $curl = static::make_curl();
         $curl->setHeader(['Content-Type: application/json']);
         $response = $curl->post($url, json_encode($body), [
+            'CURLOPT_TIMEOUT' => self::TIMEOUT,
+            'CURLOPT_CONNECTTIMEOUT' => 10,
+            'CURLOPT_RETURNTRANSFER' => true,
+        ]);
+
+        return self::decode($curl, $response, $url);
+    }
+
+    /**
+     * GET sem autenticacao por Bearer - a URL ja carrega a public_key.
+     *
+     * @param string $url
+     * @return array
+     */
+    protected static function get_json(string $url): array {
+        $curl = static::make_curl();
+        $response = $curl->get($url, [], [
             'CURLOPT_TIMEOUT' => self::TIMEOUT,
             'CURLOPT_CONNECTTIMEOUT' => 10,
             'CURLOPT_RETURNTRANSFER' => true,

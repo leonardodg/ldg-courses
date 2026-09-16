@@ -86,10 +86,15 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
      * @param {HTMLFormElement} form
      * @param {string} token
      * @param {string} method Bandeira, como o Mercado Pago a nomeia
+     * @param {string} issuer Emissor, como o Mercado Pago o nomeia
      */
-    var submitWith = function(form, token, method) {
+    var submitWith = function(form, token, method, issuer) {
         form.querySelector('[name="cardtoken"]').value = token;
         form.querySelector('[name="paymentmethod"]').value = method || '';
+        var campoemissor = form.querySelector('[name="issuerid"]');
+        if (campoemissor) {
+            campoemissor.value = issuer || '';
+        }
         form.submit();
     };
 
@@ -211,7 +216,7 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
                 },
                 onSubmit: function(formData) {
                     setBusy(form, true);
-                    submitWith(form, formData.token, formData.payment_method_id);
+                    submitWith(form, formData.token, formData.payment_method_id, formData.issuer_id);
 
                     return Promise.resolve();
                 }
@@ -348,7 +353,14 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
                         if (!token || !token.id) {
                             throw new Error('O Mercado Pago nao devolveu token para este cartao');
                         }
-                        submitWith(form, token.id, cartoes[0].id);
+                        // O EMISSOR VIAJA JUNTO DA BANDEIRA, e nao e opcional
+                        // para todo cartao: medido em 16/09/2026, uma compra
+                        // real com so a bandeira voltou "Cannot resolve the
+                        // payment method of card, check the payment_method_id
+                        // and issuer_id" - a mesma busca por BIN que acha a
+                        // bandeira ja devolve o emissor, em cartoes[0].issuer.id.
+                        var emissor = (cartoes[0].issuer && cartoes[0].issuer.id) || '';
+                        submitWith(form, token.id, cartoes[0].id, emissor);
                         return token;
                     });
                 })
