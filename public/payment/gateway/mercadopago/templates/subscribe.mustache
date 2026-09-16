@@ -110,13 +110,14 @@
                     <label for="mp-field-security" class="form-label">{{#str}} cardsecuritycode, paygw_mercadopago {{/str}}</label>
                     <div id="mp-field-security" class="form-control"></div>
                 </div>
-                <div class="col-12">
+                <div class="col-md-6">
                     <label for="mp-holdername" class="form-label">{{#str}} cardholder, paygw_mercadopago {{/str}}</label>
                     <input type="text" class="form-control" id="mp-holdername" autocomplete="cc-name">
                 </div>
-                <div class="col-12">
+                <div class="col-md-6">
                     <label for="mp-holderdoc" class="form-label">{{#str}} cardholderdoc, paygw_mercadopago {{/str}}</label>
-                    <input type="text" class="form-control" id="mp-holderdoc" inputmode="numeric">
+                    <input type="text" class="form-control" id="mp-holderdoc"
+                        inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off">
                 </div>
             </div>
         {{/direct}}

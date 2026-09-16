@@ -233,20 +233,59 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
     var mountFields = function(mp, form) {
         var cardNumber;
 
+        // O IFRAME NAO HERDA O TEMA. Os campos sensiveis sao servidos pelo
+        // Mercado Pago, entao cor e tamanho precisam ser ENVIADOS - sem isso o
+        // texto sai preto sobre fundo escuro e o aluno nao ve o que digita.
+        //
+        // A cor sai do computado da propria pagina, e nao de um valor fixo:
+        // assim acompanha o alternador claro/escuro do tema sem saber que ele
+        // existe.
+        var estilo = {
+            color: window.getComputedStyle(form).color || '#212529',
+            fontSize: '16px',
+            placeholderColor: '#9aa0a6'
+        };
+
         try {
-            cardNumber = mp.fields.create('cardNumber').mount('mp-field-number');
-            mp.fields.create('expirationDate').mount('mp-field-expiration');
-            mp.fields.create('securityCode').mount('mp-field-security');
+            cardNumber = mp.fields.create('cardNumber', {
+                placeholder: '0000 0000 0000 0000',
+                style: estilo
+            }).mount('mp-field-number');
+            mp.fields.create('expirationDate', {
+                placeholder: 'MM/AA',
+                style: estilo
+            }).mount('mp-field-expiration');
+            mp.fields.create('securityCode', {
+                placeholder: 'CVV',
+                style: estilo
+            }).mount('mp-field-security');
         } catch (error) {
             fail(form, error);
             return;
+        }
+
+        // Mascara do CPF. Formata enquanto digita e nao atrapalha apagar: o
+        // valor e reconstruido do zero a cada tecla, a partir so dos digitos.
+        var doc = form.querySelector('#mp-holderdoc');
+        if (doc) {
+            doc.addEventListener('input', function() {
+                var d = doc.value.replace(/\D/g, '').slice(0, 11);
+                var saida = d;
+                if (d.length > 9) {
+                    saida = d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9);
+                } else if (d.length > 6) {
+                    saida = d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6);
+                } else if (d.length > 3) {
+                    saida = d.slice(0, 3) + '.' + d.slice(3);
+                }
+                doc.value = saida;
+            });
         }
 
         form.addEventListener('submit', function(event) {
             event.preventDefault();
 
             var holder = form.querySelector('#mp-holdername');
-            var doc = form.querySelector('#mp-holderdoc');
             var nome = holder ? holder.value.trim() : '';
             var documento = doc ? doc.value.replace(/\D/g, '') : '';
 
