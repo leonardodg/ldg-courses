@@ -231,7 +231,11 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
      * @param {HTMLFormElement} form
      */
     var mountFields = function(mp, form) {
-        var cardNumber;
+        // O BIN chega por EVENTO, e nao por metodo. Nao existe getBin() no
+        // campo: o SDK avisa a cada mudanca dos seis primeiros digitos, e quem
+        // precisa dele tem de ter guardado. Tentar cardNumber.getBin() devolve
+        // "is not a function" no submit - ja aconteceu.
+        var bin = '';
 
         // O IFRAME NAO HERDA O TEMA. Os campos sensiveis sao servidos pelo
         // Mercado Pago, entao cor e tamanho precisam ser ENVIADOS - sem isso o
@@ -247,10 +251,14 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
         };
 
         try {
-            cardNumber = mp.fields.create('cardNumber', {
+            mp.fields.create('cardNumber', {
                 placeholder: '0000 0000 0000 0000',
                 style: estilo
-            }).mount('mp-field-number');
+            })
+                .mount('mp-field-number')
+                .on('binChange', function(dados) {
+                    bin = (dados && dados.bin) || '';
+                });
             mp.fields.create('expirationDate', {
                 placeholder: 'MM/AA',
                 style: estilo
@@ -306,10 +314,12 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
             // devolve "400 invalid parameter in payment method". E assimetrico
             // com o /v1/payments, que infere a bandeira do proprio token, e foi
             // essa assimetria que custou quatro rodadas de prova real.
-            cardNumber.getBin()
-                .then(function(bin) {
-                    return mp.getPaymentMethods({bin: bin});
-                })
+            if (bin === '') {
+                fail(form, new Error('Digite o numero do cartao'));
+                return;
+            }
+
+            mp.getPaymentMethods({bin: bin})
                 .then(function(resposta) {
                     var metodos = (resposta && resposta.results) || [];
                     if (!metodos.length) {
