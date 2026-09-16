@@ -222,7 +222,7 @@ class payment_processor {
         // tres rodadas de prova real em 16/09/2026.
         $customerid = (string) self::step('customer', fn() => self::ensure_customer($client, $user->email));
 
-        $card = (array) self::step('savecard', fn() => $client->save_card($customerid, $cardtoken));
+        $card = (array) self::step('savecard', fn() => $client->save_card($customerid, $cardtoken, $paymentmethod));
         $cardid = (string) ($card['id'] ?? '');
 
         if ($cardid === '') {

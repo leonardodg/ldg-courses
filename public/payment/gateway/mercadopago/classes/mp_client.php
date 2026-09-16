@@ -399,15 +399,28 @@ class mp_client {
      * servidor - o token nasce no navegador, e o numero do cartao nao passa por
      * aqui.
      *
+     * A BANDEIRA E OBRIGATORIA AQUI, e isso e assimetrico com o /v1/payments.
+     * Medido em 16/09/2026: o token dos Secure Fields nao carrega
+     * payment_method_id, e este endpoint devolve "400 invalid parameter in
+     * payment method" sem ela - enquanto a cobranca infere do proprio token.
+     * Quem descobre a bandeira e o navegador, pelo BIN.
+     *
      * @param string $customerid
      * @param string $cardtoken
+     * @param string $paymentmethod Bandeira, ou vazio quando desconhecida
      * @return array Inclui id e last_four_digits
      */
-    public function save_card(string $customerid, string $cardtoken): array {
+    public function save_card(string $customerid, string $cardtoken, string $paymentmethod = ''): array {
+        $body = ['token' => $cardtoken];
+
+        if ($paymentmethod !== '') {
+            $body['payment_method_id'] = $paymentmethod;
+        }
+
         return $this->request(
             'POST',
             '/v1/customers/' . rawurlencode($customerid) . '/cards',
-            ['token' => $cardtoken]
+            $body
         );
     }
 

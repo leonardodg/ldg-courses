@@ -231,8 +231,10 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
      * @param {HTMLFormElement} form
      */
     var mountFields = function(mp, form) {
+        var cardNumber;
+
         try {
-            mp.fields.create('cardNumber').mount('mp-field-number');
+            cardNumber = mp.fields.create('cardNumber').mount('mp-field-number');
             mp.fields.create('expirationDate').mount('mp-field-expiration');
             mp.fields.create('securityCode').mount('mp-field-security');
         } catch (error) {
@@ -258,17 +260,34 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
 
             setBusy(form, true);
 
-            mp.createCardToken({
-                cardholderName: nome,
-                identificationType: 'CPF',
-                identificationNumber: documento
-            })
-                .then(function(token) {
-                    if (!token || !token.id) {
-                        throw new Error('O Mercado Pago nao devolveu token para este cartao');
+            // A BANDEIRA E DESCOBERTA AQUI, pelo BIN, e viaja junto do token.
+            //
+            // Medido em 16/09/2026: o token dos Secure Fields NAO carrega
+            // payment_method_id, e o POST /customers/{id}/cards o EXIGE -
+            // devolve "400 invalid parameter in payment method". E assimetrico
+            // com o /v1/payments, que infere a bandeira do proprio token, e foi
+            // essa assimetria que custou quatro rodadas de prova real.
+            cardNumber.getBin()
+                .then(function(bin) {
+                    return mp.getPaymentMethods({bin: bin});
+                })
+                .then(function(resposta) {
+                    var metodos = (resposta && resposta.results) || [];
+                    if (!metodos.length) {
+                        throw new Error('Cartao nao reconhecido pelo Mercado Pago');
                     }
-                    submitWith(form, token.id, '');
-                    return token;
+
+                    return mp.createCardToken({
+                        cardholderName: nome,
+                        identificationType: 'CPF',
+                        identificationNumber: documento
+                    }).then(function(token) {
+                        if (!token || !token.id) {
+                            throw new Error('O Mercado Pago nao devolveu token para este cartao');
+                        }
+                        submitWith(form, token.id, metodos[0].id);
+                        return token;
+                    });
                 })
                 .catch(function(error) {
                     fail(form, error);
