@@ -512,11 +512,35 @@ class mp_client {
      * contraste que sustenta o desenho - o preapproval aceita o mesmo campo e
      * descarta; este endpoint o honra.
      *
+     * O X-IDEMPOTENCY-KEY E OBRIGATORIO NESTE ENDPOINT, e so neste. Medido em
+     * 16/09/2026: sem ele, o Mercado Pago recusa com "400 Header
+     * X-Idempotency-Key can't be null" antes mesmo de olhar o corpo. Usa a
+     * `external_reference` como chave - ela ja e unica POR CICLO (uma linha
+     * por cobranca, ver install.xml), entao reenviar a MESMA requisicao (um
+     * timeout que o cliente retenta, por exemplo) devolve o pagamento que ja
+     * existe em vez de cobrar duas vezes. Gerar uma chave nova a cada
+     * chamada anularia essa protecao.
+     *
      * @param array $body Corpo do pagamento
      * @return array
      */
     public function create_payment(array $body): array {
-        return $this->request('POST', '/v1/payments', $body);
+        $referencia = (string) ($body['external_reference'] ?? '');
+
+        return $this->request('POST', '/v1/payments', $body, [
+            'X-Idempotency-Key: ' . ($referencia !== '' ? $referencia : self::random_idempotency_key()),
+        ]);
+    }
+
+    /**
+     * Chave de reserva quando nao ha external_reference - nao deveria
+     * acontecer no fluxo normal, mas um corpo sem referencia nao pode travar
+     * na falta do header.
+     *
+     * @return string
+     */
+    protected static function random_idempotency_key(): string {
+        return bin2hex(random_bytes(16));
     }
 
     /**
@@ -678,14 +702,15 @@ class mp_client {
      * @param string $method
      * @param string $path
      * @param array|null $body
+     * @param string[] $extraheaders Cabecalhos adicionais, so alguns endpoints pedem
      * @return array
      */
-    protected function request(string $method, string $path, ?array $body = null): array {
+    protected function request(string $method, string $path, ?array $body = null, array $extraheaders = []): array {
         $curl = static::make_curl();
-        $curl->setHeader([
+        $curl->setHeader(array_merge([
             'Authorization: Bearer ' . $this->accesstoken,
             'Content-Type: application/json',
-        ]);
+        ], $extraheaders));
         $options = [
             'CURLOPT_TIMEOUT' => self::TIMEOUT,
             'CURLOPT_CONNECTTIMEOUT' => 10,

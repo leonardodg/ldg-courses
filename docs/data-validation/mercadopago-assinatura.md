@@ -656,3 +656,58 @@ the payment method of card"), mas **nenhum teste automatizado nem manual
 desta sessão conseguiu reproduzir o erro 127 para provar que ela
 resolve** - todos os cartões disponíveis para teste pulam a validação que
 está falhando. A confirmação só é possível com o cartão real do aluno.
+
+### A causa de verdade: o token dos Secure Fields não carrega BIN
+
+O usuário testou com um cartão real (temporário, gerado só para esta prova)
+e o erro se repetiu, **com os mesmos valores** (`visa`/`25`) - o que
+derrubou a hipótese do endpoint dedicado ter sido a causa. Isolado em três
+passos, com o cartão real:
+
+1. `GET /v1/payment_methods/search` e `GET /v1/payment_methods/card_issuers`
+   concordam: `visa`/`25` é o que os dois endpoints devolvem para este BIN
+   também. O palpite não era o problema.
+2. `save_card()` com este cartão real, via **curl puro** e via **o próprio
+   `mp_client` do plugin** (não uma simulação), contra o customer de
+   verdade do aluno: **201, aprovado**, os dois. O código e os valores
+   estão certos.
+3. O diagnóstico que consulta `GET /v1/card_tokens/{id}` (commit anterior)
+   revelou a diferença: para o token que o **navegador** criou pelos Secure
+   Fields (modo `direct`), a resposta veio com `status: active` mas **sem
+   `first_six_digits`** (`token bin=?`). Todo token criado com
+   `card_number` em texto puro - os de teste, os de curl, o modo nativo -
+   trazem esse campo. O do modo `direct` não.
+
+**Sem BIN no próprio token, o Mercado Pago não tem contra o que resolver
+NADA** - nem o que o navegador manda, nem um palpite nosso, porque não há
+dado de cartão para cruzar do lado do token. Não era bandeira errada, nem
+emissor errado: o modo `direct` (Secure Fields montados à mão, fora do
+Card Payment Brick) produz um token que o `/v1/customers/{id}/cards` não
+consegue usar para salvar cartão - só para cobrança avulsa, onde o próprio
+`/v1/payments` aceita o token sem exigir que ele carregue BIN (o
+`application_fee` já provado no início deste documento usava justamente
+esse tipo de token).
+
+**Corrigido**: `cardcapture` trocado de `direct` para `brick` (configuração
+de site, sem deploy de código) - o Card Payment Brick é o componente
+mantido pelo próprio Mercado Pago para exatamente este fluxo
+(salvar-e-cobrar-depois), e é o padrão de fábrica do plugin
+(`card_capture::current()` já caía em `MODE_BRICK`; só estava em `direct`
+por causa dos testes anteriores desta sessão). O modo `direct` continua no
+código - útil para SAQ A-EP quando não se guarda cartão para cobrança
+recorrente -, mas não é mais a captura da assinatura em produção.
+
+### X-Idempotency-Key: o erro seguinte, depois do savecard passar
+
+Com o `brick`, a compra avançou até o passo `payment` - a prova de que o
+`savecard` estava mesmo resolvido. Erro novo, bem mais simples: `400
+Header X-Idempotency-Key can't be null` (causa 4292). O `/v1/payments`
+exige este cabeçalho e nenhum outro endpoint do plugin exige - não estava
+sendo mandado.
+
+**Corrigido**: `create_payment()` manda `X-Idempotency-Key` com o valor da
+própria `external_reference` do corpo - ela já é única POR CICLO (uma
+linha por cobrança, ver `install.xml`), então reenviar a mesma requisição
+(um timeout que o cliente retenta, por exemplo) devolve o pagamento que já
+existe em vez de cobrar duas vezes. Gerar uma chave aleatória a cada
+chamada anularia essa proteção contra cobrança duplicada.

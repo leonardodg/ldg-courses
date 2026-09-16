@@ -79,6 +79,7 @@ class fake_curl extends \curl {
         fake_mp_client::$lastbody = is_string($params)
             ? (array) json_decode($params, true)
             : (array) $params;
+        fake_mp_client::$lastheaders = $this->header;
 
         return $this->body();
     }

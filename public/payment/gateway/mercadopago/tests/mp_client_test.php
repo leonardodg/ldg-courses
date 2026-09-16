@@ -492,6 +492,30 @@ final class mp_client_test extends \advanced_testcase {
     }
 
     /**
+     * O X-Idempotency-Key e obrigatorio no /v1/payments, e so nele.
+     *
+     * Medido em 16/09/2026: sem ele, "400 Header X-Idempotency-Key can't be
+     * null" - antes mesmo do corpo ser olhado. Usa a external_reference,
+     * porque ela ja e unica POR CICLO: reenviar a mesma requisicao devolve o
+     * pagamento existente em vez de cobrar duas vezes.
+     *
+     * @return void
+     */
+    public function test_a_cobranca_leva_idempotency_key_da_referencia(): void {
+        fake_mp_client::$nextresponse = ['id' => 1, 'status' => 'approved'];
+
+        (new fake_mp_client('token'))->create_payment([
+            'transaction_amount' => 5.0,
+            'external_reference' => 'mdlsub-1011-6-abc123',
+        ]);
+
+        $this->assertContains(
+            'X-Idempotency-Key: mdlsub-1011-6-abc123',
+            fake_mp_client::$lastheaders
+        );
+    }
+
+    /**
      * O cliente e o cartao guardado vivem no Mercado Pago.
      *
      * @return void

@@ -68,6 +68,9 @@ class fake_mp_client extends mp_client {
     /** @var array Corpo do ultimo POST, ja decodificado. */
     public static array $lastbody = [];
 
+    /** @var string[] Cabecalhos da ultima chamada. */
+    public static array $lastheaders = [];
+
     /** @var array Uma entrada por chamada: [metodo, url]. */
     public static array $calls = [];
 
@@ -84,6 +87,7 @@ class fake_mp_client extends mp_client {
         self::$statusqueue = [];
         self::$nexterrno = 0;
         self::$lastbody = [];
+        self::$lastheaders = [];
         self::$calls = [];
     }
 
