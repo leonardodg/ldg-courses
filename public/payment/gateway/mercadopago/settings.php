@@ -100,6 +100,18 @@ if ($ADMIN->fulltree) {
             PARAM_RAW_TRIMMED
         ));
 
+        // A de teste fica ao lado, e nao no lugar. Guardar as duas e deixar o
+        // "modo de teste" escolher evita a troca manual a cada virada de
+        // ambiente - que e a configuracao em dois lugares que este plugin ja
+        // pagou caro para eliminar.
+        $settings->add(new admin_setting_configtext(
+            'paygw_mercadopago/' . application::config_key($type, 'publickeytest'),
+            $nomear('publickeytest'),
+            get_string('publickeytest_desc', 'paygw_mercadopago'),
+            '',
+            PARAM_RAW_TRIMMED
+        ));
+
         // A assinatura secreta e POR APLICACAO, e nao do site: cada uma tem a
         // sua no painel. Uma so para todas faria a validacao do webhook
         // recusar as notificacoes das outras duas, o que aparece como venda

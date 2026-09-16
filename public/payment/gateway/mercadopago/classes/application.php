@@ -184,13 +184,37 @@ class application {
      * administracao um valor que aparece no fonte da pagina do aluno seria
      * teatro.
      *
+     * SAO DUAS, e quem escolhe e o testmode - o MESMO interruptor que decide se
+     * o OAuth emite token de teste. E o que faz as tres partes ficarem do mesmo
+     * lado: comprador, vendedor e aplicacao. Uma chave de producao com token de
+     * teste devolve "Invalid users involved", medido em 16/09/2026, e a recusa
+     * nao diz qual das partes esta fora.
+     *
+     * O client_id e o client_secret NAO entram nisso: sao os mesmos nos dois
+     * ambientes, porque a aplicacao e a mesma. So as chaves mudam.
+     *
      * @param string $type
-     * @return string Vazio quando nao configurada
+     * @return string Vazio quando nao configurada para o ambiente em vigor
      */
     public static function public_key(string $type): string {
         self::guard($type);
 
-        return trim((string) get_config('paygw_mercadopago', self::config_key($type, 'publickey')));
+        $campo = self::test_mode() ? 'publickeytest' : 'publickey';
+
+        // Em modo de teste NAO se cai na chave de producao, e a ausencia da
+        // queda e a regra. Cair misturaria ambientes, e a recusa chegaria
+        // disfarcada de problema com o cartao; vazio faz o subscribe.php dizer
+        // que falta configurar, que e a verdade.
+        return trim((string) get_config('paygw_mercadopago', self::config_key($type, $campo)));
+    }
+
+    /**
+     * O site esta em modo de teste?
+     *
+     * @return bool
+     */
+    public static function test_mode(): bool {
+        return !empty(get_config('paygw_mercadopago', 'testmode'));
     }
 
     /**

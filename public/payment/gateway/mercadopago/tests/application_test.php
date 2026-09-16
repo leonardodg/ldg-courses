@@ -217,8 +217,52 @@ final class application_test extends \advanced_testcase {
         );
         $this->assertSame('', application::public_key(application::TYPE_BRICKS));
 
-        set_config('publickey_bricks', 'TEST-c5e86647', 'paygw_mercadopago');
-        $this->assertSame('TEST-c5e86647', application::public_key(application::TYPE_BRICKS));
+        set_config('publickey_bricks', 'APP_USR-4b7e1753', 'paygw_mercadopago');
+        $this->assertSame('APP_USR-4b7e1753', application::public_key(application::TYPE_BRICKS));
+    }
+
+    /**
+     * A chave publica segue o modo de teste do SITE.
+     *
+     * Sao guardadas as DUAS - producao e teste -, e quem escolhe e o testmode,
+     * o mesmo interruptor que ja decide se o OAuth emite token de teste. Ter de
+     * trocar a chave a mao ao ligar o modo de teste seria a configuracao em
+     * dois lugares que este plugin ja pagou caro para evitar: comprador,
+     * vendedor e aplicacao precisam estar todos do mesmo lado, e uma chave de
+     * producao com token de teste devolve "Invalid users involved" sem dizer
+     * qual das partes esta fora.
+     *
+     * @return void
+     */
+    public function test_a_chave_publica_segue_o_modo_de_teste(): void {
+        $this->resetAfterTest();
+
+        set_config('publickey_bricks', 'APP_USR-producao', 'paygw_mercadopago');
+        set_config('publickeytest_bricks', 'TEST-teste', 'paygw_mercadopago');
+
+        set_config('testmode', 0, 'paygw_mercadopago');
+        $this->assertSame('APP_USR-producao', application::public_key(application::TYPE_BRICKS));
+
+        set_config('testmode', 1, 'paygw_mercadopago');
+        $this->assertSame('TEST-teste', application::public_key(application::TYPE_BRICKS));
+    }
+
+    /**
+     * Em modo de teste SEM chave de teste, nao se cai na de producao.
+     *
+     * Cair seria pior que faltar: a cobranca nasceria misturando ambientes e a
+     * recusa chegaria como problema com o cartao. Vazio faz o subscribe.php
+     * dizer que falta configurar, que e a verdade.
+     *
+     * @return void
+     */
+    public function test_sem_chave_de_teste_nao_cai_na_de_producao(): void {
+        $this->resetAfterTest();
+
+        set_config('publickey_bricks', 'APP_USR-producao', 'paygw_mercadopago');
+        set_config('testmode', 1, 'paygw_mercadopago');
+
+        $this->assertSame('', application::public_key(application::TYPE_BRICKS));
     }
 
     /**
