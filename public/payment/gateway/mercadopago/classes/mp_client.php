@@ -432,7 +432,14 @@ class mp_client {
         }
 
         if ($issuerid !== '') {
-            $body['issuer_id'] = $issuerid;
+            // NUMERO, E NAO STRING - medido em 16/09/2026: "25" (string) faz o
+            // Mercado Pago devolver "400 the body must be a Json Object" (causa
+            // 118), uma mensagem que nao tem nada a ver com o defeito real. Com
+            // 25 (inteiro) o mesmo corpo passa da validacao de forma. O JSON
+            // Object da mensagem sao os OBJETOS do corpo, nao o corpo inteiro -
+            // e o emissor e um dos poucos campos aqui que o Mercado Pago espera
+            // tipado, e nao como texto.
+            $body['issuer_id'] = (int) $issuerid;
         }
 
         return $this->request(

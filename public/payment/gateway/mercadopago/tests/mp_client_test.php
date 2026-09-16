@@ -520,7 +520,11 @@ final class mp_client_test extends \advanced_testcase {
         (new fake_mp_client('token'))->save_card('cus', 'cardtoken', 'visa', '25');
 
         $this->assertSame('visa', fake_mp_client::$lastbody['payment_method_id']);
-        $this->assertSame('25', fake_mp_client::$lastbody['issuer_id']);
+
+        // NUMERO, e nao string - medido em 16/09/2026: issuer_id como string
+        // ("25") faz o Mercado Pago devolver "400 the body must be a Json
+        // Object", uma mensagem que nao aponta o campo de verdade.
+        $this->assertSame(25, fake_mp_client::$lastbody['issuer_id']);
     }
 
     /**

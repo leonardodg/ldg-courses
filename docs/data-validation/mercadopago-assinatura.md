@@ -588,3 +588,22 @@ mesmo resultado da busca por BIN, nos três modos de captura —
 `card_form.js` (brick e direto) e `mp_client::guess_payment_method()`,
 novo, para o modo nativo (que tem o número do cartão no servidor e não
 precisa do navegador para descobrir nada).
+
+### `issuer_id` como texto quebra o corpo inteiro
+
+A tentativa seguinte trocou de erro: `400 [118: the body must be a Json
+Object]`. A mensagem não tem nada a ver com o defeito real - reproduzido com
+curl, contra a conta de verdade, isolando UM campo por vez:
+
+| Corpo | Resultado |
+|---|---|
+| `"issuer_id": "25"` (string) | **400** `[118: the body must be a Json Object]` |
+| `"issuer_id": 25` (número) | outro erro (token inválido - esperado, o token era falso) |
+| sem `issuer_id` | o mesmo outro erro |
+
+`payment_method_id` é string (`"visa"`), mas `issuer_id` é **número**, e o
+`(string) $issuerid` que `guess_payment_method()` devolve virava `"25"` no
+corpo sem ninguém convertê-lo de volta. **Corrigido**: `save_card()` agora
+faz `(int) $issuerid` na hora de montar o corpo. É o único campo aqui que o
+Mercado Pago exige tipado, e não como texto - o resto do payload inteiro
+aceita string sem reclamar.
