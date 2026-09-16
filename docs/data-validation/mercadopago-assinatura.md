@@ -607,3 +607,52 @@ corpo sem ninguém convertê-lo de volta. **Corrigido**: `save_card()` agora
 faz `(int) $issuerid` na hora de montar o corpo. É o único campo aqui que o
 Mercado Pago exige tipado, e não como texto - o resto do payload inteiro
 aceita string sem reclamar.
+
+### O `issuer` da busca por BIN é um PALPITE, não o emissor do cartão
+
+Com tipo e presença corrigidos, a compra real voltou ao MESMO erro (127),
+com os valores agora visíveis no diagnóstico: `payment_method_id=visa,
+issuer_id=25`. Bandeira certa, emissor "certo" segundo a busca por BIN - e
+mesmo assim recusado.
+
+**Cartões de teste do Mercado Pago (`APRO`, ou qualquer número da lista
+oficial de teste) não servem para medir isto.** Provado isolando a
+variável: o MESMO cartão Visa de teste, com bandeira **e emissor ERRADOS
+de propósito** (`issuer_id` de um Mastercard, `12749`), foi aceito com
+**201** - o Mercado Pago simplesmente ignora o que se manda e resolve pelo
+próprio token quando o cartão é de teste. Confirmado também com
+`cardholder.name` diferente de `"APRO"`: sem efeito, ainda aceita
+qualquer coisa. **Todos os cartões de teste publicados pelo Mercado Pago
+pulam esta validação** - é o próprio mecanismo que existe para não travar
+quem está testando, e é exatamente por isso que nenhuma medição desta
+sessão, feita só com esses números, reproduziu o erro do aluno.
+
+**O que ficou provado, ainda assim:**
+
+- `GET /v1/payment_methods/search` devolve um campo `issuer` em cada
+  resultado, mas ele é um palpite do site inteiro (Brasil), não do BIN
+  específico - para BINs genéricos de teste ele mostra sempre o emissor
+  "default" (Visa=25, Mastercard=24), e é ESSE valor genérico que
+  `guess_payment_method()` vinha usando;
+- existe um endpoint DEDICADO para o emissor de verdade -
+  `GET /v1/payment_methods/card_issuers?payment_method_id=X&bin=Y` -, e o
+  SDK oficial o expõe como `mp.getIssuers()` (confirmado lendo o bundle);
+  para os BINs testados (Visa e Mastercard genéricos) ele devolveu os
+  MESMOS ids que a busca por BIN, então a mudança de fonte não pôde ser
+  comprovada como a causa raiz com os dados disponíveis;
+- um cartão de teste REAL salvo nesta sessão (`aluno.prova.mp@leodg.dev`,
+  card_id `9854896121`, BIN `548083`, Santander) tem emissor `12749` - um
+  banco de verdade, bem longe do genérico `24`/`25` - o que mostra que
+  BINs de bancos reais TÊM emissor específico, ao contrário dos BINs de
+  teste publicados.
+
+**Corrigido, mesmo sem confirmação end-to-end possível nesta sessão**:
+`guess_payment_method()` e `card_form.js` (modo direto) agora buscam o
+emissor pelo endpoint dedicado (`card_issuers` / `mp.getIssuers()`), não
+mais pelo campo `issuer` genérico da busca por BIN. É a fonte que a
+documentação e a comunidade do Mercado Pago apontam como correta para
+este caso exato (issue pública do SDK PHP, mesma mensagem "Cannot resolve
+the payment method of card"), mas **nenhum teste automatizado nem manual
+desta sessão conseguiu reproduzir o erro 127 para provar que ela
+resolve** - todos os cartões disponíveis para teste pulam a validação que
+está falhando. A confirmação só é possível com o cartão real do aluno.

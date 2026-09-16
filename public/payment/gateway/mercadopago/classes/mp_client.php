@@ -579,14 +579,41 @@ class mp_client {
         foreach (($resposta['results'] ?? []) as $metodo) {
             $tipo = (string) ($metodo['payment_type_id'] ?? '');
             if ($tipo === 'credit_card' || $tipo === 'debit_card') {
+                $id = (string) ($metodo['id'] ?? '');
+
                 return [
-                    'id' => (string) ($metodo['id'] ?? ''),
-                    'issuerid' => (string) ($metodo['issuer']['id'] ?? ''),
+                    'id' => $id,
+                    'issuerid' => self::guess_issuer($publickey, $id, $bin),
                 ];
             }
         }
 
         return [];
+    }
+
+    /**
+     * Descobre o emissor de VERDADE de um cartao - o `issuer` que vem junto
+     * da busca por BIN e so um palpite do site inteiro, e nao do cartao.
+     *
+     * Medido em 16/09/2026: uma compra real com a bandeira certa E o emissor
+     * que a busca por BIN devolvia (generico, "default": true) ainda voltou
+     * "Cannot resolve the payment method of card, check the payment_method_id
+     * and issuer_id". O endpoint que resolve o emissor de verdade e outro - o
+     * SDK oficial o expoe como `mp.getIssuers()`, e aqui e o espelho dele.
+     *
+     * @param string $publickey
+     * @param string $paymentmethod Bandeira ja resolvida
+     * @param string $bin
+     * @return string Vazio quando nao ha exatamente um emissor
+     */
+    protected static function guess_issuer(string $publickey, string $paymentmethod, string $bin): string {
+        $emissores = self::get_json(self::API_BASE . '/v1/payment_methods/card_issuers?' . http_build_query([
+            'payment_method_id' => $paymentmethod,
+            'bin' => $bin,
+            'public_key' => $publickey,
+        ]));
+
+        return (string) ($emissores[0]['id'] ?? '');
     }
 
     /**

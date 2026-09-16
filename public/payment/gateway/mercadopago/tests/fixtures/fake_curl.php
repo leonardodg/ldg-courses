@@ -133,6 +133,10 @@ class fake_curl extends \curl {
             return fake_mp_client::$rawresponse;
         }
 
+        if (fake_mp_client::$responsequeue) {
+            return json_encode(array_shift(fake_mp_client::$responsequeue));
+        }
+
         return json_encode(fake_mp_client::$nextresponse);
     }
 }

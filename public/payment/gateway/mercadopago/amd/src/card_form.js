@@ -345,24 +345,33 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
                         throw new Error('Cartao nao reconhecido pelo Mercado Pago');
                     }
 
-                    return mp.createCardToken({
-                        cardholderName: nome,
-                        identificationType: 'CPF',
-                        identificationNumber: documento
-                    }).then(function(token) {
-                        if (!token || !token.id) {
-                            throw new Error('O Mercado Pago nao devolveu token para este cartao');
-                        }
-                        // O EMISSOR VIAJA JUNTO DA BANDEIRA, e nao e opcional
-                        // para todo cartao: medido em 16/09/2026, uma compra
-                        // real com so a bandeira voltou "Cannot resolve the
-                        // payment method of card, check the payment_method_id
-                        // and issuer_id" - a mesma busca por BIN que acha a
-                        // bandeira ja devolve o emissor, em cartoes[0].issuer.id.
-                        var emissor = (cartoes[0].issuer && cartoes[0].issuer.id) || '';
-                        submitWith(form, token.id, cartoes[0].id, emissor);
-                        return token;
-                    });
+                    var bandeira = cartoes[0].id;
+
+                    // O EMISSOR NAO SAI DA BUSCA POR BIN - medido em
+                    // 16/09/2026, uma compra real com a bandeira certa (visa)
+                    // e o emissor QUE A BUSCA POR BIN DEVOLVIA (o generico,
+                    // "default": true) ainda voltou "Cannot resolve the
+                    // payment method of card, check the payment_method_id and
+                    // issuer_id". O "issuer" da busca por BIN e so um palpite
+                    // do site inteiro; o endpoint que resolve o emissor de
+                    // VERDADE para aquele BIN e outro, e o SDK o expoe como
+                    // mp.getIssuers().
+                    return mp.getIssuers({bin: bin, paymentMethodId: bandeira})
+                        .then(function(emissores) {
+                            var emissor = (emissores && emissores[0] && emissores[0].id) || '';
+
+                            return mp.createCardToken({
+                                cardholderName: nome,
+                                identificationType: 'CPF',
+                                identificationNumber: documento
+                            }).then(function(token) {
+                                if (!token || !token.id) {
+                                    throw new Error('O Mercado Pago nao devolveu token para este cartao');
+                                }
+                                submitWith(form, token.id, bandeira, emissor);
+                                return token;
+                            });
+                        });
                 })
                 .catch(function(error) {
                     fail(form, error);

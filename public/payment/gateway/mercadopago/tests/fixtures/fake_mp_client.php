@@ -47,6 +47,11 @@ class fake_mp_client extends mp_client {
     /** @var array Resposta que a proxima chamada devolve. */
     public static array $nextresponse = [];
 
+    /** @var array Fila de respostas, uma por chamada, para fluxos com mais de
+     * uma requisicao - guess_payment_method() faz duas (busca por BIN,
+     * emissor). Vazia, cai em $nextresponse para todas as chamadas. */
+    public static array $responsequeue = [];
+
     /** @var string|null Resposta crua, quando o teste quer algo que nao e JSON. */
     public static ?string $rawresponse = null;
 
@@ -69,6 +74,7 @@ class fake_mp_client extends mp_client {
      */
     public static function reset(): void {
         self::$nextresponse = [];
+        self::$responsequeue = [];
         self::$rawresponse = null;
         self::$nextstatus = 200;
         self::$nexterrno = 0;

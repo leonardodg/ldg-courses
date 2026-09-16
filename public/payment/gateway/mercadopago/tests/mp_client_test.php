@@ -573,4 +573,63 @@ final class mp_client_test extends \advanced_testcase {
             $this->assertStringContainsString('issuer_id=25', $e->getMessage());
         }
     }
+
+    /**
+     * O emissor vem do endpoint DEDICADO, e nao do campo "issuer" generico da
+     * busca por BIN.
+     *
+     * Medido em 16/09/2026: uma compra real com a bandeira certa E o emissor
+     * generico que a busca por BIN devolvia ("default": true) ainda voltou
+     * "Cannot resolve the payment method of card". O endpoint que resolve o
+     * emissor de verdade e outro - GET /payment_methods/card_issuers, o mesmo
+     * que o SDK oficial expoe como mp.getIssuers().
+     *
+     * @return void
+     */
+    public function test_guess_payment_method_usa_o_endpoint_de_emissores(): void {
+        fake_mp_client::$responsequeue = [
+            [
+                'results' => [
+                    ['id' => 'pix', 'payment_type_id' => 'bank_transfer'],
+                    ['id' => 'visa', 'payment_type_id' => 'credit_card', 'issuer' => ['id' => 25, 'default' => true]],
+                ],
+            ],
+            [
+                ['id' => '12749', 'name' => 'Santander'],
+            ],
+        ];
+
+        $metodo = fake_mp_client::guess_payment_method('publickey', '453998');
+
+        $this->assertSame('visa', $metodo['id']);
+        // NAO 25 (o generico da primeira chamada) - 12749, o que o endpoint
+        // dedicado devolveu.
+        $this->assertSame('12749', $metodo['issuerid']);
+
+        $this->assertCount(2, fake_mp_client::$calls);
+        $this->assertStringContainsString('/payment_methods/search', fake_mp_client::$calls[0][1]);
+        $this->assertStringContainsString('bins=453998', fake_mp_client::$calls[0][1]);
+        $this->assertStringContainsString('/payment_methods/card_issuers', fake_mp_client::$calls[1][1]);
+        $this->assertStringContainsString('payment_method_id=visa', fake_mp_client::$calls[1][1]);
+        $this->assertStringContainsString('bin=453998', fake_mp_client::$calls[1][1]);
+    }
+
+    /**
+     * Sem cartao no resultado, nao ha bandeira nem emissor para descobrir - e
+     * a segunda chamada nem acontece.
+     *
+     * @return void
+     */
+    public function test_guess_payment_method_sem_cartao_nao_busca_emissor(): void {
+        fake_mp_client::$nextresponse = [
+            'results' => [
+                ['id' => 'pix', 'payment_type_id' => 'bank_transfer'],
+            ],
+        ];
+
+        $metodo = fake_mp_client::guess_payment_method('publickey', '453998');
+
+        $this->assertSame([], $metodo);
+        $this->assertCount(1, fake_mp_client::$calls);
+    }
 }
