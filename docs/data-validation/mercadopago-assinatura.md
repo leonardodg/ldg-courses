@@ -149,6 +149,13 @@ split **1:N**, com comissão por recebedor.
 política de conta. O produto precisa ser liberado comercialmente pelo Mercado
 Pago — mesma forma do bloqueio do Pagar.me.
 
+> **Uma hipótese do suporte, já descartada aqui.** O suporte levantou que esse
+> 403 aparece quando o header `Authorization` não chega ao Mercado Pago — por
+> exemplo removido por proxy ou API gateway — e sugeriu repetir a chamada com
+> `curl` direto do terminal. **Foi assim que ela foi feita desde o começo**:
+> `curl` da máquina para `api.mercadopago.com`, sem proxy no caminho, com três
+> tokens diferentes e resposta idêntica. A hipótese está eliminada.
+
 Enquanto não for liberado, a questão fiscal do
 [ADR-0003](../adr/0003-quem-cria-a-cobranca-emite-a-nota.md) **não precisa ser
 respondida**: o caminho está fechado de qualquer jeito.

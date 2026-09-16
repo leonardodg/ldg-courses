@@ -76,5 +76,66 @@ function xmldb_paygw_mercadopago_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026090810, 'paygw', 'mercadopago');
     }
 
+    if ($oldversion < 2026091600) {
+        // A assinatura entra na tabela, com UMA LINHA POR CICLO.
+        //
+        // Cada ciclo e um pagamento proprio, com a sua comissao fotografada no
+        // momento em que foi cobrado - juntar tudo numa linha so faria a
+        // mudanca de comissao reescrever o passado, que e exatamente o que o
+        // ADR-0007 proibe. O que liga os ciclos do mesmo aluno e o
+        // subscriptionid.
+        //
+        // NAO ha guarda table_exists() aqui, e a ausencia e a regra: a tabela e
+        // deste plugin, declarada no install.xml, entao ela existe. A guarda so
+        // faria um nome errado passar calado, e o upgrade terminar com sucesso
+        // sem ter criado nada. Ver docs/dev/padrao-de-implementacao.md.
+        $table = new xmldb_table('paygw_mercadopago');
+
+        // Toda linha que existe hoje veio do Checkout Pro, entao o default
+        // descreve o passado com precisao - nao e aproximacao.
+        $field = new xmldb_field('apptype', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'preferences', 'paymentid');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('subscriptionid', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'apptype');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('cycles', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'subscriptionid');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Identificadores do Mercado Pago, e so isso. O numero do cartao nao
+        // entra neste banco, e nao vai entrar: quem guarda o cartao e o
+        // gateway.
+        $field = new xmldb_field('mpcustomerid', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'cycles');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('mpcardid', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'mpcustomerid');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('paymentmethod', XMLDB_TYPE_CHAR, '32', null, null, null, null, 'mpcardid');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Toda leitura de assinatura parte daqui: o ciclo seguinte, a fatura em
+        // aberto e o cancelamento procuram pelo subscriptionid, e nao pelo id
+        // da linha.
+        $index = new xmldb_index('subscriptionid', XMLDB_INDEX_NOTUNIQUE, ['subscriptionid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026091600, 'paygw', 'mercadopago');
+    }
+
     return true;
 }

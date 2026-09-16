@@ -23,7 +23,8 @@ offset 0 (stack `ldg-courses`, `https://localhost:8443`).
 | Fase 1 — M3, M5, M6 | **pendentes**: dependem do OAuth no navegador |
 | Fase 2 — documentação | **quase**: roteiro, ADR-0012, ADR-0013 e a correção datada do ADR-0001 escritos; faltam `comparacao-medida.md` e `CLAUDE.md` |
 | Fase 3a — multi-aplicação | **feita**: `application.php`, `settings.php`, as três `lang/`, OAuth por tipo (`start`, `callback`, `unlink`), tela do gateway e `refresh_tokens` |
-| Fases 3b, 3c, 4, 5 | não começaram |
+| Fase 3b — recorrência | **em curso**: esquema pronto e conferido; faltam `mp_client`, `payment_processor`, contrato e a tarefa de ciclo |
+| Fases 3c, 4, 5 | não começaram |
 
 **Verde neste ponto:** PHPUnit `36/36` (eram 27), phpcs limpo nos 26 arquivos,
 behat `7/7` — 4 sem JS e 3 com Chrome (eram 4 cenários; 3 novos).
@@ -43,15 +44,21 @@ behat `7/7` — 4 sem JS e 3 com Chrome (eram 4 cenários; 3 novos).
    frase do `CLAUDE.md` sobre "CVV a cada cobrança", ao menos na tokenização.
 5. **São duas assinaturas**: a B2B (empresa → plataforma) **não tem split** e o
    `preapproval` serve a ela; só a B2C precisa de tudo isto.
+6. **O suporte do MP confirmou a M2** e colocou a escolha em dois caminhos. O
+   usuário decidiu em 15/09: **a comissão sai de cada ciclo**, o que confirma o
+   Plano B e descarta cobrar do vendedor por fora.
+7. **Risco novo, que nenhuma chamada de API revela**: cobrança disparada pelo
+   nosso backend pode ter aprovação pior que a do motor de assinaturas. A prova
+   de tokenização sem CVV **não** é prova de aprovação. Vira número a medir em
+   produção — e, se for ruim, o caminho de volta é o Asaas.
 
 ### Próximo passo exato
 
 A Fase 3a acabou. O próximo é a **Fase 3b**, na ordem:
 
-1. **`db/install.xml` + `db/upgrade.php`** — as colunas novas em
-   `paygw_mercadopago` (`apptype`, `subscriptionid`, `cycles`, `mpcustomerid`,
-   `mpcardid`, `paymentmethod`). Sem guarda `table_exists()` antes de
-   `add_field`, e depois `php admin/cli/check_database_schema.php`.
+1. ~~`db/install.xml` + `db/upgrade.php`~~ — **feito**. Seis colunas e o índice
+   de `subscriptionid`; `check_database_schema.php` diz `Database structure is
+   ok.` e o `db_schema_test` passa nos dez plugins.
 2. **`mp_client`** — `PUT` no `request()`, e os métodos novos espelhando o SDK.
 3. **`payment_processor::start_payment()`** — ramo de assinatura por
    `api::recurrence_for()`, como em `asaas/classes/payment_processor.php:145`.

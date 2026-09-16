@@ -23,6 +23,12 @@
         <FIELD NAME="feesource" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="site" SEQUENCE="false" COMMENT="De onde os termos vieram: policy|company|plan|site."/>
         <FIELD NAME="status" TYPE="char" LENGTH="30" NOTNULL="true" DEFAULT="pending" SEQUENCE="false" COMMENT="pending|approved|rejected|refunded|cancelled, espelhando o Mercado Pago."/>
         <FIELD NAME="paymentid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Registro em {payments}, criado so na aprovacao."/>
+        <FIELD NAME="apptype" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="preferences" SEQUENCE="false" COMMENT="Qual APLICACAO do Mercado Pago criou esta linha: preferences|subscriptions|bricks. Sem ela nao se sabe com que token consultar o pagamento de volta, porque cada aplicacao tem o proprio OAuth. O default e preferences porque toda linha que existia antes desta coluna veio do Checkout Pro."/>
+        <FIELD NAME="subscriptionid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Assinatura a que este ciclo pertence. Vazio na venda avulsa. Cada ciclo e uma LINHA propria, porque cada um e um pagamento com a sua comissao fotografada - o que liga as linhas do mesmo aluno e este campo."/>
+        <FIELD NAME="cycles" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Numero do ciclo que esta linha cobra. Zero na venda avulsa."/>
+        <FIELD NAME="mpcustomerid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Cliente do Mercado Pago correspondente ao aluno, na conta do vendedor. E um IDENTIFICADOR, nunca dado de cartao."/>
+        <FIELD NAME="mpcardid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Cartao guardado NO MERCADO PAGO que sera cobrado nos ciclos seguintes. E o id devolvido pela API: o numero do cartao nunca entra neste banco, e nao vai entrar."/>
+        <FIELD NAME="paymentmethod" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false" COMMENT="Meio que o aluno usou, cru do Mercado Pago. Decide se ha cobranca automatica: cartao deixa instrumento guardado, Pix e boleto nao."/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>
@@ -34,6 +40,7 @@
         <INDEX NAME="externalreference" UNIQUE="true" FIELDS="externalreference"/>
         <INDEX NAME="mppaymentid" UNIQUE="false" FIELDS="mppaymentid"/>
         <INDEX NAME="preferenceid" UNIQUE="false" FIELDS="preferenceid"/>
+        <INDEX NAME="subscriptionid" UNIQUE="false" FIELDS="subscriptionid" COMMENT="Toda leitura de assinatura procura por aqui: o ciclo seguinte, a fatura em aberto e o cancelamento partem do subscriptionid, nao do id da linha."/>
       </INDEXES>
     </TABLE>
   </TABLES>

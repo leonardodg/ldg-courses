@@ -67,6 +67,41 @@ medição junto para que ninguém "conserte" isso depois.
 motor da B2B, e removê-lo por causa de uma limitação que só atinge a B2C seria
 jogar fora a ferramenta certa para o outro produto.
 
+## Confirmação do suporte do Mercado Pago, 15/09/2026
+
+A medição foi levada ao suporte, e a resposta bate com ela: os endpoints
+`POST /preapproval_plan` e `POST /preapproval` **não expõem parâmetro de taxa do
+integrador**. É confirmação independente da M2.
+
+O suporte colocou a escolha em dois caminhos, e o segundo é o nosso:
+
+1. **Assinaturas do MP**, com a comissão cobrada do vendedor **por fora** —
+   faturamento ou repasse em periodicidade própria;
+2. **recorrência orquestrada por nós**, um pagamento por ciclo, porque é aí que
+   os mecanismos de taxa existem.
+
+**Decisão do usuário, 15/09/2026: a comissão precisa sair automaticamente de
+cada cobrança do aluno.** Isso elimina o caminho 1 — transformar a comissão em
+conta a receber do vendedor traria risco de inadimplência e um processo de
+cobrança que não existe — e confirma o caminho 2.
+
+### O risco que a medição não pegava
+
+O suporte acrescentou algo que nenhuma chamada de API revela: uma cobrança
+disparada pelo nosso backend pode **sofrer mais recusas do emissor** do que uma
+cobrança do motor de assinaturas, porque as bandeiras tratam transação iniciada
+pelo estabelecimento de forma diferente quando ela não está enquadrada no modelo
+de recorrência e consentimento.
+
+Nossa prova de que `POST /v1/card_tokens` aceita `{"card_id"}` sem
+`security_code` continua valendo — mas ela prova **tokenização**, não **taxa de
+aprovação**. São coisas diferentes, e confundi-las seria repetir o erro que este
+projeto já cometeu: tomar "a API aceitou" por "funcionou".
+
+**Consequência prática:** a taxa de aprovação do ciclo 2 em diante vira um número
+a medir em produção, e não uma premissa. Se ela for ruim, o caminho de volta é o
+Asaas, que já tem split provado em cada ciclo.
+
 ## Alternativas consideradas
 
 | Alternativa | Por que não |
