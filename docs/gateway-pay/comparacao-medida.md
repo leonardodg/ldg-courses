@@ -36,8 +36,20 @@ o que ficou no lugar.
 | | `get_supported_currencies` | `cancel_recurring` | `refund` | `refund_blocker` | `pending_invoice` |
 |---|---|---|---|---|---|
 | Asaas | sim | sim | sim | sim | sim |
-| Mercado Pago | sim | — | — | — | — |
+| Mercado Pago | sim | **sim** | **sim** | **sim** | **sim** |
 | Pagar.me | sim | sim | sim | sim | sim |
+
+Os quatro do Mercado Pago entraram em 16/09/2026, e dois deles significam coisa
+**diferente** do que significam no Asaas:
+
+- **`cancel_recurring` não cancela nada no gateway.** Lá existe um objeto de
+  assinatura que cobra sozinho, e cancelar é pedir que pare; aqui quem dispara
+  cada ciclo é a plataforma, então cancelar é **parar de disparar**. A marca
+  vive na coluna `subscriptionstatus`.
+- **`pending_invoice` devolve uma página NOSSA.** Não há fatura hospedada: o
+  ciclo é cobrança automática no cartão guardado, e quando falha não sobra
+  documento para alguém pagar. O que resolve é o aluno informar um cartão que
+  funcione — que é o `subscribe.php`.
 
 O Pagar.me implementa os cinco, mas `cancel_recurring` e `pending_invoice` nunca
 disparam: o gateway recusa oferta recorrente na porta.

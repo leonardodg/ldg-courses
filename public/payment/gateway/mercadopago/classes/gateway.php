@@ -151,6 +151,105 @@ class gateway extends \core_payment\gateway {
     }
 
     /**
+     * A fatura em aberto do proximo ciclo deste aluno neste item.
+     *
+     * Chamada pelo local_marketplace via component_class_callback, com a mesma
+     * assinatura para todo gateway - e por isso o nucleo continua sem saber o
+     * nome de nenhum.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return array|null url, duedate, value e line, ou null quando nao ha
+     */
+    public static function pending_invoice(string $component, int $itemid, int $userid): ?array {
+        $linha = self::latest_subscription_row($component, $itemid, $userid);
+
+        return $linha ? payment_processor::pending_invoice($linha) : null;
+    }
+
+    /**
+     * Estorna a venda correspondente a um pagamento do core.
+     *
+     * @param int $paymentid Registro em {payments}
+     * @return bool Verdadeiro quando o gateway aceitou o estorno
+     */
+    public static function refund(int $paymentid): bool {
+        global $DB;
+
+        $linha = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
+
+        return $linha ? payment_processor::refund($linha) : false;
+    }
+
+    /**
+     * Motivo pelo qual esta venda nao pode ser estornada.
+     *
+     * Serve a TELA: e com isto que o botao some, em vez de aparecer e falhar na
+     * hora do clique. Devolve vazio quando o estorno e possivel.
+     *
+     * @param int $paymentid
+     * @return string Chave de string do erro, ou vazio
+     */
+    public static function refund_blocker(int $paymentid): string {
+        global $DB;
+
+        $linha = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
+
+        return $linha ? payment_processor::refund_blocker($linha) : 'errorrefundunknown';
+    }
+
+    /**
+     * Para de cobrar a assinatura deste aluno neste item.
+     *
+     * Cancelar para de COBRAR e nada mais. O acesso ja pago vale ate o fim do
+     * ciclo: quem cancela no dia 3 nao perde os 27 dias que comprou, e revogar
+     * direito e decisao de negocio que vive no entitlement::revoke().
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return bool Verdadeiro se havia assinatura ativa e ela foi cancelada
+     */
+    public static function cancel_recurring(string $component, int $itemid, int $userid): bool {
+        $linha = self::latest_subscription_row($component, $itemid, $userid);
+
+        if (!$linha || empty($linha->subscriptionid)) {
+            return false;
+        }
+
+        return payment_processor::cancel_subscription((string) $linha->subscriptionid);
+    }
+
+    /**
+     * A linha mais recente da assinatura deste aluno neste item.
+     *
+     * Cada ciclo e uma linha propria, entao "a assinatura" e sempre a mais
+     * nova: e ela que carrega o cartao guardado e o estado atual.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return \stdClass|null
+     */
+    protected static function latest_subscription_row(string $component, int $itemid, int $userid): ?\stdClass {
+        global $DB;
+
+        $linhas = $DB->get_records_select(
+            payment_processor::TABLE,
+            "component = :component AND itemid = :itemid AND userid = :userid
+             AND subscriptionid IS NOT NULL AND subscriptionid <> ''",
+            ['component' => $component, 'itemid' => $itemid, 'userid' => $userid],
+            'id DESC',
+            '*',
+            0,
+            1
+        );
+
+        return reset($linhas) ?: null;
+    }
+
+    /**
      * Texto do estado do vinculo, exibido no formulario.
      *
      * @param \core_payment\form\account_gateway $form

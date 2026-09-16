@@ -359,4 +359,136 @@ final class payment_processor_test extends \advanced_testcase {
         $this->assertStringStartsWith('mdlsub-7-3-', $assinatura);
         $this->assertNotSame($assinatura, payment_processor::build_reference(7, 3, true));
     }
+
+    /**
+     * Cria uma linha do gateway para os testes de estorno e cancelamento.
+     *
+     * @param array $campos
+     * @return \stdClass
+     */
+    protected function linha(array $campos = []): \stdClass {
+        global $DB;
+
+        $registro = (object) array_merge([
+            'preferenceid' => '',
+            'externalreference' => 'ref-' . random_string(8),
+            'component' => 'local_marketplace',
+            'paymentarea' => 'offer',
+            'itemid' => 1,
+            'userid' => 2,
+            'accountid' => 3,
+            'amount' => 100.0,
+            'currency' => 'BRL',
+            'feeamount' => 25.0,
+            'feepercent' => 25.0,
+            'feebase' => 'gross',
+            'feesource' => 'site',
+            'status' => 'approved',
+            'apptype' => 'bricks',
+            'cycles' => 1,
+            'subscriptionstatus' => 'active',
+            'timecreated' => time(),
+            'timemodified' => time(),
+        ], $campos);
+
+        $registro->id = $DB->insert_record(payment_processor::TABLE, $registro);
+
+        return $registro;
+    }
+
+    /**
+     * Venda aprovada e estornavel.
+     *
+     * @return void
+     */
+    public function test_venda_aprovada_pode_ser_estornada(): void {
+        $this->resetAfterTest();
+
+        $this->assertSame('', payment_processor::refund_blocker($this->linha()));
+    }
+
+    /**
+     * O que nao foi pago nao se estorna.
+     *
+     * @return void
+     */
+    public function test_o_que_nao_foi_pago_nao_se_estorna(): void {
+        $this->resetAfterTest();
+
+        $this->assertSame(
+            'errorrefundnotpaid',
+            payment_processor::refund_blocker($this->linha(['status' => 'pending']))
+        );
+        $this->assertSame(
+            'errorrefundalready',
+            payment_processor::refund_blocker($this->linha(['status' => 'refunded']))
+        );
+    }
+
+    /**
+     * Ciclo do meio de uma assinatura nao se estorna.
+     *
+     * Estorno parcial NAO reduz o split - o que ja foi repassado a plataforma
+     * continua repassado -, entao estornar um ciclo do meio devolveria ao aluno
+     * o bruto e deixaria o vendedor no prejuizo da comissao. O bloqueio faz o
+     * botao sumir em vez de aparecer e falhar depois do clique.
+     *
+     * @return void
+     */
+    public function test_ciclo_do_meio_nao_se_estorna(): void {
+        $this->resetAfterTest();
+
+        $assinatura = 'mdlsub-2-1-abc';
+
+        $primeiro = $this->linha(['subscriptionid' => $assinatura, 'cycles' => 1, 'paymentid' => 10]);
+        $segundo = $this->linha(['subscriptionid' => $assinatura, 'cycles' => 2, 'paymentid' => 11]);
+
+        $this->assertSame('', payment_processor::refund_blocker($primeiro), 'o primeiro ciclo pode');
+        $this->assertSame('errorrefundnotfirstcycle', payment_processor::refund_blocker($segundo));
+    }
+
+    /**
+     * Cancelar marca a ASSINATURA, e nao a cobranca.
+     *
+     * Aqui quem cobra o ciclo somos nos, entao cancelar e parar de disparar. No
+     * Asaas seria pedir ao gateway que pare - e a diferenca esta na tabela, no
+     * comentario da coluna.
+     *
+     * @return void
+     */
+    public function test_cancelar_marca_todas_as_linhas_da_assinatura(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $assinatura = 'mdlsub-2-1-xyz';
+        $this->linha(['subscriptionid' => $assinatura, 'cycles' => 1]);
+        $this->linha(['subscriptionid' => $assinatura, 'cycles' => 2]);
+        $outra = $this->linha(['subscriptionid' => 'mdlsub-9-9-zzz', 'cycles' => 1]);
+
+        $this->assertTrue(payment_processor::cancel_subscription($assinatura));
+
+        $marcadas = $DB->get_records(payment_processor::TABLE, ['subscriptionid' => $assinatura]);
+        $this->assertCount(2, $marcadas);
+        foreach ($marcadas as $linha) {
+            $this->assertSame('cancelled', $linha->subscriptionstatus);
+        }
+
+        $intacta = $DB->get_record(payment_processor::TABLE, ['id' => $outra->id]);
+        $this->assertSame('active', $intacta->subscriptionstatus, 'a assinatura de outro aluno nao e tocada');
+    }
+
+    /**
+     * Cancelar o que ja esta cancelado nao mente dizendo que fez algo.
+     *
+     * @return void
+     */
+    public function test_cancelar_duas_vezes_nao_inventa_cancelamento(): void {
+        $this->resetAfterTest();
+
+        $assinatura = 'mdlsub-3-3-aaa';
+        $this->linha(['subscriptionid' => $assinatura, 'subscriptionstatus' => 'cancelled']);
+
+        $this->assertFalse(payment_processor::cancel_subscription($assinatura));
+    }
 }

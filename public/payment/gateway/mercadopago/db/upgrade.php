@@ -137,5 +137,34 @@ function xmldb_paygw_mercadopago_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026091600, 'paygw', 'mercadopago');
     }
 
+    if ($oldversion < 2026091650) {
+        // O estado da ASSINATURA, que e coisa diferente do status da cobranca.
+        //
+        // No Asaas, cancelar e pedir ao gateway que pare de cobrar. Aqui quem
+        // cobra o ciclo somos nos, entao cancelar e parar de disparar - e isso
+        // precisa estar escrito em algum lugar que a tarefa leia.
+        //
+        // Toda linha que existe hoje e de assinatura viva ou de venda avulsa,
+        // e 'active' descreve as duas sem mentir: a avulsa nunca e consultada
+        // por este campo.
+        $table = new xmldb_table('paygw_mercadopago');
+
+        $field = new xmldb_field(
+            'subscriptionstatus',
+            XMLDB_TYPE_CHAR,
+            '20',
+            null,
+            XMLDB_NOTNULL,
+            null,
+            'active',
+            'paymentmethod'
+        );
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026091650, 'paygw', 'mercadopago');
+    }
+
     return true;
 }

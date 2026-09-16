@@ -699,6 +699,154 @@ class payment_processor {
     }
 
     /**
+     * Motivo pelo qual esta venda nao pode ser estornada.
+     *
+     * Serve a TELA: e com isto que o botao some, em vez de aparecer e falhar na
+     * hora do clique, diante de quem esta resolvendo um problema de dinheiro
+     * com um aluno. Devolve vazio quando o estorno e possivel.
+     *
+     * @param \stdClass $record
+     * @return string Chave de string do erro, ou vazio
+     */
+    public static function refund_blocker(\stdClass $record): string {
+        global $DB;
+
+        $status = strtolower((string) $record->status);
+
+        if ($status === 'refunded') {
+            return 'errorrefundalready';
+        }
+
+        if ($status !== 'approved') {
+            return 'errorrefundnotpaid';
+        }
+
+        if (empty($record->subscriptionid)) {
+            return '';
+        }
+
+        // CICLO DO MEIO NAO SE ESTORNA, e a razao e a mesma dos outros dois
+        // gateways: estorno parcial NAO reduz o split. O que ja foi repassado a
+        // plataforma continua repassado, entao devolver o bruto ao aluno
+        // deixaria o vendedor no prejuizo da comissao - sem que nenhuma tela
+        // avisasse.
+        //
+        // Comparar por id basta: as linhas de uma assinatura nascem em ordem.
+        $anteriores = $DB->get_records_select(
+            self::TABLE,
+            'subscriptionid = :sub AND id < :id AND paymentid IS NOT NULL',
+            ['sub' => $record->subscriptionid, 'id' => (int) $record->id],
+            '',
+            'id',
+            0,
+            1
+        );
+
+        return $anteriores ? 'errorrefundnotfirstcycle' : '';
+    }
+
+    /**
+     * Estorna uma venda no Mercado Pago.
+     *
+     * @param \stdClass $record
+     * @return bool
+     */
+    public static function refund(\stdClass $record): bool {
+        global $DB;
+
+        if (self::refund_blocker($record) !== '') {
+            return false;
+        }
+
+        $config = self::get_gateway_config((int) $record->accountid, (string) $record->apptype);
+        (new mp_client($config['accesstoken']))->refund_payment((string) $record->mppaymentid);
+
+        $record->status = 'refunded';
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE, $record);
+
+        return true;
+    }
+
+    /**
+     * Para de cobrar uma assinatura.
+     *
+     * AQUI NAO HA NADA A CANCELAR NO MERCADO PAGO, e essa e a diferenca de
+     * fundo para o Asaas. La existe um objeto de assinatura que cobra sozinho,
+     * e cancelar e pedir ao gateway que pare; aqui quem dispara a cobranca de
+     * cada ciclo somos nos, entao cancelar e parar de disparar.
+     *
+     * O cartao guardado NAO e apagado. Ele nao cobra nada sozinho, e apagar
+     * obrigaria o aluno a digitar tudo de novo se mudasse de ideia - custo real
+     * para resolver um risco que nao existe.
+     *
+     * @param string $subscriptionid
+     * @return bool Verdadeiro quando havia assinatura ativa e ela foi parada
+     */
+    public static function cancel_subscription(string $subscriptionid): bool {
+        global $DB;
+
+        if ($subscriptionid === '') {
+            return false;
+        }
+
+        $ativas = $DB->count_records_select(
+            self::TABLE,
+            'subscriptionid = :sub AND subscriptionstatus <> :cancelada',
+            ['sub' => $subscriptionid, 'cancelada' => 'cancelled']
+        );
+
+        // Devolver verdadeiro sem ter parado nada faria o nucleo relatar um
+        // cancelamento que nao houve.
+        if (!$ativas) {
+            return false;
+        }
+
+        $DB->set_field(self::TABLE, 'subscriptionstatus', 'cancelled', ['subscriptionid' => $subscriptionid]);
+        $DB->set_field(self::TABLE, 'timemodified', time(), ['subscriptionid' => $subscriptionid]);
+
+        return true;
+    }
+
+    /**
+     * O que o aluno precisa pagar para o acesso voltar.
+     *
+     * NAO HA FATURA HOSPEDADA AQUI, e por isso esta funcao devolve uma pagina
+     * NOSSA. No Asaas cada ciclo gera uma cobranca com invoiceUrl no gateway;
+     * no Mercado Pago o ciclo e uma cobranca automatica no cartao guardado, e
+     * quando ela falha nao sobra documento nenhum para alguem pagar.
+     *
+     * O que resolve, entao, e o aluno informar um cartao que funcione - que e
+     * exatamente o que o subscribe.php faz.
+     *
+     * @param \stdClass $record Linha mais recente da assinatura
+     * @return array|null url, duedate, value e line
+     */
+    public static function pending_invoice(\stdClass $record): ?array {
+        if (empty($record->subscriptionid) || strtolower((string) $record->status) === 'approved') {
+            return null;
+        }
+
+        if ((string) $record->subscriptionstatus === 'cancelled') {
+            return null;
+        }
+
+        return [
+            'url' => (new \moodle_url(
+                '/payment/gateway/mercadopago/subscribe.php',
+                ['ref' => (string) $record->externalreference]
+            ))->out(false),
+            // Sem vencimento: a cobranca e automatica e nao tem data-limite
+            // para alguem pagar. Inventar uma data faria a tela prometer um
+            // prazo que nao existe.
+            'duedate' => '',
+            'value' => (float) $record->amount,
+            // Nao ha linha digitavel: nao ha boleto.
+            'line' => '',
+        ];
+    }
+
+    /**
      * O item e uma assinatura?
      *
      * Existe como metodo proprio, e nao como chamada direta, por duas razoes.

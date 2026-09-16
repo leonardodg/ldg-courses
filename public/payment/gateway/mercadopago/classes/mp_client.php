@@ -431,6 +431,21 @@ class mp_client {
     }
 
     /**
+     * Estorna um pagamento, por inteiro.
+     *
+     * Espelha PaymentRefundClient::refund(). Sem corpo, de proposito: corpo com
+     * "amount" faz estorno PARCIAL, e estorno parcial nao reduz o split - o que
+     * ja foi repassado a plataforma continua repassado, e o vendedor absorveria
+     * a diferenca sem que nenhuma tela dissesse isso.
+     *
+     * @param string $paymentid
+     * @return array
+     */
+    public function refund_payment(string $paymentid): array {
+        return $this->request('POST', '/v1/payments/' . rawurlencode($paymentid) . '/refunds', []);
+    }
+
+    /**
      * Gera um token a partir de um cartao JA GUARDADO no Mercado Pago.
      *
      * Esta, sim, usa o token de acesso e roda no servidor - e e a diferenca que
