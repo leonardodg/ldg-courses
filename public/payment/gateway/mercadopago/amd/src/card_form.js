@@ -110,20 +110,57 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
     };
 
     /**
-     * Mostra a falha da tokenizacao sem deixar o aluno preso.
+     * Mostra a falha sem deixar o aluno preso numa tela em branco.
+     *
+     * No modo brick nao ha botao nosso: se o Brick nao montar, a area fica
+     * VAZIA e nao ha nada em que clicar. Por isso a mensagem tambem e escrita
+     * no lugar onde o Brick deveria estar, e nao so como notificacao - uma
+     * notificacao no topo de uma pagina em branco nao explica o que fazer.
      *
      * @param {HTMLFormElement} form
      * @param {Error} error
      */
     var fail = function(form, error) {
         setBusy(form, false);
+
+        // O ERRO CRU VAI PARA A TELA, e nao so para o console.
+        //
+        // A mensagem generica sozinha transforma qualquer falha do Brick em
+        // "tente de novo", e tentar de novo nao muda nada quando a causa e de
+        // configuracao. Quem esta provando o fluxo precisa da causa, e quem
+        // nao tem devtools aberto tambem.
+        var detalhe = '';
+        if (error) {
+            detalhe = error.message || error.cause || error.type || '';
+            if (!detalhe && typeof error === 'object') {
+                try {
+                    detalhe = JSON.stringify(error);
+                } catch (e) {
+                    detalhe = String(error);
+                }
+            }
+        }
+
+        var area = document.querySelector('[data-region="mp-card-fields"]');
+        if (area) {
+            // Limpa o esqueleto do Brick: deixa-lo na tela faz parecer que
+            // ainda esta carregando, e nao que desistiu.
+            area.innerHTML = '';
+            area.classList.add('alert', 'alert-danger');
+        }
+
         Str.get_string('errorcardtokenmissing', 'paygw_mercadopago')
             .then(function(message) {
-                Notification.addNotification({message: message, type: 'error'});
-                return message;
+                var texto = detalhe ? message + ' [' + detalhe + ']' : message;
+                Notification.addNotification({message: texto, type: 'error'});
+                if (area) {
+                    area.textContent = texto;
+                }
+                return texto;
             })
             .catch(Notification.exception);
-        window.console.error(error);
+
+        window.console.error('paygw_mercadopago card_form:', error);
     };
 
     /**
@@ -140,6 +177,11 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
     var mountBrick = function(mp, form, config) {
         var bricks = mp.bricks();
 
+        // O formulario fica escondido e VAZIO no modo brick: quem tem campos e
+        // botao e o proprio Brick, que vive fora dele. Aninhar os dois seria
+        // HTML invalido, e o navegador descartaria o de dentro - foi assim que
+        // a primeira prova submeteu sem token.
+
         bricks.create('cardPayment', 'mp-card-brick', {
             initialization: {
                 amount: config.amount
@@ -154,6 +196,16 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
                 }
             },
             callbacks: {
+                // OBRIGATORIO, e a falta dele nao parece falta de callback: o
+                // Brick fica no esqueleto de carregamento para sempre e
+                // devolve "Callbacks onReady and/or onError are required" so
+                // no console. Custou uma rodada de prova real em 16/09/2026.
+                onReady: function() {
+                    var area = document.querySelector('[data-region="mp-card-fields"]');
+                    if (area) {
+                        area.classList.remove('alert', 'alert-danger');
+                    }
+                },
                 onError: function(error) {
                     fail(form, error);
                 },

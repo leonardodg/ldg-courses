@@ -28,6 +28,11 @@
     cobra e um segundo token, gerado no servidor a partir do cartao ja
     guardado.
 
+    NO MODO BRICK O FORMULARIO FICA VAZIO E ESCONDIDO, e o Brick vive FORA
+    dele. O Card Payment Brick renderiza o proprio <form> e o proprio botao de
+    pagar; aninhado no nosso, o navegador descarta o interno e o clique submete
+    o externo - sem token. Foi o que aconteceu na primeira prova.
+
     Classes required for JS:
     * none
 
@@ -55,15 +60,21 @@
 <div class="paygw-mercadopago-subscribe">
     <p class="lead">{{#str}} subscribeamount, paygw_mercadopago, {{amount}} {{/str}}</p>
 
-    <form method="post" action="{{formaction}}" data-region="mp-card-form">
+    {{#brick}}
+        {{!
+            FORA do formulario, e de proposito: o Brick monta um <form> proprio
+            aqui dentro, com o proprio botao de pagar. Dentro do nosso, seria
+            formulario aninhado - HTML invalido, e o navegador descarta o de
+            dentro.
+        }}
+        <div data-region="mp-card-fields" id="mp-card-brick"></div>
+    {{/brick}}
+
+    <form method="post" action="{{formaction}}" data-region="mp-card-form"
+        {{#brick}}class="d-none"{{/brick}}>
         <input type="hidden" name="sesskey" value="{{sesskey}}">
         <input type="hidden" name="cardtoken" value="">
         <input type="hidden" name="paymentmethod" value="">
-
-        {{#brick}}
-            {{! O Card Payment Brick se monta inteiro aqui dentro. }}
-            <div data-region="mp-card-fields" id="mp-card-brick"></div>
-        {{/brick}}
 
         {{#direct}}
             {{!
@@ -136,11 +147,14 @@
             </div>
         {{/native}}
 
-        <div class="mt-4">
-            <button type="submit" class="btn btn-primary" data-action="mp-pay">
-                {{#str}} subscribeconfirm, paygw_mercadopago {{/str}}
-            </button>
-        </div>
+        {{^brick}}
+            {{! No brick quem tem botao e o proprio Brick. }}
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary" data-action="mp-pay">
+                    {{#str}} subscribeconfirm, paygw_mercadopago {{/str}}
+                </button>
+            </div>
+        {{/brick}}
     </form>
 
     <p class="text-muted small mt-3">{{#str}} subscribecardnotstored, paygw_mercadopago {{/str}}</p>

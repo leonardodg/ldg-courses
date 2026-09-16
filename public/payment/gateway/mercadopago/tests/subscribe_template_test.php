@@ -70,6 +70,64 @@ final class subscribe_template_test extends \advanced_testcase {
             $html = $output->render_from_template('paygw_mercadopago/subscribe', $this->contexto($modo));
 
             $this->assertStringContainsString('name="cardtoken"', $html, "modo $modo");
+        }
+    }
+
+    /**
+     * No modo brick o Brick fica FORA do nosso formulario, e sem botao nosso.
+     *
+     * O Card Payment Brick renderiza o proprio <form> e o proprio botao de
+     * pagar. Dentro do nosso seria formulario aninhado - HTML invalido -, e o
+     * navegador descarta o de dentro: o clique submete o externo, VAZIO.
+     *
+     * Aconteceu na primeira prova real, em 16/09/2026: a pagina abriu, o aluno
+     * clicou, e o servidor recebeu o formulario sem token nenhum.
+     *
+     * @return void
+     */
+    public function test_no_brick_o_formulario_nao_envolve_o_brick(): void {
+        global $PAGE;
+
+        $this->resetAfterTest();
+
+        $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
+        $html = $output->render_from_template(
+            'paygw_mercadopago/subscribe',
+            $this->contexto(card_capture::MODE_BRICK)
+        );
+
+        $posbrick = strpos($html, 'id="mp-card-brick"');
+        $posform = strpos($html, '<form');
+
+        $this->assertNotFalse($posbrick);
+        $this->assertNotFalse($posform);
+        $this->assertLessThan(
+            $posform,
+            $posbrick,
+            'o Brick precisa vir ANTES do nosso <form>, e nao dentro dele'
+        );
+
+        $this->assertStringNotContainsString(
+            'data-action="mp-pay"',
+            $html,
+            'no brick quem tem botao e o proprio Brick'
+        );
+    }
+
+    /**
+     * Nos outros dois modos o botao e nosso, e fica dentro do formulario.
+     *
+     * @return void
+     */
+    public function test_fora_do_brick_o_botao_e_nosso(): void {
+        global $PAGE;
+
+        $this->resetAfterTest();
+
+        $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
+
+        foreach ([card_capture::MODE_DIRECT, card_capture::MODE_NATIVE] as $modo) {
+            $html = $output->render_from_template('paygw_mercadopago/subscribe', $this->contexto($modo));
             $this->assertStringContainsString('data-action="mp-pay"', $html, "modo $modo");
         }
     }
