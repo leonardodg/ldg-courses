@@ -1,0 +1,241 @@
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Monta os campos do cartao da assinatura e produz os tokens.
+ *
+ * NAO HA TRANSPILADOR nesta base: este arquivo precisa ser AMD de verdade, e o
+ * amd/build/ precisa existir. Com cachejs ligado o Moodle serve o build, entao
+ * modulo sem build simplesmente nao roda - botao que nao faz nada, sem erro no
+ * console e sem pista. Rode `npx grunt amd` no HOST, porque o node do container
+ * e v20 e o Moodle 5.2 exige v22.
+ *
+ * O NAVEGADOR PRODUZ UM TOKEN SO. Ele e de uso unico, e quem o consome e o
+ * servidor, ao GUARDAR o cartao; o token que cobra nasce depois, do card_id.
+ * Pedir dois aqui seria impossivel no modo brick, porque o Card Payment Brick
+ * devolve um por submissao e nao entrega os dados do cartao.
+ *
+ * O numero do cartao nunca sai daqui para o nosso servidor: o que vai no POST
+ * sao o token e a bandeira. O modo nativo, em que o numero vai mesmo,
+ * NAO passa por este modulo - la o formulario e HTML puro e quem tokeniza e o
+ * PHP.
+ *
+ * @module     paygw_mercadopago/card_form
+ * @copyright  2026 LeoDG <callme@leodg.dev>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+define(['core/notification', 'core/str'], function(Notification, Str) {
+
+    /**
+     * Endereco do SDK do Mercado Pago.
+     *
+     * Carregado de la, e nao empacotado aqui, porque e requisito do PCI DSS
+     * v4.0 que o script de tokenizacao seja o do provedor: uma copia nossa
+     * viraria mais um script sob a nossa responsabilidade de integridade.
+     *
+     * @type {string}
+     */
+    var SDK = 'https://sdk.mercadopago.com/js/v2';
+
+    /**
+     * Carrega o SDK uma vez so, e devolve sempre a mesma promessa.
+     *
+     * @return {Promise}
+     */
+    var loadSdk = function() {
+        if (window.paygwMercadopagoSdk) {
+            return window.paygwMercadopagoSdk;
+        }
+
+        window.paygwMercadopagoSdk = new Promise(function(resolve, reject) {
+            if (window.MercadoPago) {
+                resolve(window.MercadoPago);
+                return;
+            }
+
+            var script = document.createElement('script');
+            script.src = SDK;
+            script.onload = function() {
+                resolve(window.MercadoPago);
+            };
+            script.onerror = function() {
+                reject(new Error('Mercado Pago SDK could not be loaded'));
+            };
+            document.head.appendChild(script);
+        });
+
+        return window.paygwMercadopagoSdk;
+    };
+
+    /**
+     * Guarda o token no campo escondido e envia o formulario.
+     *
+     * @param {HTMLFormElement} form
+     * @param {string} token
+     * @param {string} method Bandeira, como o Mercado Pago a nomeia
+     */
+    var submitWith = function(form, token, method) {
+        form.querySelector('[name="cardtoken"]').value = token;
+        form.querySelector('[name="paymentmethod"]').value = method || '';
+        form.submit();
+    };
+
+    /**
+     * Desliga o botao enquanto a tokenizacao acontece.
+     *
+     * Sem isto, o duplo clique gera dois tokens e duas cobrancas - e a segunda
+     * so apareceria no extrato do aluno.
+     *
+     * @param {HTMLFormElement} form
+     * @param {boolean} busy
+     */
+    var setBusy = function(form, busy) {
+        var button = form.querySelector('[data-action="mp-pay"]');
+        if (button) {
+            button.disabled = busy;
+        }
+    };
+
+    /**
+     * Mostra a falha da tokenizacao sem deixar o aluno preso.
+     *
+     * @param {HTMLFormElement} form
+     * @param {Error} error
+     */
+    var fail = function(form, error) {
+        setBusy(form, false);
+        Str.get_string('errorcardtokenmissing', 'paygw_mercadopago')
+            .then(function(message) {
+                Notification.addNotification({message: message, type: 'error'});
+                return message;
+            })
+            .catch(Notification.exception);
+        window.console.error(error);
+    };
+
+    /**
+     * Modo BRICK: o Card Payment Brick monta e valida tudo.
+     *
+     * O Brick devolve um token por submissao e nao entrega os dados do cartao.
+     * E o suficiente: o servidor guarda o cartao com ele e gera o token da
+     * cobranca a partir do card_id.
+     *
+     * @param {Object} mp Instancia do MercadoPago
+     * @param {HTMLFormElement} form
+     * @param {Object} config
+     */
+    var mountBrick = function(mp, form, config) {
+        var bricks = mp.bricks();
+
+        bricks.create('cardPayment', 'mp-card-brick', {
+            initialization: {
+                amount: config.amount
+            },
+            customization: {
+                // Uma parcela, e nao ha configuracao para mudar. Parcelar uma
+                // cobranca que se repete todo mes empilha parcela sobre
+                // parcela, e o aluno passa a dever mais do que assinou - a
+                // mesma regra que o build_cycle_payment_body() aplica no PHP.
+                paymentMethods: {
+                    maxInstallments: 1
+                }
+            },
+            callbacks: {
+                onError: function(error) {
+                    fail(form, error);
+                },
+                onSubmit: function(formData) {
+                    setBusy(form, true);
+                    submitWith(form, formData.token, formData.payment_method_id);
+
+                    return Promise.resolve();
+                }
+            }
+        }).catch(function(error) {
+            fail(form, error);
+        });
+    };
+
+    /**
+     * Modo DIRETO: os campos sao iframes do Mercado Pago, o layout e nosso.
+     *
+     * Aqui a tokenizacao e NOSSA chamada, o que da controle sobre o momento e
+     * sobre a mensagem de erro - mas o resultado e o mesmo do brick: um token.
+     *
+     * @param {Object} mp Instancia do MercadoPago
+     * @param {HTMLFormElement} form
+     */
+    var mountFields = function(mp, form) {
+        var fields = mp.fields;
+
+        fields.create('cardNumber').mount('mp-field-number');
+        fields.create('expirationDate').mount('mp-field-expiration');
+        fields.create('securityCode').mount('mp-field-security');
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            setBusy(form, true);
+
+            var holder = form.querySelector('#mp-holdername');
+            var doc = form.querySelector('#mp-holderdoc');
+
+            var data = {
+                cardholderName: holder ? holder.value : '',
+                identificationType: 'CPF',
+                identificationNumber: doc ? doc.value : ''
+            };
+
+            mp.createCardToken(data)
+                .then(function(token) {
+                    submitWith(form, token.id, '');
+                    return token;
+                })
+                .catch(function(error) {
+                    fail(form, error);
+                });
+        });
+    };
+
+    return {
+        /**
+         * Monta o formulario conforme o modo de captura.
+         *
+         * @param {Object} config publickey, mode e amount
+         */
+        init: function(config) {
+            var form = document.querySelector('[data-region="mp-card-form"]');
+            if (!form) {
+                return;
+            }
+
+            loadSdk()
+                .then(function(MercadoPago) {
+                    var mp = new MercadoPago(config.publickey, {locale: 'pt-BR'});
+
+                    if (config.mode === 'brick') {
+                        mountBrick(mp, form, config);
+                    } else {
+                        mountFields(mp, form);
+                    }
+
+                    return mp;
+                })
+                .catch(function(error) {
+                    fail(form, error);
+                });
+        }
+    };
+});

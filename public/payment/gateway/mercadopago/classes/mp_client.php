@@ -431,6 +431,26 @@ class mp_client {
     }
 
     /**
+     * Gera um token a partir de um cartao JA GUARDADO no Mercado Pago.
+     *
+     * Esta, sim, usa o token de acesso e roda no servidor - e e a diferenca que
+     * importa: aqui nao ha dado de cartao nenhum na requisicao, so o id de um
+     * cartao que ja pertence a um cliente da conta.
+     *
+     * NAO PEDE CODIGO DE SEGURANCA, e isso e o que torna a cobranca automatica
+     * possivel. Medido em 16/09/2026: POST /v1/card_tokens com apenas
+     * {"card_id": ...} devolve token com status active. A frase de que "o
+     * Transparente com cartao salvo exige CVV a cada cobranca", que este
+     * projeto carregava como fato, nao se sustenta neste ponto do fluxo.
+     *
+     * @param string $cardid Id do cartao guardado
+     * @return array Inclui id e status
+     */
+    public function tokenize_saved_card(string $cardid): array {
+        return $this->request('POST', '/v1/card_tokens', ['card_id' => $cardid]);
+    }
+
+    /**
      * Troca dados de cartao por um token - SO no modo de captura nativo.
      *
      * E ESTATICA E NAO USA BEARER de proposito, e as duas coisas dizem a mesma

@@ -24,9 +24,9 @@
     JavaScript o preenche; no nativo os campos sao deste arquivo, e e o unico
     caso em que o numero chega ao nosso servidor.
 
-    Os dois campos escondidos recebem os tokens que o navegador produz. Sao
-    dois porque o token do Mercado Pago e de uso unico - um guarda o cartao, o
-    outro cobra.
+    O campo escondido recebe o token que o navegador produz. E um so: quem
+    cobra e um segundo token, gerado no servidor a partir do cartao ja
+    guardado.
 
     Classes required for JS:
     * none
@@ -57,8 +57,7 @@
 
     <form method="post" action="{{formaction}}" data-region="mp-card-form">
         <input type="hidden" name="sesskey" value="{{sesskey}}">
-        <input type="hidden" name="savetoken" value="">
-        <input type="hidden" name="chargetoken" value="">
+        <input type="hidden" name="cardtoken" value="">
         <input type="hidden" name="paymentmethod" value="">
 
         {{#brick}}

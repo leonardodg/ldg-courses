@@ -86,11 +86,10 @@ if ($publickey === '') {
 }
 
 if (data_submitted() && confirm_sesskey()) {
-    // No modo brick e no direto, o navegador ja tokenizou: chegam dois tokens,
-    // um para guardar o cartao e outro para cobrar. Sao dois porque o token do
-    // Mercado Pago e de USO UNICO - guardar consome o primeiro.
-    $savetoken = optional_param('savetoken', '', PARAM_ALPHANUMEXT);
-    $chargetoken = optional_param('chargetoken', '', PARAM_ALPHANUMEXT);
+    // No modo brick e no direto o navegador ja tokenizou, e chega UM token. O
+    // token que cobra nasce depois, do cartao guardado - ver
+    // payment_processor::charge_first_cycle().
+    $cardtoken = optional_param('cardtoken', '', PARAM_ALPHANUMEXT);
     $paymentmethod = optional_param('paymentmethod', '', PARAM_ALPHANUMEXT);
 
     if ($modo === card_capture::MODE_NATIVE) {
@@ -98,11 +97,11 @@ if (data_submitted() && confirm_sesskey()) {
         //
         // Ele nao e gravado em lugar nenhum: nao vai para o banco, nao vai para
         // a sessao e nao entra em log. As variaveis morrem no fim da
-        // requisicao, e os dois tokens saem da tokenizacao imediatamente.
-        [$savetoken, $chargetoken, $paymentmethod] = paygw_mercadopago_tokenize_native($publickey);
+        // requisicao, e o que sobra e o token.
+        [$cardtoken, $paymentmethod] = paygw_mercadopago_tokenize_native($publickey);
     }
 
-    if ($savetoken === '' || $chargetoken === '') {
+    if ($cardtoken === '') {
         redirect(
             $url,
             get_string('errorcardtokenmissing', 'paygw_mercadopago'),
@@ -112,7 +111,7 @@ if (data_submitted() && confirm_sesskey()) {
     }
 
     try {
-        payment_processor::charge_first_cycle($record, $savetoken, $chargetoken, $paymentmethod);
+        payment_processor::charge_first_cycle($record, $cardtoken, $paymentmethod);
     } catch (moodle_exception $e) {
         redirect($url, $e->getMessage(), null, \core\output\notification::NOTIFY_ERROR);
     }
@@ -154,14 +153,11 @@ echo $OUTPUT->footer();
  * faz. Ela so roda quando o administrador escolheu explicitamente o modo
  * nativo, e o card_capture ja garantiu que o site e HTTPS.
  *
- * Sao DOIS tokens porque o token do Mercado Pago e de uso unico: um guarda o
- * cartao, o outro cobra. Gerar um so faria a cobranca ser recusada com
- * cc_rejected_other_reason, que parece recusa do banco.
- *
- * O numero do cartao nao e gravado, nao e logado e nao entra na sessao.
+ * O numero do cartao nao e gravado, nao e logado e nao entra na sessao: as
+ * variaveis morrem no fim da requisicao, e o que sobra e o token.
  *
  * @param string $publickey Chave publica da aplicacao que vai cobrar
- * @return array [token para guardar, token para cobrar, bandeira]
+ * @return array [token, bandeira]
  */
 function paygw_mercadopago_tokenize_native(string $publickey): array {
     $cardnumber = optional_param('cardnumber', '', PARAM_ALPHANUM);
@@ -182,12 +178,10 @@ function paygw_mercadopago_tokenize_native(string $publickey): array {
         ],
     ];
 
-    $tokens = [];
-    foreach ([0, 1] as $ignored) {
-        $resposta = \paygw_mercadopago\mp_client::tokenize_card($publickey, $corpo);
-        $tokens[] = (string) ($resposta['id'] ?? '');
-        $bandeira = (string) ($resposta['payment_method_id'] ?? '');
-    }
+    $resposta = \paygw_mercadopago\mp_client::tokenize_card($publickey, $corpo);
 
-    return [$tokens[0], $tokens[1], $bandeira ?? ''];
+    return [
+        (string) ($resposta['id'] ?? ''),
+        (string) ($resposta['payment_method_id'] ?? ''),
+    ];
 }

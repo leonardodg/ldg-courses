@@ -175,27 +175,34 @@ class payment_processor {
     /**
      * Cobra o primeiro ciclo e guarda o cartao para os seguintes.
      *
-     * E aqui que a assinatura passa a existir de verdade. O que chega e um
-     * card_token - NUNCA um numero de cartao -, e ele e de uso unico: um token
-     * guarda o cartao, outro cobra. Reusar devolve cc_rejected_other_reason, e
-     * o sintoma parece recusa do banco.
+     * E aqui que a assinatura passa a existir de verdade. O que chega do
+     * navegador e UM card_token - nunca um numero de cartao -, e ele e de USO
+     * UNICO.
      *
-     * A ordem importa e nao e reversivel: guarda-se o cartao ANTES de cobrar.
-     * Se a cobranca falhar, o cartao guardado permite tentar de novo sem pedir
-     * os dados outra vez; se fosse ao contrario, uma cobranca aprovada com
-     * cartao nao guardado deixaria a assinatura sem como cobrar o ciclo 2 - e o
-     * aluno pagou por uma assinatura que nao renova.
+     * DAI A ORDEM, que e a parte nao obvia deste metodo: guarda-se o cartao
+     * primeiro, consumindo o token, e o token que COBRA nasce depois, do
+     * card_id. Medido em 16/09/2026: POST /v1/card_tokens com apenas
+     * {"card_id": ...}, sem security_code, devolve token com status active.
+     *
+     * A alternativa - pedir dois tokens ao navegador - foi descartada por uma
+     * razao concreta: o Card Payment Brick devolve UM token por submissao e nao
+     * entrega os dados do cartao, entao no modo brick nao ha como produzir o
+     * segundo. Um desenho que so funcionasse em dois dos tres modos seria pior
+     * que este.
+     *
+     * E a ordem tambem e a mais segura das duas: se a cobranca falhar, o cartao
+     * ja guardado permite tentar de novo sem pedir os dados outra vez. O
+     * inverso deixaria uma cobranca aprovada com cartao nao guardado - o aluno
+     * teria pago por uma assinatura que nao renova.
      *
      * @param \stdClass $record Linha do ciclo 1, ja criada por start_payment()
-     * @param string $savetoken Token para GUARDAR o cartao
-     * @param string $chargetoken Token para COBRAR, diferente do anterior
+     * @param string $cardtoken Token vindo do navegador, de uso unico
      * @param string $paymentmethod Bandeira, como o Mercado Pago a nomeia
      * @return bool Verdadeiro quando a entrega aconteceu agora
      */
     public static function charge_first_cycle(
         \stdClass $record,
-        string $savetoken,
-        string $chargetoken,
+        string $cardtoken,
         string $paymentmethod
     ): bool {
         global $DB, $CFG;
@@ -206,11 +213,22 @@ class payment_processor {
         $user = \core_user::get_user((int) $record->userid, 'id, email, firstname, lastname', MUST_EXIST);
 
         $customerid = self::ensure_customer($client, $user->email);
-        $card = $client->save_card($customerid, $savetoken);
+        $card = $client->save_card($customerid, $cardtoken);
+        $cardid = (string) ($card['id'] ?? '');
+
+        if ($cardid === '') {
+            throw new moodle_exception('errorinvalidresponse', 'paygw_mercadopago', '', 'card');
+        }
+
+        // O token que cobra nasce do cartao ja guardado, e sem CVV. E o mesmo
+        // caminho que os ciclos seguintes vao usar - exercitar o ciclo 2 ja no
+        // ciclo 1 significa que uma falha ali aparece AGORA, com o aluno na
+        // tela, e nao daqui a um mes num cron silencioso.
+        $chargetoken = (string) ($client->tokenize_saved_card($cardid)['id'] ?? '');
 
         $record->mpcustomerid = $customerid;
         // O id do cartao NO MERCADO PAGO. Nao e o cartao: e o endereco dele la.
-        $record->mpcardid = (string) ($card['id'] ?? '');
+        $record->mpcardid = $cardid;
         $record->paymentmethod = $paymentmethod;
         $record->timemodified = time();
         $DB->update_record(self::TABLE, $record);
@@ -222,9 +240,10 @@ class payment_processor {
             (float) $record->feeamount,
             [
                 'token' => $chargetoken,
-                // SEM customerid, e de proposito: neste ciclo o cartao acabou
-                // de ser tokenizado, e mandar o cliente junto faz o Mercado
-                // Pago RECUSAR a cobranca. Ver build_payer().
+                // COM o cliente, porque este token nasceu do cartao guardado
+                // DELE. E o oposto do que vale para token recem-digitado - ver
+                // build_payer(), que tem a medicao das duas formas.
+                'customerid' => $customerid,
                 'paymentmethod' => $paymentmethod,
             ],
             $user->email,
