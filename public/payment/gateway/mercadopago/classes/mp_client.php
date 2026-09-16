@@ -608,6 +608,23 @@ class mp_client {
 
         if ($status < 200 || $status >= 300) {
             $message = $decoded['message'] ?? $decoded['error'] ?? 'HTTP ' . $status;
+
+            // O "message" sozinho repete a mesma frase para causas
+            // DIFERENTES - "invalid parameter in payment method" saiu tanto de
+            // bandeira errada quanto de token ja consumido, em medicoes
+            // distintas. O "cause" e onde o Mercado Pago poe o code numerico
+            // que distingue um caso do outro, e sem ele cada erro novo vira
+            // outra rodada de curl para adivinhar.
+            $causas = array_map(
+                static fn(array $causa): string => trim(
+                    ($causa['code'] ?? '?') . ': ' . ($causa['description'] ?? '')
+                ),
+                $decoded['cause'] ?? []
+            );
+            if ($causas) {
+                $message .= ' [' . implode('; ', $causas) . ']';
+            }
+
             throw new moodle_exception('errorapi', 'paygw_mercadopago', '', $status . ': ' . $message);
         }
 

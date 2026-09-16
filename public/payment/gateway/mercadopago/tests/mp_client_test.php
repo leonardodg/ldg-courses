@@ -221,6 +221,36 @@ final class mp_client_test extends \advanced_testcase {
     }
 
     /**
+     * O "cause" do Mercado Pago viaja junto, porque o "message" sozinho repete
+     * a mesma frase para causas diferentes.
+     *
+     * Medido em 16/09/2026: "invalid parameter in payment method" saiu de mais
+     * de uma causa distinta no /v1/customers/{id}/cards, e so o "message" nao
+     * dava para saber qual. O "cause" tem o code numerico que distingue.
+     *
+     * @return void
+     */
+    public function test_erro_da_api_carrega_a_causa(): void {
+        fake_mp_client::$nextstatus = 400;
+        fake_mp_client::$nextresponse = [
+            'message' => 'invalid parameter in payment method',
+            'cause' => [
+                ['code' => '2034', 'description' => 'card_token_id not found'],
+            ],
+        ];
+
+        $client = new fake_mp_client('token');
+
+        try {
+            $client->create_preference(['marketplace_fee' => 999.0]);
+            $this->fail('status fora de 2xx tem que virar excecao');
+        } catch (\moodle_exception $e) {
+            $this->assertStringContainsString('invalid parameter in payment method', $e->getMessage());
+            $this->assertStringContainsString('2034: card_token_id not found', $e->getMessage());
+        }
+    }
+
+    /**
      * Resposta que nao e JSON vira excecao, e nao array vazio.
      *
      * O Mercado Pago em manutencao devolve HTML. Decodificar para null e seguir

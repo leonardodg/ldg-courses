@@ -495,3 +495,53 @@ payment method` — só que agora com um valor preenchido, só que errado.
 **Corrigido**: filtrar por `payment_type_id === 'credit_card' ||
 'debit_card'` antes de pegar o primeiro item. O `save_card` exige cartão
 mesmo, então filtrar por tipo não é perda de generalidade.
+
+### O filtro não era a causa inteira — o erro continuou
+
+Depois do filtro por tipo, a mesma compra real devolveu o mesmo erro:
+`400 invalid parameter in payment method`, na mesma linha (`mpcustomerid`
+continua nulo). Medido de novo, com curl, direto contra a conta da Ivana:
+
+1. **`GET /v1/payment_methods/search?bin=X`, para BINs DIFERENTES, devolve a
+   MESMA lista.** Testado com `411111`, `453998`, `555566`, `400000` e
+   `379999` — resultado idêntico, byte a byte, nas cinco chamadas. A busca
+   por BIN **não filtra por BIN nenhum** com `public_key` como único
+   parâmetro de autenticação; devolve um catálogo genérico do site (MLB).
+   Ou seja, `cartoes[0].id` de hoje é sempre o primeiro `credit_card` desse
+   catálogo genérico (`master`), **não** a bandeira real do cartão.
+
+2. **E mesmo assim isso não quebra o `save_card`.** Testado direto:
+   criar um `card_token` de um cartão **Visa** de teste e salvá-lo com
+   `payment_method_id: "master"` (bandeira errada, de propósito) devolveu
+   **201**, e o Mercado Pago corrigiu sozinho — `payment_method.id` na
+   resposta veio `"visa"`, batendo com o cartão real. **O valor que se manda
+   não precisa ser exato: o Mercado Pago o ignora e deriva a bandeira do
+   próprio token.**
+
+3. **O que reproduz `400 invalid parameter in payment method` NÃO foi
+   encontrado ainda.** Testado e descartado, todos com token válido de
+   cartão de teste (Visa e Mastercard, `APRO`/`19119119100`):
+
+   | Tentativa | Resultado |
+   |---|---|
+   | `payment_method_id` ausente | `400 payment method response is empty` — mensagem DIFERENTE |
+   | `payment_method_id: ""` | `400 payment method response is empty` — idem |
+   | `payment_method_id: "zzz_invalid"` (lixo) | `400 payment method response is empty` — idem |
+   | `payment_method_id` errado mas válido (`"master"` num Visa) | **201**, corrigido sozinho |
+   | Cartão duplicado (já salvo nesse customer) | **201**, devolve o card_id existente |
+   | Token reaproveitado (já consumido antes) | **201** — não invalidou |
+   | Token sem `security_code` no `card_tokens` | `400 payment method response is empty` — idem |
+
+   Nenhum desses bate com a frase exata que o aluno viu. As duas hipóteses
+   que sobram, e que cartões de teste `APRO` não testam: **token expirado
+   pelo tempo de tela** (o `card_token` tem `date_due` de horas, e o aluno
+   pode ter ficado mais tempo no formulário do que um teste direto) e
+   **algo específico do cartão real do aluno** que um cartão de bandeira
+   testada por curl não reproduz.
+
+4. **Correção aplicada enquanto isso**: `mp_client::decode()` agora anexa o
+   `cause` da resposta do Mercado Pago à mensagem de erro — é o campo com o
+   `code` numérico, e ele DISTINGUE causas que o `message` sozinho não
+   distingue (visto acima: duas causas diferentes, mesma frase
+   `"payment method response is empty"`). A próxima falha real chega com o
+   `code` junto, sem precisar de outra rodada de curl para adivinhar.
