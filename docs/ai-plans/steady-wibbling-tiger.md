@@ -4,71 +4,84 @@
 
 ---
 
-## Estado da execução — atualizado em 16/09/2026
+## Estado da execução — atualizado em 16/09/2026 (fim da sessão)
 
 Ponto de retomada. Quem chegar aqui numa sessão nova lê **esta seção primeiro**.
 
-**Worktree:** `paygw-mp-assinatura`, branch `feature/paygw-mp-assinatura`,
-offset 0 (stack `ldg-courses`, `https://localhost:8443`).
+**Worktree:** `paygw-mp-assinatura`, branch `feature/paygw-mp-assinatura`.
 **Túnel:** `mp.leodg.dev` → `https://localhost:8443`, funcionando.
-As três aplicações estão configuradas no Moodle, com `client_id`, `secret`,
-`public key` de produção e de teste, e assinatura secreta. `testmode` LIGADO.
-O vendedor de teste (`3672982509`) autorizou as três por OAuth.
+**Verde:** PHPUnit `85/85` no gateway e `12/12` no `availability_marketplace`,
+phpcs limpo, grunt limpo, behat `8/8`, `check_database_schema` limpo.
 
 | Etapa | Situação |
 |---|---|
-| Fase 0 — upstream e worktree | **feita**. `dev` com Moodle 5.2.3, empurrado |
-| Fase 1 — bateria de medição | **feita**. M1, M2, M4, M5, M7 conclusivas; M3 e a travessia continuam sem prova |
-| Fase 2 — documentação | **feita**. ADR-0012, ADR-0013, correção do ADR-0001, correção datada do `decisoes-marketplace` §5, `assinatura-no-mercado-pago.md`, PCI, README do plugin, `CLAUDE.md` |
-| Fase 3a — multi-aplicação | **feita** |
-| Fase 3b — recorrência | **feita**. Esquema, `mp_client`, `payment_processor`, `subscribe.php`, AMD, contrato e `charge_due_cycles` |
-| Fase 3c — segurança | **feita**. `x-signature` no webhook, privacy provider, guardas de HTTPS e de coluna |
-| Fase 4 — testes | **feita**. 81 PHPUnit, 8 behat, phpcs e grunt limpos |
-| Fase 5 — prova de ponta a ponta | **NÃO FEITA**. Depende de conta real |
+| Fases 0 a 4 | **feitas** |
+| Fase 5 — prova de ponta a ponta | **EM CURSO, e é o único item aberto** |
 
-**Verde:** PHPUnit **81/81** (eram 27 no começo), phpcs limpo nos **33**
-arquivos, grunt limpo, behat **8/8**, `check_database_schema` limpo,
-`db_schema_test` passando nos dez plugins.
+### Ambiente da prova, já montado
 
-### O que a medição decidiu, e não se re-discute
+| | |
+|---|---|
+| Vendedor | `1233186727` (Ivana), **produção**, Preferências e Bricks na conta de pagamento **2** |
+| Plataforma | `3675841384` — contas distintas, a guarda aceita |
+| Empresa | **Ivana Academy** (`ivana-academy`), comissão **80%**, origem `company` |
+| Ofertas | Assinatura 3 cursos (`6`), Certificado (`13`), Curso avulso (`2`) — todas **R$ 5,00** |
+| `testmode` | **desligado**, chaves de produção |
+| Captura de cartão | **`direct`** (SAQ A-EP). O Brick foi descartado nesta rodada |
+| Aluno | `aluno.prova.mp` / `Prova#MP2026` |
+| Vitrine | `/local/marketplace/offers.php?company=ivana-academy` |
 
-1. **O `preapproval` não tem campo de comissão nenhum** — cinco formatos, `201`
-   em todos, zero ecos. A dúvida sobre o tipo da aplicação era legítima, foi
-   medida, e a resposta é que a causa nunca foi essa.
-2. **O `/v1/payments` HONRA o `application_fee`** — pagamento `1352076103`,
-   aprovado, comissão em `fee_details`. É o contraste que sustenta o desenho.
-3. **Tokenizar cartão guardado NÃO pede CVV** (`status: active`). Derruba a
-   frase que este projeto carregava como fato e que levou ao Asaas.
-4. **Tokenizar no servidor com token de acesso é 403** — só a `public_key`. O
-   cartão vira token no navegador, e o plugin não tem linha que tokenize.
-5. **Cada aplicação exige o seu OAuth** — o mesmo vendedor recebeu três tokens.
-6. **`payer.type=customer` com token recém-digitado faz a cobrança ser
-   RECUSADA.** O cliente só entra quando o token nasceu do cartão dele.
-7. **`/v1/advanced_payments` é 403 de política** em quatro aplicações.
-8. **São duas assinaturas**: a B2B não tem split e o `preapproval` serve a ela.
+### ONDE PAROU — o próximo passo exato
 
-### O que NÃO está provado — e não se deve tratar como se estivesse
+A compra da assinatura morre com `400: invalid parameter in payment method`,
+**antes de gravar o cliente** (`mpcustomerid` nulo na linha).
 
-- **A travessia do `application_fee` entre contas distintas na assinatura.** No
-  pagamento medido, o `collector_id` era o dono da aplicação.
-- **A cobrança do cartão guardado**: `500 internal_error` no sandbox.
-- **A taxa de aprovação** de cobrança iniciada pelo estabelecimento.
+**Já descartado por medição** (detalhe em
+[`../data-validation/mercadopago-assinatura.md`](../data-validation/mercadopago-assinatura.md)):
 
-### Próximo passo
+| Teste | Resultado |
+|---|---|
+| `POST /v1/customers` | `400 the customer already exist` — esperado e tratado |
+| `GET /v1/customers/search` | 1 resultado, o cliente é encontrado |
+| `save_card` com token da **public key da PLATAFORMA** | **ok**, `card_id=9854896121` |
+| `save_card` com token da **public key do VENDEDOR** | `invalid card owner` |
 
-**Fase 5, e ela precisa de conta real.** O sandbox está esgotado: com vendedor
-de teste a cobrança é recusada com `Invalid users involved`, com e sem comissão.
-O caminho é o mesmo de 08/09/2026 — segunda conta real, R$ 5,00, conferindo
-`fee_details` **e o extrato dos dois lados**.
+**Conclusão: a chave pública correta é a da plataforma, e `save_card` funciona
+com token criado por API.** O que falha é o token vindo do **navegador**, pelos
+Secure Fields.
 
-Roteiro em [`../data-validation/mercadopago-assinatura.md`](../data-validation/mercadopago-assinatura.md).
+**Medir a seguir:** comparar os dois tokens. Registrar o token que o
+`subscribe.php` recebe e consultá-lo com `GET /v1/card_tokens/{id}` usando o
+token de acesso do vendedor. Se vier incompleto, a causa está na chamada
+`mp.createCardToken()` do `card_form.js`, que hoje manda só `cardholderName`,
+`identificationType` e `identificationNumber`.
+
+### Três defeitos corrigidos nesta rodada, todos só visíveis no navegador
+
+1. **Formulário aninhado** — o Brick renderiza o próprio `<form>`; dentro do
+   nosso, o clique submetia o externo **vazio**.
+2. **`onReady` é obrigatório no Brick** — sem ele fica no esqueleto de
+   carregamento para sempre, e o erro só existe no console.
+3. **`payment_method_id` vazio** — ausente aprova, `""` devolve `400`. O token
+   não devolve a bandeira.
+
+E um quarto, no `availability_marketplace`: **o botão de comprar aparecia só na
+condição NEGADA**, por leitura errada do `$not` — nunca para quem deveria
+comprar.
+
+### Pendências de UI anotadas, não corrigidas
+
+- **Layout dos campos do cartão** não acompanha o tema escuro, e a altura está
+  errada. O usuário pediu para anotar e corrigir depois.
+- A tela está em **inglês** porque o site está; as strings `pt_br` existem.
 
 ### Em aberto, para rodadas próprias
 
-- **Cobrança B2B** (`paymentarea 'plan'`): decidida como fora desta rodada.
+- **Cobrança B2B** (`paymentarea 'plan'`).
 - **Vínculo pelo próprio vendedor**: a capability já é checada no contexto da
-  conta; falta papel e ponto de entrada, que são do `local_marketplace`.
-- **Liberação do `advanced_payments`** no suporte do MP, se quiser a opção.
+  conta; falta papel e ponto de entrada, no `local_marketplace`.
+- **Liberação do `advanced_payments`** no suporte do MP.
+- **Cancelar assinatura**: implementado, sem prova — depende de uma compra.
 
 ---
 

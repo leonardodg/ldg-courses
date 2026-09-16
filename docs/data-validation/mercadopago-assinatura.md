@@ -395,3 +395,74 @@ aprovada** com esse token, porque a combinação de ambiente disponível
 é justamente a mistura que o Mercado Pago recusa. Se a resposta for "exige
 habilitação", o Plano B depende dela; se for "é suportado", a medição se fecha
 com o token de vendedor por OAuth.
+
+
+---
+
+## Rodada de prova real — 16/09/2026, inacabada
+
+Ambiente montado e **três defeitos corrigidos**, mas a compra ainda não passou.
+Registrado aqui para a sessão seguinte não repetir o caminho.
+
+### O que estava montado
+
+| | |
+|---|---|
+| Vendedor | `1233186727` (Ivana), **produção**, Preferências e Bricks na conta de pagamento **2** |
+| Plataforma | `3675841384` — contas distintas, a guarda aceita |
+| Empresa | Ivana Academy, comissão **80%** (origem `company`) |
+| Ofertas | Assinatura 3 cursos, Certificado e Curso avulso, todas **R$ 5,00** |
+| `testmode` | **desligado**, chaves de produção em vigor |
+| Captura | `direct` (SAQ A-EP) — o Brick foi descartado, ver abaixo |
+| Aluno | `aluno.prova.mp` / `Prova#MP2026` |
+
+### Os três defeitos corrigidos, todos só visíveis no navegador
+
+1. **Formulário aninhado.** O Card Payment Brick renderiza o próprio `<form>`;
+   dentro do nosso, o navegador descartava o interno e submetia o externo
+   **vazio**. Corrigido: o Brick vive fora do form, e há teste.
+2. **`onReady` é obrigatório no Brick.** Sem ele o componente fica no esqueleto
+   de carregamento **para sempre**, e o erro só existe no console
+   (`Callbacks onReady and/or onError are required`).
+3. **`payment_method_id` vazio derruba a cobrança.** Medido:
+
+   | enviado | resultado |
+   |---|---|
+   | ausente | **approved**, e o MP preenche `master` sozinho |
+   | `""` | **400** `Invalid payment_method_id` |
+
+   O token de cartão **não devolve a bandeira**. Corrigido: ausente ≠ vazio.
+
+### Onde parou, e o que já está descartado
+
+A tentativa morre **antes de gravar o cliente** (`mpcustomerid` nulo na linha),
+com `400: invalid parameter in payment method`. Como `ensure_customer()` só
+grava depois de `save_card()`, a falha está em uma das três primeiras chamadas.
+
+**Medido, e elimina duas hipóteses:**
+
+| Teste | Resultado |
+|---|---|
+| `POST /v1/customers` com o e-mail do aluno | `400 the customer already exist` — **esperado**, e tratado |
+| `GET /v1/customers/search` | **1 resultado** — o cliente existe e é encontrado |
+| `save_card` com token da **public key da plataforma** | **ok**, `card_id=9854896121` |
+| `save_card` com token da **public key do vendedor** | `invalid card owner` |
+
+Ou seja: **a chave pública correta é a da PLATAFORMA**, e o `save_card` funciona
+com um token criado por API. O que falha é o token vindo do **navegador**, pelos
+Secure Fields.
+
+### A próxima coisa a medir
+
+Comparar os dois tokens. O de API traz `first_six_digits` e `cardholder`; o do
+navegador pode estar saindo sem algum desses, ou associado a outro contexto.
+O caminho é registrar o token que o `subscribe.php` recebe e consultá-lo:
+
+```
+GET /v1/card_tokens/{id}   (com o token de acesso do vendedor)
+```
+
+Se o token do navegador vier incompleto, a causa está na chamada
+`mp.createCardToken()` do `card_form.js` — que hoje manda só `cardholderName`,
+`identificationType` e `identificationNumber`, deixando número, validade e CVV
+por conta dos Secure Fields montados.
