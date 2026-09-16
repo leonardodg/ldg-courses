@@ -48,4 +48,24 @@ $tasks = [
         'dayofweek' => '*',
         'month' => '*',
     ],
+    [
+        // Uma vez por dia, de madrugada, e a escolha merece razao.
+        //
+        // O intervalo de cobranca e contado em DIAS, entao rodar de hora em
+        // hora nao antecipa ciclo nenhum - so multiplicaria por 24 a chance de
+        // duas execucoes se cruzarem na mesma assinatura. E a madrugada porque
+        // cobranca recusada gera e-mail, e e-mail de cobranca as tres da tarde
+        // no meio do expediente do vendedor nao ajuda ninguem.
+        //
+        // CRON PARADO E ASSINATURA QUE NAO COBRA: aqui quem dispara somos nos,
+        // ao contrario do Asaas. Vale monitorar esta tarefa como se monitora
+        // dinheiro, e nao como se monitora limpeza de cache.
+        'classname' => 'paygw_mercadopago\task\charge_due_cycles',
+        'blocking' => 0,
+        'minute' => '17',
+        'hour' => '5',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*',
+    ],
 ];

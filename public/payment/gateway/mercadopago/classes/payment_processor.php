@@ -699,6 +699,178 @@ class payment_processor {
     }
 
     /**
+     * Este ciclo esta vencido e deve ser cobrado?
+     *
+     * Pura de proposito, e com o "agora" por parametro: uma decisao que so
+     * fosse exercitavel esperando trinta dias nao seria exercitada nunca.
+     *
+     * Sao cinco condicoes, e cada uma existe por um desfecho ruim concreto:
+     *
+     *   assinatura cancelada  - cobrar quem pediu para sair e tirar dinheiro
+     *                           de quem mandou parar;
+     *   ciclo anterior nao pago - cobrar o ciclo 3 com o 2 em aberto empilha
+     *                           divida no cartao de quem ja esta com problema;
+     *   sem cartao guardado   - nao ha o que cobrar sozinho, e tentar geraria
+     *                           uma linha pendente por ciclo, para sempre;
+     *   teto de ciclos        - a assinatura de 12 meses cobraria para sempre,
+     *                           e o aluno so veria no extrato do decimo terceiro;
+     *   intervalo             - o resto.
+     *
+     * @param \stdClass $record Linha do ultimo ciclo
+     * @param int $days Intervalo de cobranca, do marketplace
+     * @param int $maxcycles Teto, ou zero para sem teto
+     * @param int $now
+     * @return bool
+     */
+    public static function is_due(\stdClass $record, int $days, int $maxcycles, int $now): bool {
+        if ((string) $record->subscriptionstatus === 'cancelled') {
+            return false;
+        }
+
+        if (strtolower((string) $record->status) !== 'approved') {
+            return false;
+        }
+
+        if (empty($record->mpcardid) || empty($record->mpcustomerid)) {
+            return false;
+        }
+
+        if ($maxcycles > 0 && (int) $record->cycles >= $maxcycles) {
+            return false;
+        }
+
+        if ($days <= 0) {
+            return false;
+        }
+
+        return $now >= ((int) $record->timecreated + ($days * DAYSECS));
+    }
+
+    /**
+     * Monta a linha do proximo ciclo a partir da anterior.
+     *
+     * COPIA OS TERMOS, e nunca os resolve de novo. Entre um ciclo e outro a
+     * comissao da empresa pode ter mudado, e o ciclo seguinte tem que cobrar o
+     * que foi combinado - nao o que passou a valer. E o ADR-0007 aplicado ao
+     * tempo: mudar a configuracao nao pode reescrever o passado nem o contrato
+     * em curso.
+     *
+     * O que NAO se copia e o que pertence a cobranca anterior: referencia,
+     * id do pagamento no Mercado Pago e o registro em {payments}. Cada ciclo
+     * precisa da propria referencia, senao o webhook nao sabe qual linha e.
+     *
+     * @param \stdClass $previous
+     * @return \stdClass Ainda nao gravada
+     */
+    public static function build_next_cycle(\stdClass $previous): \stdClass {
+        $agora = time();
+
+        return (object) [
+            'preferenceid' => '',
+            'externalreference' => self::build_reference(
+                (int) $previous->userid,
+                (int) $previous->itemid,
+                true
+            ),
+            'mppaymentid' => null,
+            'component' => $previous->component,
+            'paymentarea' => $previous->paymentarea,
+            'itemid' => $previous->itemid,
+            'userid' => $previous->userid,
+            'accountid' => $previous->accountid,
+            'amount' => $previous->amount,
+            'currency' => $previous->currency,
+            'feeamount' => $previous->feeamount,
+            'feepercent' => $previous->feepercent,
+            'feebase' => $previous->feebase,
+            'feesource' => $previous->feesource,
+            'status' => 'pending',
+            'paymentid' => null,
+            'apptype' => $previous->apptype,
+            'subscriptionid' => $previous->subscriptionid,
+            'cycles' => (int) $previous->cycles + 1,
+            'mpcustomerid' => $previous->mpcustomerid,
+            'mpcardid' => $previous->mpcardid,
+            'paymentmethod' => $previous->paymentmethod,
+            'subscriptionstatus' => 'active',
+            'timecreated' => $agora,
+            'timemodified' => $agora,
+        ];
+    }
+
+    /**
+     * Cobra um ciclo no cartao ja guardado.
+     *
+     * O token nasce do card_id, sem codigo de seguranca - e o mesmo caminho que
+     * o ciclo 1 ja exercitou, de proposito: uma falha aqui aparece na primeira
+     * compra, e nao um mes depois num cron silencioso.
+     *
+     * @param \stdClass $previous Linha do ultimo ciclo pago
+     * @return bool Verdadeiro quando a entrega aconteceu agora
+     */
+    public static function charge_cycle(\stdClass $previous): bool {
+        global $DB, $CFG;
+
+        $config = self::get_gateway_config((int) $previous->accountid, (string) $previous->apptype);
+        $client = new mp_client($config['accesstoken']);
+        $user = \core_user::get_user((int) $previous->userid, 'id, email', MUST_EXIST);
+
+        $record = self::build_next_cycle($previous);
+        $record->id = $DB->insert_record(self::TABLE, $record);
+
+        $chargetoken = (string) ($client->tokenize_saved_card((string) $record->mpcardid)['id'] ?? '');
+
+        $payment = $client->create_payment(self::build_cycle_payment_body(
+            (float) $record->amount,
+            (string) $record->currency,
+            (string) $record->externalreference,
+            (float) $record->feeamount,
+            [
+                'token' => $chargetoken,
+                'customerid' => (string) $record->mpcustomerid,
+                'paymentmethod' => (string) $record->paymentmethod,
+            ],
+            $user->email,
+            $CFG->wwwroot,
+            self::describe_subscription($record)
+        ));
+
+        $record->mppaymentid = (string) ($payment['id'] ?? '');
+        $record->status = (string) ($payment['status'] ?? 'pending');
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE, $record);
+
+        if ($record->mppaymentid === '') {
+            return false;
+        }
+
+        return self::process_notification($record->mppaymentid);
+    }
+
+    /**
+     * A linha mais recente de cada assinatura, candidata a cobranca.
+     *
+     * Uma por assinatura: sao varias linhas por aluno, e so a ultima diz o
+     * estado atual.
+     *
+     * @return \stdClass[]
+     */
+    public static function latest_cycles(): array {
+        global $DB;
+
+        $sql = "SELECT p.*
+                  FROM {" . self::TABLE . "} p
+                  JOIN (SELECT subscriptionid, MAX(id) AS maxid
+                          FROM {" . self::TABLE . "}
+                         WHERE subscriptionid IS NOT NULL AND subscriptionid <> ''
+                      GROUP BY subscriptionid) ultima
+                    ON ultima.maxid = p.id
+              ORDER BY p.id";
+
+        return $DB->get_records_sql($sql);
+    }
+
+    /**
      * Motivo pelo qual esta venda nao pode ser estornada.
      *
      * Serve a TELA: e com isto que o botao some, em vez de aparecer e falhar na

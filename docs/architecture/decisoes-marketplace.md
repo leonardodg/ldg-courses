@@ -131,6 +131,31 @@ passa pela nossa base. Custo aceito: não é débito automático.
 
 ### Não existe débito automático com split no Mercado Pago
 
+> **CORRIGIDO EM 16/09/2026 — a afirmação abaixo estava errada, e ela era a
+> premissa que levou ao Asaas.**
+>
+> "Para pagar com cartão já salvo é preciso capturar o CVV de novo" **não se
+> sustenta**. Medido: `POST /v1/card_tokens` com apenas `{"card_id": ...}`,
+> **sem `security_code`**, devolve token com `status: active`.
+>
+> Com isso o triângulo abaixo **tem interseção**, e ela é a linha do meio:
+>
+> | | Débito automático | Split |
+> |---|---|---|
+> | `preapproval` (Assinaturas) | sim | **não** — confirmado em 15/09 |
+> | **`/v1/payments` + cartão guardado** | **sim** | **sim** |
+> | Checkout Pro | não | sim |
+>
+> A decisão de ter o Asaas **continua válida** — ele foi o único a provar split
+> em cada ciclo, e continua sendo. O que muda é que o Mercado Pago deixou de
+> estar fora da disputa. Ver [ADR-0012](../adr/0012-duas-assinaturas-e-so-uma-tem-split.md)
+> e [`assinatura-no-mercado-pago.md`](assinatura-no-mercado-pago.md).
+>
+> **Método:** esta afirmação veio de leitura de documentação, e ficou registrada
+> como fato por quase um mês. É o mesmo engano do ADR-0001, e a mesma lição:
+> afirmação que decide arquitetura precisa de uma chamada à API anexada.
+
+
 O Transparente foi avaliado como alternativa, já que suporta split via
 `application_fee`. Mas a documentação de cartões salvos é explícita: para pagar
 com cartão já salvo **é preciso capturar o CVV de novo**, porque o Mercado Pago
@@ -192,6 +217,8 @@ negócio e deixa o gateway reutilizável.
 - **Conteúdo hospedado na plataforma**: modelo de cobrança em aberto.
   Armazenamento e banda escalam com a audiência; um percentual fixo não.
   Enquanto não houver decisão, `course_policy` recusa `hostingtype=platform`.
-- **Confirmar com o suporte do Mercado Pago** que `preapproval` realmente não
-  aceita split. A evidência é forte, mas indireta — a documentação não nega a
-  combinação por escrito.
+- ~~**Confirmar com o suporte do Mercado Pago** que `preapproval` realmente não
+  aceita split.~~ **Feito em 15-16/09/2026**, das duas formas: medido contra a
+  API com a aplicação do tipo Assinaturas (cinco formatos, `201`, zero ecos) e
+  confirmado pelo suporte, que respondeu que os endpoints de assinatura não
+  expõem parâmetro de taxa do integrador.

@@ -387,6 +387,12 @@ final class payment_processor_test extends \advanced_testcase {
             'apptype' => 'bricks',
             'cycles' => 1,
             'subscriptionstatus' => 'active',
+            // Assinatura normal tem cartao guardado; quem testa a ausencia
+            // sobrescreve. O padrao e o caso comum, senao cada teste teria de
+            // repetir o que nao esta testando.
+            'mpcustomerid' => 'cus_padrao',
+            'mpcardid' => 'card_padrao',
+            'paymentmethod' => 'master',
             'timecreated' => time(),
             'timemodified' => time(),
         ], $campos);
@@ -490,5 +496,138 @@ final class payment_processor_test extends \advanced_testcase {
         $this->linha(['subscriptionid' => $assinatura, 'subscriptionstatus' => 'cancelled']);
 
         $this->assertFalse(payment_processor::cancel_subscription($assinatura));
+    }
+
+    /**
+     * O ciclo so vence depois do intervalo combinado.
+     *
+     * @return void
+     */
+    public function test_o_ciclo_vence_depois_do_intervalo(): void {
+        $this->resetAfterTest();
+
+        $agora = 1789000000;
+        $linha = $this->linha(['timecreated' => $agora, 'cycles' => 1]);
+
+        $this->assertFalse(payment_processor::is_due($linha, 30, 0, $agora + (29 * DAYSECS)));
+        $this->assertTrue(payment_processor::is_due($linha, 30, 0, $agora + (30 * DAYSECS)));
+    }
+
+    /**
+     * Assinatura com teto de ciclos para de cobrar ao chegar nele.
+     *
+     * Sem esta trava a assinatura de 12 meses cobraria para sempre - e o aluno
+     * so descobriria no extrato do decimo terceiro mes.
+     *
+     * @return void
+     */
+    public function test_o_teto_de_ciclos_para_a_cobranca(): void {
+        $this->resetAfterTest();
+
+        $agora = 1789000000;
+        $vencido = $agora + (60 * DAYSECS);
+
+        $this->assertTrue(
+            payment_processor::is_due($this->linha(['timecreated' => $agora, 'cycles' => 11]), 30, 12, $vencido)
+        );
+        $this->assertFalse(
+            payment_processor::is_due($this->linha(['timecreated' => $agora, 'cycles' => 12]), 30, 12, $vencido),
+            'chegou ao teto: nao cobra o decimo terceiro'
+        );
+        $this->assertTrue(
+            payment_processor::is_due($this->linha(['timecreated' => $agora, 'cycles' => 99]), 30, 0, $vencido),
+            'sem teto configurado, nao ha limite'
+        );
+    }
+
+    /**
+     * Ciclo que nao foi pago nao puxa o seguinte.
+     *
+     * Cobrar o ciclo 3 com o 2 em aberto empilha divida no cartao de quem ja
+     * esta com problema de pagamento - e a segunda cobranca so apareceria no
+     * extrato.
+     *
+     * @return void
+     */
+    public function test_ciclo_nao_pago_nao_puxa_o_seguinte(): void {
+        $this->resetAfterTest();
+
+        $agora = 1789000000;
+        $vencido = $agora + (60 * DAYSECS);
+
+        $pendente = $this->linha(['timecreated' => $agora, 'status' => 'pending']);
+        $recusado = $this->linha(['timecreated' => $agora, 'status' => 'rejected']);
+
+        $this->assertFalse(payment_processor::is_due($pendente, 30, 0, $vencido));
+        $this->assertFalse(payment_processor::is_due($recusado, 30, 0, $vencido));
+    }
+
+    /**
+     * Assinatura cancelada nao cobra mais, por mais vencida que esteja.
+     *
+     * @return void
+     */
+    public function test_assinatura_cancelada_nao_cobra(): void {
+        $this->resetAfterTest();
+
+        $agora = 1789000000;
+        $linha = $this->linha(['timecreated' => $agora, 'subscriptionstatus' => 'cancelled']);
+
+        $this->assertFalse(payment_processor::is_due($linha, 30, 0, $agora + (90 * DAYSECS)));
+    }
+
+    /**
+     * Sem cartao guardado nao ha o que cobrar sozinho.
+     *
+     * @return void
+     */
+    public function test_sem_cartao_guardado_nao_cobra(): void {
+        $this->resetAfterTest();
+
+        $agora = 1789000000;
+        $linha = $this->linha(['timecreated' => $agora, 'mpcardid' => null, 'mpcustomerid' => null]);
+
+        $this->assertFalse(payment_processor::is_due($linha, 30, 0, $agora + (60 * DAYSECS)));
+    }
+
+    /**
+     * A linha do ciclo novo copia os TERMOS da anterior.
+     *
+     * Nunca resolve a comissao de novo: entre um ciclo e outro a configuracao
+     * da empresa pode ter mudado, e o ciclo seguinte tem que cobrar o que foi
+     * combinado - nao o que passou a valer. E o ADR-0007 aplicado ao tempo.
+     *
+     * @return void
+     */
+    public function test_o_ciclo_novo_copia_os_termos_do_anterior(): void {
+        $this->resetAfterTest();
+
+        $anterior = $this->linha([
+            'subscriptionid' => 'mdlsub-2-1-termos',
+            'cycles' => 1,
+            'feepercent' => 12.5,
+            'feebase' => 'gross',
+            'feesource' => 'company',
+            'mpcustomerid' => 'cus_1',
+            'mpcardid' => 'card_1',
+            'paymentmethod' => 'master',
+        ]);
+
+        $novo = payment_processor::build_next_cycle($anterior);
+
+        $this->assertSame(2, $novo->cycles);
+        $this->assertEquals(12.5, $novo->feepercent);
+        $this->assertSame('company', $novo->feesource);
+        $this->assertSame('mdlsub-2-1-termos', $novo->subscriptionid);
+        $this->assertSame('cus_1', $novo->mpcustomerid);
+        $this->assertSame('card_1', $novo->mpcardid);
+        $this->assertSame('pending', $novo->status);
+        $this->assertEmpty($novo->mppaymentid ?? '');
+        $this->assertEmpty($novo->paymentid ?? null);
+        $this->assertNotSame(
+            $anterior->externalreference,
+            $novo->externalreference,
+            'cada ciclo precisa da propria referencia, senao o webhook nao sabe qual linha e'
+        );
     }
 }

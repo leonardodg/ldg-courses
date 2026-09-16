@@ -56,6 +56,16 @@ class provider implements
                 'currency' => 'privacy:metadata:paygw_mercadopago:currency',
                 'status' => 'privacy:metadata:paygw_mercadopago:status',
                 'mppaymentid' => 'privacy:metadata:paygw_mercadopago:mppaymentid',
+                // Os dois sao IDENTIFICADORES devolvidos pelo Mercado Pago, e
+                // nao o instrumento. O numero do cartao nao esta nesta tabela,
+                // nao esta em tabela nenhuma deste plugin, e nao vai estar -
+                // quem guarda o cartao e o gateway. Esta declarado aqui porque
+                // e exatamente o tipo de decisao que alguem desfaz por engano
+                // seis meses depois.
+                'mpcustomerid' => 'privacy:metadata:paygw_mercadopago:mpcustomerid',
+                'mpcardid' => 'privacy:metadata:paygw_mercadopago:mpcardid',
+                'subscriptionid' => 'privacy:metadata:paygw_mercadopago:subscriptionid',
+                'cycles' => 'privacy:metadata:paygw_mercadopago:cycles',
                 'timecreated' => 'privacy:metadata:paygw_mercadopago:timecreated',
             ],
             'privacy:metadata:paygw_mercadopago'

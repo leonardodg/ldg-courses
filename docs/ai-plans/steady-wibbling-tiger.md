@@ -4,101 +4,71 @@
 
 ---
 
-## Estado da execução — atualizado em 15/09/2026
+## Estado da execução — atualizado em 16/09/2026
 
 Ponto de retomada. Quem chegar aqui numa sessão nova lê **esta seção primeiro**.
 
 **Worktree:** `paygw-mp-assinatura`, branch `feature/paygw-mp-assinatura`,
 offset 0 (stack `ldg-courses`, `https://localhost:8443`).
-**Túnel:** `mp.leodg.dev` → `https://localhost:8443`, funcionando (`/` responde
-200, `webhook.php` 200, `oauth_callback.php` 303).
-`config-local.php` da worktree já fixa `wwwroot` e `sslproxy`.
+**Túnel:** `mp.leodg.dev` → `https://localhost:8443`, funcionando.
+As três aplicações estão configuradas no Moodle, com `client_id`, `secret`,
+`public key` de produção e de teste, e assinatura secreta. `testmode` LIGADO.
+O vendedor de teste (`3672982509`) autorizou as três por OAuth.
 
 | Etapa | Situação |
 |---|---|
-| Fase 0 — upstream e worktree | **feita**. `dev` mesclado com Moodle **5.2.3** e empurrado; upgrade rodado |
-| Fase 1 — script da bateria | **feita**. `docs/data-validation/scripts/provar-assinatura-mercadopago.py` |
-| Fase 1 — M1, M2, M5, M7 | **feitas e conclusivas** |
-| Fase 1 — M4 | **quase**: mecanismo provado (`application_fee` honrado em pagamento aprovado); falta a travessia entre contas, que o sandbox não permite |
-| Fase 1 — M3, M6 | **pendentes**: M3 depende de assinatura autorizada; M6 de um evento real chegando |
-| Fase 2 — documentação | **quase**: roteiro, ADR-0012, ADR-0013 e a correção datada do ADR-0001 escritos; faltam `comparacao-medida.md` e `CLAUDE.md` |
-| Fase 3a — multi-aplicação | **feita**: `application.php`, `settings.php`, as três `lang/`, OAuth por tipo (`start`, `callback`, `unlink`), tela do gateway e `refresh_tokens` |
-| Fase 3b — recorrência | **em curso**: esquema, `mp_client`, captura de cartão e o ramo de assinatura no `payment_processor` prontos; faltam `subscribe.php`, os módulos AMD, o contrato no `gateway` e a tarefa de ciclo |
-| Fases 3c, 4, 5 | não começaram |
+| Fase 0 — upstream e worktree | **feita**. `dev` com Moodle 5.2.3, empurrado |
+| Fase 1 — bateria de medição | **feita**. M1, M2, M4, M5, M7 conclusivas; M3 e a travessia continuam sem prova |
+| Fase 2 — documentação | **feita**. ADR-0012, ADR-0013, correção do ADR-0001, correção datada do `decisoes-marketplace` §5, `assinatura-no-mercado-pago.md`, PCI, README do plugin, `CLAUDE.md` |
+| Fase 3a — multi-aplicação | **feita** |
+| Fase 3b — recorrência | **feita**. Esquema, `mp_client`, `payment_processor`, `subscribe.php`, AMD, contrato e `charge_due_cycles` |
+| Fase 3c — segurança | **feita**. `x-signature` no webhook, privacy provider, guardas de HTTPS e de coluna |
+| Fase 4 — testes | **feita**. 81 PHPUnit, 8 behat, phpcs e grunt limpos |
+| Fase 5 — prova de ponta a ponta | **NÃO FEITA**. Depende de conta real |
 
-**Verde neste ponto:** PHPUnit `36/36` (eram 27), phpcs limpo nos 26 arquivos,
-behat `7/7` — 4 sem JS e 3 com Chrome (eram 4 cenários; 3 novos).
+**Verde:** PHPUnit **81/81** (eram 27 no começo), phpcs limpo nos **33**
+arquivos, grunt limpo, behat **8/8**, `check_database_schema` limpo,
+`db_schema_test` passando nos dez plugins.
 
 ### O que a medição decidiu, e não se re-discute
 
-1. **O `preapproval` não leva comissão, e a causa não é o tipo da aplicação.**
-   Cinco formatos de campo, cinco `201`, zero ecos, e o `GET` completo sem
-   nenhum campo de taxa. O ADR-0001 estava certo.
-2. **Quem cobra ciclo com comissão é a aplicação Bricks**, por
-   `/v1/payments` + `application_fee` — não a de Assinaturas. Está no docblock
-   de `application::type_for_recurring()`.
-3. **`/v1/advanced_payments` está fechado por política** nos três tokens, teste
-   e produção. Precisa de liberação comercial; nada aqui depende dela.
-4. **O cartão fica no gateway e a tokenização não pede CVV** — `POST
-   /v1/card_tokens` com só `{"card_id"}` devolve token `active`. Derruba a
-   frase do `CLAUDE.md` sobre "CVV a cada cobrança", ao menos na tokenização.
-5. **São duas assinaturas**: a B2B (empresa → plataforma) **não tem split** e o
-   `preapproval` serve a ela; só a B2C precisa de tudo isto.
-6. **O suporte do MP confirmou a M2** e colocou a escolha em dois caminhos. O
-   usuário decidiu em 15/09: **a comissão sai de cada ciclo**, o que confirma o
-   Plano B e descarta cobrar do vendedor por fora.
-7. **O `/v1/payments` honra o `application_fee`** — pagamento `1352076103`,
-   `approved`, com `application_fee 1,25` em `fee_details`. É o contraste com o
-   `preapproval`, que descarta. **Não é prova de split**: o `collector_id` é o
-   dono da aplicação. Prova o mecanismo, não a travessia.
-8. **Tokenizar cartão no servidor é 403.** Só com `public_key`, no navegador.
-   O plugin não deve ter linha nenhuma que tokenize — é o Brick que faz.
-9. **O sandbox não fecha a travessia entre contas**: vendedor de teste devolve
-   `Invalid users involved`, com e sem comissão. Mesma parede do Checkout Pro —
-   prova de split no MP é com conta real.
-10. **Risco novo, que nenhuma chamada de API revela**: cobrança disparada pelo
-   nosso backend pode ter aprovação pior que a do motor de assinaturas. A prova
-   de tokenização sem CVV **não** é prova de aprovação. Vira número a medir em
-   produção — e, se for ruim, o caminho de volta é o Asaas.
+1. **O `preapproval` não tem campo de comissão nenhum** — cinco formatos, `201`
+   em todos, zero ecos. A dúvida sobre o tipo da aplicação era legítima, foi
+   medida, e a resposta é que a causa nunca foi essa.
+2. **O `/v1/payments` HONRA o `application_fee`** — pagamento `1352076103`,
+   aprovado, comissão em `fee_details`. É o contraste que sustenta o desenho.
+3. **Tokenizar cartão guardado NÃO pede CVV** (`status: active`). Derruba a
+   frase que este projeto carregava como fato e que levou ao Asaas.
+4. **Tokenizar no servidor com token de acesso é 403** — só a `public_key`. O
+   cartão vira token no navegador, e o plugin não tem linha que tokenize.
+5. **Cada aplicação exige o seu OAuth** — o mesmo vendedor recebeu três tokens.
+6. **`payer.type=customer` com token recém-digitado faz a cobrança ser
+   RECUSADA.** O cliente só entra quando o token nasceu do cartão dele.
+7. **`/v1/advanced_payments` é 403 de política** em quatro aplicações.
+8. **São duas assinaturas**: a B2B não tem split e o `preapproval` serve a ela.
 
-### Próximo passo exato
+### O que NÃO está provado — e não se deve tratar como se estivesse
 
-A Fase 3a acabou. O próximo é a **Fase 3b**, na ordem:
+- **A travessia do `application_fee` entre contas distintas na assinatura.** No
+  pagamento medido, o `collector_id` era o dono da aplicação.
+- **A cobrança do cartão guardado**: `500 internal_error` no sandbox.
+- **A taxa de aprovação** de cobrança iniciada pelo estabelecimento.
 
-1. ~~`db/install.xml` + `db/upgrade.php`~~ — **feito**. Seis colunas e o índice
-   de `subscriptionid`; `check_database_schema.php` diz `Database structure is
-   ok.` e o `db_schema_test` passa nos dez plugins.
-2. ~~`mp_client`~~ — **feito**. `PUT` no `request()` e seis métodos novos.
-3. ~~`payment_processor::start_payment()`~~ — **feito**. Ramo por
-   `api::recurrence_for()`, com `apptype`/`subscriptionid`/`cycles` na linha e
-   o `get_gateway_config()` exigindo o token **da aplicação certa**.
-4. **`subscribe.php`** — a página que coleta o cartão, nos três modos, e dispara
-   o ciclo 1. É o que falta para o fluxo fechar.
-5. **`gateway`** — `cancel_recurring`, `pending_invoice`, `refund`,
-   `refund_blocker`.
-6. **`task/charge_due_cycles`** e os módulos AMD.
+### Próximo passo
 
-Teste vermelho antes de cada um.
+**Fase 5, e ela precisa de conta real.** O sandbox está esgotado: com vendedor
+de teste a cobrança é recusada com `Invalid users involved`, com e sem comissão.
+O caminho é o mesmo de 08/09/2026 — segunda conta real, R$ 5,00, conferindo
+`fee_details` **e o extrato dos dois lados**.
 
-**Detalhe que já está no lugar e não se deve desfazer:**
-`payment_processor` lê `config['accesstoken']` sem sufixo, e isso está **certo** —
-é o token de Preferências, que é quem cria a preferência do Checkout Pro. O ramo
-de assinatura vai ler o de Bricks, por `application::token_field()`.
+Roteiro em [`../data-validation/mercadopago-assinatura.md`](../data-validation/mercadopago-assinatura.md).
 
-### Bloqueado em você
+### Em aberto, para rodadas próprias
 
-1. Cadastrar no painel do MP, **nas três aplicações**, o mesmo
-   `redirect_uri` (`…/oauth_callback.php`) e o mesmo webhook
-   (`…/webhook.php`), com os eventos e o modelo de integração de cada uma —
-   a tabela está na Fase 0.
-2. Trazer a **assinatura secreta** das aplicações de Assinaturas e de Bricks
-   (a de Preferências já é conhecida).
-3. Preencher, em *Administração → Pagamentos → Mercado Pago*, o
-   `client_id`/`client_secret` das três — **a tela já aceita isso**.
-4. Abrir o chamado no suporte do MP (texto pronto no fim de
-   `docs/data-validation/mercadopago-assinatura.md`). Só a pergunta 2 é
-   bloqueante.
-5. O OAuth exige login no navegador das duas pontas — não há como automatizar.
+- **Cobrança B2B** (`paymentarea 'plan'`): decidida como fora desta rodada.
+- **Vínculo pelo próprio vendedor**: a capability já é checada no contexto da
+  conta; falta papel e ponto de entrada, que são do `local_marketplace`.
+- **Liberação do `advanced_payments`** no suporte do MP, se quiser a opção.
 
 ---
 
