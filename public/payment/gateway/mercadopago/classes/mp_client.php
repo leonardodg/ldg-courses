@@ -303,6 +303,387 @@ class mp_client {
     }
 
     /**
+     * Cria a assinatura no Mercado Pago.
+     *
+     * Espelha PreApprovalClient::create() do SDK oficial (lido em 16/09/2026).
+     *
+     * NAO MANDE CAMPO DE COMISSAO AQUI. Medido em 15/09/2026, com a aplicacao
+     * do tipo Assinaturas e contas distintas: marketplace_fee, application_fee
+     * e marketplace, na raiz e dentro de auto_recurring, sao aceitos com 201 e
+     * DESCARTADOS - nenhum volta no GET seguinte. O recurso nao tem onde
+     * guardar comissao. Ver docs/adr/0012 e o roteiro de medicao.
+     *
+     * Serve a assinatura SEM split: a mensalidade que a empresa paga a
+     * plataforma, onde nao ha terceiro e portanto nao ha comissao a reter.
+     *
+     * @param array $body Corpo da assinatura
+     * @return array
+     */
+    public function create_preapproval(array $body): array {
+        return $this->request('POST', '/preapproval', $body);
+    }
+
+    /**
+     * Consulta uma assinatura.
+     *
+     * @param string $id
+     * @return array
+     */
+    public function get_preapproval(string $id): array {
+        return $this->request('GET', '/preapproval/' . rawurlencode($id));
+    }
+
+    /**
+     * Altera uma assinatura - e o verbo e PUT.
+     *
+     * Espelha PreApprovalClient::update(), que e PUT /preapproval/{id}. Mandar
+     * POST no mesmo caminho CRIA outra assinatura em vez de alterar a que
+     * existe, e o aluno passaria a ser cobrado duas vezes sem erro nenhum na
+     * tela. Foi por isso que o request() ganhou PUT.
+     *
+     * @param string $id
+     * @param array $body
+     * @return array
+     */
+    public function update_preapproval(string $id, array $body): array {
+        return $this->request('PUT', '/preapproval/' . rawurlencode($id), $body);
+    }
+
+    /**
+     * Para de cobrar uma assinatura.
+     *
+     * @param string $id
+     * @return array
+     */
+    public function cancel_preapproval(string $id): array {
+        return $this->update_preapproval($id, ['status' => 'cancelled']);
+    }
+
+    /**
+     * Cria o cliente do aluno na conta do VENDEDOR.
+     *
+     * O cartao guardado pertence a um cliente, e o cliente pertence a conta que
+     * vai receber - por isso esta chamada usa o token do vendedor, e nao o da
+     * plataforma.
+     *
+     * @param string $email
+     * @param array $extra Campos opcionais, como first_name
+     * @return array
+     */
+    public function create_customer(string $email, array $extra = []): array {
+        return $this->request('POST', '/v1/customers', array_merge($extra, ['email' => $email]));
+    }
+
+    /**
+     * Procura o cliente pelo e-mail.
+     *
+     * O Mercado Pago recusa criar dois clientes com o mesmo e-mail na mesma
+     * conta, entao o fluxo e sempre "tenta criar, e se ja existir, procura".
+     *
+     * @param string $email
+     * @return array Lista de clientes, vazia quando nao ha
+     */
+    public function search_customer(string $email): array {
+        $resposta = $this->request('GET', '/v1/customers/search?email=' . rawurlencode($email));
+
+        return $resposta['results'] ?? [];
+    }
+
+    /**
+     * Guarda um cartao no cliente - NO MERCADO PAGO.
+     *
+     * O que entra aqui e um card_token, e nao o numero do cartao. A diferenca
+     * nao e de estilo: medido em 16/09/2026, POST /v1/card_tokens com token de
+     * ACESSO devolve 403 unexpected_processing; so a public_key tokeniza. Ou
+     * seja, o Mercado Pago recusa que o servidor tokenize com a credencial de
+     * servidor - o token nasce no navegador, e o numero do cartao nao passa por
+     * aqui.
+     *
+     * A BANDEIRA E OBRIGATORIA AQUI, e isso e assimetrico com o /v1/payments.
+     * Medido em 16/09/2026: o token dos Secure Fields nao carrega
+     * payment_method_id, e este endpoint devolve "400 invalid parameter in
+     * payment method" sem ela - enquanto a cobranca infere do proprio token.
+     * Quem descobre a bandeira e o navegador, pelo BIN.
+     *
+     * O EMISSOR TAMBEM, para uma parte dos cartoes. Medido em 16/09/2026: uma
+     * compra real com bandeira preenchida ainda assim voltou "400 invalid
+     * parameter. Cannot resolve the payment method of card, check the
+     * payment_method_id and issuer_id" - a propria mensagem do Mercado Pago
+     * aponta o campo que faltava. A busca por BIN que descobre a bandeira
+     * devolve o emissor no mesmo resultado (`issuer.id`), entao quem chama
+     * ja tem os dois a mao.
+     *
+     * @param string $customerid
+     * @param string $cardtoken
+     * @param string $paymentmethod Bandeira, ou vazio quando desconhecida
+     * @param string $issuerid Emissor, ou vazio quando desconhecido
+     * @return array Inclui id e last_four_digits
+     */
+    public function save_card(
+        string $customerid,
+        string $cardtoken,
+        string $paymentmethod = '',
+        string $issuerid = ''
+    ): array {
+        $body = ['token' => $cardtoken];
+
+        if ($paymentmethod !== '') {
+            $body['payment_method_id'] = $paymentmethod;
+        }
+
+        if ($issuerid !== '') {
+            // NUMERO, E NAO STRING - medido em 16/09/2026: "25" (string) faz o
+            // Mercado Pago devolver "400 the body must be a Json Object" (causa
+            // 118), uma mensagem que nao tem nada a ver com o defeito real. Com
+            // 25 (inteiro) o mesmo corpo passa da validacao de forma. O JSON
+            // Object da mensagem sao os OBJETOS do corpo, nao o corpo inteiro -
+            // e o emissor e um dos poucos campos aqui que o Mercado Pago espera
+            // tipado, e nao como texto.
+            $body['issuer_id'] = (int) $issuerid;
+        }
+
+        try {
+            return $this->request(
+                'POST',
+                '/v1/customers/' . rawurlencode($customerid) . '/cards',
+                $body
+            );
+        } catch (moodle_exception $e) {
+            // O QUE FOI TENTADO viaja com o erro. "Cannot resolve the payment
+            // method of card, check the payment_method_id and issuer_id" NAO
+            // diz que valores foram enviados - e sem isso, cada rodada nova
+            // de "ainda falha" custa outra bateria de curl so para redescobrir
+            // o que o codigo ja sabia na hora da chamada. payment_method_id e
+            // issuer_id nao sao dado de cartao: sao codigo de bandeira e de
+            // banco, seguros de aparecer numa mensagem de erro.
+            //
+            // O BIN DO PROPRIO TOKEN TAMBEM, e essa e a pergunta que faltava
+            // responder: visa/25 (o que o navegador GUESSOU) bate com o que o
+            // Mercado Pago acha que o token E? GET /v1/card_tokens/{id} com o
+            // token de ACESSO devolve o first_six_digits que o servidor
+            // enxerga - sem isso, "ainda falha com os mesmos valores" nao diz
+            // se o palpite era o do cartao errado desde o inicio.
+            $bin = '<nao verificado>';
+            try {
+                $tokeninfo = $this->get_card_token($cardtoken);
+                $bin = ($tokeninfo['first_six_digits'] ?? '?') . ' status=' . ($tokeninfo['status'] ?? '?');
+            } catch (moodle_exception $ignorada) {
+                $bin = '<token nao encontrado: ' . $ignorada->getMessage() . '>';
+            }
+
+            throw new moodle_exception(
+                'errorapi',
+                'paygw_mercadopago',
+                '',
+                $e->a . ' (payment_method_id=' . ($body['payment_method_id'] ?? '<ausente>')
+                    . ', issuer_id=' . ($body['issuer_id'] ?? '<ausente>')
+                    . ', token bin=' . $bin . ')'
+            );
+        }
+    }
+
+    /**
+     * Consulta um card_token pelo id - o que o navegador realmente tokenizou,
+     * segundo o proprio Mercado Pago.
+     *
+     * Existe para diagnostico: medido em 16/09/2026, o `payment_method_id` e o
+     * `issuer_id` corretos para o catalogo geral ainda assim voltaram "Cannot
+     * resolve the payment method of card" numa compra real. Esta chamada
+     * revela se o BIN que o navegador capturou bate com o BIN que o Mercado
+     * Pago enxerga no token - sem ela, cada "ainda falha" e uma suposicao
+     * nova sobre qual das duas pontas esta errada.
+     *
+     * @param string $cardtoken
+     * @return array Inclui first_six_digits, last_four_digits e status
+     */
+    public function get_card_token(string $cardtoken): array {
+        return $this->request('GET', '/v1/card_tokens/' . rawurlencode($cardtoken));
+    }
+
+    /**
+     * Cria um pagamento avulso - e e aqui que a comissao funciona.
+     *
+     * Espelha PaymentClient::create(). O campo e application_fee, e o SDK o
+     * documenta como "fee charged by the marketplace to the seller on this
+     * payment".
+     *
+     * Medido em 16/09/2026, pagamento 1352076103: aprovado, com
+     * application_fee 1,25 em fee_details ao lado do mercadopago_fee. E o
+     * contraste que sustenta o desenho - o preapproval aceita o mesmo campo e
+     * descarta; este endpoint o honra.
+     *
+     * O X-IDEMPOTENCY-KEY E OBRIGATORIO NESTE ENDPOINT, e so neste. Medido em
+     * 16/09/2026: sem ele, o Mercado Pago recusa com "400 Header
+     * X-Idempotency-Key can't be null" antes mesmo de olhar o corpo. Usa a
+     * `external_reference` como chave - ela ja e unica POR CICLO (uma linha
+     * por cobranca, ver install.xml), entao reenviar a MESMA requisicao (um
+     * timeout que o cliente retenta, por exemplo) devolve o pagamento que ja
+     * existe em vez de cobrar duas vezes. Gerar uma chave nova a cada
+     * chamada anularia essa protecao.
+     *
+     * @param array $body Corpo do pagamento
+     * @return array
+     */
+    public function create_payment(array $body): array {
+        $referencia = (string) ($body['external_reference'] ?? '');
+
+        return $this->request('POST', '/v1/payments', $body, [
+            'X-Idempotency-Key: ' . ($referencia !== '' ? $referencia : self::random_idempotency_key()),
+        ]);
+    }
+
+    /**
+     * Chave de reserva quando nao ha external_reference - nao deveria
+     * acontecer no fluxo normal, mas um corpo sem referencia nao pode travar
+     * na falta do header.
+     *
+     * @return string
+     */
+    protected static function random_idempotency_key(): string {
+        return bin2hex(random_bytes(16));
+    }
+
+    /**
+     * Estorna um pagamento, por inteiro.
+     *
+     * Espelha PaymentRefundClient::refund(). Sem corpo, de proposito: corpo com
+     * "amount" faz estorno PARCIAL, e estorno parcial nao reduz o split - o que
+     * ja foi repassado a plataforma continua repassado, e o vendedor absorveria
+     * a diferenca sem que nenhuma tela dissesse isso.
+     *
+     * @param string $paymentid
+     * @return array
+     */
+    public function refund_payment(string $paymentid): array {
+        return $this->request('POST', '/v1/payments/' . rawurlencode($paymentid) . '/refunds', []);
+    }
+
+    /**
+     * Gera um token a partir de um cartao JA GUARDADO no Mercado Pago.
+     *
+     * Esta, sim, usa o token de acesso e roda no servidor - e e a diferenca que
+     * importa: aqui nao ha numero de cartao nenhum na requisicao, so o id de um
+     * cartao que ja pertence a um cliente da conta.
+     *
+     * SO SERVE PARA CONSULTA/DIAGNOSTICO AGORA - nao para cobrar. Medido em
+     * 16/09/2026: POST /v1/card_tokens so com {"card_id": ...} devolve token
+     * com status "active", mas cobrar com ELE devolve "400
+     * security_code_id can't be null", e isso nao muda depois de uma cobranca
+     * aprovada no mesmo cartao - o recurso que dispensaria o CVV (ESC) nao
+     * esta habilitado nesta conta, e nao liga sozinho. "Active" prova que o
+     * token existe, nao que o Mercado Pago aceita cobrar sem o codigo de
+     * seguranca.
+     *
+     * A cobranca do ciclo 2+ pede o CVV de novo ao aluno, mas NAO PASSA POR
+     * AQUI: medido em 17/09/2026, `mp.createCardToken({cardId,
+     * securityCode})` tokeniza pela PUBLIC KEY, no NAVEGADOR, com
+     * `{card_id, security_code}` - o CVV nunca chega ao PHP. Ver
+     * payment_processor::confirm_card_cycle().
+     *
+     * @param string $cardid Id do cartao guardado
+     * @return array Inclui id e status
+     */
+    public function tokenize_saved_card(string $cardid): array {
+        return $this->request('POST', '/v1/card_tokens', ['card_id' => $cardid]);
+    }
+
+    /**
+     * Troca dados de cartao por um token - SO no modo de captura nativo.
+     *
+     * E ESTATICA E NAO USA BEARER de proposito, e as duas coisas dizem a mesma
+     * verdade sobre este endpoint: ele autentica pela chave PUBLICA, na query
+     * string, porque foi desenhado para ser chamado do NAVEGADOR.
+     *
+     * Medido em 16/09/2026: chamar /v1/card_tokens com token de ACESSO devolve
+     * 403 unexpected_processing. O Mercado Pago recusa que o servidor tokenize
+     * com credencial de servidor - o caminho normal e o cartao virar token no
+     * navegador, e o numero nunca chegar ate nos.
+     *
+     * Esta funcao existe porque o modo nativo foi pedido, e ela e a fronteira
+     * do escopo PCI DSS do projeto. O numero do cartao passa por aqui e morre
+     * no fim da requisicao: nao vai para o banco, nao vai para a sessao e nao
+     * entra em log. Ver docs/legal/pci-dss-captura-de-cartao.md.
+     *
+     * @param string $publickey Chave publica da aplicacao que vai cobrar
+     * @param array $card Dados do cartao, no formato da API
+     * @return array Inclui id e payment_method_id
+     */
+    public static function tokenize_card(string $publickey, array $card): array {
+        return self::post_json(
+            self::API_BASE . '/v1/card_tokens?public_key=' . rawurlencode($publickey),
+            $card
+        );
+    }
+
+    /**
+     * Descobre a bandeira e o emissor de um cartao pelo BIN - o que o
+     * save_card() exige e o /v1/card_tokens NAO devolve.
+     *
+     * O PARAMETRO E "bins", NO PLURAL, e isso nao e detalhe: medido em
+     * 16/09/2026, "bin" no singular devolve o MESMO catalogo generico do site
+     * para BINs diferentes - nao filtra nada, e foi assim que uma correcao
+     * anterior mandou a bandeira errada sem que nenhum teste acusasse. O
+     * parametro certo, lido do proprio bundle do SDK oficial
+     * (`sdk.mercadopago.com/js/v2`), e "bins", e o BIN pode ter 6 ou 8
+     * digitos - os dois filtram certo.
+     *
+     * So CREDIT_CARD e DEBIT_CARD contam: a mesma busca tambem devolve Pix,
+     * boleto e Mercado Credito misturados, e nenhum dos tres serve para
+     * guardar cartao.
+     *
+     * @param string $publickey Chave publica da aplicacao que vai cobrar
+     * @param string $bin Os 6 a 8 primeiros digitos do cartao
+     * @return array{id: string, issuerid: string} Vazio quando nao reconhecido
+     */
+    public static function guess_payment_method(string $publickey, string $bin): array {
+        $resposta = self::get_json(self::API_BASE . '/v1/payment_methods/search?' . http_build_query([
+            'marketplace' => 'NONE',
+            'status' => 'active',
+            'bins' => $bin,
+            'public_key' => $publickey,
+        ]));
+
+        foreach (($resposta['results'] ?? []) as $metodo) {
+            $tipo = (string) ($metodo['payment_type_id'] ?? '');
+            if ($tipo === 'credit_card' || $tipo === 'debit_card') {
+                $id = (string) ($metodo['id'] ?? '');
+
+                return [
+                    'id' => $id,
+                    'issuerid' => self::guess_issuer($publickey, $id, $bin),
+                ];
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Descobre o emissor de VERDADE de um cartao - o `issuer` que vem junto
+     * da busca por BIN e so um palpite do site inteiro, e nao do cartao.
+     *
+     * Medido em 16/09/2026: uma compra real com a bandeira certa E o emissor
+     * que a busca por BIN devolvia (generico, "default": true) ainda voltou
+     * "Cannot resolve the payment method of card, check the payment_method_id
+     * and issuer_id". O endpoint que resolve o emissor de verdade e outro - o
+     * SDK oficial o expoe como `mp.getIssuers()`, e aqui e o espelho dele.
+     *
+     * @param string $publickey
+     * @param string $paymentmethod Bandeira ja resolvida
+     * @param string $bin
+     * @return string Vazio quando nao ha exatamente um emissor
+     */
+    protected static function guess_issuer(string $publickey, string $paymentmethod, string $bin): string {
+        $emissores = self::get_json(self::API_BASE . '/v1/payment_methods/card_issuers?' . http_build_query([
+            'payment_method_id' => $paymentmethod,
+            'bin' => $bin,
+            'public_key' => $publickey,
+        ]));
+
+        return (string) ($emissores[0]['id'] ?? '');
+    }
+
+    /**
      * Constroi o transporte HTTP.
      *
      * Existe para ser SOBRESCRITA no teste. Enquanto o curl era instanciado
@@ -330,14 +711,15 @@ class mp_client {
      * @param string $method
      * @param string $path
      * @param array|null $body
+     * @param string[] $extraheaders Cabecalhos adicionais, so alguns endpoints pedem
      * @return array
      */
-    protected function request(string $method, string $path, ?array $body = null): array {
+    protected function request(string $method, string $path, ?array $body = null, array $extraheaders = []): array {
         $curl = static::make_curl();
-        $curl->setHeader([
+        $curl->setHeader(array_merge([
             'Authorization: Bearer ' . $this->accesstoken,
             'Content-Type: application/json',
-        ]);
+        ], $extraheaders));
         $options = [
             'CURLOPT_TIMEOUT' => self::TIMEOUT,
             'CURLOPT_CONNECTTIMEOUT' => 10,
@@ -345,11 +727,15 @@ class mp_client {
         ];
 
         $url = self::API_BASE . $path;
-        if ($method === 'GET') {
-            $response = $curl->get($url, [], $options);
-        } else {
-            $response = $curl->post($url, json_encode($body), $options);
-        }
+
+        // O put() do curl do Moodle so trata upload de arquivo quando recebe
+        // ['file' => ...]; com uma string ele define CUSTOMREQUEST=PUT e manda
+        // o corpo em POSTFIELDS, que e exatamente o que a API espera.
+        $response = match ($method) {
+            'GET' => $curl->get($url, [], $options),
+            'PUT' => $curl->put($url, json_encode($body), $options),
+            default => $curl->post($url, json_encode($body), $options),
+        };
 
         return self::decode($curl, $response, $url);
     }
@@ -365,6 +751,23 @@ class mp_client {
         $curl = static::make_curl();
         $curl->setHeader(['Content-Type: application/json']);
         $response = $curl->post($url, json_encode($body), [
+            'CURLOPT_TIMEOUT' => self::TIMEOUT,
+            'CURLOPT_CONNECTTIMEOUT' => 10,
+            'CURLOPT_RETURNTRANSFER' => true,
+        ]);
+
+        return self::decode($curl, $response, $url);
+    }
+
+    /**
+     * GET sem autenticacao por Bearer - a URL ja carrega a public_key.
+     *
+     * @param string $url
+     * @return array
+     */
+    protected static function get_json(string $url): array {
+        $curl = static::make_curl();
+        $response = $curl->get($url, [], [
             'CURLOPT_TIMEOUT' => self::TIMEOUT,
             'CURLOPT_CONNECTTIMEOUT' => 10,
             'CURLOPT_RETURNTRANSFER' => true,
@@ -400,6 +803,23 @@ class mp_client {
 
         if ($status < 200 || $status >= 300) {
             $message = $decoded['message'] ?? $decoded['error'] ?? 'HTTP ' . $status;
+
+            // O "message" sozinho repete a mesma frase para causas
+            // DIFERENTES - "invalid parameter in payment method" saiu tanto de
+            // bandeira errada quanto de token ja consumido, em medicoes
+            // distintas. O "cause" e onde o Mercado Pago poe o code numerico
+            // que distingue um caso do outro, e sem ele cada erro novo vira
+            // outra rodada de curl para adivinhar.
+            $causas = array_map(
+                static fn(array $causa): string => trim(
+                    ($causa['code'] ?? '?') . ': ' . ($causa['description'] ?? '')
+                ),
+                $decoded['cause'] ?? []
+            );
+            if ($causas) {
+                $message .= ' [' . implode('; ', $causas) . ']';
+            }
+
             throw new moodle_exception('errorapi', 'paygw_mercadopago', '', $status . ': ' . $message);
         }
 

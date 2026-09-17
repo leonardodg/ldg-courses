@@ -70,6 +70,7 @@ $table = new html_table();
 $table->head = [
     get_string('offername', 'local_marketplace'),
     get_string('company', 'local_marketplace'),
+    get_string('reportpaymentmethod', 'local_marketplace'),
     get_string('reportpayments', 'local_marketplace'),
     get_string('reportaccessuntil', 'local_marketplace'),
     get_string('companystatus', 'local_marketplace'),
@@ -166,9 +167,30 @@ foreach ($ents as $ent) {
         );
     }
 
+    // A troca aparece JUNTO de qualquer outra acao, e nao no lugar dela: quem
+    // paga por Pix/boleto pode querer trocar para cartao sem que isso
+    // dependa de ter ou nao uma fatura aberta agora.
+    if ($recurring && !$cancelled && !$expired && $ent->get('status') === entitlement::STATUS_ACTIVE) {
+        $switchurl = api::switch_to_card_url_for('local_marketplace', (int) $offer->get('id'), (int) $USER->id);
+        if ($switchurl) {
+            $actions .= html_writer::div(
+                html_writer::link(
+                    $switchurl,
+                    get_string('switchtocard', 'local_marketplace'),
+                    ['class' => 'btn btn-sm btn-outline-primary mt-1']
+                )
+            );
+        }
+    }
+
+    // So informativo: o aluno nao escolhe a forma de renovacao aqui, so ve
+    // qual esta valendo. Quem quer mudar usa o botao de troca, quando existe.
+    $metodo = api::payment_method_for('local_marketplace', (int) $offer->get('id'), (int) $USER->id);
+
     $table->data[] = [
         format_string($offer->get('name')),
         format_string($c->get('name')),
+        $metodo ?? '-',
         (int) $ent->get('cycles'),
         $end > 0 ? userdate($end, get_string('strftimedaydate')) : '-',
         $badge,

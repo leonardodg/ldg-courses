@@ -28,8 +28,15 @@
 
 require(__DIR__ . '/../../../config.php');
 
+use paygw_mercadopago\application;
+
 $accountid = required_param('accountid', PARAM_INT);
 $confirm = optional_param('confirm', 0, PARAM_BOOL);
+$apptype = optional_param('apptype', application::TYPE_PREFERENCES, PARAM_ALPHANUMEXT);
+
+if (!application::is_valid($apptype)) {
+    throw new moodle_exception('errorunknownapptype', 'paygw_mercadopago');
+}
 
 require_login();
 
@@ -37,7 +44,10 @@ $account = new \core_payment\account($accountid);
 $context = $account->get_context();
 require_capability('moodle/payment:manageaccounts', $context);
 
-$url = new moodle_url('/payment/gateway/mercadopago/oauth_unlink.php', ['accountid' => $accountid]);
+$url = new moodle_url('/payment/gateway/mercadopago/oauth_unlink.php', [
+    'accountid' => $accountid,
+    'apptype' => $apptype,
+]);
 // Tela do GATEWAY, nao a da conta: e de la que se vincula de novo.
 $returnurl = new moodle_url('/payment/manage_gateway.php', [
     'accountid' => $accountid,
@@ -64,7 +74,9 @@ $config = $gateway->get_configuration();
 if (!$confirm) {
     echo $OUTPUT->header();
     echo $OUTPUT->confirm(
-        get_string('unlinkconfirm', 'paygw_mercadopago', s((string) ($config['mpuserid'] ?? '?'))),
+        get_string('unlinkconfirm', 'paygw_mercadopago', s(
+            (string) ($config[application::token_field($apptype, 'mpuserid')] ?? '?')
+        )),
         new moodle_url($url, ['confirm' => 1, 'sesskey' => sesskey()]),
         $returnurl
     );
@@ -74,17 +86,36 @@ if (!$confirm) {
 
 require_sesskey();
 
-// Desabilita junto. Uma conta habilitada sem token levaria o aluno ate o
-// checkout para receber erro do Mercado Pago - e o gateway se recusa a ser
-// habilitado sem token, entao deixar enabled=1 aqui criaria um estado que a
-// propria validacao do formulario considera invalido.
-$gateway->set('enabled', 0);
+// Apaga SO os campos deste tipo.
+//
+// Zerar a config inteira era o certo quando havia uma aplicacao so. Com tres,
+// desvincular a de Assinaturas levaria junto o vinculo de Preferencias, e a
+// empresa pararia de vender avulso sem que ninguem tivesse pedido isso - sem
+// erro, e so perceptivel na proxima compra.
+foreach (application::account_fields($apptype) as $field) {
+    unset($config[$field]);
+}
 
-// Nao sobra nada a preservar: a config desta conta e so credencial. O ambiente
-// de teste virou configuracao do site, entao a antiga chave 'sandbox' daqui e
-// descartada de proposito - manter uma copia orfa dela seria manter viva a
+// A chave 'sandbox' de versoes antigas e descartada de proposito: o ambiente
+// virou configuracao do site, e manter uma copia orfa dela seria manter viva a
 // ambiguidade que fazia o checkout ir para o sandbox com token de producao.
-$gateway->set('config', json_encode([]));
+unset($config['sandbox']);
+
+$gateway->set('config', json_encode($config));
+
+// So desabilita quando NAO sobrou nenhuma aplicacao vinculada. Uma conta
+// habilitada sem token nenhum levaria o aluno ate o checkout para receber erro
+// do Mercado Pago - mas desabilitar com outra aplicacao ainda vinculada seria
+// desligar uma venda que continua possivel.
+$aindavinculada = false;
+foreach (application::TYPES as $type) {
+    if (!empty($config[application::token_field($type, 'accesstoken')])) {
+        $aindavinculada = true;
+        break;
+    }
+}
+$gateway->set('enabled', $aindavinculada ? 1 : 0);
+
 $gateway->update();
 
 // Limpar aqui NAO revoga a autorizacao do lado do Mercado Pago. O vendedor

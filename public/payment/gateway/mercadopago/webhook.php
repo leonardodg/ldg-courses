@@ -50,6 +50,50 @@ if ($type !== 'payment' || empty($paymentid)) {
     exit;
 }
 
+// A assinatura e conferida ANTES de qualquer consulta a API.
+//
+// O status nunca veio do corpo - ele e consultado de volta com o token do
+// vendedor -, e isso ja impedia que alguem POSTasse "aprovado" e ganhasse
+// acesso. O que faltava era impedir que alguem faca o NOSSO servidor consultar
+// ids arbitrarios, um por requisicao. Por isso a conferencia vem antes: recusar
+// depois de consultar seria pagar o custo que se quer evitar.
+//
+// Sao TRES segredos, um por aplicacao, e nao se sabe de qual aplicacao a
+// notificacao veio antes de achar a linha. Entao a assinatura passa se bater
+// com QUALQUER um dos configurados - o que ainda exclui quem nao tem nenhum
+// deles, que e o ponto.
+$assinatura = $_SERVER['HTTP_X_SIGNATURE'] ?? '';
+$requestid = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
+$confere = false;
+
+foreach (\paygw_mercadopago\application::TYPES as $tipo) {
+    $segredo = (string) get_config(
+        'paygw_mercadopago',
+        \paygw_mercadopago\application::config_key($tipo, 'webhooksecret')
+    );
+
+    $valida = \paygw_mercadopago\webhook_signature::is_valid(
+        (string) $assinatura,
+        (string) $requestid,
+        (string) $paymentid,
+        $segredo
+    );
+
+    if ($valida) {
+        $confere = true;
+        break;
+    }
+}
+
+if (!$confere) {
+    // 401, e nao 200: o Mercado Pago precisa saber que a entrega falhou, e uma
+    // notificacao legitima recusada por segredo errado tem que aparecer no
+    // painel dele em vez de sumir como se tivesse sido processada.
+    header('HTTP/1.1 401 Unauthorized');
+    echo 'invalid signature';
+    exit;
+}
+
 try {
     // NUNCA confiar no status que vier no corpo. O Mercado Pago manda so o ID
     // de proposito: se aceitassemos "status: approved" do payload, qualquer um

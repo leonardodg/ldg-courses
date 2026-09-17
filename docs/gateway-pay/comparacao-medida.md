@@ -9,10 +9,17 @@ O documento que escolheu o Pagar.me e o Asaas —
 comercial, e **três afirmações dele não sobreviveram à medição**. Este arquivo é
 o que ficou no lugar.
 
-> **Conclusão, para quem só lê o começo:** o **Asaas é o gateway do produto**,
-> porque é o único com split em assinatura — e assinatura é o coração do modelo.
-> Os outros dois servem para venda avulsa. Isso custa caro em taxa de Pix, e a
-> seção de taxas mostra quanto.
+> **Conclusão, atualizada em 16/09/2026.** O **Asaas continua sendo o único com
+> split em assinatura PROVADO**, ciclo a ciclo, com o gateway cobrando sozinho.
+> O que mudou é que o **Mercado Pago deixou de estar fora da disputa**: ele
+> ganhou assinatura com comissão por outro mecanismo, e é dramaticamente mais
+> barato em Pix — R$ 0,05 contra R$ 1,99 fixos.
+>
+> **Mas ainda não é empate.** O que falta ao MP não é implementação, é **prova**:
+> a travessia da comissão entre contas distintas numa assinatura nunca foi
+> vista. Enquanto isso não for medido com conta real, trocar o gateway do
+> produto seria repetir o erro que originou o ADR-0001 — concluir a partir de
+> "não deu erro".
 
 ---
 
@@ -21,23 +28,36 @@ o que ficou no lugar.
 | Capacidade | Asaas | Mercado Pago | Pagar.me |
 |---|---|---|---|
 | Split em venda avulsa | **provado** | **provado** | **provado** |
-| Split em **assinatura** | **provado, em cada ciclo** | **impossível** | recusado pela conta |
+| Split em **assinatura** | **provado, em cada ciclo** | implementado, **sem prova de travessia** | recusado pela conta |
 | Pix liquidando de verdade | **provado** | **provado** | **provado** |
 | Boleto | sim, sem prova de liquidação | não usado | sim, sem prova de liquidação |
 | Cartão | provado | provado | provado |
 | Estorno total | provado | não implementado | provado |
 | Estorno parcial | **não reduz o split** | não implementado | **não reduz o split** |
-| Cancelar assinatura | provado | não há assinatura | não há assinatura |
-| Fatura em aberto do ciclo | provado | não há assinatura | não há assinatura |
-| Troca de cartão | provado | não há assinatura | não há assinatura |
+| Cancelar assinatura | provado | implementado (para de disparar) | não há assinatura |
+| Fatura em aberto do ciclo | provado | implementado (página nossa) | não há assinatura |
+| Troca de cartão | provado | pelo `subscribe.php` | não há assinatura |
+| **Quem dispara o ciclo** | **o gateway** | **a plataforma** | — |
 
 **Métodos do contrato implementados** (`\paygw_<nome>\gateway`):
 
 | | `get_supported_currencies` | `cancel_recurring` | `refund` | `refund_blocker` | `pending_invoice` |
 |---|---|---|---|---|---|
 | Asaas | sim | sim | sim | sim | sim |
-| Mercado Pago | sim | — | — | — | — |
+| Mercado Pago | sim | **sim** | **sim** | **sim** | **sim** |
 | Pagar.me | sim | sim | sim | sim | sim |
+
+Os quatro do Mercado Pago entraram em 16/09/2026, e dois deles significam coisa
+**diferente** do que significam no Asaas:
+
+- **`cancel_recurring` não cancela nada no gateway.** Lá existe um objeto de
+  assinatura que cobra sozinho, e cancelar é pedir que pare; aqui quem dispara
+  cada ciclo é a plataforma, então cancelar é **parar de disparar**. A marca
+  vive na coluna `subscriptionstatus`.
+- **`pending_invoice` devolve uma página NOSSA.** Não há fatura hospedada: o
+  ciclo é cobrança automática no cartão guardado, e quando falha não sobra
+  documento para alguém pagar. O que resolve é o aluno informar um cartão que
+  funcione — que é o `subscribe.php`.
 
 O Pagar.me implementa os cinco, mas `cancel_recurring` e `pending_invoice` nunca
 disparam: o gateway recusa oferta recorrente na porta.
@@ -139,10 +159,19 @@ split) custaria a comissão de **todas** as vendas.
 
 ### Mercado Pago
 
-- **Sem recorrência com split.** O `preapproval` aceita `marketplace_fee` e o
-  descarta. É impossibilidade da API, não configuração
+- **O `preapproval` não carrega comissão**, confirmado em 15/09/2026 com a
+  aplicação do tipo Assinaturas: cinco formatos de campo, `201` em todos, zero
+  ecos. É impossibilidade da API
   ([ADR-0001](../adr/0001-gateways-alem-do-mercado-pago.md)).
-- **Nenhum método do contrato além de moedas** — sem estorno, sem cancelamento.
+- **A assinatura existe por outro caminho**, desde 16/09/2026: cobrança por
+  ciclo em `/v1/payments` com `application_fee`, sobre cartão guardado no MP.
+  **Quem dispara somos nós** — cron parado é assinatura que não cobra, e isso é
+  um custo operacional que o Asaas não tem.
+- **A travessia da comissão em assinatura NÃO foi provada.** O mecanismo está
+  medido; o dinheiro mudando de conta, não.
+- **Aprovação de cobrança iniciada pelo estabelecimento é incógnita.** O suporte
+  do MP avisa que pode ser pior que a do motor de assinaturas.
+- Os cinco métodos do contrato agora existem.
 - **Split só entre contas do mesmo país**, e as três partes precisam ser do mesmo
   ambiente.
 - Tokens ainda **em texto puro** no `payment_gateways.config`.

@@ -47,17 +47,29 @@ class fake_mp_client extends mp_client {
     /** @var array Resposta que a proxima chamada devolve. */
     public static array $nextresponse = [];
 
+    /** @var array Fila de respostas, uma por chamada, para fluxos com mais de
+     * uma requisicao - guess_payment_method() faz duas (busca por BIN,
+     * emissor). Vazia, cai em $nextresponse para todas as chamadas. */
+    public static array $responsequeue = [];
+
     /** @var string|null Resposta crua, quando o teste quer algo que nao e JSON. */
     public static ?string $rawresponse = null;
 
     /** @var int Codigo HTTP da proxima resposta. */
     public static int $nextstatus = 200;
 
+    /** @var int[] Fila de codigos HTTP, um por chamada - anda junto de
+     * $responsequeue. Vazia, cai em $nextstatus para todas as chamadas. */
+    public static array $statusqueue = [];
+
     /** @var int Erro de curl da proxima chamada. 0 = sem erro. */
     public static int $nexterrno = 0;
 
     /** @var array Corpo do ultimo POST, ja decodificado. */
     public static array $lastbody = [];
+
+    /** @var string[] Cabecalhos da ultima chamada. */
+    public static array $lastheaders = [];
 
     /** @var array Uma entrada por chamada: [metodo, url]. */
     public static array $calls = [];
@@ -69,10 +81,13 @@ class fake_mp_client extends mp_client {
      */
     public static function reset(): void {
         self::$nextresponse = [];
+        self::$responsequeue = [];
         self::$rawresponse = null;
         self::$nextstatus = 200;
+        self::$statusqueue = [];
         self::$nexterrno = 0;
         self::$lastbody = [];
+        self::$lastheaders = [];
         self::$calls = [];
     }
 
