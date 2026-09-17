@@ -11,7 +11,7 @@
 
 ---
 
-## Estado da execução — atualizado em 17/09/2026 (fechamento da rodada 4)
+## Estado da execução — atualizado em 17/09/2026 (fechamento da rodada 5)
 
 Ponto de retomada. Quem chegar aqui numa sessão nova lê **esta seção primeiro**.
 As rodadas anteriores desta seção (guardadas no histórico do git) pararam em
@@ -19,8 +19,25 @@ pontos **já superados** - leia daqui, não delas.
 
 **Worktree:** `paygw-mp-assinatura`, branch `feature/paygw-mp-assinatura`.
 **Túnel:** `mp.leodg.dev` → `https://localhost:8443`, funcionando.
-**Verde:** PHPUnit `116/116` no gateway, `138/138` no `local_marketplace`,
+**Verde:** PHPUnit `127/127` no gateway, `138/138` no `local_marketplace`,
 phpcs limpo nos dois, `npx grunt amd` limpo.
+
+### Rodada 5 (mesmo dia): configuração por empresa e visibilidade
+
+Fora da prova com dinheiro real, três coisas entraram nesta rodada:
+
+- **`card_capture` e `payment_methods` viram configuráveis POR CONTA de
+  pagamento** (empresa), não só por site - o padrão do plugin continua
+  valendo pra quem não escolheu nada, preservando o comportamento anterior.
+  Quem preenche é sempre o ADMIN, na tela de contas de pagamento do core.
+- **Forma de pagamento da assinatura passou a aparecer na tela** - admin
+  (`report.php?view=subscriptions`) e aluno (`mysubscriptions.php`, só
+  leitura) - via `api::payment_method_for()`, mesmo padrão dos outros
+  dispatchers do `local_marketplace`.
+- **Desenho (documento, zero código) da assinatura SaaS** que a empresa
+  parceira paga à PLATAFORMA (hospedagem/uso, dois planos: Start e PRO) -
+  ver `docs/ai-plans/2026-09-17-assinatura-saas-planos-start-e-pro.md`. Não
+  faz parte deste PR; é o próximo passo depois dele.
 
 | Etapa | Situação |
 |---|---|
