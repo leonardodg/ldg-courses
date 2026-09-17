@@ -1683,6 +1683,31 @@ class payment_processor {
     }
 
     /**
+     * Por qual meio esta assinatura esta sendo cobrada, para exibir na tela.
+     *
+     * NAO diz a bandeira do cartao nem os ultimos digitos - so o meio
+     * (cartao, Pix ou boleto). A bandeira exigiria consultar a API a cada
+     * linha da lista, e nem o admin nem o aluno decidem nada com esse detalhe
+     * que "trocar para cartao" ja nao resolva.
+     *
+     * @param \stdClass $record
+     * @return string
+     */
+    public static function payment_method_label(\stdClass $record): string {
+        $metodo = (string) $record->paymentmethod;
+
+        if ($metodo === 'pix') {
+            return get_string('subscribepix', 'paygw_mercadopago');
+        }
+
+        if ($metodo === 'bolbradesco') {
+            return get_string('subscribeboleto', 'paygw_mercadopago');
+        }
+
+        return get_string('subscribecard', 'paygw_mercadopago');
+    }
+
+    /**
      * Faz sentido oferecer "trocar para cartao" nesta assinatura?
      *
      * SO PARA QUEM JA PAGA POR PIX OU BOLETO, e assinatura ainda ativa - quem

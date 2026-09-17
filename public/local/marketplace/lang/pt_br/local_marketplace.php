@@ -299,6 +299,7 @@ $string['reportnocourses'] = 'Nenhum curso foi vendido ainda.';
 $string['reportnosales'] = 'Nenhuma venda aprovada neste período.';
 $string['reportnostudents'] = 'Ninguém tem acesso às ofertas desta empresa ainda.';
 $string['reportnosubs'] = 'Nenhuma oferta de assinatura, ou ninguém assinou ainda.';
+$string['reportpaymentmethod'] = 'Forma de pagamento';
 $string['reportpayments'] = 'Pagamentos';
 $string['reportsales'] = 'Vendas aprovadas';
 $string['reportsaleswith'] = 'Vendas que o incluem';

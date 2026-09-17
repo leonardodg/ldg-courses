@@ -201,6 +201,24 @@ class gateway extends \core_payment\gateway {
     }
 
     /**
+     * Por qual meio esta assinatura esta sendo cobrada, ou null quando nao
+     * ha assinatura.
+     *
+     * Mesma chamada generica de pending_invoice() - o nucleo continua sem
+     * saber o nome de nenhum gateway.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return string|null
+     */
+    public static function payment_method(string $component, int $itemid, int $userid): ?string {
+        $linha = self::latest_subscription_row($component, $itemid, $userid);
+
+        return $linha ? payment_processor::payment_method_label($linha) : null;
+    }
+
+    /**
      * Endereco para trocar Pix/boleto por cartao guardado, ou null quando
      * nao faz sentido oferecer a troca.
      *

@@ -70,6 +70,7 @@ $table = new html_table();
 $table->head = [
     get_string('offername', 'local_marketplace'),
     get_string('company', 'local_marketplace'),
+    get_string('reportpaymentmethod', 'local_marketplace'),
     get_string('reportpayments', 'local_marketplace'),
     get_string('reportaccessuntil', 'local_marketplace'),
     get_string('companystatus', 'local_marketplace'),
@@ -182,9 +183,14 @@ foreach ($ents as $ent) {
         }
     }
 
+    // So informativo: o aluno nao escolhe a forma de renovacao aqui, so ve
+    // qual esta valendo. Quem quer mudar usa o botao de troca, quando existe.
+    $metodo = api::payment_method_for('local_marketplace', (int) $offer->get('id'), (int) $USER->id);
+
     $table->data[] = [
         format_string($offer->get('name')),
         format_string($c->get('name')),
+        $metodo ?? '-',
         (int) $ent->get('cycles'),
         $end > 0 ? userdate($end, get_string('strftimedaydate')) : '-',
         $badge,

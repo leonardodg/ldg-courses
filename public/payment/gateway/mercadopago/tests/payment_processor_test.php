@@ -1044,6 +1044,37 @@ final class payment_processor_test extends \advanced_testcase {
     }
 
     /**
+     * O rotulo do meio de pagamento e o que a tela de gerenciamento (admin) e
+     * a de assinaturas (aluno) mostram - so o MEIO, nunca a bandeira nem os
+     * ultimos digitos do cartao.
+     *
+     * @return void
+     */
+    public function test_payment_method_label_distingue_os_tres_meios(): void {
+        $this->resetAfterTest();
+
+        $pix = $this->linha(['subscriptionid' => 'mdlsub-1-2-label1', 'paymentmethod' => 'pix']);
+        $this->assertSame(
+            get_string('subscribepix', 'paygw_mercadopago'),
+            payment_processor::payment_method_label($pix)
+        );
+
+        $boleto = $this->linha(['subscriptionid' => 'mdlsub-1-2-label2', 'paymentmethod' => 'bolbradesco']);
+        $this->assertSame(
+            get_string('subscribeboleto', 'paygw_mercadopago'),
+            payment_processor::payment_method_label($boleto)
+        );
+
+        // Qualquer bandeira de cartao (visa, master, elo...) cai no mesmo
+        // rotulo generico: a bandeira nao muda nada que a tela decida.
+        $cartao = $this->linha(['subscriptionid' => 'mdlsub-1-2-label3', 'paymentmethod' => 'visa']);
+        $this->assertSame(
+            get_string('subscribecard', 'paygw_mercadopago'),
+            payment_processor::payment_method_label($cartao)
+        );
+    }
+
+    /**
      * Confirmar com CVV so faz sentido para um ciclo de CARTAO ja criado
      * por issue_card_cycle() e AINDA NAO cobrado - confirmar de novo um
      * ciclo ja pago cobraria duas vezes.
