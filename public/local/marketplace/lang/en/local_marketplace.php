@@ -110,6 +110,7 @@ $string['errornocourses'] = 'Choose at least one course, or use the Whole catalo
 $string['errorpageaccent'] = 'Use a hexadecimal colour such as #B85410, or leave it empty.';
 $string['errorplanarchived'] = 'This plan is archived and cannot be assigned to a company.';
 $string['errorplanfeenegative'] = 'The monthly fee cannot be negative.';
+$string['errorplannotbillable'] = 'This company has no plan with a monthly fee to charge.';
 $string['errorplannotfound'] = 'The selected plan does not exist.';
 $string['errorplanshortnametaken'] = 'Another plan already uses this short name.';
 $string['errorplantiernegative'] = 'The price cap cannot be negative.';

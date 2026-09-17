@@ -110,6 +110,7 @@ $string['errornocourses'] = 'Escolha ao menos um curso, ou use o tipo Catálogo 
 $string['errorpageaccent'] = 'Use uma cor hexadecimal como #B85410, ou deixe vazio.';
 $string['errorplanarchived'] = 'Este plano está arquivado e não pode ser atribuído a uma empresa.';
 $string['errorplanfeenegative'] = 'A mensalidade não pode ser negativa.';
+$string['errorplannotbillable'] = 'Esta empresa não tem um plano com mensalidade para cobrar.';
 $string['errorplannotfound'] = 'O plano selecionado não existe.';
 $string['errorplanshortnametaken'] = 'Outro plano já usa este nome curto.';
 $string['errorplantiernegative'] = 'O teto de preço não pode ser negativo.';
