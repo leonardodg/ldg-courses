@@ -8,19 +8,21 @@
 
 ---
 
-## Estado da execução — atualizado em 16/09/2026 (fim da sessão)
+## Estado da execução — atualizado em 16/09/2026 (fim da sessão, rodada 2)
 
 Ponto de retomada. Quem chegar aqui numa sessão nova lê **esta seção primeiro**.
+A rodada anterior desta seção (guardada no histórico do git) parou num ponto
+que **já foi superado** — nove bugs adiante, o fluxo técnico passa até o fim.
+O que resta é diferente do que resta ali: leia daqui, não daquela versão.
 
 **Worktree:** `paygw-mp-assinatura`, branch `feature/paygw-mp-assinatura`.
 **Túnel:** `mp.leodg.dev` → `https://localhost:8443`, funcionando.
-**Verde:** PHPUnit `85/85` no gateway e `12/12` no `availability_marketplace`,
-phpcs limpo, grunt limpo, behat `8/8`, `check_database_schema` limpo.
+**Verde:** PHPUnit `93/93` no gateway, phpcs limpo, grunt limpo.
 
 | Etapa | Situação |
 |---|---|
 | Fases 0 a 4 | **feitas** |
-| Fase 5 — prova de ponta a ponta | **EM CURSO, e é o único item aberto** |
+| Fase 5 — prova de ponta a ponta | **EM CURSO** — fluxo técnico provado, aprovação real ainda não |
 
 ### Ambiente da prova, já montado
 
@@ -31,72 +33,124 @@ phpcs limpo, grunt limpo, behat `8/8`, `check_database_schema` limpo.
 | Empresa | **Ivana Academy** (`ivana-academy`), comissão **80%**, origem `company` |
 | Ofertas | Assinatura 3 cursos (`6`), Certificado (`13`), Curso avulso (`2`) — todas **R$ 5,00** |
 | `testmode` | **desligado**, chaves de produção |
-| Captura de cartão | **`direct`** (SAQ A-EP). O Brick foi descartado nesta rodada |
-| Aluno | `aluno.prova.mp` / `Prova#MP2026` |
+| Captura de cartão | **`brick`** (SAQ A) — trocado de `direct` nesta rodada, ver abaixo |
+| Aluno | `aluno.prova.mp@leodg.dev` |
 | Vitrine | `/local/marketplace/offers.php?company=ivana-academy` |
 
 ### ONDE PAROU — o próximo passo exato
 
-A compra da assinatura morre com `400: invalid parameter in payment method`,
-**antes de gravar o cliente** (`mpcustomerid` nulo na linha).
+**O fluxo técnico funciona de ponta a ponta.** Três pagamentos reais foram
+criados na API (`178404134477`, `178405194209`, `179384118044`) com cliente,
+cartão salvo, cobrança e `application_fee` corretos. Nenhum foi **aprovado**
+ainda: dois voltaram `cc_rejected_high_risk` e um `cc_rejected_bad_filled_
+security_code` — recusas do banco/antifraude, não bugs.
 
-**Já descartado por medição** (detalhe em
-[`../data-validation/mercadopago-assinatura.md`](../data-validation/mercadopago-assinatura.md)):
+**Hipótese mais provável**: várias tentativas de valor baixo (R$ 5) em
+sequência rápida, na mesma conta de vendedor, no mesmo dia — o padrão que
+qualquer antifraude associa a teste de cartão roubado, mesmo sendo teste
+legítimo. **Não tentar de novo em sequência.** Esperar (a orientação dada foi
+"algumas horas") antes da próxima tentativa, e evitar rodadas de tentativas
+seguidas quando ela vier.
 
-| Teste | Resultado |
-|---|---|
-| `POST /v1/customers` | `400 the customer already exist` — esperado e tratado |
-| `GET /v1/customers/search` | 1 resultado, o cliente é encontrado |
-| `save_card` com token da **public key da PLATAFORMA** | **ok**, `card_id=9854896121` |
-| `save_card` com token da **public key do VENDEDOR** | `invalid card owner` |
+**Se persistir depois de esperar**, abrir chamado com o suporte do Mercado
+Pago perguntando pelo status de risco da conta — comum em contas novas.
 
-**Conclusão: a chave pública correta é a da plataforma, e `save_card` funciona
-com token criado por API.** O que falha é o token vindo do **navegador**, pelos
-Secure Fields.
+### Nove defeitos corrigidos nesta rodada, na ordem em que apareceram
 
-**O erro agora diz QUAL passo falhou.** Cada uma das quatro chamadas do
-`charge_first_cycle()` roda dentro de `step()`, e a mensagem passa a ser
-*"recusou a requisição no passo X"*. Sem isso, as três primeiras deixam a linha
-do banco **idêntica** quando falham — ela só é gravada depois —, e a mensagem do
-Mercado Pago se repete entre endpoints. Custou três rodadas de prova real.
-
-**Na próxima tentativa, o passo no texto do erro resolve o caso**, porque as
-três primeiras chamadas já foram medidas isoladamente e **todas passam** com o
-token de produção do vendedor:
-
-| Passo | Medido isoladamente |
-|---|---|
-| `customer` | ok — cliente existe e é encontrado |
-| `savecard` | ok — `card_id=9854896121` |
-| `tokenizesaved` | ok — token `active`, sem CVV |
-| `payment` | **não medido com token do navegador** |
-
-Se o passo vier `payment`, a causa está no corpo da cobrança. Se vier
-`savecard`, está no token que o navegador produz.
-
-**Medir a seguir:** comparar os dois tokens. Registrar o token que o
-`subscribe.php` recebe e consultá-lo com `GET /v1/card_tokens/{id}` usando o
-token de acesso do vendedor. Se vier incompleto, a causa está na chamada
-`mp.createCardToken()` do `card_form.js`, que hoje manda só `cardholderName`,
-`identificationType` e `identificationNumber`.
-
-### Três defeitos corrigidos nesta rodada, todos só visíveis no navegador
+Todos só visíveis testando de verdade — nenhum apareceu em phpunit, phpcs ou
+behat. Medição completa de cada um em
+[`../data-validation/mercadopago-assinatura.md`](../data-validation/mercadopago-assinatura.md).
 
 1. **Formulário aninhado** — o Brick renderiza o próprio `<form>`; dentro do
-   nosso, o clique submetia o externo **vazio**.
-2. **`onReady` é obrigatório no Brick** — sem ele fica no esqueleto de
-   carregamento para sempre, e o erro só existe no console.
-3. **`payment_method_id` vazio** — ausente aprova, `""` devolve `400`. O token
-   não devolve a bandeira.
+   nosso, o clique submetia o externo vazio.
+2. **`onReady` obrigatório no Brick** — sem ele fica preso no esqueleto de
+   carregamento, erro só no console.
+3. **`payment_method_id` vazio derruba o `save_card`** — ausente ≠ vazio.
+4. **`step()` prometia `array`, o primeiro passo devolve `string`** —
+   `TypeError` antes mesmo de chamar o Mercado Pago.
+5. **`cardNumber.getBin()` não existe** — o SDK avisa a bandeira pelo evento
+   `binChange`, não por um método de consulta.
+6. **A busca por BIN pega o primeiro resultado, que pode não ser cartão** —
+   Pix, boleto e Mercado Crédito vêm misturados na mesma lista.
+7. **O parâmetro certo da busca por BIN é `bins`, no plural** — `bin` no
+   singular (usado num teste manual) devolve um catálogo genérico, sempre
+   igual, não filtrado.
+8. **`issuer_id` faltando E, quando presente, teria que ser número** — string
+   quebra o corpo inteiro (`the body must be a Json Object`); o campo certo
+   vem do endpoint dedicado `card_issuers` / `mp.getIssuers()`, não do
+   `issuer` genérico da busca por BIN.
+9. **A causa raiz de verdade do erro 127**: o token dos Secure Fields (modo
+   `direct`) não carrega BIN nenhum (`GET /v1/card_tokens/{id}` devolve
+   `first_six_digits` vazio) — sem dado de cartão no token, o Mercado Pago
+   não tem contra o que resolver bandeira nem emissor. **Trocado para o modo
+   `brick`**, o componente que o próprio Mercado Pago mantém para
+   salvar-e-cobrar-depois.
+10. **`/v1/payments` exige `X-Idempotency-Key`** — nenhum outro endpoint do
+    plugin exige. Usa a `external_reference` do ciclo.
+11. **`security_code_id can't be null`** — re-tokenizar o cartão guardado por
+    `card_id` sem CVV devolve token `active`, mas ele **não cobra**.
+    `charge_first_cycle()` agora cobra com o MESMO token que o navegador
+    criou (que carrega o CVV por dentro), em vez de re-tokenizar.
 
-E um quarto, no `availability_marketplace`: **o botão de comprar aparecia só na
-condição NEGADA**, por leitura errada do `$not` — nunca para quem deveria
-comprar.
+E um décimo segundo, fora do gateway, no `availability_marketplace`: **o
+botão de comprar aparecia só na condição NEGADA**, por leitura errada do
+`$not` — nunca para quem deveria comprar. Corrigido.
+
+### Decisão em aberto, e é grande: ciclo 2+ trava sem ESC
+
+O item 11 acima resolve o **ciclo 1** (tem o aluno na tela, digitando CVV).
+Os **ciclos 2 em diante** (`charge_due_cycles()`) continuam re-tokenizando
+por `card_id` sem CVV — não há aluno para digitar nada um mês depois — e vão
+bater na MESMA validação (`security_code_id can't be null`), sempre, porque
+o recurso que dispensa CVV (**ESC**, "Established Stored Credential") não se
+liga sozinho por histórico de pagamento — testado: nem depois de uma
+cobrança aprovada no mesmo cartão.
+
+Falta decidir entre:
+
+1. **Pedir ao suporte do Mercado Pago para habilitar ESC** nesta conta — só
+   assim a cobrança mensal continua de verdade automática;
+2. **Redesenhar o ciclo 2+ para pedir ação do aluno** a cada mês — o mesmo
+   modelo já aceito para Pix/boleto (ver abaixo), estendido também ao cartão
+   se o ESC não vingar.
+
+Sem uma das duas, **a assinatura por cartão cobra o ciclo 1 e trava no ciclo
+2** — falha que não aparece no ato da compra, só um mês depois.
+
+### Decidido, e não implementado: Pix e boleto na assinatura
+
+O usuário pediu Pix/boleto como opção na assinatura e confirmou o modelo:
+**gerar uma fatura nova a cada ciclo** (Pix/boleto não tem cobrança automática
+recorrente no Mercado Pago — o aluno precisa agir a cada ciclo, como uma
+conta normal). Mesmo modelo do Asaas (`invoiceUrl`). **Nada disto foi
+codado ainda** — ficou registrado aqui para não se perder:
+
+- `subscribe.php` precisa de uma escolha de meio de pagamento (cartão vs
+  Pix/boleto), não só os três modos de captura de cartão;
+- para Pix/boleto, `charge_first_cycle()` (e o equivalente no ciclo 2+) cria
+  um pagamento com `payment_method_id` `pix` ou `bolbradesco` em vez de
+  tokenizar cartão, e mostra o QR code / linha digitável;
+- o aluno precisa ser notificado a cada ciclo (e-mail ou notificação do
+  Moodle) com o link para pagar — não há tela em que ele já esteja parado
+  esperando, como no ciclo 1.
+
+### Não testado ainda nesta rodada: as outras duas ofertas
+
+A Fase 5 original previa comprar três tipos de oferta. Só a **assinatura**
+foi exercitada nesta rodada (repetidamente, por causa dos bugs). Faltam:
+
+- **Certificado** (`13`) — Checkout Pro, `marketplace_fee`, avulso;
+- **Curso avulso** (`2`) — Checkout Pro, idem.
+
+Nenhuma delas depende dos bugs corrigidos aqui (são do fluxo de `preferences`,
+não de `bricks`), mas nenhuma foi comprada de verdade ainda.
 
 ### Pendências de UI anotadas, não corrigidas
 
-- **Layout dos campos do cartão** não acompanha o tema escuro, e a altura está
-  errada. O usuário pediu para anotar e corrigir depois.
+- **Layout dos campos do cartão no modo `direct`** não acompanha o tema
+  escuro, e a altura está errada. Ficou pendente porque o modo ativo agora é
+  `brick` (o Card Payment Brick tem o próprio layout, mantido pelo Mercado
+  Pago) — só importa se `direct` voltar a ser usado.
 - A tela está em **inglês** porque o site está; as strings `pt_br` existem.
 
 ### Em aberto, para rodadas próprias
@@ -105,7 +159,11 @@ comprar.
 - **Vínculo pelo próprio vendedor**: a capability já é checada no contexto da
   conta; falta papel e ponto de entrada, no `local_marketplace`.
 - **Liberação do `advanced_payments`** no suporte do MP.
-- **Cancelar assinatura**: implementado, sem prova — depende de uma compra.
+- **Cancelar assinatura**: implementado, sem prova — depende de uma compra
+  aprovada.
+- **Testar o ciclo 2** (mover `timecreated` para trás e rodar
+  `charge_due_cycles` sem esperar 30 dias) — bloqueado pela decisão do ESC
+  acima; testar antes disso só reproduziria o erro já conhecido.
 
 ---
 
