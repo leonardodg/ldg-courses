@@ -432,7 +432,7 @@ final class commission_test extends \advanced_testcase {
         set_config('commissionbase', commission::BASE_GROSS, 'local_marketplace');
 
         // O plano diz liquido; a empresa nao negociou nada, entao o plano vence.
-        $plan = plan::get_record_by_shortname('starter');
+        $plan = plan::get_record_by_shortname('start_free');
         $plan->set('commissionpct', 9.9);
         $plan->set('commissionbase', commission::BASE_NET);
         $plan->update();
@@ -456,7 +456,7 @@ final class commission_test extends \advanced_testcase {
     public function test_empresa_traz_a_propria_base(): void {
         set_config('commissionbase', commission::BASE_NET, 'local_marketplace');
 
-        $plan = plan::get_record_by_shortname('starter');
+        $plan = plan::get_record_by_shortname('start_free');
         $plan->set('commissionbase', commission::BASE_NET);
         $plan->update();
 

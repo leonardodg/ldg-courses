@@ -617,6 +617,73 @@ class api {
     }
 
     /**
+     * A payment account da PROPRIA PLATAFORMA para um pais, criando se
+     * precisar.
+     *
+     * Diferente de create_payment_account(): sem empresa, sem contexto de
+     * categoria, sem linha em company_account. E a conta que recebe a
+     * assinatura SaaS (Start/PRO) que a empresa parceira paga a plataforma -
+     * o oposto de create_payment_account(), que cria a conta que recebe a
+     * venda de curso.
+     *
+     * Vive no contexto do SITE, e nao de empresa nenhuma, porque nao e
+     * propriedade de empresa nenhuma. O idnumber com o prefixo 'platform_' e
+     * o que is_platform_account() usa para reconhecer esta conta depois -
+     * inclusive nos gateways que hoje recusam vincular a propria carteira da
+     * plataforma como "vendedor" (guarda pensada pra venda de curso, que nao
+     * se aplica aqui).
+     *
+     * IDEMPOTENTE: busca pelo idnumber antes de criar.
+     *
+     * @param string $country ISO-3166 alpha-2.
+     * @return \core_payment\account
+     */
+    public static function get_or_create_platform_account(string $country): \core_payment\account {
+        $country = country::normalize($country);
+        $idnumber = 'platform_' . strtolower($country);
+
+        $existing = \core_payment\account::get_record(['idnumber' => $idnumber]);
+        if ($existing) {
+            return $existing;
+        }
+
+        $account = new \core_payment\account();
+        $account->set('name', get_string('platformaccountname', 'local_marketplace', $country));
+        $account->set('idnumber', $idnumber);
+        $account->set('contextid', \context_system::instance()->id);
+        $account->set('enabled', true);
+        $account->create();
+
+        return $account;
+    }
+
+    /**
+     * Esta conta de pagamento e a da propria plataforma?
+     *
+     * So alcancavel por quem ja tem moodle/payment:manageaccounts (as telas
+     * de administracao de conta) - nao e superficie que uma empresa consiga
+     * atacar forjando um idnumber, porque nenhuma tela deixa a empresa
+     * escolher o proprio idnumber.
+     *
+     * @param int $accountid
+     * @return bool
+     */
+    public static function is_platform_account(int $accountid): bool {
+        if ($accountid <= 0) {
+            return false;
+        }
+
+        // Get_record() devolve false, e nao null, quando nao acha - por isso
+        // a checagem explicita antes de chamar get().
+        $account = \core_payment\account::get_record(['id' => $accountid]);
+        if (!$account) {
+            return false;
+        }
+
+        return str_starts_with((string) $account->get('idnumber'), 'platform_');
+    }
+
+    /**
      * Gateways instalados e habilitados que conseguem receber neste pais.
      *
      * A pergunta e feita a cada gateway, nao a uma lista nossa. Um gateway novo

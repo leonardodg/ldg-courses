@@ -54,9 +54,9 @@ final class plan_test extends \advanced_testcase {
     public function test_shortname_e_unico(): void {
         $this->resetAfterTest();
 
-        // NAO usar 'starter', 'pro' ou 'scale': o seed da instalacao ja criou
-        // esses tres, e o teste falharia na PRIMEIRA criacao, provando outra
-        // coisa que nao a unicidade.
+        // NAO usar 'start_free', 'start_50', 'start_100' ou 'pro': o seed da
+        // instalacao ja criou esses quatro, e o teste falharia na PRIMEIRA
+        // criacao, provando outra coisa que nao a unicidade.
         $this->make_plan(['shortname' => 'unicidade']);
 
         $duplicado = new plan(0, (object) [

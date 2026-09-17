@@ -73,6 +73,15 @@ class company extends persistent {
                 'null' => NULL_ALLOWED,
                 'default' => null,
             ],
+            'planexpiry' => [
+                'type' => PARAM_INT,
+                'null' => NULL_ALLOWED,
+                'default' => null,
+                // Sem status separado, de proposito: inadimplente e so
+                // "planexpiry no passado", do mesmo jeito que
+                // entitlement::timeend ja decide vencimento hoje. Um enum a
+                // mais so poderia divergir do timestamp.
+            ],
             'pagetitle' => [
                 'type' => PARAM_TEXT,
                 'null' => NULL_ALLOWED,
@@ -446,6 +455,39 @@ class company extends persistent {
         $plan = plan::get_record(['id' => (int) $planid]);
 
         return $plan ?: null;
+    }
+
+    /**
+     * A mensalidade do plano esta em dia?
+     *
+     * Sem status separado de proposito - inadimplente e so "planexpiry no
+     * passado". Empresa sem planexpiry (nunca assinou, ou plano gratis) nao
+     * esta inadimplente: nao ha o que vencer.
+     *
+     * @return bool
+     */
+    public function is_plan_overdue(): bool {
+        $expiry = $this->get('planexpiry');
+
+        return $expiry !== null && (int) $expiry < time();
+    }
+
+    /**
+     * Soma um ciclo pago ao vencimento da mensalidade.
+     *
+     * Mesma regra de entitlement::extend(): soma ao vencimento ATUAL quando
+     * ele ainda esta no futuro, e a partir de AGORA quando ja passou - quem
+     * ficou dias sem pagar nao ganha esses dias de volta.
+     *
+     * @param int $seconds
+     * @return void
+     */
+    public function extend_plan(int $seconds): void {
+        $atual = (int) $this->get('planexpiry');
+        $base = max($atual, time());
+
+        $this->set('planexpiry', $base + $seconds);
+        $this->update();
     }
 
     /**
