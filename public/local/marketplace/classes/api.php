@@ -686,6 +686,78 @@ class api {
     }
 
     /**
+     * Endereco para trocar a forma de pagamento de uma assinatura por cartao
+     * guardado, quando o gateway que a cobra oferece essa troca.
+     *
+     * SO FAZ SENTIDO PARA QUEM COBRA POR FATURA (Pix, boleto): quem ja paga
+     * com cartao nao tem para onde trocar, e o gateway que nao implementa o
+     * metodo simplesmente nao aparece aqui - o mesmo desenho de
+     * pending_invoice_for(), e pela mesma razao: o nucleo continua sem saber
+     * o nome de gateway nenhum.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return string|null
+     */
+    public static function switch_to_card_url_for(string $component, int $itemid, int $userid): ?string {
+        foreach (self::billing_capable_gateways() as $name) {
+            $classname = '\paygw_' . $name . '\gateway';
+            try {
+                $url = \component_class_callback(
+                    $classname,
+                    'switch_to_card_url',
+                    [$component, $itemid, $userid],
+                    null
+                );
+            } catch (\Throwable $e) {
+                continue;
+            }
+            if (!empty($url)) {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Por qual meio uma assinatura esta sendo cobrada (cartao, Pix, boleto),
+     * ou null quando nao ha assinatura ou o gateway nao sabe responder.
+     *
+     * Mesmo desenho de pending_invoice_for(): o nucleo pergunta a cada
+     * gateway habilitado e fica com a primeira resposta, sem saber o nome de
+     * nenhum. Serve tanto para o admin gerenciar (report.php) quanto para o
+     * aluno so consultar (mysubscriptions.php) - nenhum dos dois ESCOLHE o
+     * meio aqui, so veem qual esta valendo.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return string|null
+     */
+    public static function payment_method_for(string $component, int $itemid, int $userid): ?string {
+        foreach (self::billing_capable_gateways() as $name) {
+            $classname = '\paygw_' . $name . '\gateway';
+            try {
+                $metodo = \component_class_callback(
+                    $classname,
+                    'payment_method',
+                    [$component, $itemid, $userid],
+                    null
+                );
+            } catch (\Throwable $e) {
+                continue;
+            }
+            if ($metodo !== null && $metodo !== '') {
+                return $metodo;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Motivo pelo qual esta venda nao pode ser estornada.
      *
      * Existe para a TELA: e com isto que o botao some, em vez de aparecer e

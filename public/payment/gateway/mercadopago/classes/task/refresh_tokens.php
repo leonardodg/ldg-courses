@@ -17,6 +17,7 @@
 namespace paygw_mercadopago\task;
 
 use core\task\scheduled_task;
+use paygw_mercadopago\application;
 use paygw_mercadopago\mp_client;
 
 /**
@@ -51,9 +52,9 @@ class refresh_tokens extends scheduled_task {
     public function execute() {
         global $DB;
 
-        $config = get_config('paygw_mercadopago');
-        if (empty($config->clientid) || empty($config->clientsecret)) {
-            mtrace('Aplicacao da plataforma nao configurada; nada a renovar.');
+        $tipos = application::configured_types();
+        if (!$tipos) {
+            mtrace('Nenhuma aplicacao da plataforma configurada; nada a renovar.');
             return;
         }
 
@@ -62,39 +63,68 @@ class refresh_tokens extends scheduled_task {
 
         foreach ($DB->get_records('payment_gateways', ['gateway' => 'mercadopago']) as $gw) {
             $gwconfig = @json_decode($gw->config, true);
-            if (empty($gwconfig['refreshtoken'])) {
+            if (!is_array($gwconfig)) {
                 continue;
             }
 
-            $expira = (int) ($gwconfig['tokenexpires'] ?? 0);
-            if ($expira === 0 || $expira > $limite) {
-                continue;
-            }
+            // Cada aplicacao tem o proprio token e o proprio vencimento, e eles
+            // nao andam juntos: um vendedor pode ter autorizado Preferencias em
+            // marco e Bricks em setembro. Renovar so o primeiro que vencer
+            // deixaria o outro morrer calado.
+            $mudou = false;
 
-            try {
-                $token = mp_client::refresh_token(
-                    $config->clientid,
-                    $config->clientsecret,
-                    $gwconfig['refreshtoken']
-                );
-
-                $gwconfig['accesstoken'] = (string) ($token['access_token'] ?? '');
-                // O Mercado Pago pode devolver um refresh_token novo. Manter o
-                // antigo nesse caso quebraria a renovacao seguinte.
-                if (!empty($token['refresh_token'])) {
-                    $gwconfig['refreshtoken'] = (string) $token['refresh_token'];
+            foreach ($tipos as $tipo) {
+                $refresh = (string) ($gwconfig[application::token_field($tipo, 'refreshtoken')] ?? '');
+                if ($refresh === '') {
+                    continue;
                 }
-                $gwconfig['tokenexpires'] = time() + (int) ($token['expires_in'] ?? 0);
 
+                $expira = (int) ($gwconfig[application::token_field($tipo, 'tokenexpires')] ?? 0);
+                if ($expira === 0 || $expira > $limite) {
+                    continue;
+                }
+
+                $credenciais = application::credentials($tipo);
+                if (!$credenciais) {
+                    continue;
+                }
+
+                try {
+                    $token = mp_client::refresh_token(
+                        $credenciais->clientid,
+                        $credenciais->clientsecret,
+                        $refresh
+                    );
+
+                    $novoexpira = time() + (int) ($token['expires_in'] ?? 0);
+                    $gwconfig[application::token_field($tipo, 'accesstoken')] =
+                        (string) ($token['access_token'] ?? '');
+                    // O Mercado Pago pode devolver um refresh_token novo. Manter
+                    // o antigo nesse caso quebraria a renovacao seguinte.
+                    if (!empty($token['refresh_token'])) {
+                        $gwconfig[application::token_field($tipo, 'refreshtoken')] =
+                            (string) $token['refresh_token'];
+                    }
+                    $gwconfig[application::token_field($tipo, 'tokenexpires')] = $novoexpira;
+
+                    $mudou = true;
+                    $renovados++;
+                    mtrace("Conta {$gw->accountid} [$tipo]: token renovado ate " . userdate($novoexpira));
+                } catch (\Throwable $e) {
+                    // Uma falha nao pode interromper as outras contas nem as
+                    // outras aplicacoes: se o vendedor revogou a autorizacao no
+                    // painel do Mercado Pago, aquele vinculo nunca mais renova,
+                    // e os demais seguem validos.
+                    $falhas++;
+                    mtrace("Conta {$gw->accountid} [$tipo]: FALHA ao renovar - " . $e->getMessage());
+                }
+            }
+
+            // Uma gravacao por conta, e nao uma por aplicacao: sao ate tres
+            // renovacoes na mesma linha, e gravar a cada uma reescreveria o
+            // mesmo registro tres vezes.
+            if ($mudou) {
                 $DB->set_field('payment_gateways', 'config', json_encode($gwconfig), ['id' => $gw->id]);
-                $renovados++;
-                mtrace("Conta {$gw->accountid}: token renovado ate " . userdate($gwconfig['tokenexpires']));
-            } catch (\Throwable $e) {
-                // Uma falha nao pode interromper as outras contas: se o
-                // vendedor revogou a autorizacao no painel do Mercado Pago,
-                // aquela conta nunca mais renova, e as demais seguem validas.
-                $falhas++;
-                mtrace("Conta {$gw->accountid}: FALHA ao renovar - " . $e->getMessage());
             }
         }
 

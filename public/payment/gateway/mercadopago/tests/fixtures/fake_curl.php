@@ -79,6 +79,29 @@ class fake_curl extends \curl {
         fake_mp_client::$lastbody = is_string($params)
             ? (array) json_decode($params, true)
             : (array) $params;
+        fake_mp_client::$lastheaders = $this->header;
+
+        return $this->body();
+    }
+
+    /**
+     * PUT simulado.
+     *
+     * Existe separado do post() para que o teste consiga AFIRMAR o verbo. Nao e
+     * detalhe: alterar assinatura e PUT /preapproval/{id}, e um POST no mesmo
+     * caminho CRIA outra assinatura - o aluno passaria a ser cobrado duas
+     * vezes, sem erro nenhum aparecendo.
+     *
+     * @param string $url
+     * @param string|array $params
+     * @param array $options
+     * @return string
+     */
+    public function put($url, $params = [], $options = []) {
+        fake_mp_client::$calls[] = ['PUT', $url];
+        fake_mp_client::$lastbody = is_string($params)
+            ? (array) json_decode($params, true)
+            : (array) $params;
 
         return $this->body();
     }
@@ -98,6 +121,10 @@ class fake_curl extends \curl {
      * @return array
      */
     public function get_info() {
+        if (fake_mp_client::$statusqueue) {
+            return ['http_code' => array_shift(fake_mp_client::$statusqueue)];
+        }
+
         return ['http_code' => fake_mp_client::$nextstatus];
     }
 
@@ -109,6 +136,10 @@ class fake_curl extends \curl {
     protected function body(): string {
         if (fake_mp_client::$rawresponse !== null) {
             return fake_mp_client::$rawresponse;
+        }
+
+        if (fake_mp_client::$responsequeue) {
+            return json_encode(array_shift(fake_mp_client::$responsequeue));
         }
 
         return json_encode(fake_mp_client::$nextresponse);

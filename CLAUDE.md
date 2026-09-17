@@ -25,10 +25,18 @@ Não são preferências. São limites de terceiros, verificados.
 função pura do `itemid`. Uma oferta não pode ser BRL para um aluno e ARS para
 outro — por isso o país vive na oferta, e planos por país são ofertas separadas.
 
-**O Mercado Pago não tem recorrência com split.** `preapproval` não aceita
-`marketplace_fee`, e o Transparente com cartão salvo exige CVV a cada cobrança.
-Assinatura aqui é acesso com prazo mais aviso de vencimento — não débito
-automático. Foi o que motivou procurar outro gateway: ver `docs/adr/0001`.
+**O `preapproval` do Mercado Pago não tem campo de comissão NENHUM.** Medido em
+15/09/2026 com a aplicação do tipo **Assinaturas**, que era a dúvida legítima:
+`marketplace_fee`, `application_fee` e `marketplace`, na raiz e dentro de
+`auto_recurring`, dão `201` nos cinco formatos e **nenhum volta no `GET`**. O
+recurso não tem onde guardar. Ver `docs/adr/0001` e `0012`.
+
+**Mas a frase sobre CVV estava errada, e a correção abriu o caminho.** `POST
+/v1/card_tokens` com apenas `{"card_id": ...}` devolve token `active` — **não
+pede código de segurança**. Então assinatura com comissão no MP existe: é uma
+sequência de cobranças em `/v1/payments` com `application_fee`, disparadas pela
+plataforma, sobre cartão guardado no Mercado Pago. **Cron parado é assinatura
+que não cobra** — ao contrário do Asaas, aqui quem dispara somos nós.
 
 **Quem cria a cobrança é o vendedor.** Não é escolha de arquitetura, é regra
 fiscal: a plataforma não emite nota por outra empresa. A cobrança nasce na conta
@@ -230,6 +238,10 @@ antes de qualquer push adicional confirme que ele ainda está aberto:
 | `Section error` | A seção do gateway é `paymentgateway<nome>`, não `paygw_<nome>` |
 | Asaas recusa a cobrança inteira | Conta do vendedor sem o domínio **da plataforma** cadastrado em Minha Conta, ou aluno sem CPF no perfil |
 | Webhook do Asaas respondendo 401 | Token vazio ou divergente entre o painel e a config do Moodle |
+| Cobrança do MP recusada com `cc_rejected_other_reason` | `payer` com `type: customer` num token **recém-digitado**. O cliente só entra quando o token nasceu do cartão dele |
+| `Invalid users involved` no MP | Chave pública de um ambiente com token de outro. As três partes — comprador, vendedor e **aplicação** — têm que estar do mesmo lado |
+| `Resource not found` ao criar `preapproval` com cartão | O `card_token` nasceu da `public_key` de **outra** aplicação. Tem que ser a mesma que cria a assinatura |
+| `/v1/card_tokens` devolvendo 403 | Tokenização com token de ACESSO. Só a `public_key` tokeniza — o cartão vira token no navegador |
 | `No define call` | `requirejs.php` serve `amd/src` quando não há `.map`. **Não há transpilador**: o `src` precisa ser AMD de verdade |
 | Botão exige dois cliques | `cachejs` desligado faz cada módulo AMD virar uma requisição |
 | Upgrade quebra em `messages.php` | `MESSAGE_DEFAULT_LOGGEDIN` não existe no 5.2. Use `MESSAGE_DEFAULT_ENABLED` |
@@ -374,10 +386,12 @@ vitalício ganha de qualquer data.
 **Continua sem prova:** o vendedor pessoa jurídica no Mercado Pago, que é o caso
 convencional e nunca foi exercitado.
 
-**Assinatura recorrente existe no Asaas** desde 09/09/2026, e **não existe no
-Mercado Pago**. `POST /subscriptions` aceita o `split`, guarda com
-`status: ACTIVE`, e ele chega na cobrança de cada ciclo — o oposto do
-`preapproval` do MP, que engole o campo (ver `docs/adr/0001`).
+**Assinatura recorrente existe no Asaas** desde 09/09/2026, com o gateway
+cobrando sozinho. **No Mercado Pago ela existe desde 16/09/2026, por outro
+mecanismo**: não há objeto de assinatura que carregue comissão, então cada ciclo
+é uma cobrança em `/v1/payments` disparada por nós. Os dois entregam o mesmo
+resultado ao aluno e **custam coisas diferentes em operação** — ver o README do
+`paygw_mercadopago`.
 
 **Há débito automático, e quem guarda o cartão é o GATEWAY.** O Moodle não
 guarda dado de cartão em lugar nenhum, e não vai guardar. Medido no sandbox em

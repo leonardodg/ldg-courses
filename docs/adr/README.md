@@ -48,3 +48,5 @@ Pago, já foi superada pelos ADRs abaixo.
 | [0009](0009-papeis-de-empresa-sem-upload.md) | Dois papéis de empresa, e a proibição de upload como lista estática | Aceita |
 | [0010](0010-vendedor-pessoa-fisica-no-mercado-pago.md) | Vendedor pessoa física é aceito no Mercado Pago | Aceita |
 | [0011](0011-o-extrato-e-a-fonte-da-comissao.md) | O extrato é a fonte da comissão, não a cobrança | Aceita |
+| [0012](0012-duas-assinaturas-e-so-uma-tem-split.md) | Duas assinaturas, e só uma tem split | Aceita |
+| [0013](0013-uma-aplicacao-por-tipo-de-integracao.md) | Uma aplicação do Mercado Pago por tipo de integração | Aceita |

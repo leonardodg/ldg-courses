@@ -27,6 +27,7 @@
 
 require(__DIR__ . '/../../../config.php');
 
+use paygw_mercadopago\application;
 use paygw_mercadopago\mp_client;
 
 $code = optional_param('code', '', PARAM_RAW_TRIMMED);
@@ -38,49 +39,102 @@ require_login();
 $pending = $SESSION->paygw_mercadopago_oauth ?? null;
 unset($SESSION->paygw_mercadopago_oauth);
 
-// Confere o state ANTES de qualquer outra coisa. Sem isso o endpoint aceitaria
-// um codigo de autorizacao de origem desconhecida e vincularia a conta de quem
-// estivesse logado.
+// AS TRES FALHAS AQUI SAO DIFERENTES, E JUNTAR AS TRES CUSTOU CARO.
 //
-// A ausencia do code_verifier entra na mesma checagem: ou a sessao e de um
-// fluxo iniciado antes do PKCE existir, ou nao veio daqui. Nos dois casos a
-// troca falharia adiante - melhor recusar agora, com mensagem clara.
-if (
-    empty($pending) || empty($state) || !hash_equals($pending->state, $state)
-        || empty($pending->codeverifier)
-) {
+// Ate 15/09/2026 uma condicao so cobria "nao ha fluxo", "o state nao bate" e
+// "falta o verifier", todas com a mesma mensagem - "nao foi possivel verificar
+// a autorizacao". Num fluxo que SAI do site e volta, a causa mais comum e a
+// mais inocente de todas, e quem a encontrava nao tinha como saber disso nem
+// como sair da tela: a excecao e um beco sem saida.
+//
+// 1) Nao ha fluxo nenhum na sessao.
+//
+// Nao e suspeita de ataque. E esta pagina aberta diretamente - o que acontece
+// naturalmente quando alguem confere o redirect_uri que acabou de cadastrar no
+// painel do Mercado Pago -, ou a sessao morta entre a ida e a volta. O caminho
+// certo e dizer isso e devolver a pessoa para onde ela recomeca.
+if (empty($pending)) {
+    redirect(
+        new moodle_url('/payment/accounts.php'),
+        get_string('errornopendingflow', 'paygw_mercadopago'),
+        null,
+        \core\output\notification::NOTIFY_ERROR
+    );
+}
+
+// Daqui para baixo EXISTE um fluxo iniciado neste navegador, e a conta e
+// conhecida - entao da para voltar para a tela do gateway.
+$returnurl = new moodle_url('/payment/manage_gateway.php', [
+    'accountid' => (int) $pending->accountid,
+    'gateway' => 'mercadopago',
+]);
+
+// 2) O state nao confere. Esta e a suspeita de verdade, e continua sendo
+// excecao, sem redirecionamento: alguem pode estar tentando concluir, no
+// navegador desta pessoa, uma autorizacao iniciada por outro - e o resultado
+// seria vincular a conta errada.
+//
+// A ausencia do code_verifier fica junto por ser da mesma natureza: ou a sessao
+// nao veio daqui, ou foi forjada pela metade.
+if (empty($state) || !hash_equals($pending->state, $state) || empty($pending->codeverifier)) {
     throw new moodle_exception('errorstatemismatch', 'paygw_mercadopago');
 }
+
+// 3) Fluxo iniciado por uma versao do plugin que ainda nao conhecia apptype.
+//
+// Seguir gravaria o vinculo num campo que ninguem le - perda silenciosa, que e
+// o modo de falha caro deste plugin. Mas nao e ataque: e uma aba aberta antes
+// da atualizacao, e recomecar resolve.
+if (empty($pending->apptype) || !application::is_valid($pending->apptype)) {
+    redirect(
+        $returnurl,
+        get_string('errorstaleflow', 'paygw_mercadopago'),
+        null,
+        \core\output\notification::NOTIFY_ERROR
+    );
+}
+
+$apptype = (string) $pending->apptype;
 
 $account = new \core_payment\account((int) $pending->accountid);
 $context = $account->get_context();
 require_capability('moodle/payment:manageaccounts', $context);
 
-// Volta para a tela do GATEWAY, nao para a da conta. get_edit_url() aponta para
-// manage_account.php, que edita nome e idnumber e nao tem nenhum botao do
-// Mercado Pago - a mensagem de sucesso apareceria numa pagina onde o proximo
-// passo nao existe.
-$returnurl = new moodle_url('/payment/manage_gateway.php', [
-    'accountid' => $account->get('id'),
-    'gateway' => 'mercadopago',
-]);
-
-// O vendedor pode ter recusado a autorizacao na tela do Mercado Pago.
+// O vendedor pode ter recusado a autorizacao na tela do Mercado Pago. Nao e
+// erro de verificacao: e uma escolha dele, e merece o proprio recado.
 if ($error !== '' || $code === '') {
     redirect(
         $returnurl,
-        get_string('errorstatemismatch', 'paygw_mercadopago'),
+        get_string('errorauthorisationrefused', 'paygw_mercadopago'),
         null,
         \core\output\notification::NOTIFY_ERROR
     );
 }
 
 $config = get_config('paygw_mercadopago');
+$credentials = application::credentials($apptype);
+if (!$credentials) {
+    // A aplicacao foi despreenchida entre o inicio e a volta.
+    redirect(
+        $returnurl,
+        get_string(
+            'errormissingappconfig',
+            'paygw_mercadopago',
+            get_string('apptype_' . $apptype, 'paygw_mercadopago')
+        ),
+        null,
+        \core\output\notification::NOTIFY_ERROR
+    );
+}
+
 $redirecturi = (new moodle_url('/payment/gateway/mercadopago/oauth_callback.php'))->out(false);
 
+// As credenciais sao as DAQUELA aplicacao. Trocar o codigo com o client_secret
+// de outra devolve erro generico do Mercado Pago, e a causa - o par errado -
+// nao aparece em lugar nenhum da mensagem.
 $token = mp_client::exchange_code(
-    $config->clientid,
-    $config->clientsecret,
+    $credentials->clientid,
+    $credentials->clientsecret,
     $code,
     $redirecturi,
     $pending->codeverifier,
@@ -152,13 +206,17 @@ $currency = mp_client::currency_for_site($siteid);
 // duracao, evita ter que lembrar quando o token foi emitido.
 $expires = time() + (int) ($token['expires_in'] ?? 0);
 
+// Grava SO os campos deste tipo, por cima do que ja existe. Um vendedor pode
+// ter autorizado Preferencias antes e Bricks agora, e sobrescrever o conjunto
+// inteiro apagaria o vinculo anterior sem nenhum aviso - a empresa pararia de
+// vender avulso no instante em que habilitasse a assinatura.
 $gateway->set('config', json_encode(array_merge($existing, [
-    'mpuserid' => (string) ($token['user_id'] ?? ''),
-    'accesstoken' => (string) ($token['access_token'] ?? ''),
-    'refreshtoken' => (string) ($token['refresh_token'] ?? ''),
-    'tokenexpires' => $expires,
-    'siteid' => $siteid,
-    'currency' => $currency,
+    application::token_field($apptype, 'mpuserid') => (string) ($token['user_id'] ?? ''),
+    application::token_field($apptype, 'accesstoken') => (string) ($token['access_token'] ?? ''),
+    application::token_field($apptype, 'refreshtoken') => (string) ($token['refresh_token'] ?? ''),
+    application::token_field($apptype, 'tokenexpires') => $expires,
+    application::token_field($apptype, 'siteid') => $siteid,
+    application::token_field($apptype, 'currency') => $currency,
 ])));
 
 if ($gateway->get('id')) {

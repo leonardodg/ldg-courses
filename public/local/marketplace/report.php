@@ -438,6 +438,7 @@ if ($view === 'subscriptions') {
     $table->head = [
         get_string('user'),
         get_string('offername', 'local_marketplace'),
+        get_string('reportpaymentmethod', 'local_marketplace'),
         get_string('reportpayments', 'local_marketplace'),
         get_string('reportlastpayment', 'local_marketplace'),
         get_string('reportaccessuntil', 'local_marketplace'),
@@ -477,9 +478,12 @@ if ($view === 'subscriptions') {
             );
         }
 
+        $metodo = \local_marketplace\api::payment_method_for('local_marketplace', (int) $e->offerid, (int) $e->userid);
+
         $table->data[] = [
             $u ? fullname($u) : '?',
             $o ? format_string($o->get('name')) : '#' . (int) $e->offerid,
+            $metodo ?? '-',
             $paid[$key]['n'] ?? 0,
             !empty($paid[$key]['last'])
                 ? userdate($paid[$key]['last'], get_string('strftimedateshort'))

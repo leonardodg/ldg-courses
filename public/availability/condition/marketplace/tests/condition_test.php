@@ -108,9 +108,9 @@ final class condition_test extends \advanced_testcase {
      * @param int $timeend 0 = vitalício.
      * @return entitlement
      */
-    protected function grant(offer $offer, int $timeend = 0): entitlement {
+    protected function grant(offer $offer, int $timeend = 0, ?int $userid = null): entitlement {
         $e = new entitlement();
-        $e->set('userid', (int) $this->user->id);
+        $e->set('userid', $userid ?? (int) $this->user->id);
         $e->set('offerid', (int) $offer->get('id'));
         $e->set('companyid', (int) $this->company->get('id'));
         $e->set('timestart', time() - DAYSECS);
@@ -257,5 +257,88 @@ final class condition_test extends \advanced_testcase {
     public function test_estrutura_invalida_vira_qualquer_oferta(): void {
         $this->assertSame(0, (new condition((object) []))->save()->offerid);
         $this->assertSame(0, (new condition((object) ['offerid' => 'abc']))->save()->offerid);
+    }
+
+    /**
+     * O aluno bloqueado recebe o caminho para comprar.
+     *
+     * Bloquear sem oferecer o caminho perde a venda no momento exato do
+     * interesse - o aluno esta olhando o conteudo que quer.
+     *
+     * @return void
+     */
+    public function test_o_aluno_bloqueado_ve_o_botao_de_comprar(): void {
+        $offer = $this->make_offer();
+        $cond = new condition(condition::get_json((int) $offer->get('id')));
+
+        // Aluno de verdade, e nao o $this->user: aquele CRIOU a empresa, entao
+        // e dono da categoria e pode gerenciar atividades - leria a descricao
+        // como professor.
+        $aluno = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+        $this->setUser($aluno);
+        $texto = $cond->get_description(true, false, $this->info());
+
+        $this->assertStringContainsString('/local/marketplace/offers.php', $texto);
+        $this->assertStringContainsString('highlight=' . $offer->get('id'), $texto);
+    }
+
+    /**
+     * Quem JA comprou nao ve botao de comprar de novo.
+     *
+     * @return void
+     */
+    public function test_quem_ja_comprou_nao_ve_o_botao(): void {
+        $offer = $this->make_offer();
+        $aluno = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+        $this->grant($offer, 0, (int) $aluno->id);
+        $cond = new condition(condition::get_json((int) $offer->get('id')));
+
+        $this->setUser($aluno);
+        $texto = $cond->get_description(true, false, $this->info());
+
+        $this->assertStringNotContainsString('/local/marketplace/offers.php', $texto);
+    }
+
+    /**
+     * Quem edita o curso nao ve botao de comprar.
+     *
+     * O professor montando a restricao le a MESMA descricao, e um "compre
+     * agora" ali e ruido - ele nao e o comprador.
+     *
+     * @return void
+     */
+    public function test_quem_edita_o_curso_nao_ve_o_botao(): void {
+        $offer = $this->make_offer();
+        $cond = new condition(condition::get_json((int) $offer->get('id')));
+
+        $professor = $this->getDataGenerator()->create_and_enrol($this->course, 'editingteacher');
+        $this->setUser($professor);
+        $texto = $cond->get_description(true, false, $this->info());
+
+        $this->assertStringNotContainsString('/local/marketplace/offers.php', $texto);
+    }
+
+    /**
+     * Na condicao NEGADA nao ha o que comprar.
+     *
+     * "NAO deve ter comprado" e o oposto: oferecer a compra ali empurraria o
+     * aluno para perder o acesso que ele tem.
+     *
+     * Este teste existe porque o botao vivia EXATAMENTE aqui, e em lugar
+     * nenhum mais: o codigo lia o $not como "esta bloqueado", e ele significa
+     * "condicao negada". O resultado era um botao que so aparecia para quem
+     * nao deveria comprar - e nunca para quem deveria.
+     *
+     * @return void
+     */
+    public function test_na_condicao_negada_nao_ha_o_que_comprar(): void {
+        $offer = $this->make_offer();
+        $cond = new condition(condition::get_json((int) $offer->get('id')));
+
+        $aluno = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+        $this->setUser($aluno);
+        $texto = $cond->get_description(true, true, $this->info());
+
+        $this->assertStringNotContainsString('/local/marketplace/offers.php', $texto);
     }
 }
