@@ -180,5 +180,19 @@ function xmldb_paygw_mercadopago_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026091761, 'paygw', 'mercadopago');
     }
 
+    if ($oldversion < 2026091763) {
+        // Sem isto, o lembrete de vencimento proximo mandaria o MESMO aviso a
+        // cada execucao diaria da tarefa, enquanto a linha estiver dentro da
+        // janela de aviso.
+        $table = new xmldb_table('paygw_mercadopago');
+
+        $field = new xmldb_field('reminderat', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'payerinfo');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026091763, 'paygw', 'mercadopago');
+    }
+
     return true;
 }

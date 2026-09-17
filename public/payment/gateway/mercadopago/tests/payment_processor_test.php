@@ -690,6 +690,109 @@ final class payment_processor_test extends \advanced_testcase {
     }
 
     /**
+     * O lembrete vale SO para Pix/boleto - cartao cobra sozinho, e um aviso
+     * de "sua cobranca automatica esta chegando" nao muda a acao de
+     * ninguem, porque nao ha acao nenhuma para o aluno tomar.
+     *
+     * @return void
+     */
+    public function test_lembrete_e_so_para_pix_e_boleto(): void {
+        $this->resetAfterTest();
+
+        $agora = 1789000000;
+        // Vencimento em 30 dias, lembrete 3 dias antes: a janela abre no
+        // dia 27.
+        $dentrodajanela = $agora + (28 * DAYSECS);
+
+        $pix = $this->linha(['timecreated' => $agora, 'paymentmethod' => 'pix']);
+        $this->assertTrue(payment_processor::needs_reminder($pix, 30, 3, 0, $dentrodajanela));
+
+        $cartao = $this->linha(['timecreated' => $agora]);
+        $this->assertFalse(
+            payment_processor::needs_reminder($cartao, 30, 3, 0, $dentrodajanela),
+            'cartao cobra sozinho, o lembrete nao se aplica'
+        );
+    }
+
+    /**
+     * O lembrete so vale DENTRO da janela - antes dela e cedo demais, no
+     * vencimento em diante e tarde demais (charge_due_cycles ja cuida).
+     *
+     * @return void
+     */
+    public function test_lembrete_so_vale_dentro_da_janela(): void {
+        $this->resetAfterTest();
+
+        $agora = 1789000000;
+        $vencimento = $agora + (30 * DAYSECS);
+
+        $pix = $this->linha(['timecreated' => $agora, 'paymentmethod' => 'pix']);
+
+        $this->assertFalse(
+            payment_processor::needs_reminder($pix, 30, 3, 0, $vencimento - (4 * DAYSECS)),
+            'quatro dias antes ainda e cedo, a janela e de tres'
+        );
+        $this->assertTrue(
+            payment_processor::needs_reminder($pix, 30, 3, 0, $vencimento - (2 * DAYSECS)),
+            'dois dias antes esta dentro da janela de tres'
+        );
+        $this->assertFalse(
+            payment_processor::needs_reminder($pix, 30, 3, 0, $vencimento),
+            'no proprio vencimento quem avisa e charge_due_cycles, nao o lembrete'
+        );
+    }
+
+    /**
+     * Ja lembrado nao lembra de novo - senao o mesmo aviso repetiria a cada
+     * execucao diaria da tarefa, enquanto a linha estiver na janela.
+     *
+     * @return void
+     */
+    public function test_ja_lembrado_nao_lembra_de_novo(): void {
+        $this->resetAfterTest();
+
+        $agora = 1789000000;
+        $dentrodajanela = $agora + (28 * DAYSECS);
+
+        $jalembrado = $this->linha([
+            'timecreated' => $agora,
+            'paymentmethod' => 'pix',
+            'reminderat' => $agora,
+        ]);
+
+        $this->assertFalse(payment_processor::needs_reminder($jalembrado, 30, 3, 0, $dentrodajanela));
+    }
+
+    /**
+     * send_reminder() marca a linha - e a marca que impede mandar o mesmo
+     * aviso de novo amanha.
+     *
+     * O message_send() do proprio Moodle emite um debugging() aqui porque o
+     * usuario gerado pelo teste nao tem preferencia de mensagem cacheada
+     * ainda - verificado a mao contra a conta real (message_get_providers_
+     * for_user() encontra os dois providers deste plugin sem problema), e e
+     * um artefato deste ambiente de teste, nao um defeito do envio.
+     *
+     * @return void
+     */
+    public function test_send_reminder_marca_a_linha(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $user = $this->getDataGenerator()->create_user();
+        $linha = $this->linha(['userid' => $user->id, 'paymentmethod' => 'pix']);
+
+        $this->assertEmpty($linha->reminderat ?? null);
+
+        payment_processor::send_reminder($linha);
+        $this->assertDebuggingCalled();
+
+        $atualizada = $DB->get_record(payment_processor::TABLE, ['id' => $linha->id]);
+        $this->assertNotEmpty($atualizada->reminderat);
+    }
+
+    /**
      * A linha do ciclo novo copia os TERMOS da anterior.
      *
      * Nunca resolve a comissao de novo: entre um ciclo e outro a configuracao

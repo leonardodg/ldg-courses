@@ -17,9 +17,14 @@
 /**
  * Mensagens do paygw_mercadopago.
  *
- * So existe uma: avisar o aluno de uma fatura nova, por Pix ou boleto. No
- * cartao ninguem precisa ser avisado - a cobranca acontece sozinha, e o
- * aluno so fica sabendo se ela falhar. Ver payment_processor::issue_invoice_cycle().
+ * Duas, e as duas so existem por causa de Pix e boleto - no cartao ninguem
+ * precisa ser avisado, porque a cobranca acontece sozinha e o aluno so fica
+ * sabendo se ela falhar:
+ *
+ *   invoicedue      - a fatura do ciclo esta pronta, pague agora. Ver
+ *                     payment_processor::issue_invoice_cycle().
+ *   reminderupcoming - a fatura do proximo ciclo esta chegando, ainda nao foi
+ *                     gerada. Ver payment_processor::send_reminder().
  *
  * @package    paygw_mercadopago
  * @copyright  2026 LeoDG <callme@leodg.dev>
@@ -30,6 +35,12 @@ defined('MOODLE_INTERNAL') || die();
 
 $messageproviders = [
     'invoicedue' => [
+        'defaults' => [
+            'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+        ],
+    ],
+    'reminderupcoming' => [
         'defaults' => [
             'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
             'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,

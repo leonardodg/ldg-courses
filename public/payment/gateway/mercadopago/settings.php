@@ -192,6 +192,16 @@ if ($ADMIN->fulltree) {
         0
     ));
 
+    // So vale para Pix e boleto - cartao cobra sozinho, e um aviso "sua
+    // cobranca automatica esta chegando" nao muda a acao de ninguem.
+    $settings->add(new admin_setting_configtext(
+        'paygw_mercadopago/reminderdays',
+        get_string('reminderdays', 'paygw_mercadopago'),
+        get_string('reminderdays_desc', 'paygw_mercadopago'),
+        3,
+        PARAM_INT
+    ));
+
     // Nao ha campo de comissao aqui, e a ausencia e deliberada. Ele existiu,
     // nao era lido por ninguem, e o db/upgrade.php do local_marketplace ja
     // migrou o valor para local_marketplace/defaultfeepercent - que e onde a

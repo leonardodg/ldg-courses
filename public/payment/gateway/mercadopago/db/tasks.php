@@ -68,4 +68,16 @@ $tasks = [
         'dayofweek' => '*',
         'month' => '*',
     ],
+    [
+        // Antes de charge_due_cycles, na mesma madrugada: quem vai precisar
+        // agir (Pix, boleto) fica sabendo antes de quem so vai ver a
+        // cobranca automatica no cartao acontecer sozinha.
+        'classname' => 'paygw_mercadopago\task\remind_upcoming_cycles',
+        'blocking' => 0,
+        'minute' => '5',
+        'hour' => '5',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*',
+    ],
 ];

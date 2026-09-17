@@ -1007,6 +1007,93 @@ class payment_processor {
     }
 
     /**
+     * Falta pouco para o proximo ciclo de Pix/boleto vencer - hora de avisar?
+     *
+     * SO PIX E BOLETO: cartao cobra sozinho, e "sua cobranca automatica esta
+     * chegando" nao muda a acao de ninguem, porque nao ha acao nenhuma para o
+     * aluno tomar. Aqui, sim: sem o aviso, o aluno so descobre que precisa
+     * pagar quando a fatura ja existir - e no boleto isso pode ser tarde
+     * demais para compensar o prazo de compensacao bancaria.
+     *
+     * `reminderat` e o que impede mandar o MESMO aviso a cada execucao diaria
+     * da tarefa, enquanto a linha estiver dentro da janela.
+     *
+     * @param \stdClass $record Linha do ultimo ciclo pago
+     * @param int $days Intervalo de cobranca, do marketplace
+     * @param int $reminderdays Quantos dias antes avisar
+     * @param int $maxcycles Teto, ou zero para sem teto
+     * @param int $now
+     * @return bool
+     */
+    public static function needs_reminder(
+        \stdClass $record,
+        int $days,
+        int $reminderdays,
+        int $maxcycles,
+        int $now
+    ): bool {
+        if ((string) $record->subscriptionstatus === 'cancelled') {
+            return false;
+        }
+
+        if (strtolower((string) $record->status) !== 'approved') {
+            return false;
+        }
+
+        if (!in_array((string) $record->paymentmethod, self::INVOICE_METHODS, true)) {
+            return false;
+        }
+
+        if (!empty($record->reminderat)) {
+            return false;
+        }
+
+        if ($maxcycles > 0 && (int) $record->cycles >= $maxcycles) {
+            return false;
+        }
+
+        if ($days <= 0 || $reminderdays <= 0) {
+            return false;
+        }
+
+        $vencimento = (int) $record->timecreated + ($days * DAYSECS);
+        $iniciojanela = $vencimento - ($reminderdays * DAYSECS);
+
+        return $now >= $iniciojanela && $now < $vencimento;
+    }
+
+    /**
+     * Manda o lembrete e marca a linha, para nao mandar de novo amanha.
+     *
+     * @param \stdClass $record
+     * @return void
+     */
+    public static function send_reminder(\stdClass $record): void {
+        global $DB;
+
+        $user = \core_user::get_user((int) $record->userid, '*', MUST_EXIST);
+        $valor = helper::get_cost_as_string((float) $record->amount, (string) $record->currency);
+
+        $mensagem = new \core\message\message();
+        $mensagem->component = 'paygw_mercadopago';
+        $mensagem->name = 'reminderupcoming';
+        $mensagem->userfrom = \core_user::get_noreply_user();
+        $mensagem->userto = $user;
+        $mensagem->subject = get_string('reminderupcoming_subject', 'paygw_mercadopago');
+        $mensagem->fullmessage = get_string('reminderupcoming_body', 'paygw_mercadopago', $valor);
+        $mensagem->fullmessageformat = FORMAT_PLAIN;
+        $mensagem->fullmessagehtml = '<p>' . $mensagem->fullmessage . '</p>';
+        $mensagem->smallmessage = $mensagem->subject;
+        $mensagem->notification = 1;
+        $mensagem->contexturl = (new \moodle_url('/local/marketplace/mysubscriptions.php'))->out(false);
+        $mensagem->contexturlname = get_string('reminderupcoming_subject', 'paygw_mercadopago');
+
+        message_send($mensagem);
+
+        $DB->set_field(self::TABLE, 'reminderat', time(), ['id' => $record->id]);
+    }
+
+    /**
      * Monta a linha do proximo ciclo a partir da anterior.
      *
      * COPIA OS TERMOS, e nunca os resolve de novo. Entre um ciclo e outro a
