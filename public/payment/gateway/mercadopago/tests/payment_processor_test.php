@@ -906,4 +906,64 @@ final class payment_processor_test extends \advanced_testcase {
 
         $this->assertSame('master', $corpo['payment_method_id']);
     }
+
+    /**
+     * A linha digitavel so e buscada para Pix/boleto - no cartao ela sempre
+     * ficava vazia, e continua vazia, sem chamar o Mercado Pago a toa.
+     *
+     * @return void
+     */
+    public function test_pending_invoice_sem_linha_no_cartao(): void {
+        $this->resetAfterTest();
+
+        $linha = $this->linha([
+            'subscriptionid' => 'mdlsub-1-2-invoice1',
+            'status' => 'pending',
+            'paymentmethod' => 'master',
+        ]);
+
+        $fatura = payment_processor::pending_invoice($linha);
+
+        $this->assertSame('', $fatura['line']);
+    }
+
+    /**
+     * Sem mppaymentid ainda nao ha o que consultar - a linha fica vazia sem
+     * tentar bater no Mercado Pago com um id que nao existe.
+     *
+     * @return void
+     */
+    public function test_pending_invoice_sem_pagamento_ainda_nao_consulta(): void {
+        $this->resetAfterTest();
+
+        $linha = $this->linha([
+            'subscriptionid' => 'mdlsub-1-2-invoice2',
+            'status' => 'pending',
+            'paymentmethod' => 'pix',
+            'mppaymentid' => null,
+        ]);
+
+        $fatura = payment_processor::pending_invoice($linha);
+
+        $this->assertSame('', $fatura['line']);
+    }
+
+    /**
+     * Aprovada ou cancelada, nao ha fatura pendente nenhuma.
+     *
+     * @return void
+     */
+    public function test_pending_invoice_nula_quando_aprovada_ou_cancelada(): void {
+        $this->resetAfterTest();
+
+        $aprovada = $this->linha(['subscriptionid' => 'mdlsub-1-2-invoice3', 'status' => 'approved']);
+        $this->assertNull(payment_processor::pending_invoice($aprovada));
+
+        $cancelada = $this->linha([
+            'subscriptionid' => 'mdlsub-1-2-invoice4',
+            'status' => 'pending',
+            'subscriptionstatus' => 'cancelled',
+        ]);
+        $this->assertNull(payment_processor::pending_invoice($cancelada));
+    }
 }

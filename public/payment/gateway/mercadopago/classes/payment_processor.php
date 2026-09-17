@@ -1470,13 +1470,16 @@ class payment_processor {
     /**
      * O que o aluno precisa pagar para o acesso voltar.
      *
-     * NAO HA FATURA HOSPEDADA AQUI, e por isso esta funcao devolve uma pagina
-     * NOSSA. No Asaas cada ciclo gera uma cobranca com invoiceUrl no gateway;
-     * no Mercado Pago o ciclo e uma cobranca automatica no cartao guardado, e
-     * quando ela falha nao sobra documento nenhum para alguem pagar.
+     * NAO HA FATURA HOSPEDADA NO MERCADO PAGO para cartao, e por isso a URL e
+     * uma pagina NOSSA. No Asaas cada ciclo gera uma cobranca com invoiceUrl
+     * no gateway; no cartao daqui o ciclo e uma cobranca automatica, e quando
+     * ela falha nao sobra documento nenhum - o que resolve e o aluno informar
+     * um cartao que funcione, que e exatamente o que o subscribe.php faz.
      *
-     * O que resolve, entao, e o aluno informar um cartao que funcione - que e
-     * exatamente o que o subscribe.php faz.
+     * PIX E BOLETO SAO DIFERENTES, e a linha digitavel do boleto vem daqui -
+     * o `line` que esta funcao devolve e o mesmo campo que
+     * mysubscriptions.php ja exibia, so que sempre vazio antes de Pix/boleto
+     * existirem. Consultada na hora, e nao gravada: ver invoice_details().
      *
      * @param \stdClass $record Linha mais recente da assinatura
      * @return array|null url, duedate, value e line
@@ -1490,6 +1493,12 @@ class payment_processor {
             return null;
         }
 
+        $linha = '';
+        if (!empty($record->mppaymentid) && in_array((string) $record->paymentmethod, self::INVOICE_METHODS, true)) {
+            $fatura = self::invoice_details($record);
+            $linha = (string) ($fatura['barcode'] ?? '');
+        }
+
         return [
             'url' => (new \moodle_url(
                 '/payment/gateway/mercadopago/subscribe.php',
@@ -1500,8 +1509,7 @@ class payment_processor {
             // prazo que nao existe.
             'duedate' => '',
             'value' => (float) $record->amount,
-            // Nao ha linha digitavel: nao ha boleto.
-            'line' => '',
+            'line' => $linha,
         ];
     }
 
