@@ -15,7 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Gateway do Mercado Pago (Checkout Pro) com split de pagamento.
+ * Mensagens do paygw_mercadopago.
+ *
+ * So existe uma: avisar o aluno de uma fatura nova, por Pix ou boleto. No
+ * cartao ninguem precisa ser avisado - a cobranca acontece sozinha, e o
+ * aluno so fica sabendo se ela falhar. Ver payment_processor::issue_invoice_cycle().
  *
  * @package    paygw_mercadopago
  * @copyright  2026 LeoDG <callme@leodg.dev>
@@ -24,8 +28,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'paygw_mercadopago';
-$plugin->version   = 2026091761;
-$plugin->requires  = 2026042000; // Moodle 5.2.
-$plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.1.0';
+$messageproviders = [
+    'invoicedue' => [
+        'defaults' => [
+            'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+        ],
+    ],
+];

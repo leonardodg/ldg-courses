@@ -31,6 +31,16 @@ class payment_processor {
     const TABLE = 'paygw_mercadopago';
 
     /**
+     * Meios sem cobranca automatica - Pix e boleto nao deixam instrumento
+     * guardado no Mercado Pago, ao contrario do cartao. Cada ciclo e uma
+     * fatura NOVA, e o aluno precisa agir para pagar - ver
+     * issue_invoice_cycle().
+     *
+     * @var string[]
+     */
+    const INVOICE_METHODS = ['pix', 'bolbradesco'];
+
+    /**
      * Abre a cobranca e devolve para onde mandar o aluno.
      *
      * Sao dois destinos, e eles nao sao variacao do mesmo: dependem de o item
@@ -288,6 +298,65 @@ class payment_processor {
     }
 
     /**
+     * Cobra o primeiro ciclo por Pix ou boleto - sem cartao, sem cliente.
+     *
+     * NAO GUARDA INSTRUMENTO NENHUM, porque nao ha o que guardar: Pix e
+     * boleto nao tem token reaproveitavel no Mercado Pago. O que sobrevive
+     * para o ciclo seguinte e o `payerinfo` (CPF e, no boleto, endereco),
+     * gravado nesta linha e copiado adiante por build_next_cycle() - e um
+     * FATO sobre o aluno, nao sobre a cobranca, entao nao muda de ciclo para
+     * ciclo.
+     *
+     * O status volta SEMPRE pendente aqui: nem Pix nem boleto aprovam na
+     * hora da criacao, so quando o aluno realmente paga - e e por isso que
+     * process_notification() nao entrega nada ainda, so grava o estado. A
+     * entrega espera o webhook.
+     *
+     * @param \stdClass $record Linha do ciclo 1, ja criada por start_payment()
+     * @param string $paymentmethod pix|bolbradesco
+     * @param array $payerinfo cpf, name e, no boleto, zipcode/street/number/neighborhood/city/state
+     * @return bool Verdadeiro quando a entrega aconteceu agora (nunca, na pratica: fica para o webhook)
+     */
+    public static function charge_first_cycle_invoice(
+        \stdClass $record,
+        string $paymentmethod,
+        array $payerinfo
+    ): bool {
+        global $DB, $CFG;
+
+        $config = self::get_gateway_config((int) $record->accountid, (string) $record->apptype);
+        $client = new mp_client($config['accesstoken']);
+        $user = \core_user::get_user((int) $record->userid, 'id, email', MUST_EXIST);
+
+        $corpo = self::build_invoice_payment_body(
+            (float) $record->amount,
+            (string) $record->currency,
+            (string) $record->externalreference,
+            (float) $record->feeamount,
+            $paymentmethod,
+            $payerinfo,
+            $user->email,
+            $CFG->wwwroot,
+            self::describe_subscription($record)
+        );
+
+        $payment = (array) self::step('payment', fn() => $client->create_payment($corpo));
+
+        $record->paymentmethod = $paymentmethod;
+        $record->payerinfo = json_encode($payerinfo);
+        $record->mppaymentid = (string) ($payment['id'] ?? '');
+        $record->status = (string) ($payment['status'] ?? 'pending');
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE, $record);
+
+        if ($record->mppaymentid === '') {
+            throw new moodle_exception('errorinvalidresponse', 'paygw_mercadopago', '', 'payment');
+        }
+
+        return self::process_notification($record->mppaymentid);
+    }
+
+    /**
      * Roda um passo do fluxo dizendo o NOME dele quando falha.
      *
      * O Mercado Pago repete a mesma mensagem generica em endpoints diferentes,
@@ -488,6 +557,94 @@ class payment_processor {
             'id' => $customerid,
             'email' => $payeremail,
         ];
+    }
+
+    /**
+     * Quem paga um Pix ou boleto - sem cliente guardado, porque nao ha cartao
+     * para vincular a ele.
+     *
+     * O CPF e OBRIGATORIO nos dois. O endereco so entra no boleto: medido em
+     * 16/09/2026, criar um boleto sem `address` completo (CEP, rua, numero,
+     * bairro, cidade, UF) devolve 400 pedindo exatamente esses seis campos -
+     * o Pix nunca pediu nenhum deles.
+     *
+     * @param array $payerinfo cpf e, no boleto, zipcode/street/number/neighborhood/city/state
+     * @param string $payeremail
+     * @param bool $comendereco O boleto exige; o Pix nao
+     * @return array
+     */
+    protected static function build_invoice_payer(array $payerinfo, string $payeremail, bool $comendereco): array {
+        $payer = [
+            'email' => $payeremail,
+            'identification' => [
+                'type' => 'CPF',
+                'number' => (string) ($payerinfo['cpf'] ?? ''),
+            ],
+        ];
+
+        if (!empty($payerinfo['name'])) {
+            $partes = explode(' ', trim((string) $payerinfo['name']), 2);
+            $payer['first_name'] = $partes[0];
+            $payer['last_name'] = $partes[1] ?? $partes[0];
+        }
+
+        if ($comendereco) {
+            $payer['address'] = [
+                'zip_code' => (string) ($payerinfo['zipcode'] ?? ''),
+                'street_name' => (string) ($payerinfo['street'] ?? ''),
+                'street_number' => (string) ($payerinfo['number'] ?? ''),
+                'neighborhood' => (string) ($payerinfo['neighborhood'] ?? ''),
+                'city' => (string) ($payerinfo['city'] ?? ''),
+                'federal_unit' => (string) ($payerinfo['state'] ?? ''),
+            ];
+        }
+
+        return $payer;
+    }
+
+    /**
+     * Corpo de um pagamento por Pix ou boleto - sem token, sem cartao.
+     *
+     * @param float $amount
+     * @param string $currency
+     * @param string $reference
+     * @param float $fee
+     * @param string $paymentmethod pix|bolbradesco
+     * @param array $payerinfo Ver build_invoice_payer()
+     * @param string $payeremail
+     * @param string $wwwroot
+     * @param string $description
+     * @return array
+     */
+    public static function build_invoice_payment_body(
+        float $amount,
+        string $currency,
+        string $reference,
+        float $fee,
+        string $paymentmethod,
+        array $payerinfo,
+        string $payeremail,
+        string $wwwroot,
+        string $description
+    ): array {
+        $body = [
+            'transaction_amount' => $amount,
+            'payment_method_id' => $paymentmethod,
+            'payer' => self::build_invoice_payer(
+                $payerinfo,
+                $payeremail,
+                $paymentmethod === 'bolbradesco'
+            ),
+            'external_reference' => $reference,
+            'description' => $description . ' (' . $currency . ')',
+            'notification_url' => $wwwroot . '/payment/gateway/mercadopago/webhook.php',
+        ];
+
+        if ($fee > 0) {
+            $body['application_fee'] = $fee;
+        }
+
+        return $body;
     }
 
     /**
@@ -783,15 +940,58 @@ class payment_processor {
      * @return bool
      */
     public static function is_due(\stdClass $record, int $days, int $maxcycles, int $now): bool {
+        if (!self::due_by_calendar($record, $days, $maxcycles, $now)) {
+            return false;
+        }
+
+        if (empty($record->mpcardid) || empty($record->mpcustomerid)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * A fatura por Pix ou boleto do ciclo seguinte deve ser emitida?
+     *
+     * Mesmo calendario do cartao - cancelada, ciclo anterior nao pago, teto,
+     * intervalo -, mas a guarda de instrumento e OUTRA: aqui nao ha card_id
+     * nenhum para exigir, e sim a bandeira em si. Cartao guardado numa linha
+     * de Pix seria estado impossivel, mas testar por ele em vez de pela
+     * bandeira deixaria a intencao dependendo de um acidente de dados.
+     *
+     * @param \stdClass $record Linha do ultimo ciclo
+     * @param int $days Intervalo de cobranca, do marketplace
+     * @param int $maxcycles Teto, ou zero para sem teto
+     * @param int $now
+     * @return bool
+     */
+    public static function is_due_for_invoice(\stdClass $record, int $days, int $maxcycles, int $now): bool {
+        if (!self::due_by_calendar($record, $days, $maxcycles, $now)) {
+            return false;
+        }
+
+        return in_array((string) $record->paymentmethod, self::INVOICE_METHODS, true);
+    }
+
+    /**
+     * O calendario da cobranca - cancelamento, ciclo anterior, teto e
+     * intervalo -, comum ao cartao e a fatura por Pix/boleto. O que muda
+     * entre os dois e SO a guarda de instrumento, em is_due() e
+     * is_due_for_invoice().
+     *
+     * @param \stdClass $record
+     * @param int $days
+     * @param int $maxcycles
+     * @param int $now
+     * @return bool
+     */
+    protected static function due_by_calendar(\stdClass $record, int $days, int $maxcycles, int $now): bool {
         if ((string) $record->subscriptionstatus === 'cancelled') {
             return false;
         }
 
         if (strtolower((string) $record->status) !== 'approved') {
-            return false;
-        }
-
-        if (empty($record->mpcardid) || empty($record->mpcustomerid)) {
             return false;
         }
 
@@ -852,6 +1052,10 @@ class payment_processor {
             'mpcustomerid' => $previous->mpcustomerid,
             'mpcardid' => $previous->mpcardid,
             'paymentmethod' => $previous->paymentmethod,
+            // Fato sobre o ALUNO, nao sobre o ciclo anterior - so existe
+            // porque Pix e boleto nao deixam instrumento guardado, ao
+            // contrario do card_id. Ver o comentario do campo no install.xml.
+            'payerinfo' => $previous->payerinfo ?? null,
             'subscriptionstatus' => 'active',
             'timecreated' => $agora,
             'timemodified' => $agora,
@@ -905,6 +1109,98 @@ class payment_processor {
         }
 
         return self::process_notification($record->mppaymentid);
+    }
+
+    /**
+     * Emite a fatura do ciclo seguinte por Pix ou boleto, e AVISA o aluno.
+     *
+     * O aviso e a diferenca de fundo com charge_cycle(): la o cartao cobra
+     * sozinho, e o aluno so fica sabendo se recusar. Aqui a fatura existe e
+     * NINGUEM sabe, porque nao ha aluno na tela - sem mensagem, ela fica
+     * esperando pagamento que nunca vem, e o sintoma e "o aluno perdeu o
+     * acesso sem aviso nenhum".
+     *
+     * O `payerinfo` vem da linha anterior, copiado por build_next_cycle():
+     * e o CPF (e, no boleto, o endereco) que o aluno digitou no ciclo 1, e
+     * que nao muda de ciclo para ciclo.
+     *
+     * @param \stdClass $previous Linha do ultimo ciclo pago
+     * @return bool Verdadeiro quando a entrega aconteceu agora (nunca, na pratica)
+     */
+    public static function issue_invoice_cycle(\stdClass $previous): bool {
+        global $DB, $CFG;
+
+        $config = self::get_gateway_config((int) $previous->accountid, (string) $previous->apptype);
+        $client = new mp_client($config['accesstoken']);
+        $user = \core_user::get_user((int) $previous->userid, 'id, email', MUST_EXIST);
+
+        $record = self::build_next_cycle($previous);
+        $record->id = $DB->insert_record(self::TABLE, $record);
+
+        $payerinfo = json_decode((string) ($record->payerinfo ?? ''), true) ?: [];
+
+        $payment = $client->create_payment(self::build_invoice_payment_body(
+            (float) $record->amount,
+            (string) $record->currency,
+            (string) $record->externalreference,
+            (float) $record->feeamount,
+            (string) $record->paymentmethod,
+            $payerinfo,
+            $user->email,
+            $CFG->wwwroot,
+            self::describe_subscription($record)
+        ));
+
+        $record->mppaymentid = (string) ($payment['id'] ?? '');
+        $record->status = (string) ($payment['status'] ?? 'pending');
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE, $record);
+
+        if ($record->mppaymentid === '') {
+            return false;
+        }
+
+        self::notify_invoice_due(
+            $record,
+            (new \moodle_url('/payment/gateway/mercadopago/return.php', ['ref' => $record->externalreference]))->out(false)
+        );
+
+        return self::process_notification($record->mppaymentid);
+    }
+
+    /**
+     * Avisa o aluno de que ha uma fatura nova para pagar.
+     *
+     * So existe porque Pix e boleto nao cobram sozinhos: no cartao, quem
+     * precisa saber do resultado e quem esta olhando o extrato, nao a tela
+     * do Moodle.
+     *
+     * @param \stdClass $record Linha da fatura recem-criada
+     * @param string $payurl
+     * @return void
+     */
+    protected static function notify_invoice_due(\stdClass $record, string $payurl): void {
+        $user = \core_user::get_user((int) $record->userid, '*', MUST_EXIST);
+        $valor = helper::get_cost_as_string((float) $record->amount, (string) $record->currency);
+
+        $mensagem = new \core\message\message();
+        $mensagem->component = 'paygw_mercadopago';
+        $mensagem->name = 'invoicedue';
+        $mensagem->userfrom = \core_user::get_noreply_user();
+        $mensagem->userto = $user;
+        $mensagem->subject = get_string('invoicedue_subject', 'paygw_mercadopago');
+        $mensagem->fullmessage = get_string('invoicedue_body', 'paygw_mercadopago', (object) [
+            'amount' => $valor,
+            'url' => $payurl,
+        ]);
+        $mensagem->fullmessageformat = FORMAT_PLAIN;
+        $mensagem->fullmessagehtml = '<p>' . $mensagem->fullmessage . '</p>';
+        $mensagem->smallmessage = $mensagem->subject;
+        $mensagem->notification = 1;
+        $mensagem->contexturl = $payurl;
+        $mensagem->contexturlname = get_string('invoicedue_subject', 'paygw_mercadopago');
+
+        message_send($mensagem);
     }
 
     /**

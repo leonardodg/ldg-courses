@@ -298,6 +298,73 @@ final class payment_processor_test extends \advanced_testcase {
     }
 
     /**
+     * Pix so exige CPF - sem cliente, sem endereco.
+     *
+     * Nao ha customer aqui porque Pix nao deixa instrumento guardado: cada
+     * ciclo e uma cobranca nova, sem vinculo nenhum com a anterior no
+     * Mercado Pago.
+     *
+     * @return void
+     */
+    public function test_pix_so_exige_cpf(): void {
+        $corpo = payment_processor::build_invoice_payment_body(
+            5.0,
+            'BRL',
+            'ref',
+            4.0,
+            'pix',
+            ['cpf' => '19119119100'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame('pix', $corpo['payment_method_id']);
+        $this->assertSame('19119119100', $corpo['payer']['identification']['number']);
+        $this->assertArrayNotHasKey('address', $corpo['payer']);
+        $this->assertArrayNotHasKey('type', $corpo['payer'], 'Pix nao tem cliente guardado');
+    }
+
+    /**
+     * Boleto exige endereco completo - sem ele, o Mercado Pago recusa.
+     *
+     * Medido em 16/09/2026: criar um boleto sem os seis campos de endereco
+     * devolve 400 pedindo exatamente eles. O Pix nunca pediu nenhum.
+     *
+     * @return void
+     */
+    public function test_boleto_exige_endereco(): void {
+        $corpo = payment_processor::build_invoice_payment_body(
+            20.0,
+            'BRL',
+            'ref',
+            16.0,
+            'bolbradesco',
+            [
+                'cpf' => '19119119100',
+                'zipcode' => '01310100',
+                'street' => 'Av Paulista',
+                'number' => '1000',
+                'neighborhood' => 'Bela Vista',
+                'city' => 'Sao Paulo',
+                'state' => 'SP',
+            ],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame([
+            'zip_code' => '01310100',
+            'street_name' => 'Av Paulista',
+            'street_number' => '1000',
+            'neighborhood' => 'Bela Vista',
+            'city' => 'Sao Paulo',
+            'federal_unit' => 'SP',
+        ], $corpo['payer']['address']);
+    }
+
+    /**
      * O ciclo nunca e parcelado.
      *
      * Parcelar uma cobranca que se repete todo mes empilha parcelas em cima de
@@ -591,6 +658,38 @@ final class payment_processor_test extends \advanced_testcase {
     }
 
     /**
+     * A fatura por Pix/boleto vence pelo MESMO calendario do cartao, mas a
+     * guarda de instrumento e outra: aqui e a bandeira que decide, nao o
+     * card_id - uma linha de Pix nunca tem card_id para comecar.
+     *
+     * @return void
+     */
+    public function test_fatura_vence_pela_bandeira_nao_pelo_cartao(): void {
+        $this->resetAfterTest();
+
+        $agora = 1789000000;
+        $vencido = $agora + (60 * DAYSECS);
+
+        $pix = $this->linha([
+            'timecreated' => $agora,
+            'mpcardid' => null,
+            'mpcustomerid' => null,
+            'paymentmethod' => 'pix',
+        ]);
+        $this->assertTrue(payment_processor::is_due_for_invoice($pix, 30, 0, $vencido));
+        $this->assertFalse(
+            payment_processor::is_due($pix, 30, 0, $vencido),
+            'is_due() e do cartao - uma linha de Pix nao tem card_id para cobrar sozinha'
+        );
+
+        $cartao = $this->linha(['timecreated' => $agora]);
+        $this->assertFalse(
+            payment_processor::is_due_for_invoice($cartao, 30, 0, $vencido),
+            'a bandeira padrao da fixture e cartao, nao pix/bolbradesco'
+        );
+    }
+
+    /**
      * A linha do ciclo novo copia os TERMOS da anterior.
      *
      * Nunca resolve a comissao de novo: entre um ciclo e outro a configuracao
@@ -629,6 +728,31 @@ final class payment_processor_test extends \advanced_testcase {
             $novo->externalreference,
             'cada ciclo precisa da propria referencia, senao o webhook nao sabe qual linha e'
         );
+    }
+
+    /**
+     * O `payerinfo` tambem e copiado para o ciclo seguinte.
+     *
+     * E um fato sobre o ALUNO (CPF, e no boleto o endereco), nao sobre a
+     * cobranca anterior - Pix e boleto nao tem card_id para reaproveitar, e
+     * sem copiar isto o ciclo 2 teria que pedir os dados de novo, sem
+     * ninguem na tela para digita-los.
+     *
+     * @return void
+     */
+    public function test_o_ciclo_novo_copia_o_payerinfo(): void {
+        $this->resetAfterTest();
+
+        $json = json_encode(['cpf' => '19119119100', 'city' => 'Sao Paulo']);
+        $anterior = $this->linha([
+            'subscriptionid' => 'mdlsub-2-1-payerinfo',
+            'paymentmethod' => 'pix',
+            'payerinfo' => $json,
+        ]);
+
+        $novo = payment_processor::build_next_cycle($anterior);
+
+        $this->assertSame($json, $novo->payerinfo);
     }
 
     /**

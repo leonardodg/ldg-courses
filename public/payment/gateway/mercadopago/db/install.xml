@@ -30,6 +30,7 @@
         <FIELD NAME="mpcardid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Cartao guardado NO MERCADO PAGO que sera cobrado nos ciclos seguintes. E o id devolvido pela API: o numero do cartao nunca entra neste banco, e nao vai entrar."/>
         <FIELD NAME="paymentmethod" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false" COMMENT="Meio que o aluno usou, cru do Mercado Pago. Decide se ha cobranca automatica: cartao deixa instrumento guardado, Pix e boleto nao."/>
         <FIELD NAME="subscriptionstatus" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="active" SEQUENCE="false" COMMENT="active|cancelled. Estado da ASSINATURA, que e coisa diferente do status desta cobranca. Existe porque aqui quem cobra o ciclo somos nos: no Asaas cancelar e dizer ao gateway que pare, aqui e parar de disparar. Vazio nao serve como marca - a linha precisa dizer explicitamente que a assinatura segue viva."/>
+        <FIELD NAME="payerinfo" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON com cpf e, no boleto, endereco completo do pagador. So existe para Pix e boleto: cartao nao precisa, porque o card_id guardado no Mercado Pago e o que se reusa. Sem um instrumento para reaproveitar, e o unico jeito de gerar a fatura do ciclo seguinte sem pedir os dados de novo um mes depois."/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>

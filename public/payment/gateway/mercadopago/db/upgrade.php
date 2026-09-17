@@ -166,5 +166,19 @@ function xmldb_paygw_mercadopago_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026091650, 'paygw', 'mercadopago');
     }
 
+    if ($oldversion < 2026091761) {
+        // Pix e boleto nao tem instrumento guardado para reaproveitar no ciclo
+        // seguinte - o card_id e a unica coisa que sobrevive de um ciclo para o
+        // outro na assinatura por cartao, e aqui nao ha equivalente.
+        $table = new xmldb_table('paygw_mercadopago');
+
+        $field = new xmldb_field('payerinfo', XMLDB_TYPE_TEXT, null, null, null, null, null, 'subscriptionstatus');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026091761, 'paygw', 'mercadopago');
+    }
+
     return true;
 }
