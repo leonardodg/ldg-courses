@@ -108,7 +108,7 @@ class payment_processor {
         // passava pela porta e deixava uma linha orfa para tras - achado na
         // prova de ponta a ponta em 11/09/2026.
         if (class_exists('\local_marketplace\api') && !self::supports_recurring()) {
-            if (\local_marketplace\api::recurrence_for($component, $itemid)) {
+            if (\local_marketplace\api::recurrence_for($component, $itemid, $paymentarea)) {
                 throw new moodle_exception(self::recurring_blocker(), 'paygw_pagarme');
             }
         }
@@ -120,7 +120,7 @@ class payment_processor {
         $feebase = 'gross';
         $feesource = 'site';
         if (class_exists('\local_marketplace\api')) {
-            $terms = \local_marketplace\api::commission_terms_for($component, $itemid);
+            $terms = \local_marketplace\api::commission_terms_for($component, $itemid, $paymentarea);
             $feepercent = (float) $terms->percent;
             $feesource = (string) $terms->source;
 
@@ -225,7 +225,11 @@ class payment_processor {
 
         $recurrence = null;
         if (class_exists('\local_marketplace\api')) {
-            $recurrence = \local_marketplace\api::recurrence_for($record->component, (int) $record->itemid);
+            $recurrence = \local_marketplace\api::recurrence_for(
+                $record->component,
+                (int) $record->itemid,
+                (string) $record->paymentarea
+            );
         }
 
         // Recusa na porta, e nao no extrato. Ver supports_recurring().
@@ -340,7 +344,7 @@ class payment_processor {
             // required" enterrado no gateway_response. Medido em 09/09/2026.
             'items' => [[
                 'amount' => pagarme_client::to_cents((float) $record->amount),
-                'description' => self::describe_item($record->component, (int) $record->itemid),
+                'description' => self::describe_item($record->component, (int) $record->itemid, (string) $record->paymentarea),
                 'quantity' => 1,
                 'code' => 'mdl-' . $record->itemid,
             ]],
@@ -380,7 +384,7 @@ class payment_processor {
             'billing_type' => 'prepaid',
             'customer' => $customer,
             'items' => [[
-                'description' => self::describe_item($record->component, (int) $record->itemid),
+                'description' => self::describe_item($record->component, (int) $record->itemid, (string) $record->paymentarea),
                 'quantity' => 1,
                 'pricing_scheme' => [
                     'scheme_type' => 'unit',
@@ -581,7 +585,8 @@ class payment_processor {
                 (int) $record->itemid,
                 (float) $record->feeamount,
                 $chargeid,
-                $terms
+                $terms,
+                (string) $record->paymentarea
             );
         }
 
@@ -1066,10 +1071,30 @@ class payment_processor {
      *
      * @param string $component
      * @param int $itemid
+     * @param string $paymentarea 'offer' (padrao) ou service_provider::PAYMENT_AREA_PLAN
      * @return string
      */
-    protected static function describe_item(string $component, int $itemid): string {
-        if ($component === 'local_marketplace' && class_exists('\local_marketplace\offer')) {
+    protected static function describe_item(string $component, int $itemid, string $paymentarea = 'offer'): string {
+        if ($component !== 'local_marketplace') {
+            return get_string('defaultdescription', 'paygw_pagarme');
+        }
+
+        // A paymentarea 'plan' usa companyid como itemid, e o que ha para
+        // descrever e o PLANO contratado - nao uma oferta, que nem existe.
+        // Na pratica nunca chega aqui: assinatura e sempre recusada na
+        // porta neste gateway (ver supports_recurring()), mas a funcao fica
+        // correta para o dia em que isso mudar.
+        if ($paymentarea === 'plan' && class_exists('\local_marketplace\company')) {
+            $company = \local_marketplace\company::get_record(['id' => $itemid]);
+            $plan = $company ? $company->get_plan() : null;
+            if ($plan) {
+                return (string) $plan->get('name');
+            }
+
+            return get_string('defaultdescription', 'paygw_pagarme');
+        }
+
+        if (class_exists('\local_marketplace\offer')) {
             $offer = \local_marketplace\offer::get_record(['id' => $itemid]);
             if ($offer) {
                 return (string) $offer->get('name');

@@ -126,7 +126,15 @@ if ($data = $form->get_data()) {
     // A carteira da plataforma nao pode ser a mesma do vendedor: o Asaas recusa
     // split para a propria carteira, e o erro so apareceria na primeira compra.
     // Barrar aqui e o mesmo principio do resto desta tela.
-    if ($walletid === credentials::platform_wallet($environment)) {
+    //
+    // EXCETO quando a conta sendo vinculada e a PROPRIA conta da plataforma
+    // (local_marketplace\api::get_or_create_platform_account() - assinatura
+    // SaaS, desenhada em 17/09/2026). Nesse caso a carteira
+    // vinculada TEM que ser a da plataforma, de proposito: e essa conta que
+    // recebe a mensalidade direto, sem vendedor nenhum no meio. A guarda
+    // continua valendo para toda conta de empresa.
+    $eplataforma = class_exists('\local_marketplace\api') && \local_marketplace\api::is_platform_account($accountid);
+    if (!$eplataforma && $walletid === credentials::platform_wallet($environment)) {
         redirect($url, get_string('errorsamewallet', 'paygw_asaas'), null, \core\output\notification::NOTIFY_ERROR);
     }
 

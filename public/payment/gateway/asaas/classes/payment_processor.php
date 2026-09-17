@@ -69,7 +69,7 @@ class payment_processor {
         $feebase = 'gross';
         $feesource = 'site';
         if (class_exists('\local_marketplace\api')) {
-            $terms = \local_marketplace\api::commission_terms_for($component, $itemid);
+            $terms = \local_marketplace\api::commission_terms_for($component, $itemid, $paymentarea);
             $feepercent = $terms->percent;
             $feebase = $terms->base;
             $feesource = $terms->source;
@@ -130,22 +130,31 @@ class payment_processor {
             'customer' => $customerid,
             'billingtype' => self::billing_type(),
             'value' => $amount,
-            'description' => self::describe_item($component, $itemid),
+            'description' => self::describe_item($component, $itemid, $paymentarea),
             'externalreference' => $reference,
             'returnurl' => self::use_callback()
                 ? (new moodle_url('/payment/gateway/asaas/return.php', ['ref' => $reference]))->out(false)
                 : '',
-            'splitwalletid' => credentials::platform_wallet($environment),
-            'splitpercent' => $feepercent,
-            'splitbase' => $feebase,
         ];
+
+        // Sem comissao, sem split - AUSENTE, e nao zero. A assinatura SaaS
+        // (paymentarea 'plan') sempre cai aqui: a plataforma e a UNICA
+        // parte, e mandar splitwalletid pra propria carteira da plataforma
+        // seria a mesma coisa que o errorsamewallet existe pra bloquear na
+        // venda de curso, so que pelo lado errado. Mesmo padrao ja usado no
+        // Mercado Pago (marketplace_fee ausente quando feeamount <= 0).
+        if ($feepercent > 0) {
+            $comum['splitwalletid'] = credentials::platform_wallet($environment);
+            $comum['splitpercent'] = $feepercent;
+            $comum['splitbase'] = $feebase;
+        }
 
         // Assinatura ou cobranca avulsa? Quem sabe e o marketplace - o gateway
         // nao tem como saber o que e uma "oferta recorrente". Sem ele
         // instalado, ou para item que nao e assinatura, recurrence_for()
         // devolve null e nada muda em relacao ao que existia.
         $recorrencia = class_exists('\local_marketplace\api')
-            ? \local_marketplace\api::recurrence_for($component, $itemid)
+            ? \local_marketplace\api::recurrence_for($component, $itemid, $paymentarea)
             : null;
 
         if ($recorrencia) {
@@ -276,7 +285,8 @@ class payment_processor {
                         (string) $record->feebase,
                         (string) $record->feesource
                     )
-                    : null
+                    : null,
+                (string) $record->paymentarea
             );
         }
 
@@ -808,8 +818,24 @@ class payment_processor {
      * @param int $itemid
      * @return string
      */
-    protected static function describe_item(string $component, int $itemid): string {
-        if ($component === 'local_marketplace' && class_exists('\local_marketplace\offer')) {
+    protected static function describe_item(string $component, int $itemid, string $paymentarea = 'offer'): string {
+        if ($component !== 'local_marketplace') {
+            return get_string('defaultdescription', 'paygw_asaas');
+        }
+
+        // A paymentarea 'plan' usa companyid como itemid, e o que ha para
+        // descrever e o PLANO contratado - nao uma oferta, que nem existe.
+        if ($paymentarea === 'plan' && class_exists('\local_marketplace\company')) {
+            $company = \local_marketplace\company::get_record(['id' => $itemid]);
+            $plan = $company ? $company->get_plan() : null;
+            if ($plan) {
+                return (string) $plan->get('name');
+            }
+
+            return get_string('defaultdescription', 'paygw_asaas');
+        }
+
+        if (class_exists('\local_marketplace\offer')) {
             $offer = \local_marketplace\offer::get_record(['id' => $itemid]);
             if ($offer) {
                 return (string) $offer->get('name');

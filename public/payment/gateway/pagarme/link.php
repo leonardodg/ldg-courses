@@ -97,7 +97,14 @@ if ($data = $form->get_data()) {
         // Split para o proprio recebedor nao divide nada. Recusar aqui e o
         // que impede a repeticao do erro do Mercado Pago, onde vendedor e
         // marketplace eram a mesma conta e ninguem percebeu.
-        if ($sellerrecipient !== '' && $sellerrecipient === $platformrecipient) {
+        //
+        // EXCETO quando a conta sendo vinculada e a PROPRIA conta da
+        // plataforma (local_marketplace\api::get_or_create_platform_account()
+        // - assinatura SaaS, desenhada em 17/09/2026): ai o recebedor da
+        // conta TEM que ser o mesmo da plataforma, de proposito - e essa
+        // conta que recebe a mensalidade direto, sem vendedor no meio.
+        $eplataforma = class_exists('\local_marketplace\api') && \local_marketplace\api::is_platform_account($accountid);
+        if (!$eplataforma && $sellerrecipient !== '' && $sellerrecipient === $platformrecipient) {
             throw new moodle_exception('errorsamerecipient', 'paygw_pagarme');
         }
 

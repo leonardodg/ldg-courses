@@ -76,7 +76,7 @@ class payment_processor {
         // Vem ANTES da configuracao porque decide qual APLICACAO precisa estar
         // vinculada. Conferir a de Preferencias e depois cobrar por Bricks
         // deixaria a venda falhar adiante, com o aluno ja decidido a comprar.
-        $recorrencia = self::recurrence_for($component, $itemid);
+        $recorrencia = self::recurrence_for($component, $itemid, $paymentarea);
         $apptype = $recorrencia
             ? application::type_for_recurring()
             : application::TYPE_PREFERENCES;
@@ -92,7 +92,7 @@ class payment_processor {
         $feepercent = 25.0;
         $feesource = 'site';
         if (class_exists('\local_marketplace\api')) {
-            $terms = \local_marketplace\api::commission_terms_for($component, $itemid);
+            $terms = \local_marketplace\api::commission_terms_for($component, $itemid, $paymentarea);
             $feepercent = $terms->percent;
             $feesource = $terms->source;
         }
@@ -876,7 +876,8 @@ class payment_processor {
                             (string) $record->feebase,
                             (string) $record->feesource
                         )
-                        : null
+                        : null,
+                    (string) $record->paymentarea
                 );
             }
 
@@ -1747,14 +1748,15 @@ class payment_processor {
      *
      * @param string $component
      * @param int $itemid
+     * @param string $paymentarea
      * @return \stdClass|null days e maxcycles, ou null para venda avulsa
      */
-    protected static function recurrence_for(string $component, int $itemid): ?\stdClass {
+    protected static function recurrence_for(string $component, int $itemid, string $paymentarea): ?\stdClass {
         if (!class_exists('\local_marketplace\api')) {
             return null;
         }
 
-        return \local_marketplace\api::recurrence_for($component, $itemid);
+        return \local_marketplace\api::recurrence_for($component, $itemid, $paymentarea);
     }
 
     /**
