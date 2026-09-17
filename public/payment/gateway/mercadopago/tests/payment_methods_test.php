@@ -23,9 +23,10 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Quais meios de pagamento uma assinatura aceita, por empresa.
  *
- * O padrao do site tem que preservar o comportamento anterior a esta
- * funcionalidade - cartao, Pix e boleto juntos - porque contas que ja existiam
- * nunca escolheram nada e nao podem passar a oferecer menos meios sozinhas.
+ * O padrao do PLUGIN (nao da plataforma inteira) tem que preservar o
+ * comportamento anterior a esta funcionalidade - cartao, Pix e boleto juntos -
+ * porque contas que ja existiam nunca escolheram nada e nao podem passar a
+ * oferecer menos meios sozinhas.
  *
  * @package    paygw_mercadopago
  * @copyright  2026 LeoDG <callme@leodg.dev>
@@ -42,7 +43,7 @@ final class payment_methods_test extends \advanced_testcase {
      *
      * @return void
      */
-    public function test_o_padrao_do_site_habilita_os_tres_meios(): void {
+    public function test_o_padrao_do_plugin_habilita_os_tres_meios(): void {
         $this->resetAfterTest();
 
         $this->assertSame(
@@ -52,12 +53,12 @@ final class payment_methods_test extends \advanced_testcase {
     }
 
     /**
-     * Desligar um meio no site tira ele do padrao, para quem nao escolheu
+     * Desligar um meio no plugin tira ele do padrao, para quem nao escolheu
      * nada na propria conta.
      *
      * @return void
      */
-    public function test_desligar_no_site_tira_do_padrao(): void {
+    public function test_desligar_no_plugin_tira_do_padrao(): void {
         $this->resetAfterTest();
 
         set_config('methodboleto', 0, 'paygw_mercadopago');
@@ -70,18 +71,18 @@ final class payment_methods_test extends \advanced_testcase {
     }
 
     /**
-     * A conta que escolheu o proprio conjunto de meios ignora o site.
+     * A conta que escolheu o proprio conjunto de meios ignora o plugin.
      *
      * E a garantia central: uma empresa que so consegue emitir boleto (por
      * exemplo, por nao ter cadastro para Pix) nao fica presa ao padrao do
-     * site, e as outras contas nao sao afetadas pela escolha dela.
+     * plugin, e as outras contas nao sao afetadas pela escolha dela.
      *
      * @return void
      */
-    public function test_conta_com_escolha_propria_ignora_o_site(): void {
+    public function test_conta_com_escolha_propria_ignora_o_plugin(): void {
         $this->resetAfterTest();
 
-        // Site oferece os tres.
+        // O plugin oferece os tres.
         $accountid = $this->criar_conta_vinculada([
             'methodcard' => '0',
             'methodpix' => '0',
@@ -93,13 +94,13 @@ final class payment_methods_test extends \advanced_testcase {
             payment_methods::enabled_methods($accountid)
         );
 
-        // E o site, sem accountid, continua oferecendo os tres.
+        // E o plugin, sem accountid, continua oferecendo os tres.
         $this->assertSame(payment_methods::METHODS, payment_methods::enabled_methods());
     }
 
     /**
      * A conta pode escolher SO UM dos tres meios, e deixar os outros dois no
-     * padrao do site.
+     * padrao do plugin.
      *
      * O valor vazio ('') e o que representa "nao escolhi" - e diferente de
      * escolher desabilitado ('0').
@@ -116,7 +117,7 @@ final class payment_methods_test extends \advanced_testcase {
         ]);
 
         // Methodcard e methodpix nao foram escolhidos por esta conta: card
-        // herda o site (habilitado), pix herda o site (desabilitado).
+        // herda o plugin (habilitado), pix herda o plugin (desabilitado).
         $this->assertSame(
             [payment_methods::METHOD_CARD],
             payment_methods::enabled_methods($accountid)
@@ -124,11 +125,11 @@ final class payment_methods_test extends \advanced_testcase {
     }
 
     /**
-     * Conta inexistente nao quebra: cai no padrao do site.
+     * Conta inexistente nao quebra: cai no padrao do plugin.
      *
      * @return void
      */
-    public function test_conta_inexistente_cai_no_padrao_do_site(): void {
+    public function test_conta_inexistente_cai_no_padrao_do_plugin(): void {
         $this->resetAfterTest();
 
         set_config('methodboleto', 0, 'paygw_mercadopago');

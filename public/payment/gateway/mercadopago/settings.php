@@ -179,7 +179,8 @@ if ($ADMIN->fulltree) {
         \paygw_mercadopago\card_capture::form_options()
     ));
 
-    // Os meios aceitos, um checkbox por meio - e este e o PADRAO do site.
+    // Os meios aceitos, um checkbox por meio - e este e o PADRAO deste plugin
+    // (Asaas e Pagar.me tem os proprios, em telas separadas).
     //
     // Marcados por padrao porque e o comportamento que o plugin sempre teve:
     // cartao, Pix e boleto juntos. Uma empresa so diverge deste padrao

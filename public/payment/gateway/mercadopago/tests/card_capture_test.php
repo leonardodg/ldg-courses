@@ -213,11 +213,11 @@ final class card_capture_test extends \advanced_testcase {
     }
 
     /**
-     * Sem conta escolhida, vale so o padrao do site.
+     * Sem conta escolhida, vale so o padrao do plugin.
      *
      * @return void
      */
-    public function test_conta_sem_escolha_usa_o_padrao_do_site(): void {
+    public function test_conta_sem_escolha_usa_o_padrao_do_plugin(): void {
         $this->resetAfterTest();
 
         set_config('cardcapture', card_capture::MODE_DIRECT, 'paygw_mercadopago');
@@ -229,15 +229,15 @@ final class card_capture_test extends \advanced_testcase {
     }
 
     /**
-     * A conta que escolheu o proprio modo NAO usa o padrao do site.
+     * A conta que escolheu o proprio modo NAO usa o padrao do plugin.
      *
      * E a garantia central desta funcionalidade: a empresa que quer expor
-     * menos (ou mais) risco do que o padrao do site consegue, sem afetar as
+     * menos (ou mais) risco do que o padrao do plugin consegue, sem afetar as
      * outras contas.
      *
      * @return void
      */
-    public function test_conta_com_escolha_propria_ignora_o_padrao_do_site(): void {
+    public function test_conta_com_escolha_propria_ignora_o_padrao_do_plugin(): void {
         $this->resetAfterTest();
 
         set_config('cardcapture', card_capture::MODE_BRICK, 'paygw_mercadopago');
@@ -247,7 +247,7 @@ final class card_capture_test extends \advanced_testcase {
 
         $this->assertSame(card_capture::MODE_NATIVE, card_capture::current($accountid));
 
-        // E o site, sem accountid, continua no proprio padrao.
+        // E o plugin, sem accountid, continua no proprio padrao.
         $this->assertSame(card_capture::MODE_BRICK, card_capture::current());
     }
 
@@ -274,7 +274,7 @@ final class card_capture_test extends \advanced_testcase {
      *
      * @return void
      */
-    public function test_conta_inexistente_cai_no_padrao_do_site(): void {
+    public function test_conta_inexistente_cai_no_padrao_do_plugin(): void {
         $this->resetAfterTest();
 
         set_config('cardcapture', card_capture::MODE_DIRECT, 'paygw_mercadopago');

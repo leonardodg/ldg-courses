@@ -25,10 +25,12 @@ namespace paygw_mercadopago;
  * Pix - a tela dela nao pode continuar oferecendo o que ela nao consegue
  * cobrar.
  *
- * MESMO DESENHO DO card_capture: tres valores por meio, no site
+ * MESMO DESENHO DO card_capture: tres valores por meio, no PLUGIN
  * (get_config) e por conta (account_gateway::get_configuration()), e o vazio
- * na conta significa "usa o padrao do site". Contas que existiam antes desta
- * opcao continuam oferecendo os tres meios, porque o padrao do site preserva o
+ * na conta significa "usa o padrao do plugin". Este padrao e do
+ * paygw_mercadopago, e nao da plataforma inteira - Asaas e Pagar.me sao
+ * plugins separados, com os proprios padroes. Contas que existiam antes desta
+ * opcao continuam oferecendo os tres meios, porque o padrao preserva o
  * comportamento anterior.
  *
  * @package    paygw_mercadopago
@@ -52,7 +54,7 @@ class payment_methods {
      * Este meio esta habilitado para esta conta?
      *
      * @param string $method Um de METHODS
-     * @param int $accountid Conta de pagamento da empresa, 0 para so o site
+     * @param int $accountid Conta de pagamento da empresa, 0 para so o padrao do plugin
      * @return bool
      */
     public static function enabled(string $method, int $accountid = 0): bool {
@@ -62,19 +64,19 @@ class payment_methods {
             return $configurado === '1';
         }
 
-        $dosite = get_config('paygw_mercadopago', 'method' . $method);
+        $doplugin = get_config('paygw_mercadopago', 'method' . $method);
 
-        // Nunca configurado no site (instalacao ainda nao visitou a tela de
+        // Nunca configurado no plugin (instalacao ainda nao visitou a tela de
         // configuracoes): o padrao HISTORICO deste plugin e habilitado, e
         // get_config() devolve false tanto para "nunca configurado" quanto
         // para "desligado" - so o primeiro caso cai aqui.
-        return $dosite === false ? true : (bool) $dosite;
+        return $doplugin === false ? true : (bool) $doplugin;
     }
 
     /**
      * Os meios habilitados para esta conta, na ordem de METHODS.
      *
-     * @param int $accountid Conta de pagamento da empresa, 0 para so o site
+     * @param int $accountid Conta de pagamento da empresa, 0 para so o padrao do plugin
      * @return string[]
      */
     public static function enabled_methods(int $accountid = 0): array {
@@ -86,11 +88,11 @@ class payment_methods {
 
     /**
      * O valor configurado para este meio, na conta ou vazio quando ela nao
-     * escolheu - antes de cair no padrao do site.
+     * escolheu - antes de cair no padrao do plugin.
      *
      * @param string $method
      * @param int $accountid
-     * @return string '' (usa o site), '1' ou '0'
+     * @return string '' (usa o padrao do plugin), '1' ou '0'
      */
     protected static function configured_value(string $method, int $accountid): string {
         if ($accountid > 0) {
@@ -106,7 +108,7 @@ class payment_methods {
 
     /**
      * As opcoes do meio, para um <select> por conta - "usar o padrao do
-     * site", habilitado ou desabilitado.
+     * plugin", habilitado ou desabilitado.
      *
      * @return array<string,string>
      */

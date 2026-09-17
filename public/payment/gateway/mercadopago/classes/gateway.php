@@ -97,10 +97,12 @@ class gateway extends \core_payment\gateway {
 
         // Modo de captura do cartao e meios aceitos, POR EMPRESA.
         //
-        // O valor vazio ('') significa "usar o padrao do site", e e o padrao
-        // do proprio campo - contas que existiam antes desta opcao continuam
-        // se comportando exatamente como antes, porque cai direto no
-        // site::get_config() dentro de card_capture/payment_methods.
+        // O valor vazio ('') significa "usar o padrao DESTE PLUGIN" (nao da
+        // plataforma inteira - Asaas e Pagar.me tem os proprios), e e o
+        // padrao do proprio campo - contas que existiam antes desta opcao
+        // continuam se comportando exatamente como antes, porque cai direto
+        // no get_config('paygw_mercadopago', ...) dentro de
+        // card_capture/payment_methods.
         $mform->addElement(
             'select',
             'cardcapture',

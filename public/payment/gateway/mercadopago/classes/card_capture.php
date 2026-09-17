@@ -89,11 +89,12 @@ class card_capture {
      * engano mandaria numero de cartao por uma pagina que qualquer um no
      * caminho reescreve, e o sintoma seria invisivel ate o vazamento.
      *
-     * CADA EMPRESA PODE ESCOLHER O PROPRIO MODO, e a config do site continua
-     * valendo como padrao para quem nao escolheu - contas que existiam antes
-     * desta opcao nao mudam de comportamento sozinhas.
+     * CADA EMPRESA PODE ESCOLHER O PROPRIO MODO, e a config deste PLUGIN (nao
+     * da plataforma inteira - Asaas e Pagar.me tem os proprios padroes,
+     * separados) continua valendo para quem nao escolheu. Contas que existiam
+     * antes desta opcao nao mudam de comportamento sozinhas.
      *
-     * @param int $accountid Conta de pagamento da empresa, 0 para so o site
+     * @param int $accountid Conta de pagamento da empresa, 0 para so o padrao do plugin
      * @return string Um dos MODES
      */
     public static function current(int $accountid = 0): string {
@@ -109,8 +110,8 @@ class card_capture {
     }
 
     /**
-     * O modo configurado, na conta ou no site - antes de qualquer guarda de
-     * HTTPS.
+     * O modo configurado, na conta ou no padrao do plugin - antes de
+     * qualquer guarda de HTTPS.
      *
      * @param int $accountid
      * @return string
@@ -132,7 +133,7 @@ class card_capture {
      *
      * Vazio e nao excecao de proposito: card_capture precisa de uma resposta
      * mesmo antes de a conta estar configurada - e nesse caso o padrao do
-     * site e a resposta certa, nao um erro na tela.
+     * plugin e a resposta certa, nao um erro na tela.
      *
      * @param int $accountid
      * @return array
@@ -146,7 +147,7 @@ class card_capture {
      * (settings.php) e por conta (gateway.php), para a lista nao poder
      * divergir entre as duas telas.
      *
-     * @param bool $comopcaopadrao Inclui uma opcao vazia = "usar o padrao do site"
+     * @param bool $comopcaopadrao Inclui uma opcao vazia = "usar o padrao do plugin"
      * @return array<string,string>
      */
     public static function form_options(bool $comopcaopadrao = false): array {
