@@ -1,28 +1,68 @@
 # Mercado Pago: assinatura com split, e uma aplicação por tipo de integração
 
-**Situação:** inacabado · **Início:** 2026-09-15 · **Última sessão:** 2026-09-16
+**Situação:** fechado com pendências documentadas · **Início:** 2026-09-15 · **Última sessão:** 2026-09-17
 
-> **Por que inacabado:** tudo foi implementado, testado e documentado, mas a
-> **prova de ponta a ponta com dinheiro real não passou**. O ponto exato de
-> retomada está na seção seguinte.
+> **Por que "com pendências" e não "concluído":** a venda com split está
+> provada com dinheiro real em 3 dos 4 fluxos (Pix na assinatura, certificado,
+> curso avulso). O cartão tem o fluxo técnico correto mas nenhuma aprovação
+> real ainda, e o ciclo 2+ do cartão tem uma decisão de produto em aberto
+> (ESC). Nada disto bloqueia o que já vende - são itens para a próxima rodada.
+> Detalhe em **Estado da execução**, logo abaixo.
 
 ---
 
-## Estado da execução — atualizado em 16/09/2026 (fim da sessão, rodada 2)
+## Estado da execução — atualizado em 17/09/2026 (fechamento da rodada 3)
 
 Ponto de retomada. Quem chegar aqui numa sessão nova lê **esta seção primeiro**.
-A rodada anterior desta seção (guardada no histórico do git) parou num ponto
-que **já foi superado** — nove bugs adiante, o fluxo técnico passa até o fim.
-O que resta é diferente do que resta ali: leia daqui, não daquela versão.
+As rodadas anteriores desta seção (guardadas no histórico do git) pararam em
+pontos **já superados** - leia daqui, não delas.
 
 **Worktree:** `paygw-mp-assinatura`, branch `feature/paygw-mp-assinatura`.
 **Túnel:** `mp.leodg.dev` → `https://localhost:8443`, funcionando.
-**Verde:** PHPUnit `93/93` no gateway, phpcs limpo, grunt limpo.
+**Verde:** PHPUnit `109-112/112` no gateway (dependendo do momento do commit),
+`138/138` no `local_marketplace`, phpcs limpo nos dois.
 
 | Etapa | Situação |
 |---|---|
 | Fases 0 a 4 | **feitas** |
-| Fase 5 — prova de ponta a ponta | **EM CURSO** — fluxo técnico provado, aprovação real ainda não |
+| Fase 5 — prova de ponta a ponta | **fechada com pendências** - ver abaixo |
+
+### Provado com dinheiro real
+
+| Fluxo | Resultado |
+|---|---|
+| Assinatura por **Pix** | aprovada, `application_fee` correto, matrícula nos 3 cursos |
+| Certificado (Checkout Pro, Pix) | aprovado, split correto, entitlement + matrícula |
+| Curso avulso (Checkout Pro, Pix) | aprovado, split correto, matrícula |
+| Cancelamento de assinatura | testado via `cancel_subscription()` - acesso já pago preservado, cobrança futura para |
+
+### Correto no código, sem aprovação real ainda
+
+| Fluxo | Situação |
+|---|---|
+| Assinatura por **cartão** | fluxo técnico correto (11 bugs corrigidos, documentados abaixo) - 3 tentativas reais processaram mas foram recusadas por antifraude (`cc_rejected_high_risk`/`bad_filled_security_code`), não por bug |
+| Boleto na assinatura | codado e testado por lógica; nunca comprado de verdade (a oferta de teste precisou subir para R$20, o mínimo do boleto) |
+| Lembrete de vencimento, ciclo 2 do Pix/boleto, trocar Pix→cartão, cancelar pelo botão real | codados com TDD; nunca exercitados pela tela |
+
+### Pendências, em ordem de impacto
+
+1. **Decisão de produto: ciclo 2+ do cartão trava sem ESC.** O Mercado Pago
+   exige CVV em toda cobrança automática nesta conta, e isso não muda por
+   histórico de pagamento (medido). Falta escolher entre pedir ESC ao
+   suporte do MP, ou fazer o cartão também emitir fatura por ciclo (como
+   Pix/boleto). Ver a seção correspondente mais abaixo.
+2. **Testes de tela do CRUD** listados na tabela acima - nada quebrado
+   conhecido, só não exercitado pela interface real.
+3. **Assinatura por cartão aprovada de verdade** - tentar de novo depois de
+   um intervalo maior sem tentativas em sequência (o antifraude parece ligado
+   ao padrão de várias tentativas de valor baixo na mesma conta, não a um
+   cartão específico).
+4. **Preço da oferta "Assinatura - 3 cursos"** está em **R$20** (subido de
+   R$5 para caber o mínimo do boleto) - decidir se volta para R$5 ou fica,
+   dependendo de quando o boleto for testado de verdade.
+5. **Linhas de teste órfãs** na tabela `paygw_mercadopago` (várias tentativas
+   `pending`/`rejected` desta rodada de depuração) - não afetam nada, mas
+   podem ser limpas se incomodarem um relatório.
 
 ### Ambiente da prova, já montado
 
