@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1440 860" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="05-er-conteudo-title 05-er-conteudo-desc">
+      <title id="05-er-conteudo-title">Conteudo e candidatura: os vinculos que nao viraram FK</title>
+      <desc id="05-er-conteudo-desc">Esquema fisico da aula em video, da duracao por modulo do curso, da candidatura de empresa parceira e da politica de hospedagem por curso - o grupo em que quase toda ligacao real foi deixada sem chave estrangeira, e cada omissao tem motivo registrado no proprio XMLDB.</desc>
+      <defs>
+        <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap');</style>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#b0b3b8"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#3394ff"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8fa3bc"/></marker>
+        <marker id="arrow-soft" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8a8d91"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#121212"/>
+
+      <path d="M 440 384 L 408 384 Q 400 384 400 376 L 400 96 Q 400 88 408 88 L 440 88" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <path d="M 440 168 L 388 168 Q 380 168 380 160 L 380 104 Q 380 96 372 96 L 340 96" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <path d="M 760 192 L 850 192" fill="none" stroke="#3394ff" stroke-width="1" marker-end="url(#arrow-accent)"/>
+
+      <path d="M 1060 192 L 1048 192 Q 1040 192 1040 200 L 1040 412 Q 1040 420 1048 420 L 1060 420" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <path d="M 1060 216 L 1032 216 Q 1024 216 1024 224 L 1024 492 Q 1024 500 1032 500 L 1060 500" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <path d="M 880 624 L 720 624" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <rect x="787" y="170" width="36" height="12" rx="2" fill="#121212"/><text x="805" y="179" fill="#3394ff" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">JSON</text>
+
+      <rect x="40" y="56" width="300" height="228" rx="6" fill="#121212"/>
+      <rect x="40" y="56" width="300" height="228" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="40" y="56" width="300" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="40" y="76" width="300" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="40" y1="84" x2="340" y2="84" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="52" y="74" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">ldgvideo</text>
+      <rect x="286" y="64" width="42" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="307.0" y="73" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">TABLE</text>
+      <rect x="40" y="84" width="300" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="52" y="100" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">id</text>
+      <rect x="160" y="90" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="170" y="99" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">PK</text>
+      <text x="328" y="100" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="52" y="124" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">course</text>
+      <rect x="160" y="114" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="170" y="123" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="328" y="124" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <rect x="40" y="132" width="300" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="52" y="148" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">name</text>
+      <rect x="160" y="138" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="170" y="147" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="328" y="148" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">char(1333)</text>
+      <text x="52" y="172" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">videourl</text>
+      <rect x="160" y="162" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="170" y="171" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="328" y="172" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">char(1333)</text>
+      <rect x="40" y="180" width="300" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="52" y="196" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">aspectratio</text>
+      <rect x="160" y="186" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="170" y="195" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="328" y="196" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">char(8)</text>
+      <text x="52" y="220" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 4 outras colunas</text>
+      <line x1="40" y1="228" x2="340" y2="228" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
+      <text x="52" y="242" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">INDEXES</text>
+      <text x="52" y="258" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">course</text>
+      <line x1="40" y1="264" x2="340" y2="264" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
+      <text x="52" y="278" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace">guarda o endereco, nunca o arquivo</text>
+
+      <rect x="440" y="56" width="320" height="168" rx="6" fill="#121212"/>
+      <rect x="440" y="56" width="320" height="168" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="440" y="56" width="320" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="440" y="76" width="320" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="440" y1="84" x2="760" y2="84" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="452" y="74" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">course_modules</text>
+      <rect x="708" y="64" width="40" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="728.0" y="73" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+      <rect x="440" y="84" width="320" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="452" y="100" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">id</text>
+      <rect x="580" y="90" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="590" y="99" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">PK</text>
+      <text x="748" y="100" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="452" y="124" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">course</text>
+      <rect x="580" y="114" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="590" y="123" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="124" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <rect x="440" y="132" width="320" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="452" y="148" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">module</text>
+      <rect x="580" y="138" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="590" y="147" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="148" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="452" y="172" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">instance</text>
+      <rect x="580" y="162" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="590" y="171" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="172" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <rect x="440" y="180" width="320" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="452" y="196" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">availability</text>
+      <text x="748" y="196" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">text</text>
+      <line x1="440" y1="204" x2="760" y2="204" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
+      <text x="452" y="218" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace">+ muitas outras colunas do core</text>
+
+      <rect x="440" y="320" width="320" height="204" rx="6" fill="#121212"/>
+      <rect x="440" y="320" width="320" height="204" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="440" y="320" width="320" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="440" y="340" width="320" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="440" y1="348" x2="760" y2="348" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="452" y="338" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">format_ldg_lesson</text>
+      <rect x="706" y="328" width="42" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="727.0" y="337" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">TABLE</text>
+      <rect x="440" y="348" width="320" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="452" y="364" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">id</text>
+      <rect x="580" y="354" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="590" y="363" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">PK</text>
+      <text x="748" y="364" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="452" y="388" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">cmid</text>
+      <rect x="580" y="378" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="590" y="387" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">UQ</text>
+      <rect x="604" y="378" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="614" y="387" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="388" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <rect x="440" y="396" width="320" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="452" y="412" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">duration</text>
+      <text x="748" y="412" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="452" y="436" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">timecreated</text>
+      <rect x="580" y="426" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="590" y="435" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="436" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <rect x="440" y="444" width="320" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="452" y="460" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">timemodified</text>
+      <rect x="580" y="450" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="590" y="459" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="460" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <line x1="440" y1="468" x2="760" y2="468" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
+      <text x="452" y="482" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">INDEXES</text>
+      <text x="452" y="498" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">cmid (unique)</text>
+      <line x1="440" y1="504" x2="760" y2="504" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
+      <text x="452" y="518" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace">sem campo de usuario: null_provider</text>
+
+      <rect x="1060" y="56" width="340" height="272" rx="6" fill="#121212"/>
+      <rect x="1060" y="56" width="340" height="272" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="1060" y="56" width="340" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1060" y="76" width="340" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1060" y1="84" x2="1400" y2="84" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1072" y="74" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_partners_application</text>
+      <rect x="1346" y="64" width="42" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1367.0" y="73" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">TABLE</text>
+      <rect x="1060" y="84" width="340" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="1072" y="100" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">id</text>
+      <rect x="1228" y="90" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1238" y="99" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">PK</text>
+      <text x="1388" y="100" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="1072" y="124" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">companyname</text>
+      <rect x="1228" y="114" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1238" y="123" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="1388" y="124" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">char(255)</text>
+      <rect x="1060" y="132" width="340" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="1072" y="148" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">contactemail</text>
+      <rect x="1228" y="138" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1238" y="147" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="1388" y="148" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">char(255)</text>
+      <text x="1072" y="172" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">status</text>
+      <rect x="1228" y="162" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1238" y="171" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="1388" y="172" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">char(20)</text>
+      <rect x="1060" y="180" width="340" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="1072" y="196" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">planid</text>
+      <text x="1388" y="196" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="1072" y="220" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">companyid</text>
+      <text x="1388" y="220" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <rect x="1060" y="228" width="340" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="1072" y="244" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">userid</text>
+      <text x="1388" y="244" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="1072" y="268" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 17 outras colunas</text>
+      <line x1="1060" y1="276" x2="1400" y2="276" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
+      <text x="1072" y="290" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">INDEXES</text>
+      <text x="1072" y="306" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">status-timecreated</text>
+      <text x="1072" y="322" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">confirmtoken</text>
+
+      <rect x="880" y="560" width="340" height="172" rx="6" fill="#121212"/>
+      <rect x="880" y="560" width="340" height="172" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="880" y="560" width="340" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="880" y="580" width="340" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="880" y1="588" x2="1220" y2="588" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="892" y="578" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_course</text>
+      <rect x="1166" y="568" width="42" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1187.0" y="577" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">TABLE</text>
+      <rect x="880" y="588" width="340" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="892" y="604" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">id</text>
+      <rect x="1048" y="594" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1058" y="603" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">PK</text>
+      <text x="1208" y="604" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="892" y="628" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">courseid</text>
+      <rect x="1048" y="618" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1058" y="627" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">FK</text>
+      <rect x="1072" y="618" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1082" y="627" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">UQ</text>
+      <rect x="1096" y="618" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1106" y="627" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="1208" y="628" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <rect x="880" y="636" width="340" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="892" y="652" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">companyid</text>
+      <rect x="1048" y="642" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1058" y="651" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">FK</text>
+      <rect x="1072" y="642" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1082" y="651" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="1208" y="652" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="892" y="676" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">hostingtype</text>
+      <rect x="1048" y="666" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1058" y="675" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="1208" y="676" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">char(20)</text>
+      <rect x="880" y="684" width="340" height="24" fill="#ffffff" fill-opacity="0.02"/>
+      <text x="892" y="700" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">commissionpct</text>
+      <rect x="1048" y="690" width="20" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"/>
+      <text x="1058" y="699" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="1208" y="700" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">number(5,2)</text>
+      <text x="892" y="724" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 4 outras colunas</text>
+
+      <rect x="850" y="172.0" width="160" height="40" rx="6" fill="#121212"/>
+      <rect x="850" y="172.0" width="160" height="40" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <text x="930" y="188" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">{..._offer}</text>
+      <text x="930" y="202" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">marketplace</text>
+
+      <rect x="1060" y="400" width="220" height="40" rx="6" fill="#121212"/>
+      <rect x="1060" y="400" width="220" height="40" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <text x="1170" y="416" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">{..._plan}</text>
+      <text x="1170" y="430" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">marketplace</text>
+
+      <rect x="1060" y="480" width="220" height="40" rx="6" fill="#121212"/>
+      <rect x="1060" y="480" width="220" height="40" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <text x="1170" y="496" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">{..._company}</text>
+      <text x="1170" y="510" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">marketplace</text>
+
+      <rect x="560" y="604.0" width="160" height="40" rx="6" fill="#121212"/>
+      <rect x="560" y="604.0" width="160" height="40" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <text x="640" y="620" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">{course}</text>
+      <text x="640" y="634" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">core</text>
+
+      <line x1="40" y1="768" x2="1400" y2="768" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
+      <text x="40" y="788" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+      <line x1="112" y1="784" x2="132" y2="784" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+      <text x="140" y="788" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">FK DECLARADA NO INSTALL.XML</text>
+      <line x1="552" y1="784" x2="572" y2="784" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+      <text x="580" y="788" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">VINCULO SEM FK, POR DECISAO</text>
+      <line x1="992" y1="784" x2="1012" y2="784" stroke="#3394ff" stroke-width="1" marker-end="url(#arrow-accent)"/>
+      <text x="1020" y="788" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">REFERENCIA DENTRO DE UM JSON</text>
+    </svg>

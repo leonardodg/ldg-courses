@@ -1,0 +1,331 @@
+Projeto Github ( branch DEV ) https://github.com/leonardodg/ldg-courses/tree/dev
+
+Objetivo: Desenhar o fluxo para cadastrar um empresa parceira no projeto LDG Courses, como objetivo de facilitar todas as etapas, e acompanhar um passo a passo montando cada etapa visualmente e validando as etapas que ja foram completadas.
+
+* O Projeto: LDG Courses é uma Plataforma de courses online, desenvolvida com plugin customizados em Moodle version 5.2.3 (Build: 20260914) que opera como marketplace, com split de pagamento entre o vendedor do curso e a plataforma, vendas avulsas ou por assinaturas.
+
+* Empresa Parceira: Meu cliente que utiliza a plataforma para vender o seus cursos online e hospedar seu conteudo.
+
+
+Um dos objetivos é aumentar a venda das assinaturas SAAS
+
+
+Temos dois tipos de vendas:
+- Venda SAAS, Clientes ( vendedor de curso / parceiro ) que assinam a plataforma para hospedagem dos conteúdos.
+- Vendas dos cursos pelo parceiro com split ( com comissão ), com vendas avulsas ou assinaturas.
+
+
+Obs.: Não é objetivo deste planejamento neste momento, focar nas vitrine de cursos dos nosso praceiros.
+
+
+O que precisamos fazer ( return ) :
+- desenhar o fluxo para cadastrar um empresa parceira no projeto 
+	- vamos criar a instrucao para criar a tela no ferramenta https://lnkiai.github.io/m3e-canvas/
+	- projeto https://github.com/lnkiai/m3e-canvas
+- criar o layout das telas para o funcionamento do fluxo na pratica no projeto. 
+- criar uma plano completo para o desenvolvimeno do plugin block_marketplace
+- fazer documentacao de instalacao e configuracao do plugin
+- fazer todos os testes de acordo com o padrao de implementacao
+- fazer todos os testes de layout de tela, precisa se responvivel pra mobile
+- navegar como cliente empresa e realizar todos os passos no pelo navegador
+
+
+- usar design system do arquivos 
+	-> /home/leodg/localhost/gitworktree-bare-moodle/dev/docs/brand/design_system_leodg.jpeg
+	-> /home/leodg/localhost/gitworktree-bare-moodle/dev/docs/brand/design_system_leodg.md
+
+- usar tema customizado ->  /home/leodg/localhost/gitworktree-bare-moodle/dev/public/theme/ldg
+
+- usar padrao de desenvolvimento -> /home/leodg/localhost/gitworktree-bare-moodle/dev/docs/dev/padrao-de-implementacao.md
+- usar guia worktrees para nova feature 
+	-> /home/leodg/localhost/gitworktree-bare-moodle/dev/docs/dev/guia-worktrees.md
+	-> /home/leodg/localhost/gitworktree-bare-moodle/dev/docs/dev/estrutura-worktrees.md
+
+- user script moodev para criar ambiente 
+	-> /home/leodg/localhost/gitworktree-bare-moodle/dev/docs/dev/moodev.md
+
+- seguer as regras do fluxo-de-contribuicao -> /home/leodg/localhost/gitworktree-bare-moodle/dev/docs/dev/fluxo-de-contribuicao.md
+
+- usar o skill `moodle-plugin-development` : ela vem de um livro de **Moodle 3.x**.
+Vale o raciocínio arquitetural (extend-never-patch, encapsular para cron, os
+reflexos de segurança, `version.php` ou nada acontece). **Assinatura de API vem
+da árvore do 5.2**, nunca do livro.
+
+Fluxo para cadastro:
+
+- Cliente acesso a pagina de cadastro. ( 1 - Cadastro )
+- cliente insere os dados. 
+- Frontend (sistema) valida as informacoes.
+- backend salva os dados no banco
+- Validar dados 
+	 - Email precisa de confirmacao enviado token
+	 - Numero precisa de confirmacao enviado token
+- Email e validado, user criado e agora tem acesso a plataforma ( tem login ) 
+- aceitar termos de contrato
+- Enviar dados da empresa para comporva CNPJ ( esta etapa ainda nao e obrigatoria pois vou analisar a possibilidade de um vendedor ser Pessoa Fisica ) 
+	- Enviar dados que comprosa CPF para pessoa FISICA que tem objetivo de vender curso.
+- Ativar o plugin de pagamentos, precisa vincular e autorizar a conta ( pode ser qualquer um dos disponiveis porem cada um a configuracao e diferente )
+- Escolher e validar o tipo de assinatura
+	- para conta free que nao hospeda conteudo ( nao precisa de configuracao extra pelo usuario ) mas precisa configurar pelo sistema o prefil que proibe hospedar conteudo na plataforma.
+	- para conta paga com hospedagem na plataforma precisa seleciona o plano ( 50 para video ate 1024 ou 100 para 4k )
+	- para o plano profisional com hospedagem no brunet ( precisa configurar o plugin de hostegam fora mais assinar o plano )
+
+- aprovacao do cadastro pelo ADMIN
+	- avalidar documento
+	- quem pagou o plano tem prioridade em relacao a empresa free
+- temos etapa de criacao de curso 
+- temos etapa de criacao de ofertas
+- vincular curso com ofertas
+
+
+Minha ideia e transformar o plugin block_marketplace esta passo a passo para ativacao de uma empresa no projeto.
+Porem esta plugin vai precisar se comportar de varias forma diferentes. Depende do local dashboards ou block em cursos e pedende do perfil.
+
+
+block_marketplace para dashboards:
+	- ADMIN tem acesso a todas informacoes edicoes e configuracoes.
+	- Empresa parceira:
+		Acredito que existem duas situacoes, quando a empresa esta ainda fazendo o cadastro e validando dados e informacoes, depois quando a empresa ja esta aprovada e ativa.
+		- Quando esta concluido o cadastro exibe as etapas
+		- quando ja esta tudo ok e empresa ativa exibe relatorios.
+		
+		- para a versao dashboard precisa ser mais completo na etapa do cadastro, explicando com funciona e o que precisa fazer
+	
+		- exibe as todas as etapas para fazer o cadastro da empresa com checklist
+		- exibe as acoes e os botoes que leva para onde configurar cada etapa
+		- exibe os status e situacoes da empresa
+		- com a empresa ja cadastrada, validada e ativa pode exibir:
+			- numero de aluno matriculados:
+			- munero de assinaturas ativas:
+			- numero de cursos sendo vendidos
+			
+
+
+block_marketplace para block dentro do curso:
+	- admin tem acesso a tudo
+	- para empresa em situacao de cadastro
+		- informa apenas a etapa com link para mais informacoes caso pendente.
+	- para empresa com cadastro aprovado:
+		- mesmos relatorios do dashboard porem dados sao referente ao curso
+	- para aluno:
+		- exibir assinatura que ele tem direito
+		- exibir link historico de compras
+		- exibir proximas faturas do plano assinatura
+		- prazo do curso para curso avulso.
+	
+		
+		
+		
+		
+Path block -> /home/leodg/localhost/gitworktree-bare-moodle/dev/public/blocks/marketplace
+
+
+---------------------------------------------------------------------------------------------------
+I've loaded the skill workflows and done deep exploration of the codebase, docs, and tools (moodle-plugin-development, brainstorming, m3e-canvas, the LDG design system, and the existing plugins). I now understand the current state:
+- block_marketplace hoje: bloco de assinaturas do aluno no Dashboard (sidebar), mostra só o que exige ação, vencimentos, login obrigatório, uma instância por página.
+- local_marketplace: núcleo com empresa/categoria, membros, ofertas, direitos, planos (plan.php, plan_tier.php), relatórios (report.php), painel (company.php), telas de admin.
+- local_partners: landing pública → candidatura → confirmação de e-mail → fila → aprovação que provisiona a empresa.
+- Fluxo de aprovação (ADR-0006): empresa nasce na aprovação via local_partners; a categoria escondida ainda é pauta.
+- O plan já existe: hostingmodel (native/byos), monthlyfee, faixas de resolução (720p→4k), commissionpct.
+Antes de desenhar o plano, preciso decidir alguns trade-offs com você — são os que mudam a arquitetura:
+
+---------------------------------------------------------------------------------------------------
+
+
+ have the full picture now. Let me present the design plan.
+Design: Ativação de Empresa Parceira via block_marketplace
+1. O problema e o desenho proposto
+Hoje o block_marketplace mostra só assinaturas do aluno no Dashboard (get_content() em block_marketplace.php). Eu li ele: é um widget de sidebar que lê entitlement::get_active_for_user(), mostra o que vence e manda para o histórico.
+O que você pediu é transformá-lo no dono do passo-a-passo de ativação de uma empresa parceira, com comportamentos diferentes por contexto (dashboard vs. dentro do curso) e por perfil (admin, empresa cadastrando, empresa ativa, aluno).
+As respostas que você confirmou estabelecem a arquitetura:
+Decisão	Consequência
+Block = widget + páginas próprias no bloco	O bloco no Dashboard/curso mostra o resumo; cada etapa abre /blocks/marketplace/onboarding.php?step=..., /blocks/marketplace/gateway.php, etc.
+Progresso derivado dos campos	Nenhuma tabela nova. onboarding lê: company.cnpj, company.planid, conta de pagamento is_available(), company.status, mod_ldgvideo/capabilities do plano free, ofertas publicadas.
+ADR-0006: empresa nasce escondida na submissão	É mudança de comportamento em local_partners/local_marketplace: enviar candidatura passa a criar empresa+categoria com visible=0 e status=suspended. O wizard então tem "empresa" para apontar desde o começo.
+Integra a trava do Free existente	Etapa "plano free" = papel restritivo aplicado (capabilities PROHIBIT do ADR-0009), não uma proibição nova.
+2. Fluxo de ativação (estados da empresa)
+submitted (escondida) → dados CNPJ/CPF → conta de págto → plano (free|native|byos)
+   → admin aprova → active (visível) → criar curso → criar oferta → vincular curso↔oferta
+Cada etapa é uma checagem em onboarding::step_state() (derivada), com 3 estados: done / pending / blocked (ex.: sem CNPJ nulo bloqueia... na verdade CNPJ é opcional, quem bloqueia é a conta de pagamento). O admin vê tudo + as etapas de negócio; o parceiro vê as dele; o aluno vê só a dele no bloco de curso.
+3. Componentes do material do ticket
+1. Instrução m3e-canvas — script para a ferramenta https://lnkiai.github.io/m3e-canvas/:
+- Gerar o documento JSON (formato do agent.md) que produz as telas: Dashboard do parceiro (checklist), página Gateway, página Plano, página Aprovação do admin, bloco de curso (3 estados: admin / empresa / aluno), relatório da empresa.
+- É entregue como arquivo de instrução (o JSON .json + um .md explicando como abrir na ferramenta). Eu valido com o script de link (link.py/link.mjs) do m3e-canvas.
+2. Layout das telas — o plano de UI das páginas que vão rodar no Moodle, usando o design system (foncs Inter + JetBrains Mono, #121212/#1E1E1E/#007AFF, dark studio). Renderizer + templates Mustache no block_marketplace, porque renderer sem template não é themeable.
+3. Plano de desenvolvimento do block_marketplace — abaixo.
+4. Docs de instalação/configuração.
+5. Testes PHPUnit + Behat + medida de layout mobile.
+4. Estrutura do plugin (novo)
+blocks/marketplace/
+├── block_marketplace.php          # get_content() vira dispatching: contexto + perfil → renderer
+├── classes/
+│   ├── onboarding.php             # step_state() derivada; constants STEP_* ; status da empresa
+│   ├── report.php?                # widgets de relatório (alunos, assinaturas ativas, cursos vendidos)
+│   ├── output/                    # templatable: dashboard_company, gateway_step, plan_step, course_block...
+│   ├── renderer.php               # um método público por elemento visual
+│   └── privacy/provider.php       # continua null_provider
+├── templates/*.mustache           # markup
+├── styles.css                     # escopo .block_marketplace, tokens em custom property no wrapper
+├── amd/src/*.js                   # interação de checklist (marcar, expandir)
+├── db/access.php                  # novas caps: view_onboarding (cont.) 
+├── lang/{en,pt_br,es}/            # mesmas chaves nos três
+├── settings.php                   # config (ex.: qual status libera relatório)
+└── onboarding.php, gateway.php, plan.php, approve.php, course_block.php  # páginas
+A interação é PHP → JSON → AMD (js_call_amd), como manda o livro; nova lógica de negócio mora em classes/, não no get_content().
+5. Decisões de arquitetura pendentes
+Antes de fechar o plano final, dois pontos que tocam outros plugins (fora do block_marketplace):
+1. "Empresa nasce escondida na submissão" (ADR-0006) é uma mudança em local_partners + local_marketplace, não no block. Ela é pré-requisito do wizard. Incluo essa mudança no plano ou assumo que a etapa submission já vem da fila local_partners existente (candidatura, não empresa)?
+2. O relatório que o bloco exibe depois de ativo (alunos matriculados, assinaturas ativas, cursos vendidos) — ele já existe em local_marketplace/report.php (abas transactions/courses/students). O block deve reaproveitar esse relatório via link, ou o wizard precisa de números próprios no bloco (widgets resumidos)?
+Quer que eu feche o plástico sobre esses pontos, ou prefere que primeiro eu grave o design doc com o que está decidido?
+▣  Plan · DeepSeek V4 Flash Latest · 9h 52m
+Consideracoes:
+
+- Primeiro precisamos contruir o desenho das tela e aprovar para depois com o layout proposto desenvolver todas as funcionalidades.
+- sobre estrutura do block: vamos atualizar a estrutura do block original/atual e seguir a documentacao atualizada 5.x, sobre AMD JS -> https://moodledev.io/docs/5.0/guides/javascript/modules. path block atual -> /home/leodg/localhost/gitworktree-bare-moodle/dev/public/blocks/marketplace
+- Sobre a candidatura de parceria ainda depender de aprovacao, o objetivo no futuro é toda empresa parceira ser aprovada e liberado automaticamente sem precisar de aprovacao de uma ADMIN, porem por causa da maturidade do projeto isso ainda ( neste momento ) nao pode acontecer, mas porque? Porque empresas plano free ai precisa ser testado, porque precisamos monitorar caso a caso para evitar uma demanda descontrolada ( risco de alta demanda sem total controle ), porem sim, depois de tudo testado o objetivo e fazer aprovacao automaticamente, outro cenario o plano pago, o plugin do byos  ainda nao foi testado e configurado, entao esta etapa ainda vai ficar para ser implementacada futuramente, por isso mesmo pagando ainda depende de um atuacao e aprovacao, ja vamos implementar prevendo esta mudanca de configuracao, aprovacao automatica ou manual por ADMIN.
+
+acredito que primeiro vamos montar o desenho e aprovar das telas, depois o plano completo de implementacao.
+
+
+---------------------------------------------------------------------------------------------------
+
+ntendi as considerações. Fechei a arquitetura com base nas suas quatro decisões + as considerações sobre aprovação (manual hoje, automática prevista) e o JS 5.x (ESM, não AMD+jQuery). Verifiquei isto na doc oficial do Moodle: ES Modules desde o 3.10, export const init em amd/src/, js_call_amd, transpilação com npx grunt amd → amd/build/*.min.js versionado.
+Aqui está o desenho proposto. Vou apresentar em seções, e o ponto de aprovação é o inventário de telas.
+A. Fluxo de ativação da empresa parceira
+submissão (local_partners)          empresa nasce suspensa + categoria oculta (ADR-0006)
+   │
+   ▼
+┌─ Wizard block_marketplace ──────────────────────────────────────┐
+│ 1. Conta criada / e-mail confirmado                              │
+│ 2. Termos de contrato aceitos (carimbo de momento)               │
+│ 3. Documento CNPJ ou CPF   (opcional; PF vende, ADR-0010)        │
+│ 4. Conta de pagamento vinculada + gateway habilitado             │
+│ 5. Plano escolhido: free | nativa R$50/R$100 | profissional BYOS │
+│ 6. Aprovação do ADMIN (manual hoje; modo auto previsto)          │
+└──────────────────────────────────────────────────────────────────┘
+   │
+   ▼
+empresa ACTIVE (categoria visível) → criar curso → oferta → vínculo curso↔oferta
+   │
+   ▼
+block mostra relatórios (dashboard) e variações no bloco/curso
+Cada etapa tem 3 estados, todos derivados dos campos existentes (nada de tabela nova): done / pending / blocked (ex.: blocked = sem conta de pagamento não há plano native para concluir).
+Aprovação configurável (manual → automática): entra um setting local_marketplace/approvalmode = manual|auto. Padrão manual, porque: plano free precisa de monitoramento caso a caso (risco de demanda descontrolada) e o BYOS não foi testado/configurado ainda — então mesmo plano pago passa por atuação do admin neste momento. O caminho auto (gatilho = conta vinculada + is_available() + plano resolvido) fica implementado por trás do setting, pronto para ligar depois. O bloco e a fila respeitam o modo.
+B. Inventário de telas (ponto de aprovação)
+Dashboard / Painel (/my)
+#	Tela	Conteúdo
+D1	Wizard de ativação (DTO é o bloco no Dashboard)	Nome + status "Em ativação", barra de progresso, checklist das 6 etapas (✓/▶/bloqueado), botão "Continuar" por etapa → página própria, bloco "Como funciona", "Pagar agora" quando relevante
+D2	Painel ativo	3 cards: alunos matriculados, assinaturas ativas, cursos vendidos. Links: relatório completo, ofertas, cursos. Badge "Ativa"
+D3	Etapa: Conta de pagamento	Estado por país (uma conta por país), botões por gateway (MP / Asaas / Pagar.me), estado vinculado/habilitado
+D4	Etapa: Plano	3 cards — Free (sem hospedagem, papel restritivo já aplicado), Hospedagem nativa R$50 (vídeo até 1024/720p) e R$100 (4k), Profissional BYOS ("em breve", desabilitado). Mostra comissão/faixa de resolução. Seleciona + valida
+D5	Etapa: Documento	CNPJ ou CPF, aviso "pessoa física pode vender", validação de dígito client+server
+D6	Etapa: Termos	Texto dos termos, checkbox de aceite registrando o momento
+Aprovação / Admin
+#	Tela	Conteúdo
+D7	Aprovação (admin)	Fila de empresas a aprovar (prioridade: quem pagou plano > free), ver documento/CNPJ, aprovar/reprovar com nota, indicador do modo manual/auto no topo
+Bloco dentro do curso
+#	Tela	Conteúdo
+C1	Curso — admin	Tudo: estado da empresa, configurações, relatórios do curso
+C2	Curso — empresa cadastrando	Compacto: só a etapa pendente + link "Mais informações" (vai ao wizard)
+C3	Curso — empresa ativa	Mesmos relatórios do dashboard, escopados ao curso (alunos do curso, assinaturas do curso, vendas do curso)
+C4	Curso — aluno	Assinatura a que tem direito + vencimento, link histórico de compras, próximas faturas, prazo do curso avulso
+Total: 11 telas (8 no elenco principal + 3 do bloco/curso). Todas responsivas (360→1440, coluna única no mobile).
+C. Estrutura do plugin (atualização do atual, JS ESM)
+blocks/marketplace/
+├── block_marketplace.php        # get_content() vira dispatcher: contexto + perfil → renderer
+├── classes/
+│   ├── onboarding.php           # step_state() derivada; STEP_*; resolve aprovação manual/auto
+│   ├── output/*.php             # templatables: wizard, dashboard_active, step_gateway, ...
+│   ├── renderer.php             # um método público por elemento (themeable)
+│   └── privacy/provider.php     # null_provider (sem dado próprio)
+├── amd/src/*.js                 # ESM: export const init (ESM 5.x, NÃO AMD+jQuery)
+├── amd/build/*.min.js           # gerado por npx grunt amd, versionado
+├── templates/*.mustache         # markup
+├── styles.css                   # escopo .block_marketplace, tokens no wrapper (não :root)
+├── db/access.php                # caps novas (view/gerenciar onboarding)
+├── lang/{en,pt_br,es}/          # mesmas chaves nos três
+├── settings.php                 # (se houver setting própria; aprovação vive no local_marketplace)
+├── onboarding.php               # página do wizard (etapas 1–6)
+├── gateway.php, plan.php, document.php, terms.php   # páginas-alvo dos botões
+└── version.php                  # bump
+O bloco continua "block → widget"; o passo-a-passo completo vive nessas páginas do próprio bloco (sua decisão n.º 1). Números de relatório reaproveitam local_marketplace via calls + links (contas/soma já existem no núcleo).
+D. Entrega m3e-canvas + processo
+1. Gero o documento JSON (formato agent.md do m3e-canvas) com as 11 telas em 412×892 e 1280×800 (mesma tela nas duas larguras), breves em pt_br, navegação entre etapas, paleta LDG (grafite #121212/#1E1E1E, azul elétrico #4B8EFF / #007AFF).
+2. Entrego como link #docz= (via script do próprio m3e-canvas) + um .md de instrução explicando como abrir, refinar e gerar o prompt de exportação.
+3. Layout no projeto: do prompt/web do m3e-canvas → templates Mustache + styles.css escopado no projeto, renderizados no mesmo Chrome e mesmo viewport para comparar (padrão padrao-de-implementacao.md).
+4. Testes: PHPUnit (regras de onboarding::step_state, validação, modo de aprovação) → Behat sem JS (ida-e-volta) → Behat @javascript que mede layout (coluna única no mobile, scrollWidth <= innerWidth, alvo de toque 44px) → prova no navegador com os viewports 360/390/768/1024/1440.
+E. Sequência de execução (após aprovado)
+1. Fase Layout primeiro, como você pediu: escrever o desenho aprovado (spec) → gerar m3e-canvas JSON + instrução → validar com você no navegador.
+2. Fase Implementação (só depois do layout aprovado): writing-plans com tasks bite-size (TDD), migrando o wizard, o bloco/curso e o modo manual/auto de aprovação.
+3. Docs de instalação/configuração + CI (phpcs, grunt, teste de schema) por tarefa.
+Pergunta de fechamento do desenho:
+O inventário de 11 telas (D1–D7 + C1–C4) cobre o que você imaginou? Faltou ou sobrou alguma? Depois que confirmar, eu escrevo o spec do desenho (para a fase de layout/m3e-canvas) e sigo — a implementação começa apenas após sua aprovação do layout.
+
+Resposta: ok
+
+_________________________________________________________________________________________________________________________
+
+Tenho tudo o que preciso. O núcleo já expõe os números para os relatórios do bloco: entitlement::count_active_students($companyid), sale::get_for_company(), sale::count_for_offer(), e o report.php já agrega por curso (percourse). O bloco de curso (C3) reaproveita isso — só precisa de um helper que escope as contagens por courseid (via offer->get_course_ids()), que planejo como método novo.
+Aqui está o plano final, em duas fases — exatamente a ordem que você pediu: desenho primeiro, layout aprovado, depois implementação.
+Plano — Ativação de Empresa Parceira via block_marketplace
+Decisões travadas (do diálogo)
+Tema	Decisão
+Onde vive o wizard	Block = widget/summary; fluxo completo em páginas próprias do bloco (/blocks/marketplace/*.php)
+Estado das etapas	Derivado dos campos existentes — sem tabela nova (onboarding::step_state())
+Empresa em cadastro	ADR-0006: empresa+categoria nasce escondida na submissão; ativação = aprovação
+Plano free	Reaproveita a trava existente (papel restritivo PROHIBIT, ADR-0009) — sem capability nova
+Aprovação	Setting local_marketplace/approvalmode = manual|auto; padrão manual hoje (free ~ monitorar; BYOS sem prova). Auto previsto por trás do setting
+JS	ESM 5.x (amd/src/*.js → export const init), npx grunt amd → amd/build/*.min.js versionado
+Estilo	Design system LDG (grafite + azul elétrico), styles.css escopado .block_marketplace, tokens no wrapper
+Fase 1 — Desenho das telas (entregável que você aprova)
+Objetivo: 11 telas (D1–D7, C1–C4) projetadas na ferramenta m3e-canvas, com instrução de uso e validação navegável no navegador — sem tocar em código do plugin ainda.
+Tarefa 1.1 — Documento m3e-canvas
+- Produzir o design.json (formato do agent.md do m3e-canvas) com as 11 telas em 412×892 (phone) e 1280×800 (desktop), brief/note em pt_br, navegação entre etapas, paleta LDG.
+- Gerar o link #docz= (script de link do próprio m3e-canvas).
+- Validação: abrir o link no Chrome local; conferir que as 11 telas navegam e que "Tidy" as ajusta sem quebrar.
+Tarefa 1.2 — Instrução de uso
+- docs/ai-plans/AAAA-MM-DD-fluxo-cadastro-parceiro-screens.md:
+- o que é o m3e-canvas, como abrir o link, como usar o painel de tema (paleta LDG), como gerar o prompt de exportação (Web), o que não mudar (escopo dos componentes, texto pt_br).
+- docs/brand/ / docs/diagram/: diagrama do fluxo (estados da empresa + aprov. manual/auto) já existe padrão no repo — atualizo 07-fluxo-parceiro ou crio 10-fluxo-ativacao.
+Tarefa 1.3 — Validação visual no projeto (sem código novo)
+- Contratar no mesmo Chrome e mesmo viewport o mockup renderizado do m3e-canvas (PNG exportada) lado a lado com a referência do design system — regra do padrao-de-implementacao.md.
+- O que validar por tela: contraste, alvo de toque ≥44px, coluna única no mobile, estrutura de checklist/estados.
+- Rodada de revisão só sua, tela a tela; marca D1–C4 como aprovada / ajustar.
+Exit da Fase 1: as 11 telas aprovadas. Só então abre a Fase 2.
+Fase 2 — Implementação do block_marketplace (após layout aprovado)
+Seguindo writing-plans (TDD: teste vermelho → código → commit), ciclo do repo (worktree moodev new, doc antes do código, phpcs+grunt+behat antes do PR).
+Tarefa 2.1 — Worktree + doc + base
+- moodev new parceiro-onboarding --from origin/dev (com upstream 5.2 sincronizado).
+- Doc do fluxo/estrutura do bloco atualizado antes do código.
+- version.php bump; framework da estrutura atual.
+Tarefa 2.2 — classes/onboarding.php (núcleo derivado)
+- STEP_* constantes (account, terms, document, gateway, plan, approval).
+- step_state(): lê company.cnpj, terms (carimbo de aceite — 1 coluna termsaccepted anulável no company via upgrade), planid, get_payment_account()->is_available(), company.status, approvalmode.
+- progress() → fração + labels, para a barra.
+- PHPUnit: cada transição de etapa, isolamento por empresa, choices/validate_* nos campos novos.
+Tarefa 2.3 — Migração do bloco atual (dispatcher + renderer + templates)
+- block_marketplace.php::get_content() vira dispatcher: pega contexto (my/course-view) e perfil (admin / owner+seller / aluno) → escolhe a view.
+- classes/output/* templatables + renderer.php (um método por elemento) + templates/*.mustache.
+- Preservar o comportamento atual do aluno (assinaturas) — o bloco de curso/aluno (C4) é o bloco antigo evoluído.
+- styles.css escopado, tokens LDG, dark/light.
+Tarefa 2.4 — Páginas do wizard (D1–D6)
+- onboarding.php (D1: levantar estado de todas as etapas).
+- terms.php, document.php, plan.php, gateway.php (D3–D6) — reusam o que já existe no local_marketplace (form python do company_form, manage_gateway.php, páginas de plano); o bloco só adiciona a tela de fluxo + botões que apontam para cada config.
+Tarefa 2.5 — Vista ativa/relatórios (D2, C3)
+- Cards: alunos (count_active_students), assinaturas ativas, cursos vendidos (sale), escopados por empresa (D2) e por curso (C3 — helper novo count_for_course).
+- Links para report.php.
+Tarefa 2.6 — Aprovação admin + modo manual/auto (D7)
+- approvalmode no local_marketplace (default manual), respeitando o ADR-0006 (empresa escondida na submissão via local_partners).
+- Fila de administração (D7) prioriza plano pago > free; aprovar/recusar com nota (reusa padrão local_partners).
+- Caminho auto implementado isolado, desligado pelo setting; testes provam os dois modos sem ligar o automático em produção.
+- Upgrade do local_partners se necessário (criar empresa escondida na submissão).
+Tarefa 2.7 — Docs + CI + fechamento
+- README.md do bloco (instalação/configuração: addinstance, approvalmode, etapas), os 3 idiomas completos.
+- phpcs (ler o total), npx grunt (eslint/html/scss), check_database_schema.php, PHPUnit suite, Behat:
+- sem JS (navegação ida-e-volta das etapas);
+- @javascript que mede: coluna única no mobile sem rolagem horizontal (scrollWidth <= innerWidth), alvo de toque ≥44px, viewports 360/390/768/1024/1440, without runtime scaling;
+- admin aprova manual e vira active; modo auto não altera comportamento em manual.
+- Navegação como cliente empresa no navegador (rotina portal-conferencia-visual adaptada ao fluxo) + PR.
+Ponto de verificação agora: você quer que eu comece pela Tarefa 1.1 — ou seja, gerar o design.json do m3e-canvas com as 11 telas e o link #docz= para você abrir e aprovar — mantendo toda a Fase 2 intocada até o layout passar? Se sim, confirmo a ordem e, ao sair do plan mode, executo a Fase 1 primeiro.
+
+

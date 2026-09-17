@@ -1,0 +1,60 @@
+{
+ "indices": {
+  "local_marketplace_account": [
+   "companyid-country (unique)"
+  ],
+  "local_marketplace_company": [
+   "shortname (unique)",
+   "hostname (unique)"
+  ],
+  "local_marketplace_member": [
+   "companyid-userid (unique)"
+  ],
+  "local_marketplace_plan": [
+   "shortname (unique)",
+   "status-sortorder"
+  ],
+  "local_marketplace_plan_tier": [
+   "planid-sortorder"
+  ]
+ },
+ "tabelas": {
+  "local_marketplace_account": [
+   "id",
+   "companyid",
+   "country",
+   "accountid"
+  ],
+  "local_marketplace_company": [
+   "id",
+   "name",
+   "shortname",
+   "categoryid",
+   "commissionpct",
+   "commissionbase",
+   "planid"
+  ],
+  "local_marketplace_member": [
+   "id",
+   "companyid",
+   "userid",
+   "memberrole"
+  ],
+  "local_marketplace_plan": [
+   "id",
+   "shortname",
+   "name",
+   "monthlyfee",
+   "commissionpct",
+   "commissionbase",
+   "country"
+  ],
+  "local_marketplace_plan_tier": [
+   "id",
+   "planid",
+   "maxprice",
+   "maxresolution",
+   "sortorder"
+  ]
+ }
+}

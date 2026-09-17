@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 2160 1440" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="01-er-mestre-title 01-er-mestre-desc">
+      <title id="01-er-mestre-title">Mapa do banco: 16 tabelas proprias e 8 do core</title>
+      <desc id="01-er-mestre-desc">Mapa completo do modelo de dados dos onze plugins desenvolvidos para a plataforma, em quatro clusters - comercial, venda e acesso, gateways de pagamento e conteudo - mais as tabelas do core do Moodle que eles referenciam.</desc>
+      <defs>
+        <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap');</style>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#b0b3b8"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#3394ff"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8fa3bc"/></marker>
+        <marker id="arrow-soft" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8a8d91"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#121212"/>
+
+      <rect x="40" y="88" width="620" height="620" rx="8" fill="#ffffff" fill-opacity="0.02" stroke="#ffffff" stroke-opacity="0.20" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="52" y="104" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">COMERCIAL · LOCAL_MARKETPLACE</text>
+
+      <rect x="700" y="88" width="680" height="620" rx="8" fill="#ffffff" fill-opacity="0.02" stroke="#ffffff" stroke-opacity="0.20" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="712" y="104" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">VENDA E ACESSO · LOCAL_MARKETPLACE</text>
+
+      <rect x="1420" y="88" width="700" height="620" rx="8" fill="#ffffff" fill-opacity="0.02" stroke="#ffffff" stroke-opacity="0.20" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="1432" y="104" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">GATEWAYS · PAYGW_*</text>
+
+      <rect x="40" y="760" width="340" height="216" rx="8" fill="#ffffff" fill-opacity="0.02" stroke="#ffffff" stroke-opacity="0.20" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="52" y="776" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">CAPTACAO · LOCAL_PARTNERS</text>
+
+      <rect x="1020" y="952" width="568" height="200" rx="8" fill="#ffffff" fill-opacity="0.02" stroke="#ffffff" stroke-opacity="0.20" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="1032" y="968" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">CONTEUDO · MOD_LDGVIDEO + FORMAT_LDG</text>
+
+      <path d="M 188 246 L 188 300" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 494 246 L 494 300" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 352 364 L 312 364" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 312 565 L 324 565 Q 332 565 332 557 L 332 408 Q 332 400 340 400 L 352 400" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 494 428 L 494 808" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 866 246 L 866 300" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 866 508 L 866 428" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 1072 196 L 1048 196 Q 1040 196 1040 204 L 1040 348 Q 1040 356 1032 356 L 1008 356" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 1072 404 L 1032 404 Q 1024 404 1024 396 L 1024 388 Q 1024 380 1016 380 L 1008 380" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 724 364 L 636 364" fill="none" stroke="#3394ff" stroke-width="1" marker-end="url(#arrow-accent)"/>
+
+      <path d="M 1444 196 L 1416 196 Q 1408 196 1408 204 L 1408 844 Q 1408 852 1416 852 L 1444 852" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <path d="M 1764 376 L 1788 376 Q 1796 376 1796 384 L 1796 872 Q 1796 880 1788 880 L 1764 880" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <path d="M 1604 620 L 1604 808" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <path d="M 1214 468 L 1214 752 Q 1214 760 1222 760 L 1512 760 Q 1520 760 1520 768 L 1520 808" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 996 1057 L 1044 1057" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <path d="M 1316 1114 L 1316 1276 Q 1316 1284 1308 1284 L 862 1284 Q 854 1284 854 1276 L 854 1114" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <path d="M 1764 1160 L 1764 1100" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <rect x="644" y="342" width="72" height="12" rx="2" fill="#121212"/><text x="680" y="351" fill="#3394ff" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">PERTENCE A</text>
+
+      <rect x="64" y="132" width="248" height="114" rx="6" fill="#121212"/>
+      <rect x="64" y="132" width="248" height="114" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="64" y="132" width="248" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="64" y="152" width="248" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="64" y1="160" x2="312" y2="160" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="76" y="150" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_plan_tier</text>
+      <rect x="252" y="140" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="276.0" y="149" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="76" y="178" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="76" y="192" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; planid -&gt; _plan</text>
+      <text x="76" y="206" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">maxprice  NULO = faixa sem teto</text>
+      <text x="76" y="220" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">maxresolution  720p..4k</text>
+      <text x="76" y="234" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 4 outras colunas</text>
+
+      <rect x="64" y="300" width="248" height="128" rx="6" fill="#121212"/>
+      <rect x="64" y="300" width="248" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="64" y="300" width="248" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="64" y="320" width="248" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="64" y1="328" x2="312" y2="328" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="76" y="318" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_plan</text>
+      <rect x="252" y="308" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="276.0" y="317" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="76" y="346" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="76" y="360" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">shortname  UQ</text>
+      <text x="76" y="374" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">commissionpct · commissionbase</text>
+      <text x="76" y="388" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">monthlyfee · country · currency</text>
+      <text x="76" y="402" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">hostingmodel  native|byos</text>
+      <text x="76" y="416" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 10 outras colunas</text>
+
+      <rect x="64" y="508" width="248" height="114" rx="6" fill="#121212"/>
+      <rect x="64" y="508" width="248" height="114" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="64" y="508" width="248" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="64" y="528" width="248" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="64" y1="536" x2="312" y2="536" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="76" y="526" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_account</text>
+      <rect x="252" y="516" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="276.0" y="525" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="76" y="554" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="76" y="568" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; companyid -&gt; _company</text>
+      <text x="76" y="582" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; accountid -&gt; payment_accounts  UQ</text>
+      <text x="76" y="596" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">country  UMA CONTA POR PAIS</text>
+      <text x="76" y="610" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 3 outras colunas</text>
+
+      <rect x="352" y="132" width="284" height="114" rx="6" fill="#121212"/>
+      <rect x="352" y="132" width="284" height="114" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="352" y="132" width="284" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="352" y="152" width="284" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="352" y1="160" x2="636" y2="160" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="364" y="150" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_member</text>
+      <rect x="576" y="140" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="600.0" y="149" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="364" y="178" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="364" y="192" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; companyid -&gt; _company</text>
+      <text x="364" y="206" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; userid -&gt; user</text>
+      <text x="364" y="220" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">memberrole  owner|seller</text>
+      <text x="364" y="234" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 3 outras colunas</text>
+
+      <rect x="352" y="300" width="284" height="128" rx="6" fill="#121212"/>
+      <rect x="352" y="300" width="284" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="352" y="300" width="284" height="28" rx="6" fill="#3394ff" fill-opacity="0.12"/>
+      <rect x="352" y="320" width="284" height="8" fill="#3394ff" fill-opacity="0.12"/>
+      <line x1="352" y1="328" x2="636" y2="328" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="364" y="318" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_company</text>
+      <rect x="576" y="308" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="600.0" y="317" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="364" y="346" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="364" y="360" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; planid -&gt; _plan  NULO = fora de plano</text>
+      <text x="364" y="374" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; categoryid -&gt; course_categories</text>
+      <text x="364" y="388" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">shortname UQ · hostname UQ</text>
+      <text x="364" y="402" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">commissionpct · commissionbase</text>
+      <text x="364" y="416" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 11 outras colunas</text>
+
+      <rect x="724" y="132" width="284" height="114" rx="6" fill="#121212"/>
+      <rect x="724" y="132" width="284" height="114" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="724" y="132" width="284" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="724" y="152" width="284" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="724" y1="160" x2="1008" y2="160" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="736" y="150" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_offer_course</text>
+      <rect x="948" y="140" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="972.0" y="149" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="736" y="178" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="736" y="192" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; offerid -&gt; _offer</text>
+      <text x="736" y="206" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; courseid -&gt; course</text>
+      <text x="736" y="220" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">N:N  combo libera varios cursos</text>
+      <text x="736" y="234" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">offerid-courseid  UQ</text>
+
+      <rect x="724" y="300" width="284" height="128" rx="6" fill="#121212"/>
+      <rect x="724" y="300" width="284" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="724" y="300" width="284" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="724" y="320" width="284" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="724" y1="328" x2="1008" y2="328" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="736" y="318" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_offer</text>
+      <rect x="948" y="308" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="972.0" y="317" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="736" y="346" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="736" y="360" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; companyid -&gt; _company</text>
+      <text x="736" y="374" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">offertype  single|bundle|catalog</text>
+      <text x="736" y="388" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">price · country · currency</text>
+      <text x="736" y="402" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">accessmode  lifetime|days|recurring</text>
+      <text x="736" y="416" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 11 outras colunas</text>
+
+      <rect x="724" y="508" width="284" height="114" rx="6" fill="#121212"/>
+      <rect x="724" y="508" width="284" height="114" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="724" y="508" width="284" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="724" y="528" width="284" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="724" y1="536" x2="1008" y2="536" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="736" y="526" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_course</text>
+      <rect x="948" y="516" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="972.0" y="525" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="736" y="554" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="736" y="568" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; courseid -&gt; course  UQ</text>
+      <text x="736" y="582" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; companyid -&gt; _company</text>
+      <text x="736" y="596" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">hostingtype  external|platform</text>
+      <text x="736" y="610" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 5 outras colunas</text>
+
+      <rect x="1072" y="132" width="284" height="128" rx="6" fill="#121212"/>
+      <rect x="1072" y="132" width="284" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="1072" y="132" width="284" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1072" y="152" width="284" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1072" y1="160" x2="1356" y2="160" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1084" y="150" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_entitlement</text>
+      <rect x="1296" y="140" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1320.0" y="149" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="1084" y="178" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1084" y="192" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; userid -&gt; user</text>
+      <text x="1084" y="206" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; offerid -&gt; _offer</text>
+      <text x="1084" y="220" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; companyid -&gt; _company  desnormalizado</text>
+      <text x="1084" y="234" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">timeend  0 = vitalicio · cycles · norenew</text>
+      <text x="1084" y="248" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 6 outras colunas</text>
+
+      <rect x="1072" y="340" width="284" height="128" rx="6" fill="#121212"/>
+      <rect x="1072" y="340" width="284" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="1072" y="340" width="284" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1072" y="360" width="284" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1072" y1="368" x2="1356" y2="368" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1084" y="358" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_sale</text>
+      <rect x="1296" y="348" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1320.0" y="357" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="1084" y="386" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1084" y="400" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; paymentid -&gt; payments  UQ</text>
+      <text x="1084" y="414" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; offerid -&gt; _offer</text>
+      <text x="1084" y="428" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; companyid -&gt; _company</text>
+      <text x="1084" y="442" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">feepercent · feebase · feesource</text>
+      <text x="1084" y="456" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 6 outras colunas</text>
+
+      <rect x="1444" y="132" width="320" height="128" rx="6" fill="#121212"/>
+      <rect x="1444" y="132" width="320" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="1444" y="132" width="320" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1444" y="152" width="320" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1444" y1="160" x2="1764" y2="160" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1456" y="150" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">paygw_mercadopago</text>
+      <rect x="1704" y="140" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1728.0" y="149" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="1456" y="178" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1456" y="192" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; userid -&gt; user</text>
+      <text x="1456" y="206" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; itemid -&gt; _offer</text>
+      <text x="1456" y="220" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; accountid -&gt; payment_accounts</text>
+      <text x="1456" y="234" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">preferenceid · externalreference UQ</text>
+      <text x="1456" y="248" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 14 outras colunas</text>
+
+      <rect x="1444" y="312" width="320" height="128" rx="6" fill="#121212"/>
+      <rect x="1444" y="312" width="320" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="1444" y="312" width="320" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1444" y="332" width="320" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1444" y1="340" x2="1764" y2="340" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1456" y="330" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">paygw_asaas</text>
+      <rect x="1704" y="320" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1728.0" y="329" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="1456" y="358" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1456" y="372" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; userid -&gt; user</text>
+      <text x="1456" y="386" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; itemid -&gt; _offer</text>
+      <text x="1456" y="400" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; accountid -&gt; payment_accounts</text>
+      <text x="1456" y="414" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">subscriptionid  liga os ciclos</text>
+      <text x="1456" y="428" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 17 outras colunas</text>
+
+      <rect x="1444" y="492" width="320" height="128" rx="6" fill="#121212"/>
+      <rect x="1444" y="492" width="320" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="1444" y="492" width="320" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1444" y="512" width="320" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1444" y1="520" x2="1764" y2="520" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1456" y="510" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">paygw_pagarme</text>
+      <rect x="1704" y="500" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1728.0" y="509" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="1456" y="538" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1456" y="552" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; userid -&gt; user</text>
+      <text x="1456" y="566" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; itemid -&gt; _offer</text>
+      <text x="1456" y="580" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">&gt; accountid -&gt; payment_accounts</text>
+      <text x="1456" y="594" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">subscriptionid · chargeid · orderid</text>
+      <text x="1456" y="608" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 20 outras colunas</text>
+
+      <rect x="64" y="808" width="284" height="128" rx="6" fill="#121212"/>
+      <rect x="64" y="808" width="284" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="64" y="808" width="284" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="64" y="828" width="284" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="64" y1="836" x2="348" y2="836" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="76" y="826" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_partners_application</text>
+      <rect x="288" y="816" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="312.0" y="825" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="76" y="854" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="76" y="868" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. planid -&gt; _plan   (sem FK)</text>
+      <text x="76" y="882" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. companyid -&gt; _company  (sem FK)</text>
+      <text x="76" y="896" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. userid / reviewerid -&gt; user</text>
+      <text x="76" y="910" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">status  unconfirmed|pending|approved|rejected</text>
+      <text x="76" y="924" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 19 outras colunas</text>
+
+      <rect x="1044" y="1000" width="248" height="114" rx="6" fill="#121212"/>
+      <rect x="1044" y="1000" width="248" height="114" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="1044" y="1000" width="248" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1044" y="1020" width="248" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1044" y1="1028" x2="1292" y2="1028" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1056" y="1018" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">ldgvideo</text>
+      <rect x="1232" y="1008" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1256.0" y="1017" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="1056" y="1046" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1056" y="1060" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. course -&gt; course</text>
+      <text x="1056" y="1074" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">videourl  o endereco, nunca o arquivo</text>
+      <text x="1056" y="1088" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">aspectratio  16:9|9:16|4:3</text>
+      <text x="1056" y="1102" fill="#b0b3b8" opacity="0.75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 5 outras colunas</text>
+
+      <rect x="1316" y="1000" width="248" height="114" rx="6" fill="#121212"/>
+      <rect x="1316" y="1000" width="248" height="114" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="1316" y="1000" width="248" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1316" y="1020" width="248" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1316" y1="1028" x2="1564" y2="1028" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1328" y="1018" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">format_ldg_lesson</text>
+      <rect x="1504" y="1008" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1528.0" y="1017" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ENTITY</text>
+      <text x="1328" y="1046" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1328" y="1060" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. cmid -&gt; course_modules  UQ</text>
+      <text x="1328" y="1074" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">duration  NULO = desconhecida</text>
+      <text x="1328" y="1088" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">sem campo de usuario nenhum</text>
+      <text x="1328" y="1102" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">null_provider de privacidade</text>
+
+      <rect x="424" y="808" width="248" height="100" rx="6" fill="#121212"/>
+      <rect x="424" y="808" width="248" height="100" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <rect x="424" y="808" width="248" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="424" y="828" width="248" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="424" y1="836" x2="672" y2="836" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="436" y="826" fill="#b0b3b8" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">course_categories</text>
+      <rect x="624" y="816" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="642.0" y="825" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+      <text x="436" y="854" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="436" y="868" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">name · parent · path</text>
+      <text x="436" y="882" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">theme  o tema da empresa</text>
+      <text x="436" y="896" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">a empresa E uma categoria</text>
+
+      <rect x="712" y="808" width="284" height="114" rx="6" fill="#121212"/>
+      <rect x="712" y="808" width="284" height="114" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <rect x="712" y="808" width="284" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="712" y="828" width="284" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="712" y1="836" x2="996" y2="836" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="724" y="826" fill="#b0b3b8" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">user</text>
+      <rect x="948" y="816" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="966.0" y="825" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+      <text x="724" y="854" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="724" y="868" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">referenciada por 9 tabelas nossas:</text>
+      <text x="724" y="882" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">member · entitlement · os 3 paygw</text>
+      <text x="724" y="896" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">application (userid e reviewerid)</text>
+      <text x="724" y="910" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">payments · user_enrolments</text>
+
+      <rect x="1444" y="808" width="320" height="114" rx="6" fill="#121212"/>
+      <rect x="1444" y="808" width="320" height="114" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <rect x="1444" y="808" width="320" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1444" y="828" width="320" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1444" y1="836" x2="1764" y2="836" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1456" y="826" fill="#b0b3b8" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">payments</text>
+      <rect x="1716" y="816" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1734.0" y="825" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+      <text x="1456" y="854" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1456" y="868" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">component · paymentarea · itemid</text>
+      <text x="1456" y="882" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">userid · amount · currency · gateway</text>
+      <text x="1456" y="896" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. accountid -&gt; payment_accounts</text>
+      <text x="1456" y="910" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">FONTE DA VERDADE FINANCEIRA</text>
+
+      <rect x="1808" y="808" width="280" height="114" rx="6" fill="#121212"/>
+      <rect x="1808" y="808" width="280" height="114" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <rect x="1808" y="808" width="280" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1808" y="828" width="280" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1808" y1="836" x2="2088" y2="836" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1820" y="826" fill="#b0b3b8" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">payment_accounts</text>
+      <rect x="2040" y="816" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="2058.0" y="825" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+      <text x="1820" y="854" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1820" y="868" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">contextid = categoria da empresa</text>
+      <text x="1820" y="882" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">enabled</text>
+      <text x="1820" y="896" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">referenciada por _account e</text>
+      <text x="1820" y="910" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">pelos 3 paygw</text>
+
+      <rect x="424" y="1000" width="248" height="100" rx="6" fill="#121212"/>
+      <rect x="424" y="1000" width="248" height="100" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <rect x="424" y="1000" width="248" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="424" y="1020" width="248" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="424" y1="1028" x2="672" y2="1028" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="436" y="1018" fill="#b0b3b8" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">course</text>
+      <rect x="624" y="1008" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="642.0" y="1017" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+      <text x="436" y="1046" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="436" y="1060" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. category -&gt; course_categories</text>
+      <text x="436" y="1074" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">referenciada por _offer_course,</text>
+      <text x="436" y="1088" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">_course, ldgvideo e enrol</text>
+
+      <rect x="712" y="1000" width="284" height="114" rx="6" fill="#121212"/>
+      <rect x="712" y="1000" width="284" height="114" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <rect x="712" y="1000" width="284" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="712" y="1020" width="284" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="712" y1="1028" x2="996" y2="1028" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="724" y="1018" fill="#b0b3b8" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">course_modules</text>
+      <rect x="948" y="1008" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="966.0" y="1017" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+      <text x="724" y="1046" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="724" y="1060" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. instance -&gt; ldgvideo</text>
+      <text x="724" y="1074" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">availability  JSON, e onde o</text>
+      <text x="724" y="1088" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">availability_marketplace guarda</text>
+      <text x="724" y="1102" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">{"type":"marketplace","offerid":N}</text>
+
+      <rect x="1640" y="1000" width="248" height="100" rx="6" fill="#121212"/>
+      <rect x="1640" y="1000" width="248" height="100" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <rect x="1640" y="1000" width="248" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1640" y="1020" width="248" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1640" y1="1028" x2="1888" y2="1028" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1652" y="1018" fill="#b0b3b8" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">enrol</text>
+      <rect x="1840" y="1008" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1858.0" y="1017" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+      <text x="1652" y="1046" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1652" y="1060" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. courseid -&gt; course</text>
+      <text x="1652" y="1074" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">enrol = 'marketplace'</text>
+      <text x="1652" y="1088" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">o enrol_marketplace vive aqui</text>
+
+      <rect x="1640" y="1160" width="248" height="100" rx="6" fill="#121212"/>
+      <rect x="1640" y="1160" width="248" height="100" rx="6" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <rect x="1640" y="1160" width="248" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
+      <rect x="1640" y="1180" width="248" height="8" fill="#ffffff" fill-opacity="0.04"/>
+      <line x1="1640" y1="1188" x2="1888" y2="1188" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+      <text x="1652" y="1178" fill="#b0b3b8" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">user_enrolments</text>
+      <rect x="1840" y="1168" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="1858.0" y="1177" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+      <text x="1652" y="1206" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace"># id</text>
+      <text x="1652" y="1220" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. enrolid -&gt; enrol</text>
+      <text x="1652" y="1234" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">. userid -&gt; user</text>
+      <text x="1652" y="1248" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">timeend  projecao do direito</text>
+
+      <line x1="40" y1="1320" x2="2120" y2="1320" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
+      <text x="40" y="1340" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+      <line x1="112" y1="1336" x2="132" y2="1336" stroke="#3394ff" stroke-width="1" marker-end="url(#arrow-accent)"/>
+      <text x="140" y="1340" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">A ESPINHA: EMPRESA -&gt; OFERTA</text>
+      <line x1="522" y1="1336" x2="542" y2="1336" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+      <text x="550" y="1340" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">FK DECLARADA NO INSTALL.XML</text>
+      <line x1="932" y1="1336" x2="952" y2="1336" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+      <text x="960" y="1340" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">VINCULO REAL SEM FK DECLARADA</text>
+      <rect x="1342" y="1330" width="20" height="12" rx="2" fill="#3394ff" fill-opacity="0.12" stroke="#3394ff" stroke-width="1"/>
+      <text x="1370" y="1340" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">RAIZ AGREGADA</text>
+      <rect x="1752" y="1330" width="20" height="12" rx="2" fill="#ffffff" fill-opacity="0.03" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1"/>
+      <text x="1780" y="1340" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">TABELA DO CORE DO MOODLE</text>
+    </svg>

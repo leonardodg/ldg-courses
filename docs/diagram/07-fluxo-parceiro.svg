@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1360 1160" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="07-fluxo-parceiro-title 07-fluxo-parceiro-desc">
+      <title id="07-fluxo-parceiro-title">Cadastro de parceiro: da landing a empresa provisionada</title>
+      <desc id="07-fluxo-parceiro-desc">Fluxo da candidatura de empresa parceira, da landing publica ate a aprovacao pelo administrador, incluindo a confirmacao de e-mail exigida apenas de quem ainda nao tem conta no site.</desc>
+      <defs>
+        <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap');</style>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#b0b3b8"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#3394ff"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8fa3bc"/></marker>
+        <marker id="arrow-soft" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8a8d91"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#121212"/>
+
+      <rect x="40" y="688" width="1280" height="180" rx="8" fill="#ffffff" fill-opacity="0.02" stroke="#ffffff" stroke-opacity="0.20" stroke-width="1" stroke-dasharray="4,4"/>
+      <text x="52" y="704" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">AREA DO ADMINISTRADOR DO SITE</text>
+
+      <path d="M 680 104 L 680 152" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 680 208 L 680 256" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 680 312 L 680 352" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 540 400 L 508 400 Q 500 400 500 408 L 500 486 Q 500 494 492 494 L 460 494" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 310 524 L 310 584" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 310 640 L 310 736" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 820 400 L 892 400 Q 900 400 900 408 L 900 652 Q 900 660 892 660 L 698 660 Q 690 660 690 668 L 690 736" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 460 766 L 540 766" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 840 766 L 1030 766" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 1160 814 L 1160 996 Q 1160 1004 1152 1004 L 880 1004" fill="none" stroke="#3394ff" stroke-width="1" marker-end="url(#arrow-accent)"/>
+
+      <path d="M 1160 718 L 1160 608" fill="none" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+      <rect x="508" y="442" width="32" height="12" rx="2" fill="#121212"/><text x="516" y="451" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="start" letter-spacing="0.06em">NAO</text>
+
+      <rect x="908" y="442" width="32" height="12" rx="2" fill="#121212"/><text x="916" y="451" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="start" letter-spacing="0.06em">SIM</text>
+
+      <rect x="996" y="982" width="48" height="12" rx="2" fill="#121212"/><text x="1020" y="991" fill="#3394ff" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">APROVA</text>
+
+      <rect x="1168" y="655" width="120" height="12" rx="2" fill="#121212"/><text x="1176" y="664" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="start" letter-spacing="0.06em">RECUSA + REVIEWNOTE</text>
+
+      <rect x="520" y="56" width="320" height="48" rx="20" fill="#121212"/>
+      <rect x="520" y="56" width="320" height="48" rx="20" fill="#b0b3b8" fill-opacity="0.10" stroke="#8a8d91" stroke-width="1"/>
+      <text x="680" y="84" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">Visitante na landing</text>
+
+      <rect x="520" y="152" width="320" height="56" rx="6" fill="#121212"/>
+      <rect x="520" y="152" width="320" height="56" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="528" y="158" width="54" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="555.0" y="167" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">LANDING</text>
+      <text x="680" y="182" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">index.php</text>
+      <text x="680" y="196" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">publica, sem require_login</text>
+
+      <rect x="520" y="256" width="320" height="56" rx="6" fill="#121212"/>
+      <rect x="520" y="256" width="320" height="56" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="528" y="262" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="546.0" y="271" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">FORM</text>
+      <text x="680" y="286" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">apply.php</text>
+      <text x="680" y="300" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">3 camadas anti-spam</text>
+
+      <polygon points="680,352.0 820.0,400 680,448.0 540.0,400" fill="#121212"/>
+      <polygon points="680,352.0 820.0,400 680,448.0 540.0,400" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <text x="680" y="396" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">Ja tem conta?</text>
+      <text x="680" y="412" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">userid preenchido?</text>
+
+      <rect x="160" y="464" width="300" height="60" rx="6" fill="#121212"/>
+      <rect x="160" y="464" width="300" height="60" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="168" y="470" width="32" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="184.0" y="479" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">NAO</text>
+      <text x="310" y="496" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">E-mail com confirmtoken</text>
+      <text x="310" y="510" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">status = unconfirmed</text>
+
+      <rect x="160" y="584" width="300" height="56" rx="6" fill="#121212"/>
+      <rect x="160" y="584" width="300" height="56" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="168" y="590" width="42" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="189.0" y="599" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">TOKEN</text>
+      <text x="310" y="614" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">confirm.php</text>
+      <text x="310" y="628" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">unconfirmed -&gt; pending</text>
+
+      <rect x="160" y="736" width="300" height="60" rx="6" fill="#121212"/>
+      <rect x="160" y="736" width="300" height="60" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="168" y="742" width="36" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="186.0" y="751" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">FILA</text>
+      <text x="310" y="768" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">admin/applications.php</text>
+      <text x="310" y="782" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">fila por status e chegada</text>
+
+      <rect x="540" y="736" width="300" height="60" rx="6" fill="#121212"/>
+      <rect x="540" y="736" width="300" height="60" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="548" y="742" width="48" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
+      <text x="572.0" y="751" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">DECIDE</text>
+      <text x="690" y="768" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">admin/application_view.php</text>
+      <text x="690" y="782" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">escolhe o shortname aqui</text>
+
+      <polygon points="1160,718.0 1290.0,766 1160,814.0 1030.0,766" fill="#121212"/>
+      <polygon points="1160,718.0 1290.0,766 1160,814.0 1030.0,766" fill="#3394ff" fill-opacity="0.12" stroke="#3394ff" stroke-width="1"/>
+      <text x="1160" y="766" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">Aprovar?</text>
+
+      <rect x="520" y="980" width="360" height="48" rx="20" fill="#121212"/>
+      <rect x="520" y="980" width="360" height="48" rx="20" fill="#3394ff" fill-opacity="0.12" stroke="#3394ff" stroke-width="1"/>
+      <text x="700" y="1008" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">Empresa provisionada</text>
+
+      <rect x="1030" y="560" width="260" height="48" rx="20" fill="#121212"/>
+      <rect x="1030" y="560" width="260" height="48" rx="20" fill="#b0b3b8" fill-opacity="0.10" stroke="#8a8d91" stroke-width="1"/>
+      <text x="1160" y="588" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">Candidatura recusada</text>
+
+      <line x1="40" y1="1080" x2="1320" y2="1080" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
+      <text x="40" y="1100" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+      <line x1="112" y1="1096" x2="132" y2="1096" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+      <text x="140" y="1100" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">CAMINHO NORMAL</text>
+      <line x1="532" y1="1096" x2="552" y2="1096" stroke="#3394ff" stroke-width="1" marker-end="url(#arrow-accent)"/>
+      <text x="560" y="1100" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">O PORTAO: CRIA CATEGORIA</text>
+      <line x1="952" y1="1096" x2="972" y2="1096" stroke="#b0b3b8" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+      <text x="980" y="1100" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">RECUSA</text>
+    </svg>

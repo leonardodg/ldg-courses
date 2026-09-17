@@ -105,3 +105,7 @@ tsconfig.aliases.json
 
 # Grafo de conhecimento gerado pelo graphify. Regeneravel, ~1 MB.
 /graphify-out/
+
+# Bytecode do Python, gerado pelos scripts de docs/diagram/gerar/.
+__pycache__/
+*.pyc

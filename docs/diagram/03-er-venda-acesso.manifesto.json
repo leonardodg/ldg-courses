@@ -1,0 +1,60 @@
+{
+ "indices": {
+  "local_marketplace_entitlement": [
+   "userid-status",
+   "userid-companyid"
+  ],
+  "local_marketplace_offer": [
+   "companyid-status",
+   "companyid-country"
+  ],
+  "local_marketplace_offer_course": [
+   "offerid-courseid (unique)"
+  ],
+  "local_marketplace_sale": [
+   "companyid-timecreated"
+  ]
+ },
+ "tabelas": {
+  "local_marketplace_entitlement": [
+   "id",
+   "userid",
+   "offerid",
+   "companyid",
+   "timeend",
+   "status",
+   "cycles"
+  ],
+  "local_marketplace_offer": [
+   "id",
+   "companyid",
+   "name",
+   "offertype",
+   "price",
+   "country",
+   "accessmode"
+  ],
+  "local_marketplace_offer_course": [
+   "id",
+   "offerid",
+   "courseid"
+  ],
+  "local_marketplace_sale": [
+   "id",
+   "paymentid",
+   "offerid",
+   "companyid",
+   "feeamount",
+   "feepercent",
+   "feesource"
+  ],
+  "payments": [
+   "id",
+   "component",
+   "paymentarea",
+   "itemid",
+   "userid",
+   "gateway"
+  ]
+ }
+}
