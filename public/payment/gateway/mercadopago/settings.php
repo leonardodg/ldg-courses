@@ -157,16 +157,14 @@ if ($ADMIN->fulltree) {
     // plugin sem ler a documentacao nao pode acabar em escopo sem ter
     // escolhido isso.
     //
-    // Gerado do proprio conjunto, e com o enquadramento PCI no rotulo: a
-    // escolha e feita nesta tela, e o custo dela precisa estar visivel aqui, e
-    // nao num documento que ninguem abre na hora de escolher.
-    $modoscartao = [];
-    foreach (\paygw_mercadopago\card_capture::MODES as $modo) {
-        $modoscartao[$modo] = get_string('cardcapture' . $modo, 'paygw_mercadopago', (object) [
-            'scope' => \paygw_mercadopago\card_capture::scope_of($modo),
-        ]);
-    }
-
+    // Gerado do proprio conjunto (card_capture::form_options()), e com o
+    // enquadramento PCI no rotulo: a escolha e feita nesta tela, e o custo
+    // dela precisa estar visivel aqui, e nao num documento que ninguem abre
+    // na hora de escolher. E o MESMO metodo que monta a lista por conta, em
+    // gateway.php - as duas listas nao podem divergir.
+    //
+    // ESTE VALOR E O PADRAO: cada empresa pode escolher o proprio modo na
+    // configuracao da conta de pagamento dela; quem nao escolher usa este.
     $settings->add(new admin_setting_configselect(
         'paygw_mercadopago/cardcapture',
         get_string('cardcapture', 'paygw_mercadopago'),
@@ -178,8 +176,23 @@ if ($ADMIN->fulltree) {
                 )
                 : ''),
         \paygw_mercadopago\card_capture::MODE_BRICK,
-        $modoscartao
+        \paygw_mercadopago\card_capture::form_options()
     ));
+
+    // Os meios aceitos, um checkbox por meio - e este e o PADRAO do site.
+    //
+    // Marcados por padrao porque e o comportamento que o plugin sempre teve:
+    // cartao, Pix e boleto juntos. Uma empresa so diverge deste padrao
+    // escolhendo isso na conta dela, em gateway.php - desmarcar aqui muda o
+    // padrao para quem nao escolheu, e nao desliga de ninguem que escolheu.
+    foreach (\paygw_mercadopago\payment_methods::METHODS as $metododopadrao) {
+        $settings->add(new admin_setting_configcheckbox(
+            'paygw_mercadopago/method' . $metododopadrao,
+            get_string('method' . $metododopadrao, 'paygw_mercadopago'),
+            get_string('method' . $metododopadrao . '_desc', 'paygw_mercadopago'),
+            1
+        ));
+    }
 
     // Vale para o SITE inteiro, e nao por conta, porque o ambiente e uma
     // propriedade do conjunto: comprador, vendedor e aplicacao precisam estar

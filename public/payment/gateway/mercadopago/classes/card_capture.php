@@ -89,10 +89,15 @@ class card_capture {
      * engano mandaria numero de cartao por uma pagina que qualquer um no
      * caminho reescreve, e o sintoma seria invisivel ate o vazamento.
      *
+     * CADA EMPRESA PODE ESCOLHER O PROPRIO MODO, e a config do site continua
+     * valendo como padrao para quem nao escolheu - contas que existiam antes
+     * desta opcao nao mudam de comportamento sozinhas.
+     *
+     * @param int $accountid Conta de pagamento da empresa, 0 para so o site
      * @return string Um dos MODES
      */
-    public static function current(): string {
-        $configurado = (string) get_config('paygw_mercadopago', 'cardcapture');
+    public static function current(int $accountid = 0): string {
+        $configurado = self::configured_mode($accountid);
 
         // Inclui o valor vazio e o desconhecido: qualquer duvida cai no modo
         // que nao toca no cartao.
@@ -101,6 +106,59 @@ class card_capture {
         }
 
         return self::mode_is_allowed($configurado) ? $configurado : self::MODE_BRICK;
+    }
+
+    /**
+     * O modo configurado, na conta ou no site - antes de qualquer guarda de
+     * HTTPS.
+     *
+     * @param int $accountid
+     * @return string
+     */
+    protected static function configured_mode(int $accountid): string {
+        if ($accountid > 0) {
+            $daconta = (string) (self::account_config($accountid)['cardcapture'] ?? '');
+            if ($daconta !== '') {
+                return $daconta;
+            }
+        }
+
+        return (string) get_config('paygw_mercadopago', 'cardcapture');
+    }
+
+    /**
+     * A configuracao desta CONTA de pagamento (empresa), ou vazia quando a
+     * conta nao existe ou nao esta vinculada ainda.
+     *
+     * Vazio e nao excecao de proposito: card_capture precisa de uma resposta
+     * mesmo antes de a conta estar configurada - e nesse caso o padrao do
+     * site e a resposta certa, nao um erro na tela.
+     *
+     * @param int $accountid
+     * @return array
+     */
+    protected static function account_config(int $accountid): array {
+        return gateway::account_configuration($accountid);
+    }
+
+    /**
+     * As opcoes do modo de captura, para um <select> - usada no site
+     * (settings.php) e por conta (gateway.php), para a lista nao poder
+     * divergir entre as duas telas.
+     *
+     * @param bool $comopcaopadrao Inclui uma opcao vazia = "usar o padrao do site"
+     * @return array<string,string>
+     */
+    public static function form_options(bool $comopcaopadrao = false): array {
+        $opcoes = $comopcaopadrao ? ['' => get_string('cardcaptureusesite', 'paygw_mercadopago')] : [];
+
+        foreach (self::MODES as $modo) {
+            $opcoes[$modo] = get_string('cardcapture' . $modo, 'paygw_mercadopago', (object) [
+                'scope' => self::scope_of($modo),
+            ]);
+        }
+
+        return $opcoes;
     }
 
     /**
@@ -156,10 +214,11 @@ class card_capture {
     /**
      * O modo escolhido esta sendo ignorado?
      *
+     * @param int $accountid Conta de pagamento da empresa, 0 para so o site
      * @return bool
      */
-    public static function is_blocked(): bool {
-        $configurado = (string) get_config('paygw_mercadopago', 'cardcapture');
+    public static function is_blocked(int $accountid = 0): bool {
+        $configurado = self::configured_mode($accountid);
 
         return in_array($configurado, self::MODES, true) && !self::mode_is_allowed($configurado);
     }

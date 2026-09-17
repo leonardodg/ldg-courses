@@ -73,6 +73,13 @@ class gateway extends \core_payment\gateway {
      * split que nao funciona - falha que so apareceria na conciliacao, depois
      * do dinheiro ja ter caido errado.
      *
+     * QUEM PREENCHE ESTA TELA E O ADMIN, nunca o vendedor: e a tela de "Site
+     * administration > Payments > Payment accounts", atras da mesma capability
+     * que gerencia qualquer conta de pagamento do Moodle. O modo de captura de
+     * cartao e os meios aceitos por empresa entram aqui exatamente por isso -
+     * sao decisao de quem administra a plataforma, empresa a empresa, e nao um
+     * ajuste que o vendedor faz sozinho.
+     *
      * @param \core_payment\form\account_gateway $form
      * @return void
      */
@@ -87,6 +94,31 @@ class gateway extends \core_payment\gateway {
         );
         // Sem isto o markup sai escapado e o vendedor ve as tags na tela.
         $mform->setType('oauthstatus', PARAM_RAW);
+
+        // Modo de captura do cartao e meios aceitos, POR EMPRESA.
+        //
+        // O valor vazio ('') significa "usar o padrao do site", e e o padrao
+        // do proprio campo - contas que existiam antes desta opcao continuam
+        // se comportando exatamente como antes, porque cai direto no
+        // site::get_config() dentro de card_capture/payment_methods.
+        $mform->addElement(
+            'select',
+            'cardcapture',
+            get_string('cardcaptureaccount', 'paygw_mercadopago'),
+            card_capture::form_options(true)
+        );
+        $mform->setDefault('cardcapture', '');
+        $mform->addHelpButton('cardcapture', 'cardcaptureaccount', 'paygw_mercadopago');
+
+        foreach (payment_methods::METHODS as $metodo) {
+            $mform->addElement(
+                'select',
+                'method' . $metodo,
+                get_string('methodaccount' . $metodo, 'paygw_mercadopago'),
+                payment_methods::form_options()
+            );
+            $mform->setDefault('method' . $metodo, '');
+        }
 
         // NAO ha caixa de "modo de teste" aqui.
         //
@@ -244,6 +276,30 @@ class gateway extends \core_payment\gateway {
         }
 
         return payment_processor::cancel_subscription((string) $linha->subscriptionid);
+    }
+
+    /**
+     * A configuracao desta CONTA de pagamento (empresa), ou vazia quando a
+     * conta ainda nao existe ou nao esta vinculada a este gateway.
+     *
+     * Compartilhada por card_capture e payment_methods, para as duas nao lerem
+     * o account_gateway cada uma do seu jeito - o dia em que a leitura mudasse
+     * (por exemplo, cache), mudaria num lugar so.
+     *
+     * @param int $accountid
+     * @return array
+     */
+    public static function account_configuration(int $accountid): array {
+        try {
+            $gateway = \core_payment\account_gateway::get_record([
+                'accountid' => $accountid,
+                'gateway' => 'mercadopago',
+            ]);
+
+            return $gateway ? $gateway->get_configuration() : [];
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     /**

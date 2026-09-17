@@ -1022,6 +1022,28 @@ final class payment_processor_test extends \advanced_testcase {
     }
 
     /**
+     * Empresa que desligou cartao nao oferece "trocar para cartao".
+     *
+     * Sem esta guarda, o botao levaria o aluno a uma pagina de captura de
+     * cartao que a propria empresa decidiu nao aceitar - uma escolha da
+     * empresa que o codigo do gateway estaria ignorando.
+     *
+     * @return void
+     */
+    public function test_nao_troca_para_cartao_quando_a_empresa_desligou_cartao(): void {
+        $this->resetAfterTest();
+
+        set_config('methodcard', 0, 'paygw_mercadopago');
+
+        $pix = $this->linha(['subscriptionid' => 'mdlsub-1-2-switch4', 'paymentmethod' => 'pix']);
+
+        $this->assertFalse(
+            payment_processor::can_switch_to_card($pix),
+            'a empresa desligou cartao no proprio padrao (aqui, o do site)'
+        );
+    }
+
+    /**
      * Confirmar com CVV so faz sentido para um ciclo de CARTAO ja criado
      * por issue_card_cycle() e AINDA NAO cobrado - confirmar de novo um
      * ciclo ja pago cobraria duas vezes.

@@ -1702,6 +1702,11 @@ class payment_processor {
             return false;
         }
 
+        if (!payment_methods::enabled(payment_methods::METHOD_CARD, (int) $record->accountid)) {
+            // A empresa desligou cartao nesta conta: nao ha para onde trocar.
+            return false;
+        }
+
         return in_array((string) $record->paymentmethod, self::INVOICE_METHODS, true);
     }
 

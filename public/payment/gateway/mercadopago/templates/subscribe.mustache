@@ -49,6 +49,9 @@
     * methodcard bool
     * methodpix bool
     * methodboleto bool
+    * showcard bool
+    * showpix bool
+    * showboleto bool
     * cardurl string
     * pixurl string
     * boletourl string
@@ -67,6 +70,9 @@
         "methodcard": true,
         "methodpix": false,
         "methodboleto": false,
+        "showcard": true,
+        "showpix": true,
+        "showboleto": false,
         "cardurl": "https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc&method=card",
         "pixurl": "https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc&method=pix",
         "boletourl": "https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc&method=boleto",
@@ -92,21 +98,27 @@
         sem duplicar logica de mostrar/esconder no cliente.
     }}
     <ul class="nav nav-tabs mb-3">
+        {{#showcard}}
         <li class="nav-item">
             <a class="nav-link {{#methodcard}}active{{/methodcard}}" href="{{cardurl}}">
                 {{#str}} subscribecard, paygw_mercadopago {{/str}}
             </a>
         </li>
+        {{/showcard}}
+        {{#showpix}}
         <li class="nav-item">
             <a class="nav-link {{#methodpix}}active{{/methodpix}}" href="{{pixurl}}">
                 {{#str}} subscribepix, paygw_mercadopago {{/str}}
             </a>
         </li>
+        {{/showpix}}
+        {{#showboleto}}
         <li class="nav-item">
             <a class="nav-link {{#methodboleto}}active{{/methodboleto}}" href="{{boletourl}}">
                 {{#str}} subscribeboleto, paygw_mercadopago {{/str}}
             </a>
         </li>
+        {{/showboleto}}
     </ul>
 
     {{#methodpix}}

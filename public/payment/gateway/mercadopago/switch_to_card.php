@@ -69,7 +69,7 @@ $PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('switchtocard', 'local_marketplace'));
 $PAGE->set_heading(get_string('switchtocard', 'local_marketplace'));
 
-$modo = card_capture::current();
+$modo = card_capture::current((int) $record->accountid);
 $apptype = (string) $record->apptype;
 $publickey = application::public_key($apptype);
 

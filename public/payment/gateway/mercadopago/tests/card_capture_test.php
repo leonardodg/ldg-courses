@@ -213,6 +213,105 @@ final class card_capture_test extends \advanced_testcase {
     }
 
     /**
+     * Sem conta escolhida, vale so o padrao do site.
+     *
+     * @return void
+     */
+    public function test_conta_sem_escolha_usa_o_padrao_do_site(): void {
+        $this->resetAfterTest();
+
+        set_config('cardcapture', card_capture::MODE_DIRECT, 'paygw_mercadopago');
+        $this->set_https(true);
+
+        $accountid = $this->criar_conta_vinculada('');
+
+        $this->assertSame(card_capture::MODE_DIRECT, card_capture::current($accountid));
+    }
+
+    /**
+     * A conta que escolheu o proprio modo NAO usa o padrao do site.
+     *
+     * E a garantia central desta funcionalidade: a empresa que quer expor
+     * menos (ou mais) risco do que o padrao do site consegue, sem afetar as
+     * outras contas.
+     *
+     * @return void
+     */
+    public function test_conta_com_escolha_propria_ignora_o_padrao_do_site(): void {
+        $this->resetAfterTest();
+
+        set_config('cardcapture', card_capture::MODE_BRICK, 'paygw_mercadopago');
+        $this->set_https(true);
+
+        $accountid = $this->criar_conta_vinculada(card_capture::MODE_NATIVE);
+
+        $this->assertSame(card_capture::MODE_NATIVE, card_capture::current($accountid));
+
+        // E o site, sem accountid, continua no proprio padrao.
+        $this->assertSame(card_capture::MODE_BRICK, card_capture::current());
+    }
+
+    /**
+     * A guarda de HTTPS vale por conta tanto quanto vale para o site.
+     *
+     * A empresa nao pode escapar da protecao escolhendo o modo nativo: sem
+     * TLS, a escolha dela e ignorada exatamente como seria a do site.
+     *
+     * @return void
+     */
+    public function test_a_guarda_de_https_vale_tambem_para_a_escolha_da_conta(): void {
+        $this->resetAfterTest();
+
+        $this->set_https(false);
+        $accountid = $this->criar_conta_vinculada(card_capture::MODE_NATIVE);
+
+        $this->assertSame(card_capture::MODE_BRICK, card_capture::current($accountid));
+        $this->assertTrue(card_capture::is_blocked($accountid));
+    }
+
+    /**
+     * Conta que nao existe, ou nao esta vinculada, nao quebra: cai no site.
+     *
+     * @return void
+     */
+    public function test_conta_inexistente_cai_no_padrao_do_site(): void {
+        $this->resetAfterTest();
+
+        set_config('cardcapture', card_capture::MODE_DIRECT, 'paygw_mercadopago');
+        $this->set_https(true);
+
+        $this->assertSame(card_capture::MODE_DIRECT, card_capture::current(999999));
+    }
+
+    /**
+     * Cria uma conta de pagamento vinculada ao gateway mercadopago, com o
+     * cardcapture configurado (ou vazio, para testar o "usa o padrao").
+     *
+     * @param string $cardcapture
+     * @return int accountid
+     */
+    protected function criar_conta_vinculada(string $cardcapture): int {
+        $account = new \core_payment\account(0, (object) [
+            'name' => 'Empresa de teste',
+            'idnumber' => 'empresateste' . rand(1, 999999),
+            'contextid' => \context_system::instance()->id,
+            'enabled' => 1,
+        ]);
+        $account->create();
+        $accountid = (int) $account->get('id');
+
+        $gateway = new \core_payment\account_gateway(0, (object) [
+            'accountid' => $accountid,
+            'gateway' => 'mercadopago',
+            'enabled' => 1,
+            'config' => json_encode(['cardcapture' => $cardcapture]),
+        ]);
+        $gateway->create();
+
+        return $accountid;
+    }
+
+    /**
      * Finge que a requisicao chegou por HTTPS, ou nao.
      *
      * O is_https() do core olha o wwwroot depois do sslproxy, entao mexer no

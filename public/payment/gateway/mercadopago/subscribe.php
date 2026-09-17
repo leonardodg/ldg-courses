@@ -35,6 +35,7 @@ require(__DIR__ . '/../../../config.php');
 
 use paygw_mercadopago\application;
 use paygw_mercadopago\card_capture;
+use paygw_mercadopago\payment_methods;
 use paygw_mercadopago\payment_processor;
 
 $reference = required_param('ref', PARAM_ALPHANUMEXT);
@@ -62,12 +63,23 @@ if ($record->status === 'approved' || !empty($record->mppaymentid)) {
     redirect($returnurl);
 }
 
+$accountid = (int) $record->accountid;
+
+// Os meios que ESTA EMPRESA aceita - pode ser so um dos tres, e a empresa que
+// escolhe em gateway.php, nao o aluno. Vazio e erro de configuracao do admin,
+// nao caminho para adivinhar: melhor a tela dizer isto do que oferecer um
+// formulario que ninguem consegue submeter.
+$habilitados = payment_methods::enabled_methods($accountid);
+if (!$habilitados) {
+    throw new moodle_exception('errornopaymentmethod', 'paygw_mercadopago');
+}
+
 // Cartao, Pix ou boleto - so o cartao usa os tres modos de captura abaixo.
 // Pix e boleto nao tem SDK nem token: e so um formulario nosso, sem relacao
 // com card_capture (que decide SO como o CARTAO e digitado).
-$metodo = optional_param('method', 'card', PARAM_ALPHA);
-if (!in_array($metodo, ['card', 'pix', 'boleto'], true)) {
-    $metodo = 'card';
+$metodo = optional_param('method', reset($habilitados), PARAM_ALPHA);
+if (!in_array($metodo, ['card', 'pix', 'boleto'], true) || !in_array($metodo, $habilitados, true)) {
+    $metodo = reset($habilitados);
 }
 
 $url = new moodle_url('/payment/gateway/mercadopago/subscribe.php', ['ref' => $reference, 'method' => $metodo]);
@@ -77,7 +89,7 @@ $PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('subscribetitle', 'paygw_mercadopago'));
 $PAGE->set_heading(get_string('subscribetitle', 'paygw_mercadopago'));
 
-$modo = card_capture::current();
+$modo = card_capture::current($accountid);
 $apptype = (string) $record->apptype;
 $publickey = application::public_key($apptype);
 
@@ -95,6 +107,17 @@ if ($metodo === 'card' && $publickey === '') {
 
 if (data_submitted() && confirm_sesskey()) {
     $metodoenviado = optional_param('selectedmethod', 'card', PARAM_ALPHA);
+
+    // Defesa contra POST forjado: o formulario so oferece os meios
+    // habilitados, mas o campo chega por fora dele tambem.
+    if (!in_array($metodoenviado, $habilitados, true)) {
+        redirect(
+            $url,
+            get_string('errornopaymentmethod', 'paygw_mercadopago'),
+            null,
+            \core\output\notification::NOTIFY_ERROR
+        );
+    }
 
     if ($metodoenviado === 'pix' || $metodoenviado === 'boleto') {
         $paymentmethod = $metodoenviado === 'pix' ? 'pix' : 'bolbradesco';
@@ -189,6 +212,9 @@ echo $OUTPUT->render_from_template('paygw_mercadopago/subscribe', [
     'methodcard' => $metodo === 'card',
     'methodpix' => $metodo === 'pix',
     'methodboleto' => $metodo === 'boleto',
+    'showcard' => in_array('card', $habilitados, true),
+    'showpix' => in_array('pix', $habilitados, true),
+    'showboleto' => in_array('boleto', $habilitados, true),
     'cardurl' => (new moodle_url($url, ['method' => 'card']))->out(false),
     'pixurl' => (new moodle_url($url, ['method' => 'pix']))->out(false),
     'boletourl' => (new moodle_url($url, ['method' => 'boleto']))->out(false),
