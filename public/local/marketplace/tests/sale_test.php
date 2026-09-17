@@ -177,6 +177,33 @@ final class sale_test extends \advanced_testcase {
     }
 
     /**
+     * A paymentarea 'plan' (assinatura SaaS) NUNCA grava sale - mesmo
+     * quando o itemid (um companyid) coincide, por acaso, com um offerid
+     * real. sale pressupoe split entre empresa e plataforma, que nao existe
+     * quando a plataforma e a unica parte.
+     *
+     * @return void
+     */
+    public function test_paymentarea_plan_nunca_grava_venda_mesmo_com_id_coincidente(): void {
+        $paymentid = $this->make_payment('mercadopago');
+
+        // O "companyid" usado aqui e de proposito o MESMO id da oferta de
+        // teste - e o cenario de colisao que a guarda existe para cobrir.
+        $resultado = api::record_sale(
+            'local_marketplace',
+            $paymentid,
+            (int) $this->offer->get('id'),
+            25.0,
+            '',
+            null,
+            payment\service_provider::PAYMENT_AREA_PLAN
+        );
+
+        $this->assertNull($resultado);
+        $this->assertCount(0, sale::get_for_company((int) $this->company->get('id')));
+    }
+
+    /**
      * O aluno ve as proprias compras, de qualquer gateway.
      *
      * @return void

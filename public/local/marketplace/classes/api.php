@@ -210,11 +210,25 @@ class api {
      * E este o ponto que os gateways passam a chamar: eles precisam da base
      * para decidir COMO mandar o split, e nao so de quanto.
      *
+     * $paymentarea existe para nao confundir $itemid com um offerid quando
+     * NAO e um - a paymentarea 'plan' (assinatura SaaS que a empresa paga a
+     * PLATAFORMA) usa companyid como itemid, e sem esta guarda um companyid
+     * que por acaso coincidisse com um offerid real devolveria a comissao de
+     * uma oferta que nao tem nada a ver com a cobranca.
+     *
      * @param string $component Componente do core_payment.
      * @param int $itemid
+     * @param string $paymentarea 'offer' (padrao) ou service_provider::PAYMENT_AREA_PLAN
      * @return commission
      */
-    public static function commission_terms_for(string $component, int $itemid): commission {
+    public static function commission_terms_for(string $component, int $itemid, string $paymentarea = 'offer'): commission {
+        if ($paymentarea === payment\service_provider::PAYMENT_AREA_PLAN) {
+            // Assinatura SaaS: a plataforma e a UNICA parte, sem split - 0%
+            // e a resposta certa, e nao o padrao do site (25%), que faria
+            // parecer que ha comissao a repassar para alguem.
+            return new commission(0.0, commission::default_base(), commission::SOURCE_SITE);
+        }
+
         $fallback = new commission(
             self::default_commission_percent(),
             commission::default_base(),
@@ -247,12 +261,20 @@ class api {
      * componente de fora: o gateway trata null como "cobranca avulsa", que e o
      * comportamento que ele ja tinha antes desta funcao existir.
      *
+     * $paymentarea existe pelo mesmo motivo de commission_terms_for(): a
+     * paymentarea 'plan' usa companyid como itemid, nunca offerid.
+     *
      * @param string $component Componente do core_payment.
      * @param int $itemid
+     * @param string $paymentarea 'offer' (padrao) ou service_provider::PAYMENT_AREA_PLAN
      * @return \stdClass|null days (intervalo de cobranca) e maxcycles, ou null
      */
-    public static function recurrence_for(string $component, int $itemid): ?\stdClass {
-        if ($component !== 'local_marketplace') {
+    public static function recurrence_for(string $component, int $itemid, string $paymentarea = 'offer'): ?\stdClass {
+        if ($paymentarea === payment\service_provider::PAYMENT_AREA_PLAN) {
+            return self::recurrence_for_plan($itemid);
+        }
+
+        if ($component !== 'local_marketplace' || $paymentarea !== 'offer') {
             return null;
         }
 
@@ -278,6 +300,34 @@ class api {
         return (object) [
             'days' => $days,
             'maxcycles' => (int) $offer->get('maxcycles'),
+        ];
+    }
+
+    /**
+     * Recorrencia da assinatura SaaS - 30 dias fixos, sem limite de ciclos
+     * (ate a empresa cancelar ou trocar de plano).
+     *
+     * Sem plano, ou com mensalidade zero (Start-R$0), nao ha o que cobrar
+     * automaticamente - null aqui e o que impede o motor de ciclo de tentar
+     * criar uma assinatura para quem nao paga nada.
+     *
+     * @param int $companyid
+     * @return \stdClass|null
+     */
+    protected static function recurrence_for_plan(int $companyid): ?\stdClass {
+        $company = company::get_record(['id' => $companyid]);
+        if (!$company) {
+            return null;
+        }
+
+        $plan = $company->get_plan();
+        if (!$plan || (float) $plan->get('monthlyfee') <= 0) {
+            return null;
+        }
+
+        return (object) [
+            'days' => 30,
+            'maxcycles' => 0,
         ];
     }
 
@@ -319,6 +369,12 @@ class api {
      * viraria uma venda que nunca houve. O guarda fica aqui, e nao repetido em
      * cada gateway, para nao existir em tres copias que podem divergir.
      *
+     * $paymentarea existe pelo mesmo motivo de commission_terms_for() e
+     * recurrence_for(): a paymentarea 'plan' (assinatura SaaS) usa companyid
+     * como $offerid, e sale pressupoe um split entre empresa e plataforma
+     * que nao existe nesse caso - por isso ela NUNCA e gravada para
+     * paymentarea diferente de 'offer'.
+     *
      * @param string $component Componente do core_payment.
      * @param int $paymentid payments.id do core.
      * @param int $offerid
@@ -327,6 +383,7 @@ class api {
      * @param commission|null $terms Termos APLICADOS. Nulo resolve na hora, e e
      *                               so para chamador antigo: o certo e o gateway
      *                               passar o que ele de fato usou.
+     * @param string $paymentarea 'offer' (padrao) ou service_provider::PAYMENT_AREA_PLAN
      * @return sale|null Nulo quando o pagamento nao e de uma oferta.
      */
     public static function record_sale(
@@ -335,9 +392,10 @@ class api {
         int $offerid,
         float $feeamount,
         string $externalid = '',
-        ?commission $terms = null
+        ?commission $terms = null,
+        string $paymentarea = 'offer'
     ): ?sale {
-        if ($component !== 'local_marketplace') {
+        if ($component !== 'local_marketplace' || $paymentarea !== 'offer') {
             return null;
         }
 
