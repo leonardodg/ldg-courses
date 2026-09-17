@@ -130,6 +130,31 @@ de navegador — ver memória `venda-externa-via-api-whatsapp`.
 
 ## Próximos passos
 
-1. Plano de implementação em passos pequenos (TDD, worktree própria), no
-   mesmo padrão usado para o `paygw_mercadopago` — nenhum item de arquitetura
-   ou de negócio segue bloqueando o início.
+1. ~~Plano de implementação em passos pequenos (TDD, worktree própria), no
+   mesmo padrão usado para o `paygw_mercadopago`~~ → feito, worktree
+   `saas-planos-start-pro`, plano em
+   `docs/ai-plans/2026-09-17-assinatura-saas-implementacao-fases-a-e.md`.
+
+## O que foi implementado
+
+Todas as decisões deste documento viraram código, em cinco fases (Fase A a
+E), 162 testes verdes em `local_marketplace` e os três gateways sem
+regressão. O que mudou de rota em relação ao desenho:
+
+- As três funções genéricas de `api.php` (`recurrence_for`,
+  `commission_terms_for`, `record_sale`) precisaram de um parâmetro
+  `$paymentarea` que este documento não previa — sem ele, um `companyid` que
+  coincidisse com um `offerid` real herdaria dados de uma oferta sem relação
+  nenhuma. Achado só ao ler o código atual, não pelo desenho.
+- O Pagar.me exclui-se sozinho: `supports_recurring()` já recusa oferta
+  recorrente, e toda assinatura de plano é recorrente — nenhum código novo
+  foi necessário para bloqueá-lo.
+- O botão de pagar entrou em `local/marketplace/company.php` (painel que já
+  existia), e a landing do `local_partners` passou a mandar o gerente logado
+  de uma empresa só direto para lá — nenhuma tela nova.
+
+**Continua sem prova com dinheiro real**: valor final da mensalidade do
+`pro`, cobrança automática do ciclo 2, cancelamento/downgrade com efeito de
+cobrança, e Asaas/Pagar.me de fato vinculados. Roteiro completo, com o CLI
+que cria a conta da plataforma e as consultas de conferência no banco, em
+[`docs/data-validation/assinatura-saas-plano-empresa.md`](../data-validation/assinatura-saas-plano-empresa.md).
