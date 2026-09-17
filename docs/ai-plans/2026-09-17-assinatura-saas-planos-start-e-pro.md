@@ -1,5 +1,9 @@
-> **Situação:** implementado, sem prova com dinheiro real · **Início:**
-> 2026-09-17 · **Fases A–E concluídas:** 2026-09-17
+> **Situação:** inacabado · **Início:** 2026-09-17 · **Última sessão:** 2026-09-17
+>
+> **Por que inacabado:** o desenho foi implementado inteiro (Fases A–E, ver
+> `docs/ai-plans/2026-09-17-assinatura-saas-implementacao-fases-a-e.md`), mas
+> falta a prova com dinheiro real. As pendências de negócio listadas abaixo
+> ("O que sobra") continuam abertas — nenhuma bloqueia o que já funciona.
 
 # Assinatura SaaS: planos Start e PRO
 
@@ -115,12 +119,21 @@ desenhar, para não propor reuso que não serve:
   `Starter`/`Pro`/`Scale` antes de arquivá-los — se houver, o upgrade que
   arquiva precisa também migrar essas empresas para o plano novo equivalente.
 
+**Direção futura, fora do escopo deste plano mas relevante para a Fase B em
+diante:** o objetivo é vender também por canais externos (ex.: WhatsApp),
+com uma API no Moodle que recebe o produto e devolve como pagar (link de
+redirecionamento ou QR code do Pix), sem o comprador passar pela tela do
+site. Isso não muda nada aqui, mas reforça um cuidado que a Fase B já
+segue por outro motivo: a lógica de cobrança precisa continuar devolvendo
+dado ESTRUTURADO (QR, código de barras, URL), nunca HTML preso a uma sessão
+de navegador — ver memória `venda-externa-via-api-whatsapp`.
+
 ## Próximos passos
 
 1. ~~Plano de implementação em passos pequenos (TDD, worktree própria), no
    mesmo padrão usado para o `paygw_mercadopago`~~ → feito, worktree
    `saas-planos-start-pro`, plano em
-   `docs/ai-plans/2026-09-17-implementacao-assinatura-saas-planos-start-pro.md`.
+   `docs/ai-plans/2026-09-17-assinatura-saas-implementacao-fases-a-e.md`.
 
 ## O que foi implementado
 
