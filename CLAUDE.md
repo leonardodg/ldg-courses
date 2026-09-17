@@ -461,6 +461,51 @@ Mercado Pago consulta por `external_reference`, e não por id de pagamento: lá 
 cobrança nasce com id, aqui nasce a *preferência*, e o pagamento só existe
 quando o aluno paga.
 
+**Existe uma SEGUNDA direção de cobrança desde 17/09/2026: a empresa parceira
+pagando a PLATAFORMA**, não o aluno pagando a empresa. É a assinatura SaaS dos
+planos comerciais (`local_marketplace_plan`): **Start** (hospedagem nativa,
+10% de comissão, três tiers de mensalidade R$0/R$50/R$100 que só destravam
+qualidade de vídeo) e **PRO** (BYOS, comissão reduzida a 5%, mensalidade
+própria). Desenho completo em
+`docs/ai-plans/2026-09-17-assinatura-saas-planos-start-e-pro.md`.
+
+Tecnicamente é a MESMA infraestrutura de ciclo já provada para assinatura de
+curso, generalizada: `service_provider` ganhou uma segunda paymentarea
+(`'plan'`, ao lado de `'offer'`), onde o `itemid` é um `companyid` e não um
+`offerid`. As três funções genéricas do `api.php`
+(`recurrence_for`/`commission_terms_for`/`record_sale`) ganharam um parâmetro
+`$paymentarea` para não confundir os dois - sem isso, um `companyid` que por
+acaso coincidisse com um `offerid` real receberia a comissão/recorrência de
+uma oferta que não tem nada a ver com a cobrança. `record_sale()` nunca grava
+nada para `'plan'`: não há split, a plataforma fica com 100%.
+
+**A conta que recebe é uma `core_payment\account` comum, no contexto do
+SITE, sem empresa dona** — o vínculo empresa↔conta vive numa tabela separada
+(`local_marketplace_company_account`), então basta não criar essa linha. Os
+gateways Asaas e Pagar.me tinham uma guarda própria que recusava vincular a
+carteira/recebedor da plataforma como "vendedor" (pensada para a venda de
+curso, onde isso seria um erro) - ela passa a abrir exceção só para essa
+conta específica (`api::is_platform_account()`).
+
+O botão de pagar entra em `local/marketplace/company.php` (o painel que o
+gerente já usa), sem tela nova, e a landing pública (`local_partners`) manda
+o gerente logado de uma empresa só direto para lá em vez de para a
+candidatura de novo.
+
+**Planos comerciais antigos (`Starter`/`Pro`/`Scale`) foram arquivados**, não
+reaproveitados - nenhum mapeava 1:1 pro desenho novo. Um bug real apareceu no
+caminho: rodar o seed dos planos novos ANTES de renomear os antigos fazia o
+`'pro'` novo ser silenciosamente pulado, por achar o shortname "já ocupado"
+pelo antigo (3,9% de comissão) - só descobriu-se lendo o banco depois do
+upgrade, e ganhou teste de regressão dedicado.
+
+**Implementado e testado, sem prova com dinheiro real ainda.** 162 testes no
+`local_marketplace`, 127 no MP, 69 no Asaas, 119 no Pagar.me, 85 no
+`local_partners` - todos verdes, na worktree `saas-planos-start-pro`
+(`feature/saas-planos-start-pro`). Roteiro de prova, com o CLI que cria a
+conta da plataforma e os comandos de conferência no banco, em
+`docs/data-validation/assinatura-saas-plano-empresa.md`.
+
 **Fase 3** tem a fundação no ar; falta apontar um domínio real.
 **Fase 5** está bloqueada por decisão de negócio do usuário.
 
