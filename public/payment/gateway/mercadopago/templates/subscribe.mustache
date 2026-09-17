@@ -46,6 +46,12 @@
     * periodo string
     * ciclos string
     * cancelurl string
+    * methodcard bool
+    * methodpix bool
+    * methodboleto bool
+    * cardurl string
+    * pixurl string
+    * boletourl string
     * brick bool
     * direct bool
     * native bool
@@ -58,6 +64,12 @@
         "periodo": "Cobranca a cada 30 dias.",
         "ciclos": "Ate voce cancelar.",
         "cancelurl": "https://exemplo.test/local/marketplace/mysubscriptions.php",
+        "methodcard": true,
+        "methodpix": false,
+        "methodboleto": false,
+        "cardurl": "https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc&method=card",
+        "pixurl": "https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc&method=pix",
+        "boletourl": "https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc&method=boleto",
         "brick": true,
         "direct": false,
         "native": false
@@ -70,11 +82,110 @@
         <ul class="list-unstyled text-muted small">
             <li>{{periodo}}</li>
             <li>{{ciclos}}</li>
-            <li>{{#str}} subscribecardonly, paygw_mercadopago {{/str}}</li>
             <li><a href="{{cancelurl}}">{{#str}} subscribewheretocancel, paygw_mercadopago {{/str}}</a></li>
         </ul>
     {{/periodo}}
 
+    {{!
+        Cartao, Pix ou boleto - cada um recarrega a pagina com ?method=X. Nao
+        e JavaScript: e o jeito mais simples de mostrar so o formulario certo,
+        sem duplicar logica de mostrar/esconder no cliente.
+    }}
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <a class="nav-link {{#methodcard}}active{{/methodcard}}" href="{{cardurl}}">
+                {{#str}} subscribecard, paygw_mercadopago {{/str}}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{#methodpix}}active{{/methodpix}}" href="{{pixurl}}">
+                {{#str}} subscribepix, paygw_mercadopago {{/str}}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{#methodboleto}}active{{/methodboleto}}" href="{{boletourl}}">
+                {{#str}} subscribeboleto, paygw_mercadopago {{/str}}
+            </a>
+        </li>
+    </ul>
+
+    {{#methodpix}}
+        <p class="text-muted small">{{#str}} subscribepixnotautomatic, paygw_mercadopago {{/str}}</p>
+        <form method="post" action="{{formaction}}">
+            <input type="hidden" name="sesskey" value="{{sesskey}}">
+            <input type="hidden" name="selectedmethod" value="pix">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="mp-payer-name-pix" class="form-label">{{#str}} payername, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-name-pix" name="payername" autocomplete="name" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="mp-payer-doc-pix" class="form-label">{{#str}} payerdoc, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-doc-pix" name="payerdoc"
+                        inputmode="numeric" maxlength="11" required>
+                </div>
+            </div>
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    {{#str}} subscribeconfirm, paygw_mercadopago {{/str}}
+                </button>
+            </div>
+        </form>
+    {{/methodpix}}
+
+    {{#methodboleto}}
+        <p class="text-muted small">{{#str}} subscribeboletonotautomatic, paygw_mercadopago {{/str}}</p>
+        <form method="post" action="{{formaction}}">
+            <input type="hidden" name="sesskey" value="{{sesskey}}">
+            <input type="hidden" name="selectedmethod" value="boleto">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="mp-payer-name-bol" class="form-label">{{#str}} payername, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-name-bol" name="payername" autocomplete="name" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="mp-payer-doc-bol" class="form-label">{{#str}} payerdoc, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-doc-bol" name="payerdoc"
+                        inputmode="numeric" maxlength="11" required>
+                </div>
+                <div class="col-12">
+                    <strong class="small">{{#str}} payerboletoaddress, paygw_mercadopago {{/str}}</strong>
+                </div>
+                <div class="col-md-4">
+                    <label for="mp-payer-zip" class="form-label">{{#str}} payerzipcode, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-zip" name="payerzipcode"
+                        inputmode="numeric" maxlength="8" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="mp-payer-street" class="form-label">{{#str}} payerstreet, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-street" name="payerstreet" autocomplete="address-line1" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="mp-payer-number" class="form-label">{{#str}} payerstreetnumber, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-number" name="payerstreetnumber" required>
+                </div>
+                <div class="col-md-5">
+                    <label for="mp-payer-neighborhood" class="form-label">{{#str}} payerneighborhood, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-neighborhood" name="payerneighborhood" required>
+                </div>
+                <div class="col-md-5">
+                    <label for="mp-payer-city" class="form-label">{{#str}} payercity, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-city" name="payercity" autocomplete="address-level2" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="mp-payer-state" class="form-label">{{#str}} payerstate, paygw_mercadopago {{/str}}</label>
+                    <input type="text" class="form-control" id="mp-payer-state" name="payerstate" maxlength="2" required>
+                </div>
+            </div>
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    {{#str}} subscribeconfirm, paygw_mercadopago {{/str}}
+                </button>
+            </div>
+        </form>
+    {{/methodboleto}}
+
+    {{#methodcard}}
     {{#brick}}
         {{!
             FORA do formulario, e de proposito: o Brick monta um <form> proprio
@@ -175,4 +286,5 @@
     </form>
 
     <p class="text-muted small mt-3">{{#str}} subscribecardnotstored, paygw_mercadopago {{/str}}</p>
+    {{/methodcard}}
 </div>

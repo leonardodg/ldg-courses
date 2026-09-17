@@ -1204,6 +1204,50 @@ class payment_processor {
     }
 
     /**
+     * O QR code do Pix ou a linha digitavel do boleto, para a TELA.
+     *
+     * NAO fica gravado na linha - so consultado sob demanda, direto no
+     * Mercado Pago. Um QR code de Pix vence (`date_of_expiration`, medido em
+     * 16/09/2026: proximo dia), e guardar um valor que pode ja ter vencido
+     * seria pior do que nao ter nada.
+     *
+     * @param \stdClass $record
+     * @return array|null Vazio quando nao e uma fatura por Pix/boleto, ou ainda nao tem pagamento
+     */
+    public static function invoice_details(\stdClass $record): ?array {
+        if (!in_array((string) $record->paymentmethod, self::INVOICE_METHODS, true)) {
+            return null;
+        }
+
+        if (empty($record->mppaymentid)) {
+            return null;
+        }
+
+        $config = self::get_gateway_config((int) $record->accountid, (string) $record->apptype);
+        $client = new mp_client($config['accesstoken']);
+        $payment = $client->get_payment((string) $record->mppaymentid);
+
+        $dadostransacao = (array) ($payment['point_of_interaction']['transaction_data'] ?? []);
+
+        if ((string) $record->paymentmethod === 'pix') {
+            return [
+                'pix' => true,
+                'qrcode' => (string) ($dadostransacao['qr_code'] ?? ''),
+                'qrcodeimage' => !empty($dadostransacao['qr_code_base64'])
+                    ? 'data:image/png;base64,' . $dadostransacao['qr_code_base64']
+                    : '',
+                'ticketurl' => (string) ($dadostransacao['ticket_url'] ?? ''),
+            ];
+        }
+
+        return [
+            'boleto' => true,
+            'barcode' => (string) ($payment['barcode']['content'] ?? ''),
+            'ticketurl' => (string) ($payment['transaction_details']['external_resource_url'] ?? ''),
+        ];
+    }
+
+    /**
      * A linha mais recente de cada assinatura, candidata a cobranca.
      *
      * Uma por assinatura: sao varias linhas por aluno, e so a ultima diz o

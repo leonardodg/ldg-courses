@@ -46,6 +46,14 @@ final class subscribe_template_test extends \advanced_testcase {
             'formaction' => 'https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc',
             'sesskey' => 'abc123',
             'amount' => 'R$ 49,90',
+            // Estes testes exercitam so o cartao - o seletor de forma de
+            // pagamento (Pix/boleto) tem o proprio teste, mais abaixo.
+            'methodcard' => true,
+            'methodpix' => false,
+            'methodboleto' => false,
+            'cardurl' => '#',
+            'pixurl' => '#',
+            'boletourl' => '#',
             'brick' => $modo === card_capture::MODE_BRICK,
             'direct' => $modo === card_capture::MODE_DIRECT,
             'native' => $modo === card_capture::MODE_NATIVE,
@@ -188,5 +196,37 @@ final class subscribe_template_test extends \advanced_testcase {
 
         $this->assertStringNotContainsString('name="securitycode"', $direct);
         $this->assertStringContainsString('name="securitycode"', $native);
+    }
+
+    /**
+     * So o metodo escolhido mostra o proprio formulario.
+     *
+     * O boleto pede endereco; o Pix e o cartao nao. Misturar os tres na
+     * mesma tela sem esconder os que nao foram escolhidos confundiria mais
+     * do que ajudaria - e o boleto pediria dados que Pix nao precisa.
+     *
+     * @return void
+     */
+    public function test_so_o_metodo_escolhido_aparece(): void {
+        global $PAGE;
+
+        $this->resetAfterTest();
+
+        $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
+
+        $pix = $output->render_from_template('paygw_mercadopago/subscribe', array_merge(
+            $this->contexto(card_capture::MODE_BRICK),
+            ['methodcard' => false, 'methodpix' => true]
+        ));
+        $this->assertStringContainsString('name="payerdoc"', $pix);
+        $this->assertStringNotContainsString('name="payerzipcode"', $pix, 'Pix nao pede endereco');
+        $this->assertStringNotContainsString('name="cardtoken"', $pix, 'sem cartao no modo Pix');
+
+        $boleto = $output->render_from_template('paygw_mercadopago/subscribe', array_merge(
+            $this->contexto(card_capture::MODE_BRICK),
+            ['methodcard' => false, 'methodboleto' => true]
+        ));
+        $this->assertStringContainsString('name="payerzipcode"', $boleto, 'boleto exige CEP');
+        $this->assertStringContainsString('name="payerstreetnumber"', $boleto);
     }
 }

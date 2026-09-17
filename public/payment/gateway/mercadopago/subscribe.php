@@ -62,7 +62,15 @@ if ($record->status === 'approved' || !empty($record->mppaymentid)) {
     redirect($returnurl);
 }
 
-$url = new moodle_url('/payment/gateway/mercadopago/subscribe.php', ['ref' => $reference]);
+// Cartao, Pix ou boleto - so o cartao usa os tres modos de captura abaixo.
+// Pix e boleto nao tem SDK nem token: e so um formulario nosso, sem relacao
+// com card_capture (que decide SO como o CARTAO e digitado).
+$metodo = optional_param('method', 'card', PARAM_ALPHA);
+if (!in_array($metodo, ['card', 'pix', 'boleto'], true)) {
+    $metodo = 'card';
+}
+
+$url = new moodle_url('/payment/gateway/mercadopago/subscribe.php', ['ref' => $reference, 'method' => $metodo]);
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url($url);
 $PAGE->set_pagelayout('standard');
@@ -73,7 +81,7 @@ $modo = card_capture::current();
 $apptype = (string) $record->apptype;
 $publickey = application::public_key($apptype);
 
-if ($publickey === '') {
+if ($metodo === 'card' && $publickey === '') {
     // Sem a chave publica nao ha como montar campo de cartao em modo nenhum.
     // Dizer isso aqui e melhor do que renderizar um formulario que nunca vai
     // tokenizar, e cuja falha aparece como "o botao nao faz nada".
@@ -86,6 +94,36 @@ if ($publickey === '') {
 }
 
 if (data_submitted() && confirm_sesskey()) {
+    $metodoenviado = optional_param('selectedmethod', 'card', PARAM_ALPHA);
+
+    if ($metodoenviado === 'pix' || $metodoenviado === 'boleto') {
+        $paymentmethod = $metodoenviado === 'pix' ? 'pix' : 'bolbradesco';
+
+        $payerinfo = [
+            'cpf' => optional_param('payerdoc', '', PARAM_ALPHANUM),
+            'name' => optional_param('payername', '', PARAM_TEXT),
+        ];
+
+        if ($paymentmethod === 'bolbradesco') {
+            $payerinfo += [
+                'zipcode' => optional_param('payerzipcode', '', PARAM_ALPHANUM),
+                'street' => optional_param('payerstreet', '', PARAM_TEXT),
+                'number' => optional_param('payerstreetnumber', '', PARAM_ALPHANUM),
+                'neighborhood' => optional_param('payerneighborhood', '', PARAM_TEXT),
+                'city' => optional_param('payercity', '', PARAM_TEXT),
+                'state' => optional_param('payerstate', '', PARAM_ALPHA),
+            ];
+        }
+
+        try {
+            payment_processor::charge_first_cycle_invoice($record, $paymentmethod, $payerinfo);
+        } catch (moodle_exception $e) {
+            redirect($url, $e->getMessage(), null, \core\output\notification::NOTIFY_ERROR);
+        }
+
+        redirect($returnurl);
+    }
+
     // No modo brick e no direto o navegador ja tokenizou, e chega UM token. O
     // token que cobra nasce depois, do cartao guardado - ver
     // payment_processor::charge_first_cycle().
@@ -148,14 +186,21 @@ echo $OUTPUT->render_from_template('paygw_mercadopago/subscribe', [
     'periodo' => $periodo,
     'ciclos' => $ciclos,
     'cancelurl' => (new moodle_url('/local/marketplace/mysubscriptions.php'))->out(false),
+    'methodcard' => $metodo === 'card',
+    'methodpix' => $metodo === 'pix',
+    'methodboleto' => $metodo === 'boleto',
+    'cardurl' => (new moodle_url($url, ['method' => 'card']))->out(false),
+    'pixurl' => (new moodle_url($url, ['method' => 'pix']))->out(false),
+    'boletourl' => (new moodle_url($url, ['method' => 'boleto']))->out(false),
     'brick' => $modo === card_capture::MODE_BRICK,
     'direct' => $modo === card_capture::MODE_DIRECT,
     'native' => $modo === card_capture::MODE_NATIVE,
 ]);
 
 // O modo nativo nao carrega SDK nenhum: o formulario e HTML puro e quem
-// tokeniza e o servidor. Os outros dois precisam do SDK do Mercado Pago.
-if ($modo !== card_capture::MODE_NATIVE) {
+// tokeniza e o servidor. Os outros dois precisam do SDK do Mercado Pago. Pix
+// e boleto nao precisam de SDK nenhum - e so um formulario nosso.
+if ($metodo === 'card' && $modo !== card_capture::MODE_NATIVE) {
     $PAGE->requires->js_call_amd('paygw_mercadopago/card_form', 'init', [[
         'publickey' => $publickey,
         'mode' => $modo,

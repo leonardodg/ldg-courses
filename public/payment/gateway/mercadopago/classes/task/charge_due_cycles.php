@@ -74,21 +74,35 @@ class charge_due_cycles extends scheduled_task {
                 continue;
             }
 
-            if (!payment_processor::is_due($linha, (int) $recorrencia->days, (int) $recorrencia->maxcycles, $agora)) {
+            if (payment_processor::is_due($linha, (int) $recorrencia->days, (int) $recorrencia->maxcycles, $agora)) {
+                try {
+                    payment_processor::charge_cycle($linha);
+                    $cobrados++;
+                    mtrace("Assinatura {$linha->subscriptionid}: ciclo " . ((int) $linha->cycles + 1) . " cobrado.");
+                } catch (\Throwable $e) {
+                    // Uma falha nao pode interromper as outras assinaturas. Cartao
+                    // vencido de um aluno nao pode impedir a cobranca dos demais -
+                    // e a linha do ciclo ja nasceu, entao a falha fica visivel no
+                    // relatorio em vez de sumir.
+                    $falhas++;
+                    mtrace("Assinatura {$linha->subscriptionid}: FALHA ao cobrar - " . $e->getMessage());
+                }
                 continue;
             }
 
-            try {
-                payment_processor::charge_cycle($linha);
-                $cobrados++;
-                mtrace("Assinatura {$linha->subscriptionid}: ciclo " . ((int) $linha->cycles + 1) . " cobrado.");
-            } catch (\Throwable $e) {
-                // Uma falha nao pode interromper as outras assinaturas. Cartao
-                // vencido de um aluno nao pode impedir a cobranca dos demais -
-                // e a linha do ciclo ja nasceu, entao a falha fica visivel no
-                // relatorio em vez de sumir.
-                $falhas++;
-                mtrace("Assinatura {$linha->subscriptionid}: FALHA ao cobrar - " . $e->getMessage());
+            // Pix e boleto nao cobram sozinhos: em vez de tentar um cartao que
+            // nao existe, emite uma fatura NOVA e avisa o aluno. Ver
+            // payment_processor::issue_invoice_cycle().
+            if (payment_processor::is_due_for_invoice($linha, (int) $recorrencia->days, (int) $recorrencia->maxcycles, $agora)) {
+                try {
+                    payment_processor::issue_invoice_cycle($linha);
+                    $cobrados++;
+                    mtrace("Assinatura {$linha->subscriptionid}: fatura do ciclo "
+                        . ((int) $linha->cycles + 1) . " emitida.");
+                } catch (\Throwable $e) {
+                    $falhas++;
+                    mtrace("Assinatura {$linha->subscriptionid}: FALHA ao emitir fatura - " . $e->getMessage());
+                }
             }
         }
 
