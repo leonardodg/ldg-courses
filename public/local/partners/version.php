@@ -27,7 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 $plugin->component = 'local_partners';
 // O bump nao e so pelo passo de banco: styles.css de plugin nao e invalidado
 // pelo purge_caches, e so a versao nova faz o CSS editado chegar a tela.
-$plugin->version   = 2026091033;
+$plugin->version   = 2026091701;
 $plugin->requires  = 2026042000; // Moodle 5.2.
 $plugin->supported = [502, 502];
 $plugin->maturity  = MATURITY_ALPHA;

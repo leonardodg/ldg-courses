@@ -19,6 +19,7 @@ namespace local_partners\output;
 use core\output\renderable;
 use core\output\renderer_base;
 use core\output\templatable;
+use local_marketplace\company;
 use local_marketplace\plan;
 use local_marketplace\plan_tier;
 use local_partners\seo;
@@ -45,7 +46,7 @@ class landing_page implements renderable, templatable {
      */
     public function export_for_template(renderer_base $output): array {
         return [
-            'applyurl' => (new moodle_url('/local/partners/apply.php'))->out(false),
+            'applyurl' => self::cta_url(),
             'heroimage' => (new moodle_url('/local/partners/pix/hero.jpg'))->out(false),
             'plans' => $this->plans(),
             'hasplans' => !empty($this->plans()),
@@ -66,6 +67,44 @@ class landing_page implements renderable, templatable {
             // exige sessao - e o publico desta pagina e justamente ele.
             'isloggedin' => isloggedin() && !isguestuser(),
         ];
+    }
+
+    /**
+     * Para onde os botoes "Apply" da landing mandam o visitante.
+     *
+     * DUAS respostas, dependendo de QUEM esta vendo a mesma pagina publica:
+     *
+     *   visitante anonimo, ou logado sem empresa - candidatura (apply.php),
+     *   como sempre foi. E o publico que a landing quer atingir.
+     *
+     *   gerente de UMA empresa so, logado - a propria pagina de gerenciamento
+     *   (local_marketplace/company.php), onde a secao de Plano fica. Ele ja
+     *   e parceiro; mandar para o formulario de candidatura de novo seria um
+     *   segundo cadastro que ninguem pediu.
+     *
+     * Gerente de DUAS OU MAIS empresas cai no caso anonimo de proposito: a
+     * landing nao tem como perguntar qual empresa, e chutar uma erraria
+     * metade das vezes.
+     *
+     * @return string
+     */
+    protected static function cta_url(): string {
+        $apply = (new moodle_url('/local/partners/apply.php'))->out(false);
+
+        if (!isloggedin() || isguestuser()) {
+            return $apply;
+        }
+
+        global $USER;
+        $companies = company::get_by_member((int) $USER->id);
+
+        if (count($companies) !== 1) {
+            return $apply;
+        }
+
+        return (new moodle_url('/local/marketplace/company.php', [
+            'company' => reset($companies)->get('shortname'),
+        ]))->out(false);
     }
 
     /**

@@ -84,7 +84,7 @@ final class approval_test extends \advanced_testcase {
      */
     public function test_aprovar_provisiona_a_empresa(): void {
         $application = $this->make_application(['cnpj' => '11222333000181']);
-        $plan = plan::get_record_by_shortname('starter');
+        $plan = plan::get_record_by_shortname('start_free');
 
         $company = api::approve($application, (object) [
             'shortname' => 'editorateste',
@@ -117,7 +117,7 @@ final class approval_test extends \advanced_testcase {
      */
     public function test_empresa_nova_deixa_o_plano_governar(): void {
         $application = $this->make_application();
-        $plan = plan::get_record_by_shortname('starter');
+        $plan = plan::get_record_by_shortname('start_free');
 
         $company = api::approve($application, (object) [
             'shortname' => 'semcomissao',
