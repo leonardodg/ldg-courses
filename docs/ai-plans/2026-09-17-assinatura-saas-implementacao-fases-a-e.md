@@ -1,3 +1,14 @@
+> **Situação:** inacabado · **Início:** 2026-09-17 · **Última sessão:** 2026-09-17
+>
+> **Por que inacabado:** as Fases A–E foram todas implementadas e testadas
+> (162 testes no `local_marketplace`, 127 no MP, 69 no Asaas, 119 no
+> Pagar.me, 85 no `local_partners`, todos verdes) na worktree
+> `saas-planos-start-pro`, branch `feature/saas-planos-start-pro` — mas **a
+> prova com dinheiro real não aconteceu ainda**. Falta: vincular o Mercado
+> Pago de produção na conta da plataforma e completar um pagamento real pela
+> tela. Roteiro completo em
+> `docs/data-validation/assinatura-saas-plano-empresa.md`.
+
 # Assinatura SaaS: implementação dos planos Start e PRO
 
 ## Contexto

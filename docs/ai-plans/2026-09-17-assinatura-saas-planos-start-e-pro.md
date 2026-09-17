@@ -1,4 +1,9 @@
-> **Situação:** pendente · **Início:** 2026-09-17
+> **Situação:** inacabado · **Início:** 2026-09-17 · **Última sessão:** 2026-09-17
+>
+> **Por que inacabado:** o desenho foi implementado inteiro (Fases A–E, ver
+> `docs/ai-plans/2026-09-17-assinatura-saas-implementacao-fases-a-e.md`), mas
+> falta a prova com dinheiro real. As pendências de negócio listadas abaixo
+> ("O que sobra") continuam abertas — nenhuma bloqueia o que já funciona.
 
 # Assinatura SaaS: planos Start e PRO
 
