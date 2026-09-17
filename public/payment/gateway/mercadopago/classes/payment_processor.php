@@ -1252,6 +1252,116 @@ class payment_processor {
     }
 
     /**
+     * Cria a linha do proximo ciclo no cartao, SEM COBRAR - e AVISA o aluno
+     * para confirmar com o CVV.
+     *
+     * charge_cycle() (acima) continua no codigo, mas nao e mais chamada pela
+     * tarefa agendada: medido em 16/09/2026, cobrar com o token do card_id
+     * sem CVV devolve "400 security_code_id can't be null", e isso nao muda
+     * por historico de pagamento - a conta nao tem ESC habilitado, e ESC nao
+     * liga sozinho. Sem o recurso, nao ha cobranca de cartao verdadeiramente
+     * automatica nesta conta, e fingir que ha so trocaria uma falha visivel
+     * (o aluno confirma) por uma silenciosa (o cron falha e ninguem sabe).
+     *
+     * O AVISO PEDE SO O CVV, e nao o cartao inteiro de novo - e a diferenca
+     * de fundo com Pix/boleto, que nao tem instrumento guardado nenhum. Ver
+     * confirm_card_cycle().
+     *
+     * @param \stdClass $previous Linha do ultimo ciclo pago
+     * @return void
+     */
+    public static function issue_card_cycle(\stdClass $previous): void {
+        global $DB;
+
+        $record = self::build_next_cycle($previous);
+        $record->id = $DB->insert_record(self::TABLE, $record);
+
+        self::notify_invoice_due(
+            $record,
+            (new \moodle_url(
+                '/payment/gateway/mercadopago/confirm_cycle.php',
+                ['ref' => (string) $record->externalreference]
+            ))->out(false)
+        );
+    }
+
+    /**
+     * O aluno confirmou o ciclo com o CVV - cobra de verdade.
+     *
+     * O TOKEN JA CHEGA PRONTO DO NAVEGADOR, e isso nao e um detalhe: medido
+     * em 17/09/2026, `mp.createCardToken({cardId, securityCode})` tokeniza
+     * pela PUBLIC KEY, no navegador, sem o CVV passar pelo nosso servidor -
+     * o mesmo SDK que ja tokeniza o cartao novo em subscribe.php faz isto
+     * para um cartao ja guardado, so trocando o corpo por
+     * `{card_id, security_code}`. Cobrar o token resultante funciona
+     * (`in_process`, testado contra a conta real) exatamente como cobrar o
+     * token de um cartao novo.
+     *
+     * NAO HA CVV NENHUM AQUI: esta funcao so recebe o token ja pronto,
+     * porque o CVV nunca devia chegar ao PHP para comecar. E a mesma
+     * fronteira PCI de subscribe.php, so que aqui a fronteira e o navegador
+     * inteiro, e nao so "nao gravar depois de receber".
+     *
+     * @param \stdClass $record Linha do ciclo, ja criada por issue_card_cycle()
+     * @param string $chargetoken Token do card_id+CVV, ja tokenizado no navegador
+     * @return bool Verdadeiro quando a entrega aconteceu agora
+     */
+    public static function confirm_card_cycle(\stdClass $record, string $chargetoken): bool {
+        global $DB, $CFG;
+
+        $config = self::get_gateway_config((int) $record->accountid, (string) $record->apptype);
+        $client = new mp_client($config['accesstoken']);
+        $user = \core_user::get_user((int) $record->userid, 'id, email', MUST_EXIST);
+
+        $payment = (array) self::step('payment', fn() => $client->create_payment(self::build_cycle_payment_body(
+            (float) $record->amount,
+            (string) $record->currency,
+            (string) $record->externalreference,
+            (float) $record->feeamount,
+            [
+                'token' => $chargetoken,
+                'customerid' => (string) $record->mpcustomerid,
+                'paymentmethod' => (string) $record->paymentmethod,
+            ],
+            $user->email,
+            $CFG->wwwroot,
+            self::describe_subscription($record)
+        )));
+
+        $record->mppaymentid = (string) ($payment['id'] ?? '');
+        $record->status = (string) ($payment['status'] ?? 'pending');
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE, $record);
+
+        if ($record->mppaymentid === '') {
+            throw new moodle_exception('errorinvalidresponse', 'paygw_mercadopago', '', 'payment');
+        }
+
+        return self::process_notification($record->mppaymentid);
+    }
+
+    /**
+     * Faz sentido pedir o CVV para confirmar este ciclo?
+     *
+     * SO PARA CARTAO, ciclo ja criado (por issue_card_cycle()) e AINDA NAO
+     * cobrado - confirmar de novo um ciclo ja pago cobraria duas vezes.
+     *
+     * @param \stdClass $record
+     * @return bool
+     */
+    public static function can_confirm_card_cycle(\stdClass $record): bool {
+        if (empty($record->mpcardid) || empty($record->mpcustomerid)) {
+            return false;
+        }
+
+        if (in_array((string) $record->paymentmethod, self::INVOICE_METHODS, true)) {
+            return false;
+        }
+
+        return strtolower((string) $record->status) !== 'approved' && empty($record->mppaymentid);
+    }
+
+    /**
      * Emite a fatura do ciclo seguinte por Pix ou boleto, e AVISA o aluno.
      *
      * O aviso e a diferenca de fundo com charge_cycle(): la o cartao cobra
@@ -1552,14 +1662,20 @@ class payment_processor {
             $linha = (string) ($fatura['barcode'] ?? '');
         }
 
+        // Ciclo de cartao recem-emitido por issue_card_cycle() (sem
+        // mppaymentid ainda) pede so o CVV - nao o cartao inteiro de novo.
+        // Qualquer outro caso (Pix/boleto, ou um ciclo 1 recusado que ja tem
+        // mppaymentid) continua indo para subscribe.php.
+        $pagina = self::can_confirm_card_cycle($record) ? 'confirm_cycle.php' : 'subscribe.php';
+
         return [
             'url' => (new \moodle_url(
-                '/payment/gateway/mercadopago/subscribe.php',
+                '/payment/gateway/mercadopago/' . $pagina,
                 ['ref' => (string) $record->externalreference]
             ))->out(false),
-            // Sem vencimento: a cobranca e automatica e nao tem data-limite
-            // para alguem pagar. Inventar uma data faria a tela prometer um
-            // prazo que nao existe.
+            // Sem vencimento: a cobranca precisa da confirmacao do aluno, e
+            // nao ha data-limite fixa. Inventar uma data faria a tela prometer
+            // um prazo que nao existe.
             'duedate' => '',
             'value' => (float) $record->amount,
             'line' => $linha,

@@ -562,14 +562,23 @@ class mp_client {
      * Gera um token a partir de um cartao JA GUARDADO no Mercado Pago.
      *
      * Esta, sim, usa o token de acesso e roda no servidor - e e a diferenca que
-     * importa: aqui nao ha dado de cartao nenhum na requisicao, so o id de um
+     * importa: aqui nao ha numero de cartao nenhum na requisicao, so o id de um
      * cartao que ja pertence a um cliente da conta.
      *
-     * NAO PEDE CODIGO DE SEGURANCA, e isso e o que torna a cobranca automatica
-     * possivel. Medido em 16/09/2026: POST /v1/card_tokens com apenas
-     * {"card_id": ...} devolve token com status active. A frase de que "o
-     * Transparente com cartao salvo exige CVV a cada cobranca", que este
-     * projeto carregava como fato, nao se sustenta neste ponto do fluxo.
+     * SO SERVE PARA CONSULTA/DIAGNOSTICO AGORA - nao para cobrar. Medido em
+     * 16/09/2026: POST /v1/card_tokens so com {"card_id": ...} devolve token
+     * com status "active", mas cobrar com ELE devolve "400
+     * security_code_id can't be null", e isso nao muda depois de uma cobranca
+     * aprovada no mesmo cartao - o recurso que dispensaria o CVV (ESC) nao
+     * esta habilitado nesta conta, e nao liga sozinho. "Active" prova que o
+     * token existe, nao que o Mercado Pago aceita cobrar sem o codigo de
+     * seguranca.
+     *
+     * A cobranca do ciclo 2+ pede o CVV de novo ao aluno, mas NAO PASSA POR
+     * AQUI: medido em 17/09/2026, `mp.createCardToken({cardId,
+     * securityCode})` tokeniza pela PUBLIC KEY, no NAVEGADOR, com
+     * `{card_id, security_code}` - o CVV nunca chega ao PHP. Ver
+     * payment_processor::confirm_card_cycle().
      *
      * @param string $cardid Id do cartao guardado
      * @return array Inclui id e status

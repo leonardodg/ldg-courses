@@ -919,12 +919,36 @@ final class payment_processor_test extends \advanced_testcase {
         $linha = $this->linha([
             'subscriptionid' => 'mdlsub-1-2-invoice1',
             'status' => 'pending',
+            'mppaymentid' => '999',
             'paymentmethod' => 'master',
         ]);
 
         $fatura = payment_processor::pending_invoice($linha);
 
         $this->assertSame('', $fatura['line']);
+    }
+
+    /**
+     * Um ciclo de cartao recem-emitido por issue_card_cycle() (sem
+     * mppaymentid ainda) manda para confirm_cycle.php, que pede so o CVV -
+     * nao para subscribe.php, que pediria o cartao inteiro de novo.
+     *
+     * @return void
+     */
+    public function test_pending_invoice_manda_ciclo_de_cartao_para_confirmar_cvv(): void {
+        $this->resetAfterTest();
+
+        $linha = $this->linha([
+            'subscriptionid' => 'mdlsub-1-2-invoice5',
+            'status' => 'pending',
+            'mppaymentid' => null,
+            'paymentmethod' => 'visa',
+        ]);
+
+        $fatura = payment_processor::pending_invoice($linha);
+
+        $this->assertStringContainsString('confirm_cycle.php', $fatura['url']);
+        $this->assertStringNotContainsString('subscribe.php', $fatura['url']);
     }
 
     /**
@@ -994,6 +1018,60 @@ final class payment_processor_test extends \advanced_testcase {
         $this->assertFalse(
             payment_processor::can_switch_to_card($cancelada),
             'assinatura cancelada nao tem ciclo futuro para trocar'
+        );
+    }
+
+    /**
+     * Confirmar com CVV so faz sentido para um ciclo de CARTAO ja criado
+     * por issue_card_cycle() e AINDA NAO cobrado - confirmar de novo um
+     * ciclo ja pago cobraria duas vezes.
+     *
+     * @return void
+     */
+    public function test_so_confirma_com_cvv_ciclo_de_cartao_nao_cobrado(): void {
+        $this->resetAfterTest();
+
+        $pendente = $this->linha([
+            'subscriptionid' => 'mdlsub-1-2-confirm1',
+            'status' => 'pending',
+            'mppaymentid' => null,
+            'paymentmethod' => 'visa',
+        ]);
+        $this->assertTrue(payment_processor::can_confirm_card_cycle($pendente));
+
+        $jacobrado = $this->linha([
+            'subscriptionid' => 'mdlsub-1-2-confirm2',
+            'status' => 'approved',
+            'mppaymentid' => '123',
+            'paymentmethod' => 'visa',
+        ]);
+        $this->assertFalse(
+            payment_processor::can_confirm_card_cycle($jacobrado),
+            'ciclo ja pago nao pode ser confirmado de novo'
+        );
+
+        $pix = $this->linha([
+            'subscriptionid' => 'mdlsub-1-2-confirm3',
+            'status' => 'pending',
+            'mppaymentid' => null,
+            'paymentmethod' => 'pix',
+        ]);
+        $this->assertFalse(
+            payment_processor::can_confirm_card_cycle($pix),
+            'Pix/boleto nao tem CVV para confirmar'
+        );
+
+        $semcartao = $this->linha([
+            'subscriptionid' => 'mdlsub-1-2-confirm4',
+            'status' => 'pending',
+            'mppaymentid' => null,
+            'mpcardid' => null,
+            'mpcustomerid' => null,
+            'paymentmethod' => 'visa',
+        ]);
+        $this->assertFalse(
+            payment_processor::can_confirm_card_cycle($semcartao),
+            'sem cartao guardado nao ha o que confirmar'
         );
     }
 }

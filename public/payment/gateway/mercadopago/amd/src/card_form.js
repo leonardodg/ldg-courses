@@ -379,6 +379,57 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
         });
     };
 
+    /**
+     * Modo de CONFIRMAR CICLO: so pede o CVV de um cartao JA guardado.
+     *
+     * NAO reusa o Brick nem os campos de numero/validade - o cartao ja esta
+     * salvo, so falta o codigo de seguranca. Medido em 17/09/2026:
+     * `mp.createCardToken({cardId})`, com um campo `securityCode` montado no
+     * mesmo `mp`, tokeniza pela PUBLIC KEY, no navegador, com
+     * `{card_id, security_code}` no corpo - o CVV nunca chega ao nosso
+     * servidor, so o token resultante. Cobrar esse token funciona igual a
+     * cobrar o token de um cartao novo (testado contra a conta real).
+     *
+     * @param {Object} mp Instancia do MercadoPago
+     * @param {HTMLFormElement} form
+     * @param {string} cardid Id do cartao guardado no Mercado Pago
+     */
+    var mountCvvOnly = function(mp, form, cardid) {
+        var estilo = {
+            color: window.getComputedStyle(form).color || '#212529',
+            fontSize: '16px',
+            placeholderColor: '#9aa0a6'
+        };
+
+        try {
+            mp.fields.create('securityCode', {
+                placeholder: 'CVV',
+                style: estilo
+            }).mount('mp-field-cvv');
+        } catch (error) {
+            fail(form, error);
+            return;
+        }
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            setBusy(form, true);
+
+            mp.createCardToken({cardId: cardid})
+                .then(function(token) {
+                    if (!token || !token.id) {
+                        throw new Error('O Mercado Pago nao devolveu token para este cartao');
+                    }
+                    form.querySelector('[name="cardtoken"]').value = token.id;
+                    form.submit();
+                    return token;
+                })
+                .catch(function(error) {
+                    fail(form, error);
+                });
+        });
+    };
+
     return {
         /**
          * Monta o formulario conforme o modo de captura.
@@ -401,6 +452,29 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
                         mountFields(mp, form);
                     }
 
+                    return mp;
+                })
+                .catch(function(error) {
+                    fail(form, error);
+                });
+        },
+
+        /**
+         * Monta so o campo de CVV, para confirmar um ciclo com cartao ja
+         * guardado.
+         *
+         * @param {Object} config publickey e cardid
+         */
+        initConfirmCycle: function(config) {
+            var form = document.querySelector('[data-region="mp-card-form"]');
+            if (!form) {
+                return;
+            }
+
+            loadSdk()
+                .then(function(MercadoPago) {
+                    var mp = new MercadoPago(config.publickey, {locale: 'pt-BR'});
+                    mountCvvOnly(mp, form, config.cardid);
                     return mp;
                 })
                 .catch(function(error) {
