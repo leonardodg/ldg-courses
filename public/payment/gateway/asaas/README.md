@@ -112,6 +112,12 @@ configuração do Moodle.
 em **sandbox** — errar para o sandbox custa um teste que não funciona, errar para
 produção custa uma cobrança real.
 
+**Também cobra a assinatura SaaS da empresa** (`paymentarea = 'plan'`) desde
+17/09/2026, sem split — a conta recebedora é a da própria plataforma
+(`api::get_or_create_platform_account()`), e `errorsamewallet` abre exceção
+só para ela via `api::is_platform_account()`. Ver o README do
+`local_marketplace`.
+
 ## Testar em homologação
 
 Roteiro completo em
@@ -124,4 +130,4 @@ docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 \
   php vendor/bin/phpunit --testsuite paygw_asaas_testsuite
 ```
 
-48 testes. A camada HTTP é testável sem rede por causa da costura `make_curl()`.
+69 testes. A camada HTTP é testável sem rede por causa da costura `make_curl()`.

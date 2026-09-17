@@ -218,8 +218,55 @@ O `cli/status.php` relata quando um repositório habilitado escapa da lista.
 | `/local/marketplace/admin/companies.php` | empresas, com a comissão efetiva e de onde ela veio |
 | `/local/marketplace/admin/plans.php` | planos comerciais e as faixas de resolução |
 | `/local/marketplace/report.php?company=<shortname>` | vendas, cursos, alunos e assinaturas |
+| `/local/marketplace/company.php?company=<shortname>` | painel do gerente: meio de pagamento, **plano e assinatura**, ofertas |
 
 O relatório é filtrado por `company` **shortname**, não por id.
+
+## A assinatura SaaS: a empresa pagando a PLATAFORMA
+
+Desde 17/09/2026 existe uma segunda direção de cobrança, na mesma
+infraestrutura: além do aluno pagando a empresa por um curso
+(`paymentarea = 'offer'`), a empresa parceira paga a **plataforma** pelo
+plano comercial que contratou (`paymentarea = 'plan'`, `itemid` =
+`companyid`, nunca `offerid`). `service_provider`, e as três funções
+genéricas de `api.php` (`recurrence_for`, `commission_terms_for`,
+`record_sale`), recebem esse `$paymentarea` justamente para não confundir
+as duas — sem isso, um `companyid` que coincidisse com um `offerid` real
+herdaria a comissão/recorrência de uma oferta sem relação nenhuma.
+`record_sale()` nunca grava nada para `'plan'`: não há split, a plataforma
+fica com o valor inteiro.
+
+Quem recebe é uma `core_payment\account` comum, no contexto do **site**, sem
+empresa dona — o vínculo empresa↔conta vive em
+`local_marketplace_company_account`, e essa conta simplesmente não tem
+linha lá. `api::get_or_create_platform_account(string $country)` cria (ou
+devolve, se já existir) essa conta, e `api::is_platform_account()` é o que
+permite ao Asaas e ao Pagar.me vincular a carteira/recebedor da própria
+plataforma sem cair na guarda `errorsamewallet`/`errorsamerecipient` deles
+(escrita para a venda de curso, onde vendedor e plataforma têm que ser
+partes diferentes).
+
+Ela nasce sem gateway vinculado, no primeiro checkout — para não deixar o
+modal de pagamento vazio para o primeiro gerente que clicar, rode antes:
+
+```bash
+docker exec -u 1000:33 -w /var/www/html/public ldg-courses-moodle-1 \
+  php local/marketplace/cli/platform_account.php --country=BR
+```
+
+O botão de pagar fica na seção **Plano**, dentro de `company.php` — sem
+tela nova. `company::planexpiry` é a data de vencimento (nulo = nunca
+pagou); "inadimplente" é derivado (`planexpiry < time()`), do mesmo jeito
+que `entitlement::timeend` já fazia para o aluno.
+
+**O Pagar.me nunca vai cobrar um plano de verdade**: toda assinatura SaaS é
+recorrente, e esse gateway já recusa oferta recorrente na porta
+(`supports_recurring()`) — vincular a conta da plataforma lá serve só para
+conferir a guarda, não para cobrar.
+
+Roteiro de prova com dinheiro real, incluindo o CLI e as consultas de
+conferência no banco:
+[`docs/data-validation/assinatura-saas-plano-empresa.md`](../../../docs/data-validation/assinatura-saas-plano-empresa.md).
 
 ## Armadilhas
 
@@ -249,5 +296,7 @@ docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 \
   php vendor/bin/phpunit --testsuite local_marketplace_testsuite
 ```
 
-102 testes. Os que mais importam: `commission_test.php` (a cadeia e a base) e
-`sale_test.php` (a foto dos termos resistindo a mudança de configuração).
+162 testes. Os que mais importam: `commission_test.php` (a cadeia e a base),
+`sale_test.php` (a foto dos termos resistindo a mudança de configuração) e
+`plan_reconciliation_test.php` (a ordem arquivar-antes-de-semear na migração
+dos planos antigos).

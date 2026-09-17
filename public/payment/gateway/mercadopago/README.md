@@ -212,6 +212,15 @@ aluno a digitar tudo de novo se mudasse de ideia.
 cobrança automática falha não sobra documento para alguém pagar. O que resolve é
 o aluno informar um cartão que funcione.
 
+### Também cobra a assinatura SaaS da empresa, sem código novo
+
+Desde 17/09/2026 o mesmo motor de ciclo cobra **a empresa parceira pagando a
+plataforma** pelo plano comercial (`paymentarea = 'plan'`, ao lado do
+`'offer'` de sempre) — é o `local_marketplace\api::get_or_create_platform_account()`
+quem entra como conta recebedora, e não a da empresa. Ver o README do
+`local_marketplace` para o desenho completo; aqui não muda nada além de qual
+conta recebe.
+
 ## O que continua sem prova
 
 - **A travessia do `application_fee` entre contas distintas na assinatura.** O
