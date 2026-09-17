@@ -35241,6 +35241,10 @@ body.path-question-type .mform fieldset.hidden {
   width: 100%;
   margin-right: 0;
 }
+.mform .d-flex .fdate_time_selector .fitem {
+  margin-left: 0 !important; /* stylelint-disable-line declaration-no-important */
+  margin-right: 0 !important; /* stylelint-disable-line declaration-no-important */
+}
 
 .d-flex > .form-control {
   width: auto;

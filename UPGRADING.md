@@ -6,6 +6,16 @@ More detailed information on key changes can be found in the [Developer update n
 
 The format of this change log follows the advice given at [Keep a CHANGELOG](https://keepachangelog.com).
 
+## 5.2.3+
+
+### core_form
+
+#### Changed
+
+- The `duration` form element type now more strictly enforces units as defined by the caller, to avoid undefined behaviour during submission. An exception will be thrown where `defaultunit` is not part of the element `units` array
+
+  For more information see [MDL-89434](https://tracker.moodle.org/browse/MDL-89434)
+
 ## 5.2.3
 
 ### core
