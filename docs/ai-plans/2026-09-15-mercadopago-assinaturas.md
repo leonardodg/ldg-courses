@@ -5,13 +5,13 @@
 > **Por que "com pendências" e não "concluído":** a venda com split está
 > provada com dinheiro real em 3 dos 4 fluxos (Pix na assinatura, certificado,
 > curso avulso). O cartão tem o fluxo técnico correto mas nenhuma aprovação
-> real ainda, e o ciclo 2+ do cartão tem uma decisão de produto em aberto
-> (ESC). Nada disto bloqueia o que já vende - são itens para a próxima rodada.
-> Detalhe em **Estado da execução**, logo abaixo.
+> real ainda, e o modelo de cobrança do ciclo 2+ mudou de novo nesta rodada
+> (ver abaixo). Nada disto bloqueia o que já vende - são itens para a próxima
+> rodada. Detalhe em **Estado da execução**, logo abaixo.
 
 ---
 
-## Estado da execução — atualizado em 17/09/2026 (fechamento da rodada 3)
+## Estado da execução — atualizado em 17/09/2026 (fechamento da rodada 4)
 
 Ponto de retomada. Quem chegar aqui numa sessão nova lê **esta seção primeiro**.
 As rodadas anteriores desta seção (guardadas no histórico do git) pararam em
@@ -19,13 +19,35 @@ pontos **já superados** - leia daqui, não delas.
 
 **Worktree:** `paygw-mp-assinatura`, branch `feature/paygw-mp-assinatura`.
 **Túnel:** `mp.leodg.dev` → `https://localhost:8443`, funcionando.
-**Verde:** PHPUnit `109-112/112` no gateway (dependendo do momento do commit),
-`138/138` no `local_marketplace`, phpcs limpo nos dois.
+**Verde:** PHPUnit `116/116` no gateway, `138/138` no `local_marketplace`,
+phpcs limpo nos dois, `npx grunt amd` limpo.
 
 | Etapa | Situação |
 |---|---|
 | Fases 0 a 4 | **feitas** |
 | Fase 5 — prova de ponta a ponta | **fechada com pendências** - ver abaixo |
+
+### Decisão tomada nesta rodada: cartão também vira "fatura por ciclo"
+
+A rodada 3 tinha deixado em aberto uma decisão: o ciclo 2+ do cartão trava
+sem ESC (Mercado Pago exige CVV em toda cobrança automática nesta conta, e
+isso não muda por histórico de pagamento - medido). **Decidido sem esperar
+resposta do suporte do MP**: o cartão passa a seguir o MESMO modelo que
+Pix/boleto já usavam - cada ciclo pede confirmação do aluno, em vez de
+tentar uma cobrança que sabidamente falha.
+
+A diferença do cartão para Pix/boleto é que há um instrumento guardado (o
+`card_id`) - falta só o CVV, não o cartão inteiro de novo. Medido contra a
+conta real: `mp.createCardToken({cardId, securityCode})` tokeniza PELO
+NAVEGADOR, com a public key - o CVV nunca chega ao servidor, só o token
+pronto. Implementado em `confirm_cycle.php` + `card_form.js:
+initConfirmCycle()`. `charge_cycle()` (a cobrança automática antiga)
+continua no código, sem uso, pronta para o dia em que ESC for habilitado -
+ver o texto de solicitação enviado ao usuário para mandar ao suporte do MP,
+sem expectativa de resposta favorável.
+
+**`charge_due_cycles` não tenta cobrar sozinho mais nada** - nem cartão, nem
+Pix, nem boleto. Toda cobrança agora emite o ciclo e avisa o aluno.
 
 ### Provado com dinheiro real
 
@@ -40,29 +62,29 @@ pontos **já superados** - leia daqui, não delas.
 
 | Fluxo | Situação |
 |---|---|
-| Assinatura por **cartão** | fluxo técnico correto (11 bugs corrigidos, documentados abaixo) - 3 tentativas reais processaram mas foram recusadas por antifraude (`cc_rejected_high_risk`/`bad_filled_security_code`), não por bug |
+| Assinatura por **cartão**, ciclo 1 | fluxo técnico correto (11 bugs corrigidos, documentados abaixo) - 3 tentativas reais processaram mas foram recusadas por antifraude (`cc_rejected_high_risk`/`bad_filled_security_code`), não por bug |
+| Confirmar ciclo 2+ do cartão com CVV | codado e medido em isolamento (curl) contra a conta real - nunca exercitado pela tela |
 | Boleto na assinatura | codado e testado por lógica; nunca comprado de verdade (a oferta de teste precisou subir para R$20, o mínimo do boleto) |
 | Lembrete de vencimento, ciclo 2 do Pix/boleto, trocar Pix→cartão, cancelar pelo botão real | codados com TDD; nunca exercitados pela tela |
 
 ### Pendências, em ordem de impacto
 
-1. **Decisão de produto: ciclo 2+ do cartão trava sem ESC.** O Mercado Pago
-   exige CVV em toda cobrança automática nesta conta, e isso não muda por
-   histórico de pagamento (medido). Falta escolher entre pedir ESC ao
-   suporte do MP, ou fazer o cartão também emitir fatura por ciclo (como
-   Pix/boleto). Ver a seção correspondente mais abaixo.
-2. **Testes de tela do CRUD** listados na tabela acima - nada quebrado
-   conhecido, só não exercitado pela interface real.
-3. **Assinatura por cartão aprovada de verdade** - tentar de novo depois de
-   um intervalo maior sem tentativas em sequência (o antifraude parece ligado
-   ao padrão de várias tentativas de valor baixo na mesma conta, não a um
-   cartão específico).
-4. **Preço da oferta "Assinatura - 3 cursos"** está em **R$20** (subido de
+1. **Testes de tela do CRUD** listados na tabela acima - nada quebrado
+   conhecido, só não exercitado pela interface real. Isto inclui a
+   confirmação de ciclo por CVV, que é a peça nova desta rodada.
+2. **Assinatura por cartão aprovada de verdade** (ciclo 1) - tentar de novo
+   depois de um intervalo maior sem tentativas em sequência (o antifraude
+   parece ligado ao padrão de várias tentativas de valor baixo na mesma
+   conta, não a um cartão específico).
+3. **Preço da oferta "Assinatura - 3 cursos"** está em **R$20** (subido de
    R$5 para caber o mínimo do boleto) - decidir se volta para R$5 ou fica,
    dependendo de quando o boleto for testado de verdade.
-5. **Linhas de teste órfãs** na tabela `paygw_mercadopago` (várias tentativas
+4. **Linhas de teste órfãs** na tabela `paygw_mercadopago` (várias tentativas
    `pending`/`rejected` desta rodada de depuração) - não afetam nada, mas
    podem ser limpas se incomodarem um relatório.
+5. **Resposta do suporte do Mercado Pago sobre ESC** - se vier favorável,
+   `charge_due_cycles` pode voltar a chamar `charge_cycle()` para cartão em
+   vez de `issue_card_cycle()`; a troca é de uma linha só. Sem expectativa.
 
 ### Ambiente da prova, já montado
 
