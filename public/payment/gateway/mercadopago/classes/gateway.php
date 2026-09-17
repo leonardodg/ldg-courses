@@ -169,6 +169,31 @@ class gateway extends \core_payment\gateway {
     }
 
     /**
+     * Endereco para trocar Pix/boleto por cartao guardado, ou null quando
+     * nao faz sentido oferecer a troca.
+     *
+     * Mesma chamada generica de pending_invoice() - o nucleo continua sem
+     * saber o nome de nenhum gateway.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return string|null
+     */
+    public static function switch_to_card_url(string $component, int $itemid, int $userid): ?string {
+        $linha = self::latest_subscription_row($component, $itemid, $userid);
+
+        if (!$linha || !payment_processor::can_switch_to_card($linha)) {
+            return null;
+        }
+
+        return (new \moodle_url(
+            '/payment/gateway/mercadopago/switch_to_card.php',
+            ['ref' => (string) $linha->externalreference]
+        ))->out(false);
+    }
+
+    /**
      * Estorna a venda correspondente a um pagamento do core.
      *
      * @param int $paymentid Registro em {payments}

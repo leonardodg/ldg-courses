@@ -966,4 +966,34 @@ final class payment_processor_test extends \advanced_testcase {
         ]);
         $this->assertNull(payment_processor::pending_invoice($cancelada));
     }
+
+    /**
+     * So oferece "trocar para cartao" para quem ja paga por Pix/boleto, na
+     * assinatura ainda ativa - quem ja paga com cartao nao tem para onde
+     * trocar, e quem cancelou nao tem ciclo futuro para mudar.
+     *
+     * @return void
+     */
+    public function test_so_troca_para_cartao_quem_paga_por_fatura(): void {
+        $this->resetAfterTest();
+
+        $pix = $this->linha(['subscriptionid' => 'mdlsub-1-2-switch1', 'paymentmethod' => 'pix']);
+        $this->assertTrue(payment_processor::can_switch_to_card($pix));
+
+        $cartao = $this->linha(['subscriptionid' => 'mdlsub-1-2-switch2', 'paymentmethod' => 'visa']);
+        $this->assertFalse(
+            payment_processor::can_switch_to_card($cartao),
+            'quem ja paga com cartao nao tem para onde trocar'
+        );
+
+        $cancelada = $this->linha([
+            'subscriptionid' => 'mdlsub-1-2-switch3',
+            'paymentmethod' => 'pix',
+            'subscriptionstatus' => 'cancelled',
+        ]);
+        $this->assertFalse(
+            payment_processor::can_switch_to_card($cancelada),
+            'assinatura cancelada nao tem ciclo futuro para trocar'
+        );
+    }
 }

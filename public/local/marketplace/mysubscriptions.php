@@ -166,6 +166,22 @@ foreach ($ents as $ent) {
         );
     }
 
+    // A troca aparece JUNTO de qualquer outra acao, e nao no lugar dela: quem
+    // paga por Pix/boleto pode querer trocar para cartao sem que isso
+    // dependa de ter ou nao uma fatura aberta agora.
+    if ($recurring && !$cancelled && !$expired && $ent->get('status') === entitlement::STATUS_ACTIVE) {
+        $switchurl = api::switch_to_card_url_for('local_marketplace', (int) $offer->get('id'), (int) $USER->id);
+        if ($switchurl) {
+            $actions .= html_writer::div(
+                html_writer::link(
+                    $switchurl,
+                    get_string('switchtocard', 'local_marketplace'),
+                    ['class' => 'btn btn-sm btn-outline-primary mt-1']
+                )
+            );
+        }
+    }
+
     $table->data[] = [
         format_string($offer->get('name')),
         format_string($c->get('name')),

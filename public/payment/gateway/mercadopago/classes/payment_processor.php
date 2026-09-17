@@ -357,6 +357,59 @@ class payment_processor {
     }
 
     /**
+     * Troca Pix/boleto por cartao guardado - so PARA A FRENTE, sem cobrar
+     * nada agora.
+     *
+     * NAO CRIA PAGAMENTO. Guarda o cartao (mesmo caminho de save_card() do
+     * ciclo 1) e atualiza a linha mais recente com o instrumento novo -
+     * exatamente os campos que build_next_cycle() copia adiante
+     * (mpcustomerid, mpcardid, paymentmethod). O ciclo atual, se ja foi
+     * pago por Pix ou boleto, continua registrado como foi pago: trocar a
+     * forma de pagamento nao reescreve o passado, so decide como o ciclo
+     * SEGUINTE vai ser cobrado.
+     *
+     * `payerinfo` fica limpo: sem instrumento de Pix/boleto para reaproveitar,
+     * o campo perde a razao de existir - e mante-lo so ia confundir uma
+     * leitura futura que achasse que a assinatura ainda e por fatura.
+     *
+     * @param \stdClass $record Linha mais recente da assinatura
+     * @param string $cardtoken Token vindo do navegador, de uso unico
+     * @param string $paymentmethod Bandeira, como o Mercado Pago a nomeia
+     * @param string $issuerid Emissor, como o Mercado Pago o nomeia - ver save_card()
+     * @return void
+     */
+    public static function switch_to_card(
+        \stdClass $record,
+        string $cardtoken,
+        string $paymentmethod,
+        string $issuerid = ''
+    ): void {
+        global $DB;
+
+        $config = self::get_gateway_config((int) $record->accountid, (string) $record->apptype);
+        $client = new mp_client($config['accesstoken']);
+        $user = \core_user::get_user((int) $record->userid, 'id, email', MUST_EXIST);
+
+        $customerid = (string) self::step('customer', fn() => self::ensure_customer($client, $user->email));
+        $card = (array) self::step(
+            'savecard',
+            fn() => $client->save_card($customerid, $cardtoken, $paymentmethod, $issuerid)
+        );
+        $cardid = (string) ($card['id'] ?? '');
+
+        if ($cardid === '') {
+            throw new moodle_exception('errorinvalidresponse', 'paygw_mercadopago', '', 'card');
+        }
+
+        $record->mpcustomerid = $customerid;
+        $record->mpcardid = $cardid;
+        $record->paymentmethod = $paymentmethod;
+        $record->payerinfo = null;
+        $record->timemodified = time();
+        $DB->update_record(self::TABLE, $record);
+    }
+
+    /**
      * Roda um passo do fluxo dizendo o NOME dele quando falha.
      *
      * O Mercado Pago repete a mesma mensagem generica em endpoints diferentes,
@@ -1511,6 +1564,29 @@ class payment_processor {
             'value' => (float) $record->amount,
             'line' => $linha,
         ];
+    }
+
+    /**
+     * Faz sentido oferecer "trocar para cartao" nesta assinatura?
+     *
+     * SO PARA QUEM JA PAGA POR PIX OU BOLETO, e assinatura ainda ativa - quem
+     * ja paga com cartao nao tem para onde trocar (ver switch_to_card.php,
+     * que so troca NESSE sentido), e quem cancelou nao tem ciclo futuro para
+     * mudar o instrumento de.
+     *
+     * @param \stdClass $record Linha mais recente da assinatura
+     * @return bool
+     */
+    public static function can_switch_to_card(\stdClass $record): bool {
+        if (empty($record->subscriptionid)) {
+            return false;
+        }
+
+        if ((string) $record->subscriptionstatus === 'cancelled') {
+            return false;
+        }
+
+        return in_array((string) $record->paymentmethod, self::INVOICE_METHODS, true);
     }
 
     /**

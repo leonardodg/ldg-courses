@@ -334,6 +334,7 @@ $string['statusarchived'] = 'Archivada';
 $string['statusdraft'] = 'Borrador';
 $string['statuspublished'] = 'Publicada';
 $string['statussuspended'] = 'Suspendida';
+$string['switchtocard'] = 'Cambiar a tarjeta';
 $string['tasknotifyexpiring'] = 'Avisar a los estudiantes sobre accesos por vencer';
 $string['typebundle'] = 'Combo';
 $string['typecatalog'] = 'Catálogo completo';
