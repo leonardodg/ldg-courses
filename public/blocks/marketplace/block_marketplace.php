@@ -75,25 +75,52 @@ class block_marketplace extends block_base {
         }
 
         $companies = company::get_by_member((int) $USER->id);
-        if ($companies) {
-            return $this->content_for_owner(reset($companies));
+        $company = $companies ? reset($companies) : null;
+
+        if (
+            $company
+                && $this->is_dashboard_context()
+                && has_capability('local/marketplace:managecompany', $company->get_context())
+        ) {
+            return $this->content_for_owner($company, (int) $USER->id);
         }
 
         return $this->content_for_student((int) $USER->id);
     }
 
     /**
+     * Bloco no Dashboard ou na home do site - nao dentro de curso.
+     *
+     * O checklist de "meu cadastro de empresa" nao pode aparecer na pagina de
+     * curso de QUALQUER empresa que o usuario visite: o bloco tambem entra em
+     * 'course-view' (applicable_formats), e isto so afetava o widget de aluno
+     * antes de existir uma visao de dono. Segue o mesmo padrao usado pelo
+     * core em blocks/html/block_html.php.
+     *
+     * @return bool
+     */
+    private function is_dashboard_context(): bool {
+        if (!$this->page) {
+            return false;
+        }
+
+        return in_array($this->page->pagetype, ['my-index', 'site-index'], true);
+    }
+
+    /**
      * Checklist de ativacao, para quem e membro de uma empresa ainda
-     * incompleta. Empresa completa nao mostra nada aqui - o widget de
-     * assinatura do aluno so aparece pra quem NAO e dono de empresa.
+     * incompleta E tem a capability de gerencia-la. Empresa completa mostra
+     * o widget de assinatura do proprio aluno em vez de nada - dono/vendedor
+     * tambem pode ter assinatura vencendo em outra empresa.
      *
      * @param company $company
+     * @param int $userid
      * @return stdClass
      */
-    private function content_for_owner(company $company): stdClass {
+    private function content_for_owner(company $company, int $userid): stdClass {
         $progress = onboarding::progress($company);
         if ($progress['complete']) {
-            return $this->content;
+            return $this->content_for_student($userid);
         }
 
         $labels = [
