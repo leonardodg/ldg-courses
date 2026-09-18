@@ -540,11 +540,13 @@ Chrome — não um layout final, só a referência visual que aprovou os
 conceitos antes da implementação.
 
 Detalhe completo, com o histórico da revisão (SDD: 2 tasks + revisão final
-que achou e corrigiu três bugs de produto): `docs/ai-plans/2026-09-18-block-marketplace-onboarding-implementacao.md`,
-na worktree `parceiro-onboarding` (`feature/parceiro-onboarding`, PR #108).
-**Pendência antes do merge:** verificação manual no navegador (logar como
-dono de empresa incompleta e conferir o checklist em `/my/`) ainda não foi
-feita — só testes automatizados provaram o comportamento até aqui.
+que achou e corrigiu três bugs de produto):
+`docs/ai-plans/2026-09-18-block-marketplace-onboarding-implementacao.md`.
+**Mesclado em `dev`** pelos PR #108 e #109 (18/09/2026); a worktree
+`parceiro-onboarding` já foi removida. **Pendência:** verificação manual no
+navegador (logar como dono de empresa incompleta e conferir o checklist em
+`/my/`) ainda não foi feita — só testes automatizados provaram o
+comportamento até aqui. O usuário está testando agora.
 
 ## Como o usuário trabalha
 
