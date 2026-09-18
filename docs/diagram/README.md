@@ -26,6 +26,7 @@ apresentação ou issue).
 | `07-fluxo-parceiro` | Cadastro de empresa: da landing pública à empresa provisionada |
 | `08-fluxo-aluno` | Compra: da vitrine ao acesso liberado, com o caminho da oferta grátis |
 | `09-configuracoes` | Onde mora cada ajuste dos plugins, e a cadeia que resolve a comissão |
+| `10-fluxo-ativacao-empresa` | Continuação do `07`: da empresa provisionada ao checklist de ativação completo no `block_marketplace` |
 
 ## O que os diagramas mostram e o `install.xml` não
 

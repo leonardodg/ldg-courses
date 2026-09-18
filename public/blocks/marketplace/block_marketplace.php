@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use block_marketplace\onboarding;
 use local_marketplace\company;
 use local_marketplace\entitlement;
 use local_marketplace\offer;
@@ -59,7 +60,7 @@ class block_marketplace extends block_base {
      * @return stdClass|null
      */
     public function get_content() {
-        global $USER, $OUTPUT;
+        global $USER;
 
         if ($this->content !== null) {
             return $this->content;
@@ -73,7 +74,91 @@ class block_marketplace extends block_base {
             return $this->content;
         }
 
-        $ents = entitlement::get_active_for_user((int) $USER->id);
+        $companies = company::get_by_member((int) $USER->id);
+        $company = $companies ? reset($companies) : null;
+
+        if (
+            $company
+                && $this->is_dashboard_context()
+                && has_capability('local/marketplace:managecompany', $company->get_context())
+        ) {
+            return $this->content_for_owner($company, (int) $USER->id);
+        }
+
+        return $this->content_for_student((int) $USER->id);
+    }
+
+    /**
+     * Bloco no Dashboard ou na home do site - nao dentro de curso.
+     *
+     * O checklist de "meu cadastro de empresa" nao pode aparecer na pagina de
+     * curso de QUALQUER empresa que o usuario visite: o bloco tambem entra em
+     * 'course-view' (applicable_formats), e isto so afetava o widget de aluno
+     * antes de existir uma visao de dono. Segue o mesmo padrao usado pelo
+     * core em blocks/html/block_html.php.
+     *
+     * @return bool
+     */
+    private function is_dashboard_context(): bool {
+        if (!$this->page) {
+            return false;
+        }
+
+        return in_array($this->page->pagetype, ['my-index', 'site-index'], true);
+    }
+
+    /**
+     * Checklist de ativacao, para quem e membro de uma empresa ainda
+     * incompleta E tem a capability de gerencia-la. Empresa completa mostra
+     * o widget de assinatura do proprio aluno em vez de nada - dono/vendedor
+     * tambem pode ter assinatura vencendo em outra empresa.
+     *
+     * @param company $company
+     * @param int $userid
+     * @return stdClass
+     */
+    private function content_for_owner(company $company, int $userid): stdClass {
+        $progress = onboarding::progress($company);
+        if ($progress['complete']) {
+            return $this->content_for_student($userid);
+        }
+
+        $labels = [
+            onboarding::STEP_GATEWAY => get_string('stepgateway', 'block_marketplace'),
+            onboarding::STEP_PLAN => get_string('stepplan', 'block_marketplace'),
+        ];
+        $states = onboarding::step_state($company);
+
+        $items = [];
+        foreach ($labels as $step => $label) {
+            $done = $states[$step] === onboarding::STATE_DONE;
+            $items[] = html_writer::div(
+                ($done ? '&check; ' : '') . $label,
+                $done ? 'small text-success' : 'small'
+            );
+        }
+
+        $this->content->text = html_writer::div(
+            get_string('onboardingprogress', 'block_marketplace', $progress['percent']),
+            'fw-semibold mb-2'
+        ) . implode('', $items);
+
+        $this->content->footer = html_writer::link(
+            new moodle_url('/local/marketplace/company.php', ['company' => $company->get('shortname')]),
+            get_string('onboardingcontinue', 'block_marketplace')
+        );
+
+        return $this->content;
+    }
+
+    /**
+     * Comportamento original: assinaturas ativas do aluno.
+     *
+     * @param int $userid
+     * @return stdClass
+     */
+    private function content_for_student(int $userid): stdClass {
+        $ents = entitlement::get_active_for_user($userid);
         if (!$ents) {
             return $this->content;
         }

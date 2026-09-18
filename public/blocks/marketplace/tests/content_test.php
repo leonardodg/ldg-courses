@@ -118,11 +118,17 @@ final class content_test extends \advanced_testcase {
     /**
      * Renderiza o bloco.
      *
+     * No uso real o block_manager atribui $block->page antes de chamar
+     * get_content() - sem isto $this->page fica null dentro do bloco.
+     *
      * @return \stdClass
      */
     protected function content(): \stdClass {
+        global $PAGE;
+
         $block = new \block_marketplace();
         $block->init();
+        $block->page = $PAGE;
 
         return $block->get_content();
     }
@@ -243,5 +249,174 @@ final class content_test extends \advanced_testcase {
             $block->applicable_formats()
         );
         $this->assertFalse($block->instance_allow_multiple());
+    }
+
+    /**
+     * Dono de empresa incompleta ve o checklist, nao o widget de assinatura.
+     *
+     * @return void
+     */
+    public function test_dono_de_empresa_incompleta_ve_checklist(): void {
+        // A propria empresa de teste ja nasce sem plano e sem conta - api::create_company()
+        // no setUp() nao define planid nem conta de pagamento.
+        $this->setUser($this->company_owner());
+
+        $content = $this->content();
+
+        $this->assertNotSame('', $content->text);
+        $this->assertStringContainsString('0%', $content->text);
+        $this->assertStringNotContainsString('Curso de Xadrez', $content->text);
+    }
+
+    /**
+     * Empresa com checklist completo nao mostra nada (sem gateway/plano pendente
+     * e sem assinatura de aluno) - mesmo comportamento vazio de sempre.
+     *
+     * @return void
+     */
+    public function test_dono_de_empresa_completa_nao_ve_checklist(): void {
+        // A empresa de teste ja nasce com uma conta de pagamento no BR -
+        // api::create_company() no setUp() chama create_payment_account().
+        // So falta habilitar um gateway nela: criar uma SEGUNDA conta e
+        // vincula-la de novo violaria o indice unico (companyid, country) de
+        // local_marketplace_account (t_locamarkacco_comcou_uix).
+        // O is_available() da conta exige o gateway habilitado no SITE, nao
+        // so na conta (armadilha ja documentada no CLAUDE.md) - sem isto
+        // get_enabled_plugins() filtra o mercadopago fora e a etapa nunca
+        // fecha.
+        $this->complete_test_company();
+
+        $this->setUser($this->company_owner());
+
+        $this->assertSame('', $this->content()->text);
+    }
+
+    /**
+     * Dono de empresa JA COMPLETA, que tambem e aluno com assinatura ativa em
+     * OUTRA empresa/oferta, continua vendo o proprio vencimento (item A).
+     *
+     * Antes da correcao, content_for_owner() devolvia $this->content vazio
+     * assim que a empresa do dono estava completa, e o widget de aluno nunca
+     * aparecia para quem e dono/vendedor de alguma empresa.
+     *
+     * @return void
+     */
+    public function test_dono_de_empresa_completa_ve_propria_assinatura_de_aluno(): void {
+        $this->complete_test_company();
+
+        $outracompany = api::create_company((object) [
+            'name' => 'Outra Empresa',
+            'shortname' => 'outra' . random_int(1000, 9999),
+            'cnpj' => null,
+            'themename' => null,
+            'hostname' => null,
+        ], 2);
+
+        $offer = new offer();
+        $offer->set('companyid', (int) $outracompany->get('id'));
+        $offer->set('name', 'Curso de Go');
+        $offer->set('offertype', offer::TYPE_SINGLE);
+        $offer->set('price', 50.0);
+        $offer->set('currency', 'BRL');
+        $offer->set('accessmode', offer::ACCESS_DAYS);
+        $offer->set('accessdays', 30);
+        $offer->set('status', offer::STATUS_PUBLISHED);
+        $offer->create();
+
+        $owner = $this->company_owner();
+
+        $ent = new entitlement();
+        $ent->set('userid', (int) $owner->id);
+        $ent->set('offerid', (int) $offer->get('id'));
+        $ent->set('companyid', (int) $outracompany->get('id'));
+        $ent->set('timestart', time() - DAYSECS);
+        $ent->set('timeend', time() + (10 * DAYSECS));
+        $ent->set('status', entitlement::STATUS_ACTIVE);
+        $ent->set('norenew', 0);
+        $ent->create();
+
+        $this->setUser($owner);
+
+        $content = $this->content();
+
+        $this->assertStringContainsString('Curso de Go', $content->text);
+        $this->assertStringNotContainsString('Ativação da conta', $content->text);
+    }
+
+    /**
+     * Vendedor (sem managecompany) de empresa incompleta nao ve o checklist -
+     * a pagina que ele levaria a exigir a capability que so o dono tem
+     * (item B). Sem assinatura de aluno, o bloco fica vazio, como sempre.
+     *
+     * @return void
+     */
+    public function test_vendedor_sem_managecompany_nao_ve_checklist(): void {
+        $seller = $this->getDataGenerator()->create_user();
+        api::add_member($this->company, (int) $seller->id);
+
+        $this->setUser($seller);
+
+        $this->assertSame('', $this->content()->text);
+    }
+
+    /**
+     * No contexto de curso, o checklist de ativacao nao aparece mesmo para o
+     * dono de empresa incompleta (item C) - o dono cai no comportamento de
+     * aluno, igual a quem nao tem empresa nenhuma.
+     *
+     * @return void
+     */
+    public function test_checklist_nao_aparece_no_contexto_de_curso(): void {
+        global $PAGE;
+
+        $course = $this->getDataGenerator()->create_course();
+        // Set_url() so define o pagetype na primeira chamada (initialise_default_pagetype
+        // so roda quando _pagetype ainda e null) - o setUp() ja chamou set_url() para
+        // 'my-index', entao aqui e preciso o set_pagetype() explicito do core.
+        $PAGE->set_url('/course/view.php', ['id' => $course->id]);
+        $PAGE->set_pagetype('course-view');
+
+        $this->setUser($this->company_owner());
+
+        $this->assertSame('', $this->content()->text);
+    }
+
+    /**
+     * Completa a empresa de teste: cria plano e habilita um gateway na conta
+     * ja criada por api::create_company() no setUp().
+     *
+     * @return void
+     */
+    protected function complete_test_company(): void {
+        $plan = new \local_marketplace\plan(0, (object) [
+            'shortname' => 'contenttest_plan2_' . random_int(1000, 9999),
+            'name' => 'Plano de teste',
+            'monthlyfee' => 0,
+            'commissionpct' => 10,
+        ]);
+        $plan->create();
+        $this->company->set('planid', (int) $plan->get('id'));
+        $this->company->update();
+
+        $account = $this->company->get_payment_account('BR');
+        $gateway = new \core_payment\account_gateway(0, (object) [
+            'accountid' => $account->get('id'),
+            'gateway' => 'mercadopago',
+            'enabled' => true,
+        ]);
+        $gateway->create();
+        \core\plugininfo\paygw::enable_plugin('mercadopago', 1);
+    }
+
+    /**
+     * O usuario dono da empresa de teste - api::create_company() no setUp()
+     * usa ownerid=2, que e sempre o admin num Moodle recem-instalado/testado.
+     *
+     * @return \stdClass
+     */
+    protected function company_owner(): \stdClass {
+        global $DB;
+
+        return $DB->get_record('user', ['id' => 2]);
     }
 }
