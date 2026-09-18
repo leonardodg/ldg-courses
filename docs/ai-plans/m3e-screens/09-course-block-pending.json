@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "project": "LDG Courses - C2 Bloco Curso Pendente",
+  "description": "Bloco compacto para empresa em cadastro",
+  "theme": {
+    "name": "LDG Studio (Boost + Bootstrap 5)",
+    "tokens": {
+      "dark": { "--ldg-bg": "#121212", "--ldg-surface": "#1e1e1e", "--ldg-border": "#3a3b3c", "--ldg-text": "#ffffff", "--ldg-text-muted": "#b0b3b8", "--ldg-accent": "#4b8eff", "--ldg-status-success": "#30d158" },
+      "light": { "--ldg-bg": "#f4f6fa", "--ldg-surface": "#ffffff", "--ldg-border": "#d5dce6", "--ldg-text": "#0e192b", "--ldg-text-muted": "#5a6b82", "--ldg-accent": "#007aff", "--ldg-status-success": "#1a7f37" }
+    }
+  },
+  "screens": [{
+    "id": "C2",
+    "name": "Bloco no Curso - Empresa Cadastrando",
+    "viewport": { "width": 412, "height": 892 },
+    "viewportDesktop": { "width": 1280, "height": 800 },
+    "template": "block_marketplace/course_block_pending",
+    "context": {
+      "courseName": "React Avançado",
+      "currentStep": { "num": 2, "label": "Termos de contrato", "total": 6 },
+      "cta": { "label": "Mais informações", "href": "/blocks/marketplace/onboarding.php", "variant": "primary" },
+      "progressSteps": [
+        { "num": 1, "label": "Conta", "state": "done" },
+        { "num": 2, "label": "Termos", "state": "current" },
+        { "num": 3, "label": "Documento", "state": "pending" },
+        { "num": 4, "label": "Pagamento", "state": "blocked" },
+        { "num": 5, "label": "Plano", "state": "blocked" },
+        { "num": 6, "label": "Aprovação", "state": "blocked" }
+      ]
+    }
+  }]
+}
