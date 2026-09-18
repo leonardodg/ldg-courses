@@ -61,9 +61,16 @@ Três coisas que esta rodada confirmou fora do sandbox:
 tenta — mas quem for limpar cobrança de teste pela API vai esbarrar nisso.
 
 **E o status não vira "expirado".** Três dias depois do `expires_at`, duas
-cobranças de teste continuavam `pending`. A `task\reconcile` varre `pending` por
-até 30 dias, então ela segue consultando cobranças que nunca serão pagas — não é
-dano, é chamada desperdiçada.
+cobranças de teste continuavam `pending`. Até 18/09/2026 a `task\reconcile`
+varria `pending` por até 30 dias corridos e seguia consultando cobranças que
+nunca serão pagas — não era dano, era chamada desperdiçada (~720 chamadas por
+Pix abandonado). **Corrigido** (PR #105, `fix-check-and-validation`): a janela
+de varredura agora deriva do meio de pagamento — Pix, validade do QR code +1h;
+boleto, vencimento +3 dias; cartão, 1 dia; método desconhecido cai na janela
+mais curta. O corte virou condição da própria consulta SQL, não filtro em PHP
+depois de carregar a linha. `MAX_AGE` (30 dias) continua valendo só para a
+passagem de correção de comissão. Exercitado contra o banco real e coberto por
+teste automatizado — sem pendência de prova manual.
 
 > **Credenciais não vivem neste arquivo.** Ele está versionado e o repositório
 > está no GitHub. As chaves ficam em

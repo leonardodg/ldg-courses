@@ -151,6 +151,21 @@ O código existe, ninguém viu funcionar.
 - **Vendedor pessoa jurídica no Mercado Pago** — o caso convencional, e o único que sobrou. Sem risco aparente: o MP aceitou a conta mais restrita.
 - **Retentativa de cartão guardado** — quantas vezes o Asaas tenta quando o cartão vence no meio da assinatura, e que status intermediários produz. Exige esperar um ciclo real.
 - **Pix e boleto liquidando de verdade** — o sandbox do Asaas não liquida nenhum dos dois; a prova foi feita com cartão fictício.
+- **Ciclo 2+ da assinatura SaaS** (empresa pagando a plataforma, `paymentarea = 'plan'`) — o motor (`charge_due_cycles`) é o mesmo já provado para assinatura de curso, mas nunca foi exercitado especificamente para este paymentarea. Ver `assinatura-saas-plano-empresa.md`.
+- **Assinatura SaaS via Asaas ou Pagar.me** — só o Mercado Pago tem conta de produção pronta nesta rodada; os outros dois gateways não foram vinculados para a conta da plataforma.
+- **Checklist de ativação do `block_marketplace`** (18/09/2026) — dono de empresa incompleta vendo o checklist de verdade em `/my/`, provado só por PHPUnit até aqui. Ver `docs/ai-plans/2026-09-18-block-marketplace-onboarding-implementacao.md`.
+
+### Decisão pendente (não é falta de código)
+
+**Ciclo 2+ da assinatura Mercado Pago (curso, `paymentarea = 'offer'`) exige
+CVV que ninguém vai digitar.** `charge_due_cycles()` re-tokeniza por `card_id`
+sem código de segurança, e o Mercado Pago devolve `security_code_id can't be
+null` a partir do segundo ciclo — a não ser que o vendedor tenha ESC
+(*Enhanced Secure Copy*) habilitado na conta. Duas saídas, nenhuma
+implementada: (1) pedir ao suporte do Mercado Pago para habilitar ESC nesta
+conta de vendedor (texto do pedido já pronto), ou (2) redesenhar o ciclo 2+
+para pedir uma ação do aluno. Ver `mercadopago-assinatura.md` (linhas
+~749-758) para o texto exato e o estado da decisão.
 
 ### Falta construir
 
@@ -164,11 +179,17 @@ O código existe, ninguém viu funcionar.
 
 ## Sem solução técnica
 
-**Assinatura não renova sozinha.** O Mercado Pago não tem recorrência com split —
-`preapproval` não aceita `marketplace_fee`, e o Transparente com cartão salvo
-exige CVV a cada cobrança. Hoje o aluno compra de novo quando vence, avisado por
-e-mail cinco dias antes. A saída é de negócio: aceitar isso, ou montar cobrança
-recorrente fora do split com repasse manual.
+**Assinatura no Mercado Pago já renova sozinha desde 16/09/2026** — não há
+objeto de assinatura com comissão (`preapproval` não aceita
+`marketplace_fee`), então cada ciclo é uma cobrança própria em
+`/v1/payments` com `application_fee`, disparada por nós sobre um cartão
+salvo. O que falta não é o mecanismo, é o CVV do ciclo 2+ sem ESC — ver
+"Decisão pendente" acima.
+
+**Um marketplace por país.** O split só acontece entre contas do mesmo país,
+porque a comissão cai na conta da plataforma e uma conta só guarda a moeda do
+próprio país. Vendedores de outros países exigem um par de credenciais por país —
+a fundação está pronta, falta multiplicar a configuração.
 
 **Um marketplace por país.** O split só acontece entre contas do mesmo país,
 porque a comissão cai na conta da plataforma e uma conta só guarda a moeda do
