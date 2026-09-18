@@ -1,7 +1,19 @@
 # Mockups HTML — fluxo de ativação de empresa parceira
 
-Substitui a tentativa via m3e-canvas (ver `../descartado/`). Cada tela abre
-direto no Chrome, sem servidor: `file:///.../html-mockups/d1-wizard-dashboard.html`.
+Substitui a tentativa via m3e-canvas (ver `../descartado/`). Abre direto no
+Chrome, sem servidor.
+
+**Layout completo, uma página só:** `layout-completo.html` — as 11 telas em
+sequência (D1–D7, C1–C4), com navbar e rodapé aproximados do `theme_ldg` (cores
+e estrutura reais de `navbar.mustache`/`footer.mustache`/`_navbar.scss`, sem
+reproduzir a lógica de servidor que não importa pro mockup) e um índice fixo no
+topo para pular direto a cada tela. As telas C1–C4 vêm dentro de um layout de
+duas colunas (`.course-shell`) com um placeholder à esquerda representando a
+área de conteúdo do curso, porque o bloco de verdade sempre aparece ao lado de
+algo, nunca sozinho.
+
+Os 11 arquivos avulsos (`d1-wizard-dashboard.html` etc.) continuam existindo
+para quem quiser abrir uma tela isolada.
 
 Usa Bootstrap 5.3 (CDN) + `_tokens.css` (cópia dos custom properties reais de
 `public/theme/ldg/scss/ldg/_tokens.scss` — qualquer ajuste de cor/token vai no

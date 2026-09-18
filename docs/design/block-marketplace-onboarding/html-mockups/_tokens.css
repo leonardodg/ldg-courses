@@ -147,3 +147,116 @@ body {
   color: var(--ldg-text-label);
   font-style: italic;
 }
+
+/* Cromo do site (navbar + rodapé), aproximado de theme_ldg/templates/navbar.mustache
+   e footer.mustache — cores e estrutura reais (_navbar.scss, _tokens.scss), sem
+   reproduzir toda a lógica de servidor (menus, drawers) que não importa pro mockup. */
+
+.ldg-mock-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--ldg-navbar-height);
+  background-color: var(--ldg-chrome-bg);
+  color: var(--ldg-chrome-text);
+  border-bottom: 1px solid var(--ldg-chrome-border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ldg-gutter);
+  gap: 1rem;
+}
+.ldg-mock-navbar .brand {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.ldg-mock-navbar .spacer { flex: 1 1 auto; }
+.ldg-mock-navbar a { color: var(--ldg-chrome-text); text-decoration: none; }
+
+.ldg-mock-footer {
+  background: var(--ldg-chrome-bg);
+  color: var(--ldg-chrome-text);
+  padding: calc(var(--ldg-gutter) * 2) var(--ldg-gutter) var(--ldg-gutter);
+  margin-top: calc(var(--ldg-gutter) * 2);
+}
+.ldg-mock-footer .ldg-footer-top {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ldg-gutter);
+  max-width: var(--ldg-container);
+  margin: 0 auto;
+  padding-bottom: var(--ldg-gutter);
+  border-bottom: 1px solid var(--ldg-chrome-border);
+}
+.ldg-mock-footer h2 {
+  font-size: var(--ldg-fs-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ldg-text-label, #8a8f94);
+  margin-bottom: 0.5rem;
+}
+.ldg-mock-footer ul { list-style: none; padding: 0; margin: 0; }
+.ldg-mock-footer li { margin-bottom: 0.25rem; }
+.ldg-mock-footer a { color: var(--ldg-chrome-text); opacity: 0.85; }
+.ldg-mock-footer .ldg-footer-legal {
+  max-width: var(--ldg-container);
+  margin: var(--ldg-gutter) auto 0;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: var(--ldg-fs-caption);
+  opacity: 0.7;
+}
+
+.section-label {
+  font-family: var(--ldg-font-mono);
+  font-size: var(--ldg-fs-caption);
+  color: var(--ldg-accent-text, var(--ldg-accent));
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.toc {
+  position: sticky;
+  top: var(--ldg-navbar-height);
+  z-index: 10;
+  background: var(--ldg-bg);
+  border-bottom: 1px solid var(--ldg-border);
+  padding: 0.5rem var(--ldg-gutter);
+  font-family: var(--ldg-font-mono);
+  font-size: var(--ldg-fs-caption);
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.mockup-section {
+  padding: calc(var(--ldg-gutter) * 2) var(--ldg-gutter);
+  border-bottom: 1px dashed var(--ldg-border);
+}
+.mockup-section:target {
+  outline: 2px dashed var(--ldg-accent);
+  outline-offset: -4px;
+}
+
+.course-shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ldg-gutter);
+  max-width: var(--ldg-container);
+  margin: 0 auto;
+}
+@media (min-width: 992px) {
+  .course-shell { grid-template-columns: 2fr 1fr; }
+}
+.course-placeholder {
+  background: var(--ldg-surface);
+  border: 1px dashed var(--ldg-border);
+  border-radius: var(--bs-border-radius);
+  padding: var(--ldg-gutter);
+  color: var(--ldg-text-muted);
+  min-height: 220px;
+}

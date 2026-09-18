@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="pt-br" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fluxo de ativação de empresa parceira — layout completo (mockup)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="_tokens.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="ldg-mock-navbar" aria-label="Navegação principal (mockup)">
+  <span class="brand">LDG Courses</span>
+  <span class="spacer"></span>
+  <a href="#" aria-label="Alternar modo claro/escuro">&#9788;</a>
+  <a href="#" aria-label="Notificações">&#128276;</a>
+  <a href="#" aria-label="Menu do usuário">Escola Vetor &#9662;</a>
+</nav>
+
+<div class="toc">
+  <strong>Índice:</strong>
+  <a href="#d1">D1</a><a href="#d2">D2</a><a href="#d3">D3</a><a href="#d4">D4</a>
+  <a href="#d5">D5</a><a href="#d6">D6</a><a href="#d7">D7</a>
+  <a href="#c1">C1</a><a href="#c2">C2</a><a href="#c3">C3</a><a href="#c4">C4</a>
+</div>
+
+<main>
+
+<!-- ============================================================ -->
+<section id="d1" class="mockup-section">
+  <div class="mockup-shell" style="max-width:720px;">
+    <div class="section-label mb-2">D1 &middot; Dashboard (/my) &middot; empresa em cadastro</div>
+    <div class="card p-4 mb-3">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <div class="text-label">Empresa parceira</div>
+          <h2 class="h4 mb-0">Escola Vetor</h2>
+        </div>
+        <span class="badge text-bg-primary">Em ativação</span>
+      </div>
+      <div class="progress mb-2" role="progressbar" aria-label="Progresso do cadastro" aria-valuenow="33" aria-valuemin="0" aria-valuemax="100" style="height:10px;">
+        <div class="progress-bar" style="width:33%"></div>
+      </div>
+      <div class="text-muted small mb-3">2 de 6 etapas concluídas</div>
+      <div class="list-group">
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <span>&#10003; Conta criada / e-mail confirmado</span>
+          <span class="badge bg-success">Concluído</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <span>&#10003; Termos de contrato aceitos</span>
+          <span class="badge bg-success">Concluído</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <span>Documento (CNPJ ou CPF) <span class="optional-flag">— opcional</span></span>
+          <button class="btn btn-sm btn-outline-secondary">Continuar</button>
+        </div>
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <span>Conta de pagamento vinculada</span>
+          <span class="badge text-bg-secondary">Bloqueado até o passo anterior</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <span>Plano escolhido</span>
+          <span class="badge text-bg-secondary">Pendente</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <span>Aprovação do admin</span>
+          <span class="badge text-bg-secondary">Pendente</span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg w-100 mt-3">Continuar cadastro</button>
+    </div>
+    <div class="accordion">
+      <div class="accordion-item card">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#comoFuncionaBody">Como funciona a ativação</button>
+        </h2>
+        <div id="comoFuncionaBody" class="accordion-collapse collapse">
+          <div class="accordion-body text-muted small">O cadastro só é liberado depois que um administrador aprovar a candidatura. Documento (CNPJ/CPF) é opcional — vendedores pessoa física também podem vender.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="d2" class="mockup-section">
+  <div class="mockup-shell" style="max-width:960px;">
+    <div class="section-label mb-2">D2 &middot; Dashboard (/my) &middot; empresa ativa</div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="h4 mb-0">Escola Vetor <span class="badge bg-success ms-2">Ativa</span></h2>
+      <span class="badge text-bg-primary">Plano Start · R$ 50/mês</span>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-4"><div class="card p-3 text-center"><div class="text-label">Alunos matriculados</div><div class="display-6">128</div></div></div>
+      <div class="col-12 col-md-4"><div class="card p-3 text-center"><div class="text-label">Assinaturas ativas</div><div class="display-6">34</div></div></div>
+      <div class="col-12 col-md-4"><div class="card p-3 text-center"><div class="text-label">Cursos sendo vendidos</div><div class="display-6">6</div></div></div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="#" class="btn btn-primary">Relatório completo</a>
+      <a href="#" class="btn btn-outline-secondary">Ofertas</a>
+      <a href="#" class="btn btn-outline-secondary">Cursos</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="d3" class="mockup-section">
+  <div class="mockup-shell" style="max-width:640px;">
+    <div class="section-label mb-2">D3 &middot; Etapa: conta de pagamento</div>
+    <h2 class="h4 mb-1">Conta de pagamento</h2>
+    <p class="text-muted small mb-3">Uma conta por país. Escolha um gateway para vincular e habilitar.</p>
+    <div class="card p-3 mb-2 d-flex flex-row justify-content-between align-items-center"><span>Mercado Pago</span><span class="badge bg-success">Vinculado e habilitado</span></div>
+    <div class="card p-3 mb-2 d-flex flex-row justify-content-between align-items-center"><span>Asaas</span><button class="btn btn-sm btn-outline-primary">Vincular</button></div>
+    <div class="card p-3 mb-3 d-flex flex-row justify-content-between align-items-center"><span>Pagar.me</span><button class="btn btn-sm btn-outline-primary">Vincular</button></div>
+    <button class="btn btn-primary btn-lg w-100" disabled>Escolher plano (precisa de 1 conta habilitada)</button>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="d4" class="mockup-section">
+  <div class="mockup-shell" style="max-width:1100px;">
+    <div class="section-label mb-2">D4 &middot; Etapa: plano (corrigida)</div>
+    <div class="alert alert-info small">
+      Corrigido: resolução do Start-R$50 é <strong>1080p</strong> (não "1024"),
+      e o <strong>PRO já é plano real e cobrável</strong>, não "em breve".
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card p-3 h-100 d-flex flex-column">
+          <h3 class="h6">Free</h3>
+          <div class="text-label mb-2">R$ 0/mês</div>
+          <ul class="list-unstyled small text-muted flex-grow-1">
+            <li>Sem hospedagem de vídeo na plataforma</li>
+            <li>Comissão 10%</li>
+            <li>Tier promocional — pode fechar para novos cadastros</li>
+          </ul>
+          <button class="btn btn-outline-primary w-100">Selecionar</button>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card p-3 h-100 d-flex flex-column">
+          <h3 class="h6">Start — 1080p</h3>
+          <div class="text-label mb-2">R$ 50/mês</div>
+          <ul class="list-unstyled small text-muted flex-grow-1">
+            <li>Hospedagem nativa até 1080p</li>
+            <li>Comissão 10%</li>
+          </ul>
+          <button class="btn btn-outline-primary w-100">Selecionar</button>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card p-3 h-100 border-primary d-flex flex-column">
+          <span class="badge bg-warning text-dark mb-2 align-self-start">Recomendado</span>
+          <h3 class="h6">Start — 4K</h3>
+          <div class="text-label mb-2">R$ 100/mês</div>
+          <ul class="list-unstyled small text-muted flex-grow-1">
+            <li>Hospedagem nativa até 4K</li>
+            <li>Comissão 10%</li>
+          </ul>
+          <button class="btn btn-primary w-100">Selecionar</button>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card p-3 h-100 d-flex flex-column">
+          <h3 class="h6">PRO — BYOS</h3>
+          <div class="text-label mb-2">Mensalidade própria</div>
+          <ul class="list-unstyled small text-muted flex-grow-1">
+            <li>Hospedagem fora da plataforma (vendedor traz a própria)</li>
+            <li>Comissão reduzida 5%</li>
+          </ul>
+          <button class="btn btn-outline-primary w-100">Selecionar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="d5" class="mockup-section">
+  <div class="mockup-shell" style="max-width:560px;">
+    <div class="section-label mb-2">D5 &middot; Etapa: documento (corrigida — opcional)</div>
+    <h2 class="h4">Documento <span class="optional-flag">(opcional)</span></h2>
+    <div class="alert alert-info small">CNPJ/CPF é opcional (ADR-0010) — esta etapa nunca bloqueia o avanço.</div>
+    <form>
+      <div class="mb-3">
+        <label class="form-label">Tipo de documento</label>
+        <div class="form-check"><input class="form-check-input" type="radio" name="doctype" id="cnpj" checked><label class="form-check-label" for="cnpj">CNPJ (pessoa jurídica)</label></div>
+        <div class="form-check"><input class="form-check-input" type="radio" name="doctype" id="cpf"><label class="form-check-label" for="cpf">CPF (pessoa física — pode vender curso)</label></div>
+        <div class="form-check"><input class="form-check-input" type="radio" name="doctype" id="none"><label class="form-check-label" for="none">Prefiro não informar agora</label></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Número</label>
+        <input type="text" class="form-control form-control-lg" placeholder="00.000.000/0000-00">
+      </div>
+      <button class="btn btn-primary btn-lg w-100" type="button">Salvar e continuar</button>
+    </form>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="d6" class="mockup-section">
+  <div class="mockup-shell" style="max-width:560px;">
+    <div class="section-label mb-2">D6 &middot; Etapa: termos de contrato (corrigida)</div>
+    <h2 class="h4">Termos de contrato</h2>
+    <div class="alert alert-info small">Reaproveita o <code>termsaccepted</code> que já existe em <code>local_partners\application</code>.</div>
+    <div class="card p-3 mb-3" style="max-height:220px; overflow-y:auto;">
+      <h3 class="h6 text-muted">1. Objeto</h3>
+      <p class="small text-muted">A LDG Courses licencia o uso da plataforma para venda de cursos, com split automático de pagamento...</p>
+      <h3 class="h6 text-muted">2. Comissão</h3>
+      <p class="small text-muted">A comissão aplicada depende do plano contratado, conforme tabela vigente...</p>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="aceite" style="width:1.5em;height:1.5em;">
+      <label class="form-check-label" for="aceite">Li e aceito os termos acima</label>
+    </div>
+    <button class="btn btn-primary btn-lg w-100 disabled">Aceitar e continuar</button>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="d7" class="mockup-section">
+  <div class="mockup-shell" style="max-width:900px;">
+    <div class="section-label mb-2">D7 &middot; Aprovação (admin) — corrigida, só manual</div>
+    <div class="alert alert-info small">Não existe <code>approvalmode</code> hoje — cadastro é sempre manual via <code>local_partners</code>. Toggle automático removido.</div>
+    <h2 class="h4 mb-3">Fila de aprovação</h2>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead><tr><th>Empresa</th><th>Plano</th><th>Prioridade</th><th>Documento</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Escola Vetor</td><td>Start — 4K</td>
+            <td><span class="badge bg-danger">Alta (plano pago)</span></td>
+            <td>CNPJ enviado</td>
+            <td class="text-end"><div class="btn-group btn-group-sm"><button class="btn btn-outline-secondary">Ver</button><button class="btn btn-success">Aprovar</button><button class="btn btn-outline-danger">Recusar</button></div></td>
+          </tr>
+          <tr>
+            <td>Cursos da Ana</td><td>Free</td>
+            <td><span class="badge bg-secondary">Normal</span></td>
+            <td>Não informado</td>
+            <td class="text-end"><div class="btn-group btn-group-sm"><button class="btn btn-outline-secondary">Ver</button><button class="btn btn-success">Aprovar</button><button class="btn btn-outline-danger">Recusar</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ C1-C4: contexto de curso -->
+<section id="c1" class="mockup-section">
+  <div class="section-label mb-2 mockup-shell" style="max-width:1440px; padding-bottom:0;">C1 &middot; Bloco no curso &middot; perfil admin</div>
+  <div class="course-shell">
+    <div class="course-placeholder">Área de conteúdo do curso (fora do escopo deste mockup — o bloco fica na coluna lateral, à direita)</div>
+    <div class="card p-3">
+      <div class="text-label mb-1">Marketplace</div>
+      <h3 class="h6">Escola Vetor <span class="badge bg-success">Ativa</span></h3>
+      <div class="row g-2 my-2">
+        <div class="col-6"><div class="card p-2 text-center"><div class="text-label" style="font-size:.65rem">Alunos</div><div class="h5 mb-0">42</div></div></div>
+        <div class="col-6"><div class="card p-2 text-center"><div class="text-label" style="font-size:.65rem">Assinaturas</div><div class="h5 mb-0">11</div></div></div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="#" class="btn btn-sm btn-outline-secondary">Configurar</a>
+        <a href="#" class="btn btn-sm btn-outline-secondary">Relatório do curso</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="c2" class="mockup-section">
+  <div class="section-label mb-2 mockup-shell" style="max-width:1440px; padding-bottom:0;">C2 &middot; Bloco no curso &middot; empresa cadastrando</div>
+  <div class="course-shell">
+    <div class="course-placeholder">Área de conteúdo do curso (fora do escopo)</div>
+    <div class="card p-3">
+      <div class="text-label mb-1">Marketplace</div>
+      <span class="badge text-bg-primary mb-2">Etapa: Conta de pagamento</span>
+      <p class="small text-muted">Falta vincular uma conta de pagamento para continuar o cadastro.</p>
+      <a href="#" class="btn btn-primary btn-sm w-100">Mais informações</a>
+    </div>
+  </div>
+</section>
+
+<section id="c3" class="mockup-section">
+  <div class="section-label mb-2 mockup-shell" style="max-width:1440px; padding-bottom:0;">C3 &middot; Bloco no curso &middot; empresa ativa</div>
+  <div class="course-shell">
+    <div class="course-placeholder">Área de conteúdo do curso (fora do escopo)</div>
+    <div class="card p-3">
+      <div class="text-label mb-1">Marketplace deste curso</div>
+      <div class="row g-2 my-2">
+        <div class="col-6"><div class="card p-2 text-center"><div class="text-label" style="font-size:.65rem">Alunos</div><div class="h5 mb-0">18</div></div></div>
+        <div class="col-6"><div class="card p-2 text-center"><div class="text-label" style="font-size:.65rem">Assinaturas</div><div class="h5 mb-0">7</div></div></div>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="#" class="btn btn-sm btn-outline-secondary flex-fill">Ofertas</a>
+        <a href="#" class="btn btn-sm btn-primary flex-fill">Relatório</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="c4" class="mockup-section">
+  <div class="section-label mb-2 mockup-shell" style="max-width:1440px; padding-bottom:0;">C4 &middot; Bloco no curso &middot; aluno</div>
+  <div class="course-shell">
+    <div class="course-placeholder">Área de conteúdo do curso (fora do escopo)</div>
+    <div class="card p-3">
+      <div class="text-label mb-1">Sua assinatura</div>
+      <span class="badge bg-success mb-2">Ativa</span>
+      <div class="small text-muted mb-2">Próxima fatura: 11/10/2026 — R$ 49,90</div>
+      <table class="table table-sm mb-2">
+        <thead><tr><th>Data</th><th>Valor</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>11/09</td><td>R$ 49,90</td><td><span class="badge bg-success">Paga</span></td></tr>
+          <tr><td>11/08</td><td>R$ 49,90</td><td><span class="badge bg-success">Paga</span></td></tr>
+        </tbody>
+      </table>
+      <a href="#" class="btn btn-outline-secondary btn-sm w-100">Histórico de compras</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="ldg-mock-footer">
+  <div class="ldg-footer-top">
+    <div>
+      <p class="fw-semibold mb-1">LDG Courses</p>
+      <p class="small mb-0" style="opacity:.7;">Plataforma de cursos com split de pagamento</p>
+    </div>
+    <div class="d-flex gap-5 flex-wrap">
+      <nav>
+        <h2>Plataforma</h2>
+        <ul>
+          <li><a href="#">Início</a></li>
+          <li><a href="#">Seja parceiro</a></li>
+        </ul>
+      </nav>
+      <nav>
+        <h2>Legal</h2>
+        <ul>
+          <li><a href="#">Termos de uso</a></li>
+          <li><a href="#">Privacidade</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+  <div class="ldg-footer-legal">
+    <span><strong>LDG Courses</strong> <span style="opacity:.7;">CNPJ 00.000.000/0001-00</span></span>
+    <span>&copy; 2026 &middot; LeoDG</span>
+  </div>
+</footer>
+
+</body>
+</html>
