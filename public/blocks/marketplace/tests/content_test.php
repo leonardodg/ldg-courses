@@ -244,4 +244,73 @@ final class content_test extends \advanced_testcase {
         );
         $this->assertFalse($block->instance_allow_multiple());
     }
+
+    /**
+     * Dono de empresa incompleta ve o checklist, nao o widget de assinatura.
+     *
+     * @return void
+     */
+    public function test_dono_de_empresa_incompleta_ve_checklist(): void {
+        // A propria empresa de teste ja nasce sem plano e sem conta - api::create_company()
+        // no setUp() nao define planid nem conta de pagamento.
+        $this->setUser($this->company_owner());
+
+        $content = $this->content();
+
+        $this->assertNotSame('', $content->text);
+        $this->assertStringContainsString('0%', $content->text);
+        $this->assertStringNotContainsString('Curso de Xadrez', $content->text);
+    }
+
+    /**
+     * Empresa com checklist completo nao mostra nada (sem gateway/plano pendente
+     * e sem assinatura de aluno) - mesmo comportamento vazio de sempre.
+     *
+     * @return void
+     */
+    public function test_dono_de_empresa_completa_nao_ve_checklist(): void {
+        $plan = new \local_marketplace\plan(0, (object) [
+            'shortname' => 'contenttest_plan',
+            'name' => 'Plano de teste',
+            'monthlyfee' => 0,
+            'commissionpct' => 10,
+        ]);
+        $plan->create();
+        $this->company->set('planid', (int) $plan->get('id'));
+        $this->company->update();
+
+        // A empresa de teste ja nasce com uma conta de pagamento no BR -
+        // api::create_company() no setUp() chama create_payment_account().
+        // So falta habilitar um gateway nela: criar uma SEGUNDA conta e
+        // vincula-la de novo violaria o indice unico (companyid, country) de
+        // local_marketplace_account (t_locamarkacco_comcou_uix).
+        $account = $this->company->get_payment_account('BR');
+        $gateway = new \core_payment\account_gateway(0, (object) [
+            'accountid' => $account->get('id'),
+            'gateway' => 'mercadopago',
+            'enabled' => true,
+        ]);
+        $gateway->create();
+        // O is_available() da conta exige o gateway habilitado no SITE, nao
+        // so na conta (armadilha ja documentada no CLAUDE.md) - sem isto
+        // get_enabled_plugins() filtra o mercadopago fora e a etapa nunca
+        // fecha.
+        \core\plugininfo\paygw::enable_plugin('mercadopago', 1);
+
+        $this->setUser($this->company_owner());
+
+        $this->assertSame('', $this->content()->text);
+    }
+
+    /**
+     * O usuario dono da empresa de teste - api::create_company() no setUp()
+     * usa ownerid=2, que e sempre o admin num Moodle recem-instalado/testado.
+     *
+     * @return \stdClass
+     */
+    protected function company_owner(): \stdClass {
+        global $DB;
+
+        return $DB->get_record('user', ['id' => 2]);
+    }
 }

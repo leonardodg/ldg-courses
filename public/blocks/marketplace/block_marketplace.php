@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use block_marketplace\onboarding;
 use local_marketplace\company;
 use local_marketplace\entitlement;
 use local_marketplace\offer;
@@ -59,7 +60,7 @@ class block_marketplace extends block_base {
      * @return stdClass|null
      */
     public function get_content() {
-        global $USER, $OUTPUT;
+        global $USER;
 
         if ($this->content !== null) {
             return $this->content;
@@ -73,7 +74,64 @@ class block_marketplace extends block_base {
             return $this->content;
         }
 
-        $ents = entitlement::get_active_for_user((int) $USER->id);
+        $companies = company::get_by_member((int) $USER->id);
+        if ($companies) {
+            return $this->content_for_owner(reset($companies));
+        }
+
+        return $this->content_for_student((int) $USER->id);
+    }
+
+    /**
+     * Checklist de ativacao, para quem e membro de uma empresa ainda
+     * incompleta. Empresa completa nao mostra nada aqui - o widget de
+     * assinatura do aluno so aparece pra quem NAO e dono de empresa.
+     *
+     * @param company $company
+     * @return stdClass
+     */
+    private function content_for_owner(company $company): stdClass {
+        $progress = onboarding::progress($company);
+        if ($progress['complete']) {
+            return $this->content;
+        }
+
+        $labels = [
+            onboarding::STEP_GATEWAY => get_string('stepgateway', 'block_marketplace'),
+            onboarding::STEP_PLAN => get_string('stepplan', 'block_marketplace'),
+        ];
+        $states = onboarding::step_state($company);
+
+        $items = [];
+        foreach ($labels as $step => $label) {
+            $done = $states[$step] === onboarding::STATE_DONE;
+            $items[] = html_writer::div(
+                ($done ? '&check; ' : '') . $label,
+                $done ? 'small text-success' : 'small'
+            );
+        }
+
+        $this->content->text = html_writer::div(
+            get_string('onboardingprogress', 'block_marketplace', $progress['percent']),
+            'fw-semibold mb-2'
+        ) . implode('', $items);
+
+        $this->content->footer = html_writer::link(
+            new moodle_url('/local/marketplace/company.php', ['company' => $company->get('shortname')]),
+            get_string('onboardingcontinue', 'block_marketplace')
+        );
+
+        return $this->content;
+    }
+
+    /**
+     * Comportamento original: assinaturas ativas do aluno.
+     *
+     * @param int $userid
+     * @return stdClass
+     */
+    private function content_for_student(int $userid): stdClass {
+        $ents = entitlement::get_active_for_user($userid);
         if (!$ents) {
             return $this->content;
         }
