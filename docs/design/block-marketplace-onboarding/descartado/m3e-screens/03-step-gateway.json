@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "project": "LDG Courses - D3 Etapa Gateway",
+  "description": "Configuração de gateway de pagamento por país",
+  "theme": {
+    "name": "LDG Studio (Boost + Bootstrap 5)",
+    "tokens": {
+      "dark": { "--ldg-bg": "#121212", "--ldg-surface": "#1e1e1e", "--ldg-border": "#3a3b3c", "--ldg-text": "#ffffff", "--ldg-text-muted": "#b0b3b8", "--ldg-accent": "#4b8eff", "--ldg-status-success": "#30d158" },
+      "light": { "--ldg-bg": "#f4f6fa", "--ldg-surface": "#ffffff", "--ldg-border": "#d5dce6", "--ldg-text": "#0e192b", "--ldg-text-muted": "#5a6b82", "--ldg-accent": "#007aff", "--ldg-status-success": "#1a7f37" }
+    }
+  },
+  "screens": [{
+    "id": "D3",
+    "name": "Etapa: Conta de Pagamento",
+    "viewport": { "width": 412, "height": 892 },
+    "viewportDesktop": { "width": 1280, "height": 800 },
+    "template": "block_marketplace/step_gateway",
+    "context": {
+      "progress": { "current": 4, "total": 6 },
+      "gateways": [
+        { "name": "Mercado Pago", "countries": ["Brasil"], "status": "connected", "statusLabel": "Vinculado e ativo", "badgeClass": "bg-success", "actions": [{ "label": "Gerenciar", "href": "/local/marketplace/manage_gateway.php?gw=mercadopago", "variant": "outline-primary" }] },
+        { "name": "Asaas", "countries": ["Brasil"], "status": "available", "statusLabel": "Disponível", "badgeClass": "bg-secondary", "actions": [{ "label": "Conectar", "href": "/local/marketplace/connect_gateway.php?gw=asaas", "variant": "primary" }] },
+        { "name": "Pagar.me", "countries": ["Brasil"], "status": "available", "statusLabel": "Disponível", "badgeClass": "bg-secondary", "actions": [{ "label": "Conectar", "href": "/local/marketplace/connect_gateway.php?gw=pagarme", "variant": "primary" }] }
+      ],
+      "nextCta": { "label": "Escolher plano", "href": "/blocks/marketplace/plan.php", "variant": "primary", "disabled": false }
+    }
+  }]
+}

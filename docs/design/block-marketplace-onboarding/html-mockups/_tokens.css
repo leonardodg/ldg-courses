@@ -1,0 +1,149 @@
+/* Copiado de public/theme/ldg/scss/ldg/_tokens.scss (só os valores, sem o SCSS)
+   para os mockups HTML do fluxo de ativação de empresa parceira poderem abrir
+   direto no Chrome, sem precisar compilar o tema. Qualquer mudança real vai no
+   arquivo fonte do tema, nunca aqui. */
+
+:root {
+  --ldg-navy: #0e192b;
+  --ldg-navy-soft: #16273f;
+  --ldg-accent: #007aff;
+  --ldg-accent-hover: #3394ff;
+  --ldg-secondary: #8e24aa;
+  --ldg-fs-h1: 3rem;
+  --ldg-fs-h2: 2.25rem;
+  --ldg-fs-h3: 1.5rem;
+  --ldg-fs-body: 1rem;
+  --ldg-fs-caption: 0.875rem;
+  --ldg-space: 0.5rem;
+  --ldg-gutter: 1.5rem;
+  --ldg-container: 1440px;
+  --ldg-navbar-height: 64px;
+  --ldg-font-sans: "Inter", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, sans-serif;
+  --ldg-font-mono: "JetBrains Mono", sfmono-regular, menlo, monaco, consolas, monospace;
+}
+
+:root,
+[data-bs-theme="light"] {
+  --ldg-bg: #f4f6fa;
+  --ldg-surface: #ffffff;
+  --ldg-surface-raised: #ffffff;
+  --ldg-border: #d5dce6;
+  --ldg-text: #0e192b;
+  --ldg-text-muted: #5a6b82;
+  --ldg-accent-text: #0062cc;
+  --ldg-field-bg: #ffffff;
+  --ldg-status-success: #1a7f37;
+  --ldg-text-label: #5c6a80;
+  --ldg-accent-fill: #0062cc;
+  --ldg-btn-fill: #0062cc;
+  --ldg-btn-fill-hover: #007aff;
+  --ldg-on-accent: #ffffff;
+  --ldg-chrome-bg: var(--ldg-navy);
+  --ldg-chrome-bg-soft: var(--ldg-navy-soft);
+  --ldg-chrome-text: #ffffff;
+  --ldg-chrome-border: rgba(255, 255, 255, 0.12);
+  --ldg-shadow-card: 0 2px 8px rgba(14, 25, 43, 0.08);
+  --ldg-shadow-raised: 0 8px 24px rgba(14, 25, 43, 0.16);
+  --ldg-hover-overlay: rgba(14, 25, 43, 0.05);
+}
+
+[data-bs-theme="dark"] {
+  --ldg-bg: #121212;
+  --ldg-surface: #1e1e1e;
+  --ldg-surface-raised: #252525;
+  --ldg-border: #3a3b3c;
+  --ldg-text: #ffffff;
+  --ldg-text-muted: #b0b3b8;
+  --ldg-accent: #4b8eff;
+  --ldg-accent-hover: #65a1ff;
+  --ldg-accent-text: #4b8eff;
+  --ldg-accent-fill: #4b8eff;
+  --ldg-status-success: #30d158;
+  --ldg-text-label: #8a8f94;
+  --ldg-on-accent: #00285c;
+  --ldg-field-bg: #1e1e1e;
+  --ldg-chrome-bg: #1e1e1e;
+  --ldg-chrome-bg-soft: #2a2a2a;
+  --ldg-chrome-text: #ffffff;
+  --ldg-chrome-border: #3a3b3c;
+  --ldg-shadow-card: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --ldg-shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --ldg-hover-overlay: rgba(255, 255, 255, 0.06);
+}
+
+/* Bootstrap não tem token --ldg-border-radius nenhum: o tema usa
+   var(--bs-border-radius) do próprio Bootstrap. Não inventar um novo aqui. */
+
+body {
+  background: var(--ldg-bg);
+  color: var(--ldg-text);
+  font-family: var(--ldg-font-sans);
+}
+
+.mockup-shell {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--ldg-gutter);
+}
+
+.mockup-topbar {
+  background: var(--ldg-chrome-bg);
+  color: var(--ldg-chrome-text);
+  height: var(--ldg-navbar-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ldg-gutter);
+  font-family: var(--ldg-font-mono);
+  border-bottom: 1px solid var(--ldg-chrome-border);
+}
+
+.card, .list-group-item, .modal-content {
+  background: var(--ldg-surface) !important;
+  border-color: var(--ldg-border) !important;
+  color: var(--ldg-text);
+  box-shadow: var(--ldg-shadow-card);
+}
+
+.card.card-raised {
+  background: var(--ldg-surface-raised) !important;
+  box-shadow: var(--ldg-shadow-raised);
+}
+
+.text-muted { color: var(--ldg-text-muted) !important; }
+.text-label {
+  color: var(--ldg-text-label) !important;
+  font-family: var(--ldg-font-mono);
+  font-size: var(--ldg-fs-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.btn-primary {
+  background: var(--ldg-btn-fill) !important;
+  border-color: var(--ldg-btn-fill) !important;
+  color: var(--ldg-on-accent) !important;
+}
+.btn-primary:hover { background: var(--ldg-btn-fill-hover) !important; border-color: var(--ldg-btn-fill-hover) !important; }
+
+.progress-bar { background: var(--ldg-accent) !important; }
+.badge.bg-success { background: var(--ldg-status-success) !important; }
+.link-accent, a { color: var(--ldg-accent-text); }
+
+.form-control, .form-select {
+  background: var(--ldg-field-bg) !important;
+  color: var(--ldg-text) !important;
+  border-color: var(--ldg-border) !important;
+}
+
+.viewport-note {
+  font-family: var(--ldg-font-mono);
+  font-size: var(--ldg-fs-caption);
+  color: var(--ldg-text-label);
+  margin-bottom: var(--ldg-space);
+}
+
+.optional-flag {
+  font-size: var(--ldg-fs-caption);
+  color: var(--ldg-text-label);
+  font-style: italic;
+}

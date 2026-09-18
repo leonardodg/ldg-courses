@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-br" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D4 — Escolha do plano — mockup (corrigido)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="_tokens.css" rel="stylesheet">
+</head>
+<body>
+<div class="mockup-topbar">block_marketplace &middot; mockup D4 &middot; /blocks/marketplace/plan.php</div>
+<div class="mockup-shell" style="max-width:1100px;">
+  <div class="viewport-note">Viewport: 412px (coluna única) e 1280px (grid 4 colunas)</div>
+  <div class="alert alert-info small">
+    Corrigido na revisão: os quatro planos reais (<code>start_free</code>,
+    <code>start_50</code>, <code>start_100</code>, <code>pro</code>) — resolução
+    do Start-R$50 é <strong>1080p</strong> (não "1024"), e o <strong>PRO já está
+    implementado e cobrável</strong>, não é "em breve". Só o consumo de
+    hospedagem própria na plataforma (Fase 5) segue bloqueado por decisão de
+    negócio — o plano/cobrança do PRO funciona hoje.
+  </div>
+  <div class="row g-3">
+    <div class="col-12 col-md-6 col-lg-3">
+      <div class="card p-3 h-100">
+        <h3 class="h6">Free</h3>
+        <div class="text-label mb-2">R$ 0/mês</div>
+        <ul class="list-unstyled small text-muted flex-grow-1">
+          <li>Sem hospedagem de vídeo na plataforma</li>
+          <li>Comissão 10%</li>
+          <li>Tier promocional — pode fechar para novos cadastros</li>
+        </ul>
+        <button class="btn btn-outline-primary w-100">Selecionar</button>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+      <div class="card p-3 h-100">
+        <h3 class="h6">Start — 1080p</h3>
+        <div class="text-label mb-2">R$ 50/mês</div>
+        <ul class="list-unstyled small text-muted flex-grow-1">
+          <li>Hospedagem nativa até 1080p</li>
+          <li>Comissão 10%</li>
+        </ul>
+        <button class="btn btn-outline-primary w-100">Selecionar</button>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+      <div class="card p-3 h-100 border-primary">
+        <span class="badge bg-warning text-dark mb-2 align-self-start">Recomendado</span>
+        <h3 class="h6">Start — 4K</h3>
+        <div class="text-label mb-2">R$ 100/mês</div>
+        <ul class="list-unstyled small text-muted flex-grow-1">
+          <li>Hospedagem nativa até 4K</li>
+          <li>Comissão 10%</li>
+        </ul>
+        <button class="btn btn-primary w-100">Selecionar</button>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+      <div class="card p-3 h-100">
+        <h3 class="h6">PRO — BYOS</h3>
+        <div class="text-label mb-2">Mensalidade própria</div>
+        <ul class="list-unstyled small text-muted flex-grow-1">
+          <li>Hospedagem fora da plataforma (vendedor traz a própria)</li>
+          <li>Comissão reduzida 5%</li>
+        </ul>
+        <button class="btn btn-outline-primary w-100">Selecionar</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

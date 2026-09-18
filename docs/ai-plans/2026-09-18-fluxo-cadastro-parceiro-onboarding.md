@@ -1,5 +1,7 @@
 # Plano: salvar fluxo de cadastro de parceiro em worktree própria, revisar contra o desenho comercial do SaaS, e trocar o m3e-canvas por mockup HTML real
 
+Situação: **executado** · Início: 2026-09-18 · Commit: `040f22855e1` (Fase 1)
+
 ## Context
 
 O desenho do fluxo de ativação de empresa parceira (transformar `block_marketplace`
@@ -100,3 +102,62 @@ mas com essas premissas erradas) antes de desenhar o HTML.
 - `git -C <nova-worktree> log --oneline -1` mostra o commit único da Fase 1.
 - As 11 telas HTML abrem direto no Chrome sem servidor/ferramenta externa,
   cada uma comparada com a referência do design system.
+
+## Execução (2026-09-18)
+
+**Fase 1 — feita.** Worktree `parceiro-onboarding` criada com
+`moodev new parceiro-onboarding --from origin/dev` (upstream já estava em dia,
+0 commits de diferença). Commit `040f22855e1`: "docs: registra desenho do
+fluxo de cadastro de empresa parceira". `dev` restaurada e limpa.
+
+**Achado durante a Fase 1, fora do previsto no desenho original:** já existia,
+comprometido ANTES desta sessão em `docs/design/block-marketplace-onboarding/`
+(commit `2573cdbb4ac`, "docs: recupera trabalho nao commitado da worktree
+dev"), uma tentativa m3e-canvas **correta** (schema `groups`/`frames`, 144
+grupos, 22 frames, link `#docz=` que decodifica sem erro — testado com
+`zlib.decompress(..., -15)` em Python). É uma tentativa anterior à que ficou
+solta em `docs/ai-plans/` (schema errado, script de link sem compressão) — as
+duas foram feitas no mesmo dia (17/09), e a mais recente sobrepôs a atenção
+sem que a correta tivesse sido usada. Ela foi movida para
+`docs/design/block-marketplace-onboarding/descartado/` junto com a tentativa
+quebrada, e o usuário testou o link real no navegador local: **o m3e-canvas
+local trava em runtime** — ver nota abaixo. Motivo a mais para a decisão já
+tomada de seguir com HTML real.
+
+**Nota sobre o m3e-canvas local:** ao abrir o link, o app trava com um erro de
+hidratação do Next.js (`app/layout.tsx:33`, `<html lang="ja">` com
+`--skel-*` setados por um `<script>` pré-hidratação que lê `localStorage`).
+Isso por si só é cosmético (comportamento intencional do autor, sinalizado
+como erro só porque é modo dev) — mas o usuário confirmou que, além do aviso,
+**o canvas ficou vazio**, sem as 22 telas. Não foi investigada a causa raiz
+disso (a leitura de `#docz=` em `app/Editor.tsx:2591-2606` via
+`readShareHash`/`isProject`), porque a decisão foi abandonar a ferramenta e
+seguir com HTML — registrado aqui só para não reabrir a investigação sem
+necessidade se o assunto voltar.
+
+**Fase 2 — feita**, junto com a Fase 3 (tabela de correções incorporada
+diretamente nos mockups, não em documento separado):
+
+- D4: rótulo trocado de "1024" para **1080p**; PRO tratado como plano real
+  selecionável (não "em breve").
+- D5: CNPJ/CPF marcado como opcional, com nota explícita da ADR-0010.
+- D6: nota de que `termsaccepted` reaproveita o campo já existente em
+  `local_partners\application`.
+- D7: removido o toggle manual/automático — hoje só existe aprovação manual.
+- Também corrigido, achado ao ler o tema de verdade: o checklist antigo do
+  `2026-09-17-fluxo-cadastro-parceiro-screens.md` citava tokens
+  `--ldg-border-radius*` que **não existem** — o tema usa
+  `var(--bs-border-radius)` do próprio Bootstrap. Os mockups usam o token
+  certo.
+
+**Fase 3 — feita.** 11 telas em
+`docs/design/block-marketplace-onboarding/html-mockups/` (`d1`..`d7`,
+`c1`..`c4`), Bootstrap 5.3 via CDN + `_tokens.css` (cópia fiel dos custom
+properties reais de `_tokens.scss`, dark mode como padrão do site). README
+próprio na pasta com a tabela de telas e o checklist de revisão. Abrem direto
+com `file://`, sem servidor.
+
+**Em aberto:** revisão visual tela a tela pelo usuário (o gate da Fase de
+implementação continua sendo essa aprovação, como no desenho original). Só
+depois disso as telas viram templates Mustache reais no
+`block_marketplace` — fora do escopo deste plano.
