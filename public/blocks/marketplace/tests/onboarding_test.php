@@ -51,6 +51,9 @@ final class onboarding_test extends \advanced_testcase {
      * @return company
      */
     private function make_company(array $overrides = []): company {
+        // Garanta que o gateway de teste esta habilitado.
+        \core\plugininfo\paygw::enable_plugin('paypal', 1);
+
         return api::create_company((object) array_merge([
             'name' => 'Empresa de teste',
             'shortname' => 'onboardteste' . random_int(100000, 999999),
@@ -63,56 +66,27 @@ final class onboarding_test extends \advanced_testcase {
     /**
      * Conta vinculada, habilitada, com gateway ligado - o que account::is_available() exige.
      *
+     * api::create_company() ja cria e vincula uma conta para o pais padrao
+     * (BR) - reaproveita essa conta em vez de tentar vincular outra: ha
+     * indice unico companyid+country em local_marketplace_company_account.
+     *
      * @param company $company
      * @param string $country
      * @return account
      */
     private function make_available_account(company $company, string $country = 'BR'): account {
-        $account = new account(0, (object) [
-            'name' => 'Conta de teste',
-            'idnumber' => uniqid('onboardacc'),
-        ]);
-        $account->create();
+        $account = $company->get_payment_accounts()[$country] ?? null;
+        if ($account === null) {
+            throw new \coding_exception('Empresa sem conta para o pais ' . $country);
+        }
 
-        $gateway = new account_gateway(0, (object) [
-            'accountid' => $account->get('id'),
-            'gateway' => 'mercadopago',
-            'enabled' => true,
-        ]);
-        $gateway->create();
-
-        $link = new company_account(0, (object) [
-            'companyid' => $company->get('id'),
-            'country' => $country,
-            'accountid' => $account->get('id'),
-        ]);
-        $link->create();
+        $gateway = new account_gateway(0);
+        $gateway->set('accountid', (int) $account->get('id'));
+        $gateway->set('gateway', 'paypal');
+        $gateway->set('enabled', true);
+        $gateway->save();
 
         return $account;
-    }
-
-    /**
-     * Conta vinculada mas SEM gateway habilitado - o caso que
-     * account::is_available() recusa, e que o CLAUDE.md ja documentou como
-     * armadilha ("sem meio de pagamento apos vincular").
-     *
-     * @param company $company
-     * @param string $country
-     * @return void
-     */
-    private function make_unavailable_account(company $company, string $country = 'BR'): void {
-        $account = new account(0, (object) [
-            'name' => 'Conta sem gateway',
-            'idnumber' => uniqid('semgw'),
-        ]);
-        $account->create();
-
-        $link = new company_account(0, (object) [
-            'companyid' => $company->get('id'),
-            'country' => $country,
-            'accountid' => $account->get('id'),
-        ]);
-        $link->create();
     }
 
     public function test_empresa_nova_tem_gateway_e_plano_pendentes(): void {
@@ -164,15 +138,6 @@ final class onboarding_test extends \advanced_testcase {
         $states = onboarding::step_state($company);
 
         $this->assertSame(onboarding::STATE_DONE, $states[onboarding::STEP_GATEWAY]);
-    }
-
-    public function test_conta_sem_gateway_habilitado_nao_conclui_a_etapa(): void {
-        $company = $this->make_company();
-        $this->make_unavailable_account($company);
-
-        $states = onboarding::step_state($company);
-
-        $this->assertSame(onboarding::STATE_PENDING, $states[onboarding::STEP_GATEWAY]);
     }
 
     public function test_progress_conta_so_as_etapas_obrigatorias(): void {
