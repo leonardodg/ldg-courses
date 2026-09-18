@@ -289,4 +289,132 @@ final class service_provider_test extends \advanced_testcase {
             'a premissa do teste: nada habilitado'
         );
     }
+
+    /**
+     * A assinatura SaaS (paymentarea 'plan') cobra o valor do PLANO, e a
+     * conta que recebe e a da PLATAFORMA - o oposto da venda de curso, onde
+     * quem recebe e a empresa.
+     *
+     * @return void
+     */
+    public function test_payable_do_plano_usa_a_conta_da_plataforma(): void {
+        $plan = new plan(0, (object) [
+            'shortname' => 'plano_pago_' . random_int(100000, 999999),
+            'name' => 'Plano pago de teste',
+            'monthlyfee' => 50.0,
+            'commissionpct' => 10,
+            'country' => 'BR',
+            'currency' => 'BRL',
+        ]);
+        $plan->create();
+        $this->company->set('planid', (int) $plan->get('id'));
+        $this->company->update();
+
+        $payable = service_provider::get_payable(service_provider::PAYMENT_AREA_PLAN, (int) $this->company->get('id'));
+
+        $this->assertEquals(50.0, $payable->get_amount());
+        $this->assertSame('BRL', $payable->get_currency());
+
+        $contaplataforma = api::get_or_create_platform_account('BR');
+        $this->assertSame(
+            (int) $contaplataforma->get('id'),
+            $payable->get_account_id(),
+            'quem recebe a mensalidade e a plataforma, nunca a empresa'
+        );
+    }
+
+    /**
+     * Empresa sem plano, ou no tier gratis (mensalidade zero), nao tem o
+     * que cobrar - a paymentarea 'plan' recusa em vez de criar uma
+     * cobranca de R$0.
+     *
+     * @return void
+     */
+    public function test_payable_do_plano_recusa_sem_mensalidade(): void {
+        $this->expectException(\moodle_exception::class);
+
+        service_provider::get_payable(service_provider::PAYMENT_AREA_PLAN, (int) $this->company->get('id'));
+    }
+
+    /**
+     * Entregar a assinatura SaaS so estende o vencimento da mensalidade -
+     * NAO cria entitlement nem sale, porque nao ha oferta nem split
+     * nenhum envolvido.
+     *
+     * @return void
+     */
+    public function test_deliver_order_do_plano_estende_o_vencimento(): void {
+        $plan = new plan(0, (object) [
+            'shortname' => 'plano_entrega_' . random_int(100000, 999999),
+            'name' => 'Plano de teste',
+            'monthlyfee' => 50.0,
+            'commissionpct' => 10,
+        ]);
+        $plan->create();
+        $this->company->set('planid', (int) $plan->get('id'));
+        $this->company->update();
+
+        $antes = time();
+        $resultado = service_provider::deliver_order(
+            service_provider::PAYMENT_AREA_PLAN,
+            (int) $this->company->get('id'),
+            1,
+            (int) $this->user->id
+        );
+
+        $this->assertTrue($resultado);
+
+        $this->company->read();
+        $expiry = (int) $this->company->get('planexpiry');
+        $this->assertGreaterThanOrEqual($antes + (30 * DAYSECS), $expiry);
+
+        // Idempotencia por soma: pagar de novo soma outros 30 dias ao
+        // vencimento ATUAL, nao recomeca de agora - mesma regra da venda de
+        // curso.
+        service_provider::deliver_order(
+            service_provider::PAYMENT_AREA_PLAN,
+            (int) $this->company->get('id'),
+            2,
+            (int) $this->user->id
+        );
+        $this->company->read();
+        $this->assertEqualsWithDelta($expiry + (30 * DAYSECS), (int) $this->company->get('planexpiry'), 2);
+
+        // Nao cria direito de acesso nenhum: isto e assinatura de EMPRESA,
+        // nao de aluno.
+        $this->assertCount(0, entitlement::get_active_for_user((int) $this->user->id));
+    }
+
+    /**
+     * Empresa sem plano nenhum: a entrega nao quebra, so nao faz nada -
+     * defesa contra um itemid errado chegando aqui.
+     *
+     * @return void
+     */
+    public function test_deliver_order_do_plano_sem_plano_nao_quebra(): void {
+        $resultado = service_provider::deliver_order(
+            service_provider::PAYMENT_AREA_PLAN,
+            (int) $this->company->get('id'),
+            1,
+            (int) $this->user->id
+        );
+
+        $this->assertFalse($resultado);
+    }
+
+    /**
+     * O sucesso da assinatura SaaS volta para a pagina da propria empresa,
+     * nao para curso nenhum.
+     *
+     * @return void
+     */
+    public function test_success_url_do_plano_volta_para_a_pagina_da_empresa(): void {
+        $url = service_provider::get_success_url(
+            service_provider::PAYMENT_AREA_PLAN,
+            (int) $this->company->get('id')
+        );
+
+        $this->assertStringContainsString('company.php', $url->out(false));
+        $this->assertStringContainsString((string) $this->company->get('shortname'), $url->out(false));
+    }
 }

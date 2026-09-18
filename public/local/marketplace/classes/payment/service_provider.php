@@ -17,6 +17,7 @@
 namespace local_marketplace\payment;
 
 use core_payment\local\entities\payable;
+use local_marketplace\api;
 use local_marketplace\company;
 use local_marketplace\entitlement;
 use local_marketplace\offer;
@@ -35,8 +36,20 @@ use moodle_url;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class service_provider implements \core_payment\local\callback\service_provider {
-    /** @var string Unica area de pagamento por enquanto. */
+    /** @var string Venda de curso - o aluno paga a empresa, com split. */
     const PAYMENT_AREA = 'offer';
+
+    /**
+     * Assinatura SaaS - a empresa paga a PLATAFORMA, sem split nenhum.
+     *
+     * Desenhada em 17/09/2026 (docs/ai-plans/2026-09-17-assinatura-saas-planos-start-e-pro.md).
+     * O itemid aqui e sempre um companyid, nunca um offerid - e por isso
+     * cada metodo abaixo comeca conferindo $paymentarea antes de decidir o
+     * que o itemid significa.
+     *
+     * @var string
+     */
+    const PAYMENT_AREA_PLAN = 'plan';
 
     /**
      * Valor, moeda e conta que recebe.
@@ -51,10 +64,14 @@ class service_provider implements \core_payment\local\callback\service_provider 
      * uma oferta separada.
      *
      * @param string $paymentarea
-     * @param int $itemid offerid
+     * @param int $itemid offerid, ou companyid quando $paymentarea = PAYMENT_AREA_PLAN
      * @return payable
      */
     public static function get_payable(string $paymentarea, int $itemid): payable {
+        if ($paymentarea === self::PAYMENT_AREA_PLAN) {
+            return self::get_payable_plan($itemid);
+        }
+
         $offer = new offer($itemid);
         $company = new company($offer->get('companyid'));
 
@@ -71,6 +88,35 @@ class service_provider implements \core_payment\local\callback\service_provider 
     }
 
     /**
+     * Valor, moeda e conta da assinatura SaaS - o OPOSTO do metodo acima.
+     *
+     * Quem recebe e a conta da PROPRIA PLATAFORMA (api::get_or_create_platform_account()),
+     * nao a da empresa: aqui a empresa e quem PAGA. Recusa explicitamente
+     * empresa sem plano ou com mensalidade zero - Start-R$0 nao tem o que
+     * cobrar, e cobrar mesmo assim so aconteceria por um itemid errado
+     * chegando aqui.
+     *
+     * @param int $companyid
+     * @return payable
+     */
+    protected static function get_payable_plan(int $companyid): payable {
+        $company = new company($companyid);
+        $plan = $company->get_plan();
+
+        if (!$plan || (float) $plan->get('monthlyfee') <= 0) {
+            throw new moodle_exception('errorplannotbillable', 'local_marketplace');
+        }
+
+        $account = api::get_or_create_platform_account((string) $plan->get('country'));
+
+        return new payable(
+            (float) $plan->get('monthlyfee'),
+            $plan->get('currency'),
+            (int) $account->get('id')
+        );
+    }
+
+    /**
      * Para onde mandar o aluno depois de pagar.
      *
      * Oferta de um curso so vai direto para ele. Combo e assinatura liberam
@@ -78,10 +124,16 @@ class service_provider implements \core_payment\local\callback\service_provider 
      * cursos do aluno, onde os novos ja aparecem.
      *
      * @param string $paymentarea
-     * @param int $itemid offerid
+     * @param int $itemid offerid, ou companyid quando $paymentarea = PAYMENT_AREA_PLAN
      * @return moodle_url
      */
     public static function get_success_url(string $paymentarea, int $itemid): moodle_url {
+        if ($paymentarea === self::PAYMENT_AREA_PLAN) {
+            $company = new company($itemid);
+
+            return new moodle_url('/local/marketplace/company.php', ['company' => $company->get('shortname')]);
+        }
+
         $offer = new offer($itemid);
         $courseids = $offer->get_course_ids();
 
@@ -106,12 +158,16 @@ class service_provider implements \core_payment\local\callback\service_provider 
      * exatamente o comportamento desejado na renovacao de assinatura.
      *
      * @param string $paymentarea
-     * @param int $itemid offerid
+     * @param int $itemid offerid, ou companyid quando $paymentarea = PAYMENT_AREA_PLAN
      * @param int $paymentid
      * @param int $userid
      * @return bool
      */
     public static function deliver_order(string $paymentarea, int $itemid, int $paymentid, int $userid): bool {
+        if ($paymentarea === self::PAYMENT_AREA_PLAN) {
+            return self::deliver_order_plan($itemid);
+        }
+
         $offer = new offer($itemid);
 
         // ATIVO OU VENCIDO, e nao so ativo.
@@ -178,6 +234,34 @@ class service_provider implements \core_payment\local\callback\service_provider 
                 DEBUG_DEVELOPER
             );
         }
+
+        return true;
+    }
+
+    /**
+     * Entrega a assinatura SaaS - so estende o vencimento da mensalidade.
+     *
+     * NAO cria entitlement nem sale: os dois pressupoem uma oferta de curso
+     * (offerid NOT NULL, e sale carrega campos de split entre empresa e
+     * plataforma) - aqui nao ha curso nenhum, e a plataforma fica com 100%
+     * do valor. O "direito" desta cobranca e so o proprio company.planexpiry.
+     *
+     * 30 dias fixos por ciclo, mesmo intervalo que
+     * api::recurrence_for('local_marketplace', $companyid, PAYMENT_AREA_PLAN)
+     * declara para o gateway - os dois precisam concordar, senao o gateway
+     * cobraria num ritmo e o acesso venceria em outro.
+     *
+     * @param int $companyid
+     * @return bool
+     */
+    protected static function deliver_order_plan(int $companyid): bool {
+        $company = new company($companyid);
+
+        if (!$company->get_plan()) {
+            return false;
+        }
+
+        $company->extend_plan(30 * DAYSECS);
 
         return true;
     }

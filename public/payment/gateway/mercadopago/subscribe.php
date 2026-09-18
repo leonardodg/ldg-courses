@@ -187,7 +187,7 @@ echo $OUTPUT->header();
 // quanto em quanto tempo sera cobrado, e quantas vezes. Uma tela que so diz o
 // valor esconde justamente o que diferencia assinatura de compra avulsa.
 $recorrencia = class_exists('\local_marketplace\api')
-    ? \local_marketplace\api::recurrence_for($record->component, (int) $record->itemid)
+    ? \local_marketplace\api::recurrence_for($record->component, (int) $record->itemid, (string) $record->paymentarea)
     : null;
 
 $periodo = '';

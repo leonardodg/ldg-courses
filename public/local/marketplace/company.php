@@ -39,6 +39,8 @@ require(__DIR__ . '/../../config.php');
 use local_marketplace\company;
 use local_marketplace\member;
 use local_marketplace\offer;
+use local_marketplace\payment\service_provider;
+use local_marketplace\plan;
 
 $shortname = optional_param('company', '', PARAM_ALPHANUMEXT);
 
@@ -76,6 +78,23 @@ $PAGE->set_heading(format_string($company->get('name')));
 // Ser membro nao basta para administrar; e a capability que decide, e ela e
 // avaliada no contexto da categoria da empresa.
 require_capability('local/marketplace:managecompany', $context);
+
+// Trocar de plano NAO cobra nada aqui - so aponta company.planid para o
+// escolhido. A cobranca de verdade acontece so quando o gerente clica em
+// "pagar assinatura", que le o plano JA selecionado
+// (service_provider::get_payable_plan()). Sem essa separacao, mudar de ideia
+// no <select> ja teria efeito colateral de dinheiro.
+if (data_submitted() && confirm_sesskey() && optional_param('changeplan', 0, PARAM_BOOL)) {
+    $novoplanoid = required_param('planid', PARAM_INT);
+    $novoplano = plan::get_record(['id' => $novoplanoid, 'status' => plan::STATUS_ACTIVE]);
+
+    if ($novoplano) {
+        $company->set('planid', $novoplanoid);
+        $company->update();
+    }
+
+    redirect($url);
+}
 
 echo $OUTPUT->header();
 
@@ -145,6 +164,82 @@ if (!$accounts) {
             'mb-4'
         );
     }
+}
+
+// Plano - a assinatura SaaS que ESTA empresa paga a PLATAFORMA. E o oposto
+// da secao de meio de pagamento acima: ali e a empresa recebendo do aluno,
+// aqui e a empresa pagando a nos.
+echo $OUTPUT->heading(get_string('planssection', 'local_marketplace'), 3);
+
+$planoatual = $company->get_plan();
+
+if ($planoatual) {
+    echo $OUTPUT->notification(
+        get_string('currentplan', 'local_marketplace', format_string($planoatual->get('name'))),
+        'info'
+    );
+
+    if ((float) $planoatual->get('monthlyfee') > 0) {
+        $expiry = (int) $company->get('planexpiry');
+        echo html_writer::div(
+            $expiry > 0
+                ? get_string('planexpiryon', 'local_marketplace', userdate($expiry, get_string('strftimedaydate')))
+                : get_string('plannotpaidyet', 'local_marketplace'),
+            'text-muted small mb-2'
+        );
+
+        echo html_writer::div(
+            \core_payment\helper::get_cost_as_string((float) $planoatual->get('monthlyfee'), $planoatual->get('currency')),
+            'h5 mb-2'
+        );
+
+        // Mesmo padrao de offers.php: o modal do core escolhe o gateway, o
+        // gateway escolhido resolve o pagamento pela paymentarea 'plan' -
+        // que aponta para a conta da PLATAFORMA, nao da empresa.
+        $attrs = \core_payment\helper::gateways_modal_link_params(
+            'local_marketplace',
+            service_provider::PAYMENT_AREA_PLAN,
+            (int) $company->get('id'),
+            format_string($planoatual->get('name'))
+        );
+        $attrs['id'] = 'pay-plan-' . $company->get('id');
+        $attrs['class'] = 'btn btn-primary mb-4';
+        echo html_writer::tag('button', get_string('paysubscription', 'local_marketplace'), $attrs);
+
+        $PAGE->requires->js_call_amd('core_payment/gateways_modal', 'init');
+    }
+} else {
+    echo $OUTPUT->notification(get_string('noplan', 'local_marketplace'), 'warning');
+}
+
+// Trocar de plano. So os ATIVOS aparecem - um plano arquivado nao pode ser
+// escolhido de novo, mesmo que a empresa ja estivesse nele antes.
+$opcoesplano = [];
+foreach (plan::get_public_plans() as $p) {
+    $opcoesplano[(int) $p->get('id')] = format_string($p->get('name'));
+}
+
+if ($opcoesplano) {
+    echo html_writer::start_tag('form', [
+        'method' => 'post',
+        'action' => $url->out(false),
+        'class' => 'form-inline mb-4',
+    ]);
+    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'changeplan', 'value' => '1']);
+    echo html_writer::select(
+        $opcoesplano,
+        'planid',
+        (int) $company->get('planid'),
+        false,
+        ['class' => 'form-select d-inline-block w-auto me-2']
+    );
+    echo html_writer::tag(
+        'button',
+        get_string('selectplan', 'local_marketplace'),
+        ['type' => 'submit', 'class' => 'btn btn-outline-primary']
+    );
+    echo html_writer::end_tag('form');
 }
 
 // Ofertas.

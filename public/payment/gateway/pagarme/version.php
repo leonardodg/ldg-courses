@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'paygw_pagarme';
-$plugin->version   = 2026090900;
+$plugin->version   = 2026091701;
 $plugin->requires  = 2026042000; // Moodle 5.2.
 $plugin->supported = [502, 502];
 $plugin->maturity  = MATURITY_ALPHA;

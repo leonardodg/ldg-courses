@@ -117,6 +117,11 @@ valor esperado no lugar seria registrar dinheiro que ninguém viu.
   formatos, e o `PATCH …/split` responde que a assinatura "doesn't has split" —
   ou seja, ela teria que nascer com ele. Enquanto isso, **oferta recorrente é
   recusada na porta**: cobrar sem split renderia comissão zero em silêncio.
+  Consequência, sem código dedicado: este gateway também **nunca** cobra a
+  assinatura SaaS da empresa (`paymentarea = 'plan'`, desde 17/09/2026) — ela
+  é sempre recorrente, e `supports_recurring()` já barra na porta. Vincular a
+  conta da plataforma aqui serve só para conferir que `errorsamerecipient`
+  abre exceção pra ela, não para efetivamente cobrar.
 - **Estorno parcial** reduz a comissão? Só o total foi medido.
 - **Boleto estorna?** Está fora de `REFUNDABLE_METHODS` por analogia com o
   Asaas, não por medição.

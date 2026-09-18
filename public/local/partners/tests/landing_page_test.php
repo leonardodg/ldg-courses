@@ -18,6 +18,7 @@ namespace local_partners\output;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use local_marketplace\plan;
+use local_marketplace\plan_tier;
 
 /**
  * A pagina de captacao, do lado do servidor.
@@ -99,14 +100,14 @@ final class landing_page_test extends \advanced_testcase {
             $pornome[$plano['name']] = $plano;
         }
 
-        $starter = plan::get_record_by_shortname('starter');
+        $startfree = plan::get_record_by_shortname('start_free');
         $pro = plan::get_record_by_shortname('pro');
-        $this->assertNotFalse($starter, 'o seed da instalacao deveria ter criado o plano starter');
+        $this->assertNotFalse($startfree, 'o seed da instalacao deveria ter criado o plano start_free');
 
-        $this->assertTrue($pornome[$starter->get('name')]['isfree']);
+        $this->assertTrue($pornome[$startfree->get('name')]['isfree']);
         $this->assertFalse($pornome[$pro->get('name')]['isfree']);
         // A comissao sai do registro, com duas casas.
-        $this->assertSame('9.90', $pornome[$starter->get('name')]['commissionpct']);
+        $this->assertSame('10.00', $pornome[$startfree->get('name')]['commissionpct']);
     }
 
     /**
@@ -121,16 +122,35 @@ final class landing_page_test extends \advanced_testcase {
     public function test_a_faixa_final_e_descrita_pelo_teto_anterior(): void {
         $this->resetAfterTest();
 
-        $starter = plan::get_record_by_shortname('starter');
+        // Os planos do seed (start_free/start_50/start_100/pro, desde
+        // 17/09/2026) tem uma faixa SO cada - o teste da faixa MULTIPLA
+        // precisa do proprio plano, criado aqui, e nao mais do seed.
+        $plano = new plan(0, (object) [
+            'shortname' => 'multiplasfaixas' . random_int(100000, 999999),
+            'name' => 'Plano de tres faixas',
+            'monthlyfee' => 0,
+            'commissionpct' => 10,
+        ]);
+        $plano->create();
+
+        $faixas = [
+            ['maxprice' => 49.90, 'maxresolution' => '720p', 'sortorder' => 10],
+            ['maxprice' => 200.00, 'maxresolution' => '1080p', 'sortorder' => 20],
+            ['maxprice' => null, 'maxresolution' => '4k', 'sortorder' => 30],
+        ];
+        foreach ($faixas as $dados) {
+            $dados['planid'] = (int) $plano->get('id');
+            (new plan_tier(0, (object) $dados))->create();
+        }
 
         $tiers = [];
-        foreach ($this->contexto()['plans'] as $plano) {
-            if ($plano['name'] === $starter->get('name')) {
-                $tiers = $plano['tiers'];
+        foreach ($this->contexto()['plans'] as $item) {
+            if ($item['name'] === $plano->get('name')) {
+                $tiers = $item['tiers'];
             }
         }
 
-        $this->assertCount(3, $tiers, 'o starter do seed tem tres faixas');
+        $this->assertCount(3, $tiers);
 
         $ultima = end($tiers);
 
@@ -416,6 +436,72 @@ final class landing_page_test extends \advanced_testcase {
         $this->setUser(null);
 
         $this->assertSame('', landing_page::logout_url());
+    }
+
+    /**
+     * Visitante anonimo, ou logado sem empresa nenhuma, ve o botao "Apply"
+     * levar para a candidatura - o comportamento de sempre.
+     *
+     * @return void
+     */
+    public function test_botao_leva_a_candidatura_sem_empresa(): void {
+        $this->resetAfterTest();
+
+        $this->setUser(null);
+        $this->assertStringContainsString('/local/partners/apply.php', $this->contexto()['applyurl']);
+
+        $this->setUser($this->getDataGenerator()->create_user());
+        $this->assertStringContainsString('/local/partners/apply.php', $this->contexto()['applyurl']);
+    }
+
+    /**
+     * Gerente de UMA empresa so, logado, ve o botao "Apply" levar para a
+     * PROPRIA pagina de gerenciamento - ele ja e parceiro, e mandar para a
+     * candidatura de novo seria um segundo cadastro que ninguem pediu.
+     *
+     * @return void
+     */
+    public function test_botao_leva_ao_painel_de_quem_ja_gerencia_uma_empresa(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $owner = $this->getDataGenerator()->create_user();
+        $company = \local_marketplace\api::create_company((object) [
+            'name' => 'Empresa da landing',
+            'shortname' => 'landingtest' . random_int(100000, 999999),
+        ], (int) $owner->id);
+
+        $this->setUser($owner);
+        $url = $this->contexto()['applyurl'];
+
+        $this->assertStringContainsString('/local/marketplace/company.php', $url);
+        $this->assertStringContainsString((string) $company->get('shortname'), $url);
+    }
+
+    /**
+     * Gerente de DUAS empresas cai no caso padrao (candidatura) - a landing
+     * nao tem como perguntar qual das duas, e chutar uma erraria a metade
+     * das vezes.
+     *
+     * @return void
+     */
+    public function test_botao_nao_escolhe_entre_duas_empresas(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $owner = $this->getDataGenerator()->create_user();
+        \local_marketplace\api::create_company((object) [
+            'name' => 'Primeira empresa',
+            'shortname' => 'landingdupla1' . random_int(100000, 999999),
+        ], (int) $owner->id);
+        \local_marketplace\api::create_company((object) [
+            'name' => 'Segunda empresa',
+            'shortname' => 'landingdupla2' . random_int(100000, 999999),
+        ], (int) $owner->id);
+
+        $this->setUser($owner);
+
+        $this->assertStringContainsString('/local/partners/apply.php', $this->contexto()['applyurl']);
     }
 
     /**

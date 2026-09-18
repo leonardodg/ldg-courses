@@ -58,7 +58,7 @@ class remind_upcoming_cycles extends scheduled_task {
 
         foreach (payment_processor::latest_cycles() as $linha) {
             $recorrencia = class_exists('\local_marketplace\api')
-                ? \local_marketplace\api::recurrence_for($linha->component, (int) $linha->itemid)
+                ? \local_marketplace\api::recurrence_for($linha->component, (int) $linha->itemid, (string) $linha->paymentarea)
                 : null;
 
             if (!$recorrencia) {

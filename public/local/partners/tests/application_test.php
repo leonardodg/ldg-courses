@@ -108,8 +108,8 @@ final class application_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->as_anonymous_visitor();
 
-        $plan = plan::get_record_by_shortname('starter');
-        $this->assertNotFalse($plan, 'o seed da instalacao deveria ter criado o plano starter');
+        $plan = plan::get_record_by_shortname('start_free');
+        $this->assertNotFalse($plan, 'o seed da instalacao deveria ter criado o plano start_free');
 
         $application = api::submit($this->data(['planid' => (int) $plan->get('id')]));
 

@@ -405,6 +405,35 @@ function xmldb_local_marketplace_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026091110, 'local', 'marketplace');
     }
 
+    if ($oldversion < 2026091701) {
+        // Vencimento da mensalidade do PLANO - a assinatura SaaS que a
+        // empresa paga a plataforma, e nao a venda de curso.
+        //
+        // Sem status separado de proposito: inadimplente e so "planexpiry no
+        // passado", do mesmo jeito que entitlement::timeend ja decide
+        // vencimento hoje. Um enum a mais so poderia divergir do timestamp.
+        $dbman = $DB->get_manager();
+
+        $table = new xmldb_table('local_marketplace_company');
+        $field = new xmldb_field('planexpiry', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'planid');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026091701, 'local', 'marketplace');
+    }
+
+    if ($oldversion < 2026091702) {
+        // A funcao archive_legacy_plans() cuida da ordem entre
+        // renomear e semear - fazer isto aqui fora ja causou o 'pro' novo
+        // nunca ser criado, medido ao vivo nesta mesma rodada.
+        require_once(__DIR__ . '/install.php');
+        local_marketplace_archive_legacy_plans();
+
+        upgrade_plugin_savepoint(true, 2026091702, 'local', 'marketplace');
+    }
+
     return true;
 }
 
