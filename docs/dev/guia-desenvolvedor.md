@@ -205,7 +205,7 @@ isento voltaria a pagar na primeira vez que alguém mudasse o padrão do site.
 | `paygw_mercadopago` | Checkout Pro com split. Todo HTTP passa por `mp_client`, num arquivo só, porque a Orders API deve substituir a API de Preferências — concentrar transforma essa migração numa reescrita local em vez de uma caçada. OAuth com PKCE, renovação de token por cron, webhook como fonte da verdade. |
 | `enrol_marketplace` | Matrícula por diferença: compara os cursos que os direitos vigentes liberam com as matrículas existentes e ajusta. Não é chamado pelo pagamento — lê os direitos. |
 | `availability_marketplace` | Libera seção mediante compra. É o que faz "curso com tópicos grátis e tópicos pagos" funcionar. Aponte sempre a **oferta específica** nesse modelo — "qualquer oferta" incluiria a gratuita e destravaria tudo. |
-| `block_marketplace` | Assinaturas do aluno no Dashboard. Mostra só o que exige ação. Sem débito automático, o aluno precisa agir para continuar assinando; o e-mail chega uma vez, o bloco fica. |
+| `block_marketplace` | Assinaturas do aluno no Dashboard, e o checklist de ativação para quem administra empresa incompleta (desde 18/09/2026) — derivado de `local_marketplace`, sem tabela nova. Mostra só o que exige ação; sem débito automático, o aluno precisa agir para continuar assinando, o e-mail chega uma vez, o bloco fica. |
 
 ## Configuração
 

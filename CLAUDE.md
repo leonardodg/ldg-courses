@@ -511,6 +511,41 @@ conta da plataforma e os comandos de conferência no banco, em
 
 Detalhe completo: `docs/architecture/estado-e-proximas-fases.md`.
 
+**O `block_marketplace` ganhou uma segunda visão em 18/09/2026: o checklist
+de ativação da empresa parceira.** Uma empresa nasce já aprovada
+(`local_partners`), mas pode faltar vincular conta de pagamento com gateway
+habilitado, ou escolher plano — enquanto isso, quem tem
+`local/marketplace:managecompany` naquela empresa vê o checklist no
+Dashboard em vez do widget de assinatura do aluno; a empresa completa faz o
+widget de aluno voltar. Documento (CNPJ/CPF) é informativo, nunca bloqueia.
+**Sem tabela nova**: `block_marketplace\onboarding::step_state()` deriva tudo
+de `company::get_plan()` e `company::get_payment_accounts()` — a mesma
+armadilha de `account::is_available()` (gateway habilitado no SITE, não só
+o vínculo) volta a valer aqui.
+
+O desenho original previa sete telas novas (`gateway.php`, `plan.php`,
+`document.php`, `terms.php`, `approve.php`...); a revisão contra o código
+real cortou seis: conta de pagamento e plano já têm página em
+`local/marketplace/company.php`, termos e aprovação já são do
+`local_partners`. O que faltava de verdade era só o resumo "falta isso" no
+Dashboard.
+
+O `m3e-canvas` foi tentado duas vezes para desenhar as telas e abandonado
+nas duas: a primeira tentativa usou o schema errado (é uma ferramenta de
+esboço de widgets Material 3, não de wireframe de página inteira); a
+segunda, com schema certo, trava em runtime ao abrir o link no app local.
+As 11 telas de referência viraram HTML/Bootstrap real em
+`docs/design/block-marketplace-onboarding/html-mockups/`, revisado no
+Chrome — não um layout final, só a referência visual que aprovou os
+conceitos antes da implementação.
+
+Detalhe completo, com o histórico da revisão (SDD: 2 tasks + revisão final
+que achou e corrigiu três bugs de produto): `docs/ai-plans/2026-09-18-block-marketplace-onboarding-implementacao.md`,
+na worktree `parceiro-onboarding` (`feature/parceiro-onboarding`, PR #108).
+**Pendência antes do merge:** verificação manual no navegador (logar como
+dono de empresa incompleta e conferir o checklist em `/my/`) ainda não foi
+feita — só testes automatizados provaram o comportamento até aqui.
+
 ## Como o usuário trabalha
 
 Prefere entender o porquê antes de aceitar a solução, e questiona premissas — em
