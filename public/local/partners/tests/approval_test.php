@@ -276,15 +276,18 @@ final class approval_test extends \advanced_testcase {
     }
 
     /**
-     * Existindo conta com o e-mail do contato, ela e reaproveitada.
+     * Sem prova de controle do e-mail, a conta existente NAO e reaproveitada.
      *
-     * Criar uma segunda conta para a mesma pessoa seria pior do que nao criar
-     * nenhuma: ela receberia o convite e nao entenderia por que tem dois
-     * logins.
+     * make_application() envia como visitante com confirmacao desligada -
+     * exatamente o caminho que um atacante usaria digitando o e-mail de
+     * outra pessoa como contato. Reaproveitar a conta existente aqui
+     * entregaria a ownership da empresa a um estranho que nunca participou
+     * da candidatura, so porque o texto do formulario bateu com o e-mail
+     * dele. Uma conta nova nasce em vez disso, e a conta alheia fica intocada.
      *
      * @return void
      */
-    public function test_conta_existente_e_reaproveitada(): void {
+    public function test_conta_existente_nao_e_reaproveitada_sem_confirmacao(): void {
         global $DB;
 
         $existente = $this->getDataGenerator()->create_user(['email' => 'jaexiste@exemplo.com']);
@@ -294,6 +297,46 @@ final class approval_test extends \advanced_testcase {
 
         $company = api::approve($application, (object) [
             'shortname' => 'jaexiste',
+            'ownerid' => null,
+        ]);
+
+        $this->assertEquals($antes + 1, $DB->count_records('user', ['deleted' => 0]));
+        $this->assertFalse($DB->record_exists('local_marketplace_member', [
+            'companyid' => $company->get('id'),
+            'userid' => $existente->id,
+        ]));
+    }
+
+    /**
+     * Com o e-mail confirmado pelo link, a conta existente E reaproveitada.
+     *
+     * timeconfirmed so existe quando o candidato provou controle da caixa
+     * postal - confirmando o link recebido nela, ou tendo se autenticado com
+     * o site antes de enviar. So nesse caso resolve_owner() confia no e-mail
+     * digitado para procurar uma conta ja existente.
+     *
+     * @return void
+     */
+    public function test_conta_existente_e_reaproveitada_apos_confirmacao(): void {
+        global $DB;
+
+        $existente = $this->getDataGenerator()->create_user(['email' => 'confirmado@exemplo.com']);
+
+        $this->setUser(null);
+        set_config('requireemailconfirmation', 1, 'local_partners');
+        $application = api::submit((object) [
+            'companyname' => 'Editora Confirmada',
+            'contactname' => 'Maria Silva',
+            'contactemail' => 'confirmado@exemplo.com',
+        ]);
+        api::confirm(application::get_by_token($application->get('confirmtoken')));
+        $application = application::get_record(['id' => $application->get('id')]);
+
+        $this->setAdminUser();
+        $antes = $DB->count_records('user', ['deleted' => 0]);
+
+        $company = api::approve($application, (object) [
+            'shortname' => 'confirmada',
             'ownerid' => null,
         ]);
 

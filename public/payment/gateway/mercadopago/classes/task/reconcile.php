@@ -69,12 +69,21 @@ class reconcile extends \core\task\scheduled_task {
 
         $now = time();
 
-        // So o que continua pendente E sem pagamento entregue. A linha nasce
-        // antes da chamada a API de proposito, para que uma falha ali deixe
-        // rastro reconciliavel em vez de sumir.
-        $select = "status = :status AND paymentid IS NULL AND timecreated < :young AND timecreated > :old";
+        // Qualquer status NAO TERMINAL e sem pagamento entregue - nao so
+        // 'pending'. Um pagamento em analise antifraude fixa 'in_process', e
+        // cartao com 3DS pendente fixa 'authorized'; se o webhook que
+        // avancaria dali se perder, a linha ficava presa para sempre porque
+        // esta varredura so olhava o status literal 'pending'. 'rejected' e
+        // 'cancelled' ficam de fora de proposito: o Mercado Pago nao os
+        // reverte, e conferir de novo so gastaria chamada a toa.
+        //
+        // A linha nasce antes da chamada a API de proposito, para que uma
+        // falha ali deixe rastro reconciliavel em vez de sumir.
+        $select = "status NOT IN (:rejected, :cancelled) AND paymentid IS NULL
+                    AND timecreated < :young AND timecreated > :old";
         $params = [
-            'status' => 'pending',
+            'rejected' => 'rejected',
+            'cancelled' => 'cancelled',
             // Transacoes recem-criadas ainda estao com o aluno na tela de
             // pagamento. Conferir agora so gastaria chamada a toa.
             'young' => $now - self::MIN_AGE,

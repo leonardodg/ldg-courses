@@ -160,6 +160,7 @@
         <FIELD NAME="feebase" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="gross" SEQUENCE="false" COMMENT="Base de calculo APLICADA: gross|net. E o que foi de fato usado, e nao o que estava configurado - o Mercado Pago nao consegue cobrar sobre o liquido, entao ali a venda registra gross mesmo com net configurado."/>
         <FIELD NAME="feesource" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="site" SEQUENCE="false" COMMENT="De onde os termos vieram: policy|company|plan|site. Sem isto o relatorio mostra 9,9% sem permitir conferir se foi negociado, herdado do plano ou padrao."/>
         <FIELD NAME="externalid" TYPE="char" LENGTH="128" NOTNULL="false" SEQUENCE="false" COMMENT="Id da transacao no gateway, para conciliar com o extrato dele."/>
+        <FIELD NAME="refundedat" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Timestamp do estorno feito por aqui. Nulo = nunca estornada. Guarda de idempotencia de refund_sale(): so chama o gateway quando ainda esta nula."/>
         <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>

@@ -91,7 +91,7 @@ $PAGE->set_heading(get_string('subscribetitle', 'paygw_mercadopago'));
 
 $modo = card_capture::current($accountid);
 $apptype = (string) $record->apptype;
-$publickey = application::public_key($apptype);
+$publickey = application::public_key($apptype, (int) $record->accountid);
 
 if ($metodo === 'card' && $publickey === '') {
     // Sem a chave publica nao ha como montar campo de cartao em modo nenhum.

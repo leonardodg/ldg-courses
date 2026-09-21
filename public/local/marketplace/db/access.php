@@ -36,8 +36,8 @@ defined('MOODLE_INTERNAL') || die();
 
 $capabilities = [
 
-    // Criar a propria empresa. Self-service: todo usuario autenticado pode.
-    // Criar empresa. NAO e concedida a ninguem por padrao.
+    // Criar empresa. NAO e concedida a ninguem por padrao, e NAO e
+    // auto-atendimento: nenhum usuario autenticado ganha isto sozinho.
     //
     // Criar empresa cria uma CATEGORIA, que e objeto global: aparece na arvore
     // que todos os usuarios veem. Dar isso a quem acabou de se cadastrar seria

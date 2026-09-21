@@ -71,6 +71,11 @@ class sale extends persistent {
                 'null' => NULL_ALLOWED,
                 'default' => null,
             ],
+            'refundedat' => [
+                'type' => PARAM_INT,
+                'null' => NULL_ALLOWED,
+                'default' => null,
+            ],
         ];
     }
 

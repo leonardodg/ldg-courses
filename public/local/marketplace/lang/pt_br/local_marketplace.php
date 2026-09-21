@@ -103,6 +103,7 @@ $string['errorcannotsell'] = 'Esta empresa ainda não pode vender: configure um 
 $string['errorcnpjinvalid'] = 'Este CNPJ não é válido.';
 $string['errorcommissionrange'] = 'Use um número de 0 a 100, ou deixe vazio para herdar o padrão do site.';
 $string['errorcountryunsupported'] = 'O marketplace não opera no país {$a}.';
+$string['errorcoursenotowned'] = 'Este curso nao pertence a esta empresa.';
 $string['errordomainmap'] = 'Nao foi possivel gravar o mapa de dominios dos vendedores. Confira se o diretorio de dados do Moodle tem permissao de escrita.';
 $string['errorhostnametaken'] = 'Este domínio já está vinculado a outra empresa.';
 $string['errormaxcycles'] = 'Use zero para não haver limite, ou um número positivo.';

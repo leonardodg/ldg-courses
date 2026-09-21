@@ -103,6 +103,7 @@ $string['errorcannotsell'] = 'This company cannot sell yet: configure a payment 
 $string['errorcnpjinvalid'] = 'This is not a valid company tax ID.';
 $string['errorcommissionrange'] = 'Use a number from 0 to 100, or leave it empty to inherit the site default.';
 $string['errorcountryunsupported'] = 'The marketplace does not operate in country {$a}.';
+$string['errorcoursenotowned'] = 'This course does not belong to this company.';
 $string['errordomainmap'] = 'Could not write the seller domain map. Check that the Moodle data directory is writable.';
 $string['errorhostnametaken'] = 'This domain is already linked to another company.';
 $string['errormaxcycles'] = 'Use zero for no limit, or a positive number.';

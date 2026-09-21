@@ -394,4 +394,25 @@ class application extends persistent {
             ['ip' => $ip, 'since' => time() - HOURSECS]
         );
     }
+
+    /**
+     * Quantas candidaturas este e-mail recebeu na ultima hora.
+     *
+     * O limite por IP sozinho nao protege quem nunca se candidatou: rotacionar
+     * IPv6 e trivial em rede movel/VPS, mas o alvo do abuso continua sendo o
+     * MESMO endereco - cada submissao nao confirmada manda um e-mail real de
+     * confirmacao para quem nunca pediu nada (email-bombing de terceiro).
+     *
+     * @param string $email
+     * @return int
+     */
+    public static function count_recent_from_email(string $email): int {
+        global $DB;
+
+        return $DB->count_records_select(
+            self::TABLE,
+            'contactemail = :email AND timecreated > :since',
+            ['email' => $email, 'since' => time() - HOURSECS]
+        );
+    }
 }

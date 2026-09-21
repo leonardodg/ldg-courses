@@ -91,14 +91,28 @@ class submit_card extends external_api {
 
         self::validate_context(\context_system::instance());
 
-        $record = $DB->get_record(payment_processor::TABLE, ['externalreference' => $reference]);
+        // Trava a linha (FOR UPDATE) ate o commit logo abaixo: o botao so
+        // protege contra duplo clique NA MESMA ABA - um retry de rede (proxy
+        // reenviando, aba duplicada, requisicao reenviada depois de resposta
+        // perdida) passava pela checagem de chargeid vazio duas vezes antes
+        // de qualquer uma gravar de volta, criando duas cobrancas reais de
+        // cartao para uma unica compra.
+        $transaction = $DB->start_delegated_transaction();
+
+        $record = $DB->get_record_sql(
+            'SELECT * FROM {' . payment_processor::TABLE . '} WHERE externalreference = ? FOR UPDATE',
+            [$reference]
+        );
         if (!$record || (int) $record->userid !== (int) $USER->id) {
+            $transaction->allow_commit();
             throw new \moodle_exception('invalidaccess', 'error');
         }
 
         // Uma linha que ja tem cobranca nao pode ganhar outra: dois cliques no
         // botao cobrariam duas vezes.
         if (!empty($record->chargeid)) {
+            $transaction->allow_commit();
+
             return [
                 'success' => true,
                 'redirecturl' => (new \moodle_url(
@@ -119,7 +133,9 @@ class submit_card extends external_api {
 
         try {
             payment_processor::create_charge_for($record, $cardtoken, $billing);
+            $transaction->allow_commit();
         } catch (\Throwable $e) {
+            $transaction->allow_commit();
             debugging('paygw_pagarme: ' . $e->getMessage(), DEBUG_DEVELOPER);
 
             return [

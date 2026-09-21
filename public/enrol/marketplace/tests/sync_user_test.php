@@ -27,11 +27,11 @@ global $CFG;
 require_once($CFG->dirroot . '/enrol/marketplace/lib.php');
 
 /**
- * Matrícula por diferença, a partir dos direitos de acesso.
+ * Matricula por diferenca, a partir dos direitos de acesso.
  *
- * O direito é a fonte única da verdade do acesso, e este é o código que traduz
- * direito em matrícula. Um erro aqui matricula quem não pagou, ou tira o curso
- * de quem pagou — e a segunda forma é a que ninguém percebe até o aluno
+ * O direito e a fonte unica da verdade do acesso, e este e o codigo que traduz
+ * direito em matricula. Um erro aqui matricula quem nao pagou, ou tira o curso
+ * de quem pagou — e a segunda forma e a que ninguem percebe ate o aluno
  * reclamar.
  *
  * @package    enrol_marketplace
@@ -105,7 +105,7 @@ final class sync_user_test extends \advanced_testcase {
      * Concede o direito ao aluno de teste.
      *
      * @param offer $offer
-     * @param int $timeend 0 = vitalício.
+     * @param int $timeend 0 = vitalicio.
      * @return entitlement
      */
     protected function grant(offer $offer, int $timeend = 0): entitlement {
@@ -122,10 +122,10 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Situação da matrícula do aluno num curso.
+     * Situacao da matricula do aluno num curso.
      *
      * @param int $courseid
-     * @return int|null null quando não há matrícula pelo marketplace.
+     * @return int|null null quando nao ha matricula pelo marketplace.
      */
     protected function status_in(int $courseid): ?int {
         global $DB;
@@ -157,11 +157,11 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Rodar de novo não faz nada.
+     * Rodar de novo nao faz nada.
      *
-     * A idempotência é a razão de o método trabalhar por diferença em vez de
+     * A idempotencia e a razao de o metodo trabalhar por diferenca em vez de
      * por evento: a task roda no cron, e uma falha no meio tem que poder ser
-     * corrigida rodando de novo, sem duplicar matrícula.
+     * corrigida rodando de novo, sem duplicar matricula.
      *
      * @return void
      */
@@ -184,7 +184,7 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Oferta com vários cursos matricula em todos.
+     * Oferta com varios cursos matricula em todos.
      *
      * @return void
      */
@@ -201,11 +201,11 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Perder o direito SUSPENDE, e não apaga.
+     * Perder o direito SUSPENDE, e nao apaga.
      *
-     * Apagar a matrícula levaria junto nota e progresso. Quem perdeu acesso por
-     * vencimento costuma renovar, e voltaria para um curso zerado — o prejuízo
-     * seria do aluno, e irreversível.
+     * Apagar a matricula levaria junto nota e progresso. Quem perdeu acesso por
+     * vencimento costuma renovar, e voltaria para um curso zerado — o prejuizo
+     * seria do aluno, e irreversivel.
      *
      * @return void
      */
@@ -229,11 +229,11 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Direito vencido pela DATA também suspende.
+     * Direito vencido pela DATA tambem suspende.
      *
-     * O status só muda quando a task de expiração roda. Entre o vencimento e o
-     * próximo cron o registro ainda diz "active", e olhar só para o status
-     * deixaria o curso pago aberto de graça nessa janela.
+     * O status so muda quando a task de expiracao roda. Entre o vencimento e o
+     * proximo cron o registro ainda diz "active", e olhar so para o status
+     * deixaria o curso pago aberto de graca nessa janela.
      *
      * @return void
      */
@@ -255,7 +255,7 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Renovar reativa a matrícula suspensa, sem criar outra.
+     * Renovar reativa a matricula suspensa, sem criar outra.
      *
      * @return void
      */
@@ -287,11 +287,11 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Matrícula de OUTRO método não é tocada.
+     * Matricula de OUTRO metodo nao e tocada.
      *
-     * O professor matriculado à mão, ou o aluno de um curso gratuito com
-     * self-enrolment, não têm direito no marketplace. Se o sync olhasse todas
-     * as matrículas em vez de só as dele, suspenderia gente que nunca passou
+     * O professor matriculado a mao, ou o aluno de um curso gratuito com
+     * self-enrolment, nao tem direito no marketplace. Se o sync olhasse todas
+     * as matriculas em vez de so as dele, suspenderia gente que nunca passou
      * por aqui.
      *
      * @return void
@@ -326,7 +326,7 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * A instância do curso é reaproveitada, e não recriada.
+     * A instancia do curso e reaproveitada, e nao recriada.
      *
      * @return void
      */
@@ -346,10 +346,10 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Prazo da matrícula do aluno num curso.
+     * Prazo da matricula do aluno num curso.
      *
      * @param int $courseid
-     * @return int|null null quando não há matrícula pelo marketplace.
+     * @return int|null null quando nao ha matricula pelo marketplace.
      */
     protected function timeend_in(int $courseid): ?int {
         global $DB;
@@ -364,12 +364,12 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * A matrícula herda o prazo do direito.
+     * A matricula herda o prazo do direito.
      *
-     * Sem isto o acesso dependia inteiramente da tarefa horária rodar: entre o
-     * vencimento e a próxima passada o aluno continuava entrando, e com o cron
-     * parado continuava indefinidamente. Falha silenciosa - o sintoma é aluno
-     * acessando de graça, e disso ninguém reclama.
+     * Sem isto o acesso dependia inteiramente da tarefa horaria rodar: entre o
+     * vencimento e a proxima passada o aluno continuava entrando, e com o cron
+     * parado continuava indefinidamente. Falha silenciosa - o sintoma e aluno
+     * acessando de graca, e disso ninguem reclama.
      *
      * @return void
      */
@@ -384,7 +384,7 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Direito vitalício deixa a matrícula sem prazo.
+     * Direito vitalicio deixa a matricula sem prazo.
      *
      * Zero e "sem data" sao a mesma coisa no user_enrolments, e precisam
      * continuar sendo: uma data qualquer aqui faria o acesso vitalicio expirar.
@@ -401,10 +401,10 @@ final class sync_user_test extends \advanced_testcase {
     }
 
     /**
-     * Renovar estende o prazo, e isso não é reativação.
+     * Renovar estende o prazo, e isso nao e reativacao.
      *
-     * O contador do cron separa as duas coisas de propósito: estender o prazo
-     * de uma matrícula que já estava ativa não é trazer alguém de volta, e
+     * O contador do cron separa as duas coisas de proposito: estender o prazo
+     * de uma matricula que ja estava ativa nao e trazer alguem de volta, e
      * misturar faria o log mentir sobre quantos alunos recuperaram acesso.
      *
      * @return void
@@ -432,9 +432,9 @@ final class sync_user_test extends \advanced_testcase {
     /**
      * Dois direitos sobre o mesmo curso: vale o mais generoso.
      *
-     * Acontece com combo mais assinatura. O vitalício tem que ganhar de
-     * qualquer data, senão comprar uma assinatura mensal encurtaria um acesso
-     * vitalício já pago.
+     * Acontece com combo mais assinatura. O vitalicio tem que ganhar de
+     * qualquer data, senao comprar uma assinatura mensal encurtaria um acesso
+     * vitalicio ja pago.
      *
      * @return void
      */

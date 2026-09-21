@@ -84,6 +84,15 @@ class link_form extends \moodleform {
             return $errors;
         }
 
+        // Sanidade minima ANTES de gastar uma ida-e-volta com a API real: uma
+        // chave truncada por um copiar-colar acidental so falharia depois,
+        // com a mensagem crua de rejeicao do Asaas em vez de um aviso
+        // imediato. Chaves reais do Asaas tem bem mais que 40 caracteres.
+        if (strlen($key) < 40 || !preg_match('/^\$?[A-Za-z0-9_.\-]+$/', $key)) {
+            $errors['apikey'] = get_string('errorkeyformat', 'paygw_asaas');
+            return $errors;
+        }
+
         $declared = asaas_client::environment_of_key($key);
         if ($declared !== $data['environment']) {
             $errors['apikey'] = get_string('errorkeyenvironment', 'paygw_asaas', (object) [

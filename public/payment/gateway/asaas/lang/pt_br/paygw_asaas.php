@@ -51,6 +51,7 @@ $string['errorcreatingcharge'] = 'Não foi possível criar a cobrança. Tente de
 $string['errorcurl'] = 'Não foi possível falar com o Asaas: {$a}';
 $string['errorinvalidresponse'] = 'O Asaas devolveu uma resposta inesperada.';
 $string['errorkeyenvironment'] = 'Esta chave é de {$a->key}, mas você está vinculando {$a->chosen}.';
+$string['errorkeyformat'] = 'Isto não parece uma chave de API do Asaas válida. Confira se não houve erro ao copiar e colar.';
 $string['errorkeyrejected'] = 'O Asaas recusou esta chave: {$a}';
 $string['errornodocument'] = 'Esta compra precisa do CPF ou CNPJ do comprador: o Asaas recusa emitir cobrança para um cliente sem documento. Aponte o campo de perfil que guarda esse dado nas configurações do gateway, e deixe esse campo obrigatório no cadastro.';
 $string['errornoencryptionkey'] = 'Este site não tem chave de cifragem, então não há como guardar a chave de um vendedor com segurança. Crie uma com admin/cli/generate_key.php antes de vincular qualquer conta.';

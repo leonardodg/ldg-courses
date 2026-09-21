@@ -84,12 +84,12 @@ final class platform_account_test extends \advanced_testcase {
 
         $plataforma = api::get_or_create_platform_account('BR');
 
-        $company = new company(0, (object) [
+        $owner = $this->getDataGenerator()->create_user();
+        $company = api::create_company((object) [
             'name' => 'Empresa qualquer',
             'shortname' => 'empresaqualquer' . random_int(100000, 999999),
-        ]);
-        $company->create();
-        $contaempresa = api::create_payment_account($company, 'BR');
+        ], (int) $owner->id);
+        $contaempresa = $company->get_payment_account('BR');
 
         $this->assertTrue(api::is_platform_account((int) $plataforma->get('id')));
         $this->assertFalse(api::is_platform_account((int) $contaempresa->get('id')));

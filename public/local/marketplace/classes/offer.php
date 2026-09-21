@@ -298,6 +298,12 @@ class offer extends persistent {
         if ($this->get('offertype') === self::TYPE_CATALOG) {
             throw new \coding_exception('Oferta de catalogo segue a categoria da empresa e nao lista cursos.');
         }
+        $company = new company((int) $this->get('companyid'));
+        if (!$company->owns_course($courseid)) {
+            // Isolamento multi-tenant: empresa = categoria. Uma oferta so pode
+            // vincular curso da propria categoria (ou subcategoria dela).
+            throw new \moodle_exception('errorcoursenotowned', 'local_marketplace');
+        }
         $params = ['offerid' => $this->get('id'), 'courseid' => $courseid];
         if (!$DB->record_exists('local_marketplace_offer_course', $params)) {
             $DB->insert_record('local_marketplace_offer_course', (object) $params);

@@ -246,10 +246,10 @@ class service_provider implements \core_payment\local\callback\service_provider 
      * plataforma) - aqui nao ha curso nenhum, e a plataforma fica com 100%
      * do valor. O "direito" desta cobranca e so o proprio company.planexpiry.
      *
-     * 30 dias fixos por ciclo, mesmo intervalo que
+     * Mesmo intervalo de \local_marketplace\api::PLAN_CYCLE_DAYS que
      * api::recurrence_for('local_marketplace', $companyid, PAYMENT_AREA_PLAN)
-     * declara para o gateway - os dois precisam concordar, senao o gateway
-     * cobraria num ritmo e o acesso venceria em outro.
+     * declara para o gateway - os dois leem a mesma constante para nao
+     * poderem divergir.
      *
      * @param int $companyid
      * @return bool
@@ -261,7 +261,7 @@ class service_provider implements \core_payment\local\callback\service_provider 
             return false;
         }
 
-        $company->extend_plan(30 * DAYSECS);
+        $company->extend_plan(api::PLAN_CYCLE_DAYS * DAYSECS);
 
         return true;
     }

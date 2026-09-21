@@ -51,6 +51,7 @@ $string['errorcreatingcharge'] = 'The charge could not be created. Try again in 
 $string['errorcurl'] = 'Could not reach Asaas: {$a}';
 $string['errorinvalidresponse'] = 'Asaas returned an unexpected response.';
 $string['errorkeyenvironment'] = 'This key belongs to {$a->key}, but you are linking {$a->chosen}.';
+$string['errorkeyformat'] = 'This does not look like a valid Asaas API key. Check for a copy-paste mistake.';
 $string['errorkeyrejected'] = 'Asaas rejected this key: {$a}';
 $string['errornodocument'] = 'This purchase needs the buyer\'s CPF or CNPJ: Asaas refuses to issue a charge for a customer without one. Set the profile field that holds it in the gateway settings, and make that field required at signup.';
 $string['errornoencryptionkey'] = 'This site has no encryption key, so a seller\'s API key cannot be stored safely. Create one with admin/cli/generate_key.php before linking any account.';

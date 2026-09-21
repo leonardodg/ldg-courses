@@ -22,8 +22,20 @@ comentário de código ou na memória de quem já errou.
 
 ```
 sincronizar upstream -> worktree -> DOCUMENTACAO -> teste vermelho -> codigo
-  -> phpcs + grunt -> behat -> prova no navegador -> PR
+  -> phpcs + grunt -> behat -> prova no navegador -> CODE REVIEW -> PR
 ```
+
+**Code review entra antes de abrir o PR, depois que tudo já passou.** Não
+substitui phpcs/behat/prova no navegador — pega o que essas etapas não pegam:
+race condition, isolamento multi-tenant quebrado, duplicação de lógica entre
+gateways, docblock que contradiz decisão registrada aqui. Rode `/code-review`
+sobre o diff da feature e registre achados e correções em
+`docs/codereview/`, no mesmo padrão usado na varredura de 2026-09-21 (ver
+`docs/codereview/README.md`): um arquivo por escopo revisado, um item por
+achado, com status (`pendente`/`em andamento`/`corrigido`/`descartado`) e a
+correção aplicada. Isso vira o histórico consultável — sem isso, o que a
+revisão encontrou e por que foi corrigido daquele jeito se perde depois do
+merge.
 
 **A documentação entra antes do código, não depois.** Não é disciplina: o que se
 descobre investigando — o ponto exato do core que sustenta a solução, a armadilha

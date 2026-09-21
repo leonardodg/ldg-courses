@@ -434,6 +434,23 @@ function xmldb_local_marketplace_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026091702, 'local', 'marketplace');
     }
 
+    if ($oldversion < 2026091706) {
+        // Guarda de idempotencia de refund_sale(): sem coluna propria, um
+        // duplo clique ou dois admins agindo sobre o mesmo pagamento
+        // estornavam duas vezes no gateway, porque record_refund() so roda
+        // DEPOIS da chamada externa ja ter tido sucesso.
+        $dbman = $DB->get_manager();
+
+        $table = new xmldb_table('local_marketplace_sale');
+        $field = new xmldb_field('refundedat', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'externalid');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026091706, 'local', 'marketplace');
+    }
+
     return true;
 }
 

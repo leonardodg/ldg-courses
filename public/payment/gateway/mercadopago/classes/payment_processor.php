@@ -27,6 +27,18 @@ use moodle_exception;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class payment_processor {
+    /**
+     * Comissao de fabrica quando o local_marketplace nao esta instalado.
+     *
+     * So entra em jogo sem o marketplace, caso em que
+     * local_marketplace\api::default_commission_percent() nem existe para
+     * ser chamado - por isso o mesmo valor esta duplicado aqui e nos
+     * equivalentes de paygw_asaas e paygw_pagarme, sem plugin de gateway
+     * compartilhado neste projeto onde morar uma vez so. Mudar o padrao de
+     * fabrica da plataforma exige editar os tres.
+     */
+    const DEFAULT_COMMISSION_PERCENT = 25.0;
+
     /** @var string Tabela do gateway. */
     const TABLE = 'paygw_mercadopago';
 
@@ -89,7 +101,7 @@ class payment_processor {
         // quando ele esta presente, e caimos no padrao de fabrica quando outro
         // componente usa este gateway - assim o plugin continua servindo a
         // qualquer componente do core_payment, sem depender do marketplace.
-        $feepercent = 25.0;
+        $feepercent = self::DEFAULT_COMMISSION_PERCENT;
         $feesource = 'site';
         if (class_exists('\local_marketplace\api')) {
             $terms = \local_marketplace\api::commission_terms_for($component, $itemid, $paymentarea);
@@ -813,7 +825,19 @@ class payment_processor {
         // conta que tenha gateway configurado. Usamos o da transacao assim que
         // ela e localizada; para localiza-la, consultamos com cada conta ativa
         // ate uma responder - sao poucas, e so na primeira notificacao.
-        $existing = $DB->get_record(self::TABLE, ['mppaymentid' => $mppaymentid]);
+        // A leitura trava a linha (FOR UPDATE) ate o commit logo abaixo: um
+        // retry do proprio Mercado Pago ou a tarefa de reconciliacao batendo
+        // no mesmo pagamento quase ao mesmo tempo liam ambos paymentid vazio
+        // ANTES de qualquer escrita, e os dois chamavam save_payment() -
+        // duas linhas em {payments} para o mesmo pagamento. Com a trava, a
+        // segunda chamada espera a primeira commitar e ve o paymentid ja
+        // reservado.
+        $transaction = $DB->start_delegated_transaction();
+
+        $existing = $DB->get_record_sql(
+            'SELECT * FROM {' . self::TABLE . '} WHERE mppaymentid = ? FOR UPDATE',
+            [$mppaymentid]
+        );
         if ($existing) {
             // O token e o da aplicacao que CRIOU esta linha. Consultar um
             // pagamento de assinatura com o token de Preferencias devolve 404,
@@ -825,10 +849,20 @@ class payment_processor {
             $record = $existing;
         } else {
             [$payment, $record] = self::locate_transaction($mppaymentid);
+            if ($record) {
+                // So agora a linha tem mppaymentid: trava pelo id, fechando a
+                // mesma janela para a segunda notificacao em diante desta
+                // transacao.
+                $record = $DB->get_record_sql(
+                    'SELECT * FROM {' . self::TABLE . '} WHERE id = ? FOR UPDATE',
+                    [$record->id]
+                );
+            }
         }
 
         if (!$record) {
             // Pagamento que nao e nosso, ou transacao ja removida.
+            $transaction->allow_commit();
             return false;
         }
 
@@ -836,8 +870,11 @@ class payment_processor {
 
         if ($record->status === 'approved' && $status === 'approved') {
             // Reenvio do Mercado Pago de algo ja entregue.
+            $transaction->allow_commit();
             return false;
         }
+
+        $statusanterior = $record->status;
 
         $record->mppaymentid = $mppaymentid;
         $record->status = $status;
@@ -854,7 +891,24 @@ class payment_processor {
                 $record->currency,
                 'mercadopago'
             );
-            $DB->update_record(self::TABLE, $record);
+
+            // Grava o paymentid AGORA, mas com o status ANTERIOR (nao
+            // 'approved') - se record_sale()/deliver_order() lancar abaixo, a
+            // linha fica elegivel para nova tentativa do webhook/reconcile em
+            // vez de travar 'approved' sem entitlement entregue (a guarda de
+            // reenvio no topo desta funcao so dispara com status='approved').
+            // Uma proxima tentativa nao recria o pagamento porque
+            // empty($record->paymentid) ja sera falso.
+            $reserva = clone $record;
+            $reserva->status = $statusanterior;
+            $DB->update_record(self::TABLE, $reserva);
+
+            // Libera a trava aqui: record_sale()/deliver_order() sao mais
+            // lentas (chamam o marketplace, matriculam o aluno) e segurar o
+            // lock da linha durante isso so aumentaria contencao sem
+            // necessidade - o paymentid ja reservado acima e o suficiente
+            // para uma notificacao concorrente nao duplicar o pagamento.
+            $transaction->allow_commit();
 
             // Registra a venda na tabela neutra do marketplace. O gateway e o
             // unico que sabe quanto de comissao foi DE FATO enviado: recalcular
@@ -889,10 +943,15 @@ class payment_processor {
                 (int) $record->userid
             );
 
+            // So agora, com a venda registrada e a entrega feita, o status
+            // 'approved' e persistido de verdade.
+            $DB->update_record(self::TABLE, $record);
+
             return true;
         }
 
         $DB->update_record(self::TABLE, $record);
+        $transaction->allow_commit();
         return false;
     }
 
@@ -1275,7 +1334,16 @@ class payment_processor {
         global $DB;
 
         $record = self::build_next_cycle($previous);
-        $record->id = $DB->insert_record(self::TABLE, $record);
+
+        try {
+            $record->id = $DB->insert_record(self::TABLE, $record);
+        } catch (\dml_write_exception $e) {
+            // O indice unico (subscriptionid, cycles) recusou: uma outra
+            // execucao da tarefa ja emitiu este ciclo (cron atrasado, disparo
+            // manual em cima de uma execucao em curso). Nao emite o aviso de
+            // novo - a linha que ja existe ja mandou o dela.
+            return;
+        }
 
         self::notify_invoice_due(
             $record,
@@ -1386,7 +1454,15 @@ class payment_processor {
         $user = \core_user::get_user((int) $previous->userid, 'id, email', MUST_EXIST);
 
         $record = self::build_next_cycle($previous);
-        $record->id = $DB->insert_record(self::TABLE, $record);
+
+        try {
+            $record->id = $DB->insert_record(self::TABLE, $record);
+        } catch (\dml_write_exception $e) {
+            // Mesma guarda de issue_card_cycle(): outra execucao da tarefa ja
+            // emitiu este ciclo. Nao gera uma segunda fatura para o mesmo
+            // periodo.
+            return false;
+        }
 
         $payerinfo = json_decode((string) ($record->payerinfo ?? ''), true) ?: [];
 

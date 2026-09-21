@@ -166,7 +166,7 @@ final class application_test extends \advanced_testcase {
      */
     public function test_os_campos_da_conta_sao_um_conjunto_por_tipo(): void {
         $this->assertSame(
-            ['mpuserid', 'accesstoken', 'refreshtoken', 'tokenexpires', 'siteid', 'currency'],
+            ['mpuserid', 'accesstoken', 'refreshtoken', 'tokenexpires', 'siteid', 'currency', 'testmode'],
             application::account_fields(application::TYPE_PREFERENCES)
         );
         $this->assertSame(
@@ -177,6 +177,7 @@ final class application_test extends \advanced_testcase {
                 'tokenexpires_subscriptions',
                 'siteid_subscriptions',
                 'currency_subscriptions',
+                'testmode_subscriptions',
             ],
             application::account_fields(application::TYPE_SUBSCRIPTIONS)
         );

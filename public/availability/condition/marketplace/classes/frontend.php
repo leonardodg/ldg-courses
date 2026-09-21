@@ -85,7 +85,6 @@ class frontend extends \core_availability\frontend {
         if (empty($course->category)) {
             return null;
         }
-        $company = company::get_record(['categoryid' => $course->category]);
-        return $company ?: null;
+        return company::for_course((int) $course->id);
     }
 }

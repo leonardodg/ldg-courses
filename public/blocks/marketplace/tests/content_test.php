@@ -304,13 +304,19 @@ final class content_test extends \advanced_testcase {
     public function test_dono_de_empresa_completa_ve_propria_assinatura_de_aluno(): void {
         $this->complete_test_company();
 
+        // Dono de OUTRA empresa, e nao o mesmo usuario 2 do teste: senao o
+        // dono da "Empresa Teste" (completa) passaria a gerenciar tambem esta
+        // segunda empresa incompleta, e o bloco mostraria o checklist dela em
+        // vez da propria assinatura - correto pelo novo desenho, mas nao e o
+        // que este teste quer exercitar.
+        $outroowner = $this->getDataGenerator()->create_user();
         $outracompany = api::create_company((object) [
             'name' => 'Outra Empresa',
             'shortname' => 'outra' . random_int(1000, 9999),
             'cnpj' => null,
             'themename' => null,
             'hostname' => null,
-        ], 2);
+        ], (int) $outroowner->id);
 
         $offer = new offer();
         $offer->set('companyid', (int) $outracompany->get('id'));
@@ -341,6 +347,37 @@ final class content_test extends \advanced_testcase {
 
         $this->assertStringContainsString('Curso de Go', $content->text);
         $this->assertStringNotContainsString('Ativação da conta', $content->text);
+    }
+
+    /**
+     * Dono de DUAS empresas, uma completa e outra incompleta, ve o checklist
+     * da incompleta - mesmo a completa vindo primeiro em ordem alfabetica.
+     *
+     * Antes da correcao, get_content() usava reset(company::get_by_member())
+     * e so olhava a PRIMEIRA empresa em ordem alfabetica de nome: "Empresa
+     * Teste" (completa) vem antes de "Zeta Corp" (incompleta), entao o
+     * checklist da Zeta Corp nunca aparecia para o unico usuario que podia
+     * completa-lo - o bloco simplesmente ficava vazio ou mostrava a
+     * assinatura de aluno.
+     *
+     * @return void
+     */
+    public function test_dono_de_duas_empresas_ve_checklist_da_incompleta(): void {
+        $this->complete_test_company();
+
+        api::create_company((object) [
+            'name' => 'Zeta Corp',
+            'shortname' => 'zeta' . random_int(1000, 9999),
+            'cnpj' => null,
+            'themename' => null,
+            'hostname' => null,
+        ], 2);
+
+        $this->setUser($this->company_owner());
+
+        $content = $this->content();
+
+        $this->assertStringContainsString('0%', $content->text);
     }
 
     /**
