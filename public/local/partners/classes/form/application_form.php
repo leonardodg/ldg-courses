@@ -327,6 +327,16 @@ class application_form extends \moodleform {
             $errors['companyname'] = get_string('errortoomany', 'local_partners');
         }
 
+        // Limite de taxa por e-mail: rotacionar IP nao protege quem nunca se
+        // candidatou, se o alvo do abuso e sempre o mesmo endereco.
+        if (
+            empty($errors)
+            && !empty($data['contactemail'])
+            && application::count_recent_from_email($data['contactemail']) >= api::max_per_hour()
+        ) {
+            $errors['contactemail'] = get_string('errortoomany', 'local_partners');
+        }
+
         // O elemento recaptcha do Moodle NAO se valida sozinho: ele desenha o
         // widget e para por ai. Quem verifica e o formulario, chamando verify()
         // - e o signup_form.php do core faz exatamente isto. Sem este bloco o

@@ -28,6 +28,17 @@ use moodle_exception;
  */
 class api {
     /**
+     * Dias fixos do ciclo da mensalidade do plano SaaS.
+     *
+     * Unica fonte: recurrence_for_plan() (o que o gateway cobra) e
+     * deliver_order_plan() em service_provider.php (o que o acesso estende)
+     * tem que concordar, senao o gateway cobraria num ritmo e o acesso
+     * venceria em outro. Antes eram dois literais 30 mantidos em sincronia
+     * so por comentario.
+     */
+    const PLAN_CYCLE_DAYS = 30;
+
+    /**
      * Cria a empresa e provisiona tudo que ela precisa para operar.
      *
      * Uma empresa sem categoria seria uma linha inerte: e a categoria que da
@@ -326,7 +337,7 @@ class api {
         }
 
         return (object) [
-            'days' => 30,
+            'days' => self::PLAN_CYCLE_DAYS,
             'maxcycles' => 0,
         ];
     }
@@ -425,7 +436,21 @@ class api {
         $record->set('feebase', $terms->base);
         $record->set('feesource', $terms->source);
         $record->set('externalid', $externalid !== '' ? $externalid : null);
-        $record->create();
+
+        try {
+            $record->create();
+        } catch (\dml_write_exception $e) {
+            // Duas notificacoes do mesmo webhook em paralelo passam ambas pelo
+            // get_record() acima antes de qualquer commit. A chave unica em
+            // paymentid rejeita a segunda create() - sem este catch, o
+            // gateway recebia 500 num webhook duplicado em vez do retorno
+            // idempotente que a venda ja existente deveria dar.
+            $existing = sale::get_record(['paymentid' => $paymentid]);
+            if ($existing) {
+                return $existing;
+            }
+            throw $e;
+        }
 
         return $record;
     }
@@ -927,10 +952,32 @@ class api {
         global $DB;
 
         $pagamento = $DB->get_record('payments', ['id' => $paymentid], '*', MUST_EXIST);
-        $classname = '\paygw_' . $pagamento->gateway . '\gateway';
 
+        // Reserva o estorno ANTES de chamar o gateway, dentro de transacao
+        // propria: sem isto, duplo clique no botao ou dois admins agindo
+        // sobre o mesmo pagamento mandavam o gateway estornar duas vezes,
+        // porque record_refund() so grava depois que a chamada externa ja
+        // teve sucesso.
+        $venda = sale::get_record(['paymentid' => $paymentid]);
+        $transaction = $DB->start_delegated_transaction();
+        if ($venda && $venda->get('refundedat')) {
+            $transaction->allow_commit();
+            return false;
+        }
+        if ($venda) {
+            $venda->set('refundedat', time());
+            $venda->update();
+        }
+        $transaction->allow_commit();
+
+        $classname = '\paygw_' . $pagamento->gateway . '\gateway';
         $estornou = \component_class_callback($classname, 'refund', [$paymentid], false);
         if (!$estornou) {
+            if ($venda) {
+                // O gateway recusou: libera a reserva para uma proxima tentativa.
+                $venda->set('refundedat', null);
+                $venda->update();
+            }
             return false;
         }
 

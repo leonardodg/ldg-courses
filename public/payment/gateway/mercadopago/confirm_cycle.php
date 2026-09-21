@@ -69,7 +69,7 @@ $PAGE->set_title(get_string('confirmcycletitle', 'paygw_mercadopago'));
 $PAGE->set_heading(get_string('confirmcycletitle', 'paygw_mercadopago'));
 
 $apptype = (string) $record->apptype;
-$publickey = application::public_key($apptype);
+$publickey = application::public_key($apptype, (int) $record->accountid);
 
 if ($publickey === '') {
     throw new moodle_exception(

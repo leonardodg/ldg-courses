@@ -44,6 +44,7 @@
         <INDEX NAME="mppaymentid" UNIQUE="false" FIELDS="mppaymentid"/>
         <INDEX NAME="preferenceid" UNIQUE="false" FIELDS="preferenceid"/>
         <INDEX NAME="subscriptionid" UNIQUE="false" FIELDS="subscriptionid" COMMENT="Toda leitura de assinatura procura por aqui: o ciclo seguinte, a fatura em aberto e o cancelamento partem do subscriptionid, nao do id da linha."/>
+        <INDEX NAME="subscriptionid-cycles" UNIQUE="true" FIELDS="subscriptionid, cycles" COMMENT="Duas tarefas se sobrepondo (cron atrasado, disparo manual em cima de uma execucao ja em curso) nao podem criar dois proximos ciclos para a mesma assinatura. subscriptionid e NULL na venda avulsa, e NULL nao colide consigo mesmo num indice unico - a linha avulsa nao e afetada."/>
       </INDEXES>
     </TABLE>
   </TABLES>

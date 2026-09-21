@@ -87,6 +87,7 @@ class application {
         'tokenexpires',
         'siteid',
         'currency',
+        'testmode',
     ];
 
     /**
@@ -194,12 +195,14 @@ class application {
      * ambientes, porque a aplicacao e a mesma. So as chaves mudam.
      *
      * @param string $type
+     * @param int|null $accountid Conta do vendedor, quando ha uma em contexto.
+     *                            Sem ela, cai no testmode do SITE (compat).
      * @return string Vazio quando nao configurada para o ambiente em vigor
      */
-    public static function public_key(string $type): string {
+    public static function public_key(string $type, ?int $accountid = null): string {
         self::guard($type);
 
-        $campo = self::test_mode() ? 'publickeytest' : 'publickey';
+        $campo = self::test_mode($type, $accountid) ? 'publickeytest' : 'publickey';
 
         // Em modo de teste NAO se cai na chave de producao, e a ausencia da
         // queda e a regra. Cair misturaria ambientes, e a recusa chegaria
@@ -209,11 +212,37 @@ class application {
     }
 
     /**
-     * O site esta em modo de teste?
+     * O modo de teste QUE VALE para esta cobranca.
      *
+     * Com uma conta em contexto, usa o modo em que o access_token DAQUELA
+     * conta foi emitido (gravado por oauth_callback.php) - e nao o testmode
+     * global do site, que pode ter mudado depois do vinculo. Sem isto, a
+     * chave publica mostrada no checkout (aqui) e o access_token usado para
+     * cobrar (get_gateway_config()) podiam vir de ambientes diferentes, e o
+     * Mercado Pago recusa com "Invalid users involved" na frente do aluno.
+     *
+     * Sem conta em contexto (formulario de configuracao, por exemplo), ou
+     * para conta vinculada antes deste campo existir, cai no testmode global.
+     *
+     * @param string $type
+     * @param int|null $accountid
      * @return bool
      */
-    public static function test_mode(): bool {
+    public static function test_mode(string $type = self::TYPE_PREFERENCES, ?int $accountid = null): bool {
+        if ($accountid !== null) {
+            $gateway = \core_payment\account_gateway::get_record([
+                'accountid' => $accountid,
+                'gateway' => 'mercadopago',
+            ]);
+            if ($gateway) {
+                $config = $gateway->get_configuration();
+                $marcado = $config[self::token_field($type, 'testmode')] ?? null;
+                if ($marcado !== null && $marcado !== '') {
+                    return (bool) $marcado;
+                }
+            }
+        }
+
         return !empty(get_config('paygw_mercadopago', 'testmode'));
     }
 

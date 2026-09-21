@@ -56,21 +56,22 @@ class onboarding {
     }
 
     /**
-     * Uma conta so conclui a etapa se account::is_available() for verdadeiro -
-     * vinculada nao basta, precisa do gateway habilitado (armadilha ja
-     * documentada no CLAUDE.md).
+     * Reusa company::can_sell(), e nao reimplementa o loop de contas.
+     *
+     * can_sell() ja junta as duas condicoes que importam aqui: a conta tem que
+     * estar disponivel (account::is_available() - vinculada nao basta, precisa
+     * do gateway habilitado, armadilha ja documentada no CLAUDE.md) E a
+     * empresa tem que estar STATUS_ACTIVE. Uma copia manual do loop ja
+     * esqueceu o segundo check uma vez: empresa suspensa com gateway
+     * habilitado antes de suspender aparecia como etapa concluida, quando
+     * can_sell() - a resposta canonica de "esta empresa pode vender" - diria
+     * que nao.
      *
      * @param company $company
      * @return string
      */
     private static function gateway_state(company $company): string {
-        foreach ($company->get_payment_accounts() as $account) {
-            if ($account->is_available()) {
-                return self::STATE_DONE;
-            }
-        }
-
-        return self::STATE_PENDING;
+        return $company->can_sell() ? self::STATE_DONE : self::STATE_PENDING;
     }
 
     /**

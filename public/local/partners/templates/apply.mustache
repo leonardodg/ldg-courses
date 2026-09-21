@@ -33,7 +33,8 @@
     * colormode - 'dark' ou 'light', ja resolvido no servidor
     * isloggedin - onde o alternador guarda a escolha
     * brand - { name, homeurl, logolight, logodark, haslogo }
-    * loginurl - URL da tela de login; o botao some para quem ja entrou
+    * loginurl - URL da tela de login; o botao vira SAIR para quem ja entrou
+    * logouturl - URL de sair, ja com sesskey, para quem entrou
     * languages / haslanguages - o seletor de idioma, como na barra da landing
     * trust - array de { title, text, iscoin, isserver, isshield }
 
@@ -44,6 +45,7 @@
         "colormode": "dark",
         "isloggedin": false,
         "loginurl": "/login/index.php",
+        "logouturl": "/login/logout.php?sesskey=abc",
         "brand": {"name": "LeoDG", "homeurl": "/local/partners/index.php",
                   "logolight": "/logo.svg", "logodark": "/logo-dark.svg", "haslogo": true},
         "haslanguages": true,
@@ -105,9 +107,16 @@
                         <span>{{#str}}backtolanding, local_partners{{/str}}</span>
                     </a>
 
+                    {{! Quem ja entrou ve SAIR no lugar de ENTRAR, com sesskey no
+                        endereco - mesma regra do sectionbar. }}
                     {{^isloggedin}}
                         <a href="{{loginurl}}" class="ldgp-btn ldgp-btn--ghost ldgp-btn--sm">
                             {{#str}}login{{/str}}
+                        </a>
+                    {{/isloggedin}}
+                    {{#isloggedin}}
+                        <a href="{{logouturl}}" class="ldgp-btn ldgp-btn--ghost ldgp-btn--sm">
+                            {{#str}}logout{{/str}}
                         </a>
                     {{/isloggedin}}
 

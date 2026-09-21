@@ -217,6 +217,12 @@ $gateway->set('config', json_encode(array_merge($existing, [
     application::token_field($apptype, 'tokenexpires') => $expires,
     application::token_field($apptype, 'siteid') => $siteid,
     application::token_field($apptype, 'currency') => $currency,
+    // Marca sob QUAL modo o access_token foi emitido - o testmode do SITE
+    // pode mudar depois deste vinculo (indo ao ar com outra empresa, por
+    // exemplo), e sem este marcador o checkout passaria a mostrar a chave
+    // publica do modo atual enquanto continua cobrando com um token do modo
+    // antigo, recusado pelo Mercado Pago com "Invalid users involved".
+    application::token_field($apptype, 'testmode') => !empty($config->testmode) ? 1 : 0,
 ])));
 
 if ($gateway->get('id')) {

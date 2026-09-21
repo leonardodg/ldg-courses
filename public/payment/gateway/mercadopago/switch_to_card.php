@@ -71,7 +71,7 @@ $PAGE->set_heading(get_string('switchtocard', 'local_marketplace'));
 
 $modo = card_capture::current((int) $record->accountid);
 $apptype = (string) $record->apptype;
-$publickey = application::public_key($apptype);
+$publickey = application::public_key($apptype, (int) $record->accountid);
 
 if ($publickey === '') {
     throw new moodle_exception(

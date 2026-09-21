@@ -74,18 +74,42 @@ class block_marketplace extends block_base {
             return $this->content;
         }
 
-        $companies = company::get_by_member((int) $USER->id);
-        $company = $companies ? reset($companies) : null;
-
-        if (
-            $company
-                && $this->is_dashboard_context()
-                && has_capability('local/marketplace:managecompany', $company->get_context())
-        ) {
-            return $this->content_for_owner($company, (int) $USER->id);
+        if ($this->is_dashboard_context()) {
+            $incomplete = $this->find_managed_incomplete_company((int) $USER->id);
+            if ($incomplete) {
+                return $this->content_for_owner($incomplete, (int) $USER->id);
+            }
         }
 
         return $this->content_for_student((int) $USER->id);
+    }
+
+    /**
+     * Primeira empresa que o usuario GERENCIA e que ainda esta incompleta.
+     *
+     * reset(company::get_by_member()) escolhia a primeira em ordem alfabetica
+     * de nome, as cegas: um usuario que gerencia duas empresas via o checklist
+     * da empresa ERRADA so porque o nome dela vem antes no alfabeto - e a
+     * capability so era checada contra essa mesma escolha arbitraria, entao um
+     * membro nao-gerente de uma empresa completa escondia o checklist da
+     * empresa que ele de fato gerencia. Aqui percorre TODAS as empresas do
+     * usuario e devolve a primeira em que ele tem a capability de gerenciar E
+     * que ainda precisa de atencao.
+     *
+     * @param int $userid
+     * @return company|null
+     */
+    private function find_managed_incomplete_company(int $userid): ?company {
+        foreach (company::get_by_member($userid) as $company) {
+            if (!has_capability('local/marketplace:managecompany', $company->get_context())) {
+                continue;
+            }
+            if (!onboarding::progress($company)['complete']) {
+                return $company;
+            }
+        }
+
+        return null;
     }
 
     /**

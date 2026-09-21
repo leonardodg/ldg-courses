@@ -98,6 +98,12 @@ if ($data = $form->get_data()) {
         // que impede a repeticao do erro do Mercado Pago, onde vendedor e
         // marketplace eram a mesma conta e ninguem percebeu.
         //
+        // ESTA GUARDA DE ISENCAO EXISTE EM DUAS COPIAS: aqui e em
+        // paygw_asaas/link.php (funcao is_platform_account() do
+        // local_marketplace, a mesma nos dois). Nao ha um plugin de gateway
+        // compartilhado neste projeto onde ela more uma vez so - mudar a
+        // regra exige editar as duas.
+        //
         // EXCETO quando a conta sendo vinculada e a PROPRIA conta da
         // plataforma (local_marketplace\api::get_or_create_platform_account()
         // - assinatura SaaS, desenhada em 17/09/2026): ai o recebedor da
@@ -116,6 +122,21 @@ if ($data = $form->get_data()) {
             $sellerrecipient,
             (string) ($recipient['name'] ?? '')
         );
+
+        if ($sellerrecipient === '') {
+            // O get_default_recipient() engole qualquer falha (docblock dele: a
+            // conta pode ainda nao ter recebedor configurado, o que e
+            // pendencia do vendedor, nao erro do plugin) e devolve vazio. Sem
+            // este aviso, o vinculo parecia "concluido com sucesso" enquanto
+            // toda cobranca futura saia sem split nenhum, silenciosamente -
+            // so visivel lendo o banco.
+            redirect(
+                $returnurl,
+                get_string('linkdonenosplit', 'paygw_pagarme'),
+                null,
+                \core\output\notification::NOTIFY_WARNING
+            );
+        }
 
         redirect($returnurl, get_string('linkdone', 'paygw_pagarme'), null, \core\output\notification::NOTIFY_SUCCESS);
     } catch (\Throwable $e) {

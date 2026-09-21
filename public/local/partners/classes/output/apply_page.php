@@ -64,6 +64,7 @@ class apply_page implements renderable, templatable {
             'colormode' => landing_page::color_mode(),
             'isloggedin' => isloggedin() && !isguestuser(),
             'loginurl' => (new moodle_url('/login/index.php'))->out(false),
+            'logouturl' => landing_page::logout_url(),
             // Variante SIMPLES: no cadastro o rodape e uma linha so, como no
             // mockup - a atencao ali pertence ao formulario.
             'footer' => landing_page::footer(true),

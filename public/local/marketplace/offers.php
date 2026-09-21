@@ -101,7 +101,7 @@ $intro = (string) $company->get('pageintro');
 if (trim($intro) !== '') {
     // O format_text filtra o HTML: o vendedor escreve texto de venda, nao script.
     echo html_writer::div(
-        format_text($intro, FORMAT_HTML, ['context' => $context]),
+        format_text($intro, FORMAT_HTML, ['context' => $company->get_context()]),
         'local-marketplace-intro mb-4'
     );
 }

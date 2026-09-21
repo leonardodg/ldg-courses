@@ -62,6 +62,7 @@ class refresh_tokens extends scheduled_task {
         $renovados = $falhas = 0;
 
         foreach ($DB->get_records('payment_gateways', ['gateway' => 'mercadopago']) as $gw) {
+            $configoriginal = $gw->config;
             $gwconfig = @json_decode($gw->config, true);
             if (!is_array($gwconfig)) {
                 continue;
@@ -123,8 +124,20 @@ class refresh_tokens extends scheduled_task {
             // Uma gravacao por conta, e nao uma por aplicacao: sao ate tres
             // renovacoes na mesma linha, e gravar a cada uma reescreveria o
             // mesmo registro tres vezes.
+            //
+            // Lock otimista: a escrita so vale se o config ainda for o MESMO
+            // que foi lido no topo do loop. Sem isto, um vendedor usando
+            // oauth_unlink.php enquanto esta tarefa esta no meio do loop tinha
+            // a revogacao ressuscitada pela sobrescrita incondicional desta
+            // linha - ou o inverso, um relink recem-feito apagado.
             if ($mudou) {
-                $DB->set_field('payment_gateways', 'config', json_encode($gwconfig), ['id' => $gw->id]);
+                $DB->set_field_select(
+                    'payment_gateways',
+                    'config',
+                    json_encode($gwconfig),
+                    'id = :id AND config = :original',
+                    ['id' => $gw->id, 'original' => $configoriginal]
+                );
             }
         }
 

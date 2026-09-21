@@ -33,6 +33,18 @@ use moodle_url;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class payment_processor {
+    /**
+     * Comissao de fabrica quando o local_marketplace nao esta instalado.
+     *
+     * So entra em jogo sem o marketplace, caso em que
+     * local_marketplace\api::default_commission_percent() nem existe para
+     * ser chamado - por isso o mesmo valor esta duplicado aqui e nos
+     * equivalentes de paygw_mercadopago e paygw_pagarme, sem plugin de
+     * gateway compartilhado neste projeto onde morar uma vez so. Mudar o
+     * padrao de fabrica da plataforma exige editar os tres.
+     */
+    const DEFAULT_COMMISSION_PERCENT = 25.0;
+
     /** @var string Tabela de transacoes do plugin. */
     const TABLE = 'paygw_asaas';
 
@@ -65,7 +77,7 @@ class payment_processor {
         // Vem taxa E base: o Asaas consegue aplicar as duas bases, entao aqui a
         // base configurada e sempre a aplicada - o que nem sempre vale para
         // outro gateway.
-        $feepercent = 25.0;
+        $feepercent = self::DEFAULT_COMMISSION_PERCENT;
         $feebase = 'gross';
         $feesource = 'site';
         if (class_exists('\local_marketplace\api')) {
@@ -207,11 +219,38 @@ class payment_processor {
     public static function process_notification(string $asaaspaymentid, string $subscriptionid = ''): bool {
         global $DB;
 
-        $record = $DB->get_record(self::TABLE, ['asaaspaymentid' => $asaaspaymentid]);
+        // Trava a linha (FOR UPDATE) ate o commit logo abaixo: um retry do
+        // webhook e a tarefa de reconciliacao horaria batendo no mesmo
+        // asaaspaymentid quase ao mesmo tempo liam ambos paymentid vazio
+        // ANTES de qualquer escrita, e chamavam save_payment() duas vezes.
+        $transaction = $DB->start_delegated_transaction();
+
+        $record = $DB->get_record_sql(
+            'SELECT * FROM {' . self::TABLE . '} WHERE asaaspaymentid = ? FOR UPDATE',
+            [$asaaspaymentid]
+        );
         if (!$record && $subscriptionid !== '') {
-            $record = self::adopt_subscription_cycle($asaaspaymentid, $subscriptionid);
+            // Ainda nao existe linha para este pagamento - do ciclo 2 em
+            // diante e o Asaas quem cria a cobranca sozinho. Trava a linha
+            // mais recente da ASSINATURA antes de decidir se adota um ciclo
+            // novo: sem isto, duas notificacoes concorrentes para o MESMO
+            // asaaspaymentid liam ambas "nao existe ainda" e cada uma
+            // inserida a sua propria linha via adopt_subscription_cycle() -
+            // nao ha indice unico em asaaspaymentid que rejeitasse a segunda
+            // (a coluna nasce vazia em toda cobranca pendente, e um indice
+            // unico colidiria entre elas).
+            $DB->get_record_sql(
+                'SELECT id FROM {' . self::TABLE . '} WHERE subscriptionid = ? ORDER BY id DESC LIMIT 1 FOR UPDATE',
+                [$subscriptionid]
+            );
+            // Reconfere DEPOIS de travar: se a outra notificacao ja adotou
+            // este pagamento enquanto esta esperava a trava, usa a linha
+            // dela em vez de criar uma segunda.
+            $record = $DB->get_record(self::TABLE, ['asaaspaymentid' => $asaaspaymentid])
+                ?: self::adopt_subscription_cycle($asaaspaymentid, $subscriptionid);
         }
         if (!$record) {
+            $transaction->allow_commit();
             return false;
         }
 
@@ -226,6 +265,7 @@ class payment_processor {
 
         if (self::is_paid($record->status) && self::is_paid($status)) {
             // Reenvio de algo ja entregue.
+            $transaction->allow_commit();
             return false;
         }
 
@@ -234,17 +274,35 @@ class payment_processor {
 
         if (!self::is_paid($status) || !empty($record->paymentid)) {
             $DB->update_record(self::TABLE, $record);
+            $transaction->allow_commit();
             return false;
         }
 
-        // Aqui o split ja existe na resposta, entao le-se o valor real em vez
-        // de recalcular o percentual - inclusive o zero de um split cancelado.
-        $record->feeamount = self::fee_from(
-            $payment,
-            (float) $record->amount,
-            (float) $record->feepercent,
-            credentials::platform_wallet($record->environment)
-        );
+        $platformwallet = credentials::platform_wallet($record->environment);
+
+        if ($platformwallet === '') {
+            // Sem wallet da plataforma configurada, asaas_client::build_split()
+            // nunca envia split nenhum na cobranca - o vendedor fica com 100%
+            // e a plataforma nao recebe nada. Cair no ramo de ESTIMATIVA de
+            // fee_from() aqui gravaria uma comissao que jamais foi transferida,
+            // e o ledger reportaria receita fantasma indefinidamente.
+            $record->feeamount = 0.0;
+        } else {
+            // Aqui o split ja existe na resposta, entao le-se o valor real em
+            // vez de recalcular o percentual - inclusive o zero de um split
+            // cancelado. A base e a da LINHA (feebase), nao o padrao 'gross'
+            // de fee_from(): sem isto, uma venda com comissao configurada
+            // sobre o liquido caia na estimativa de bruto se algum dia
+            // chegasse aqui sem split (o que agora nunca acontece, ja que o
+            // ramo acima cobre a wallet vazia).
+            $record->feeamount = self::fee_from(
+                $payment,
+                (float) $record->amount,
+                (float) $record->feepercent,
+                $platformwallet,
+                (string) $record->feebase
+            );
+        }
 
         // Curso entregue sem comissao nenhuma nao e erro tecnico, e um fato do
         // negocio que alguem precisa ver. Acontece quando o vendedor da baixa
@@ -268,6 +326,11 @@ class payment_processor {
             'asaas'
         );
         $DB->update_record(self::TABLE, $record);
+
+        // Libera a trava aqui: record_sale()/deliver_order() sao mais lentas
+        // (chamam o marketplace, matriculam o aluno) e segurar o lock da
+        // linha durante isso so aumentaria contencao sem necessidade.
+        $transaction->allow_commit();
 
         if (class_exists('\local_marketplace\api')) {
             \local_marketplace\api::record_sale(

@@ -498,9 +498,86 @@ class company extends persistent {
     public function get_context(): \context {
         $categoryid = $this->get('categoryid');
         if (empty($categoryid)) {
-            return \context_system::instance();
+            // NAO cai para context_system: quem chama get_context() usa o
+            // resultado para checar capability ESCOPADA aquela empresa
+            // (managecompany, managesales, refundsale...). Devolver o
+            // contexto do site faria essas checagens virarem "tem a
+            // capability em nivel de sistema?" para uma empresa sem categoria
+            // - uma falha de provisionamento (linha nunca deveria existir
+            // assim) escalando silenciosamente o escopo da checagem em vez
+            // de falhar.
+            throw new \coding_exception(
+                'Empresa sem categoria: provisionamento incompleto, id=' . $this->get('id')
+            );
         }
         return \context_coursecat::instance($categoryid);
+    }
+
+    /**
+     * Confere se um curso esta na categoria desta empresa, ou numa subcategoria dela.
+     *
+     * Empresa = categoria e a fronteira multi-tenant do projeto (CLAUDE.md),
+     * mas empresas organizam os proprios cursos em subcategorias sob a
+     * categoria raiz - igualdade exata excluiria todo curso fora do topo.
+     *
+     * @param int $courseid
+     * @return bool
+     */
+    public function owns_course(int $courseid): bool {
+        global $DB;
+
+        $companycategoryid = (int) $this->get('categoryid');
+        if (empty($companycategoryid)) {
+            return false;
+        }
+
+        $coursecategoryid = (int) $DB->get_field('course', 'category', ['id' => $courseid], MUST_EXIST);
+        if ($coursecategoryid === $companycategoryid) {
+            return true;
+        }
+
+        $coursecategory = \core_course_category::get($coursecategoryid, IGNORE_MISSING, true);
+        if (!$coursecategory) {
+            return false;
+        }
+        $ancestors = explode('/', trim($coursecategory->path, '/'));
+        return in_array((string) $companycategoryid, $ancestors, true);
+    }
+
+    /**
+     * Empresa dona da categoria de um curso, subida ate achar uma.
+     *
+     * Sobe a arvore de categorias em vez de exigir igualdade exata: uma
+     * empresa organiza os proprios cursos em subcategorias sob a categoria
+     * raiz, e igualdade exata excluiria todo curso fora do topo.
+     *
+     * @param int $courseid
+     * @return company|null
+     */
+    public static function for_course(int $courseid): ?company {
+        global $DB;
+
+        $categoryid = (int) $DB->get_field('course', 'category', ['id' => $courseid], IGNORE_MISSING);
+        if (!$categoryid) {
+            return null;
+        }
+
+        // A cadeia vai do curso ate a raiz: uma empresa costuma organizar os
+        // proprios cursos em subcategorias, e a mais especifica que bater
+        // ganha - nao precisa ser exatamente a categoria do curso.
+        $category = \core_course_category::get($categoryid, IGNORE_MISSING, true);
+        $chain = $category
+            ? array_reverse(array_filter(explode('/', trim($category->path, '/'))))
+            : [$categoryid];
+
+        foreach ($chain as $id) {
+            $company = self::get_record(['categoryid' => (int) $id]);
+            if ($company) {
+                return $company;
+            }
+        }
+
+        return null;
     }
 
     /**

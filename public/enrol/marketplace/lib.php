@@ -100,11 +100,30 @@ class enrol_marketplace_plugin extends enrol_plugin {
             return $instance;
         }
 
+        // A tabela enrol do core nao tem indice unico em (courseid, enrol),
+        // so um indice nao-unico em 'enrol' sozinho - entao duas compras
+        // quase simultaneas de um curso NUNCA vendido antes liam ambas "nao
+        // existe" e cada uma criava a propria instancia, deixando o curso com
+        // duas instancias de matricula 'marketplace' (allow_manage() bloqueia
+        // remover a duplicata pela UI depois). Trava a linha do CURSO (que ja
+        // existe) ate o commit, serializando as duas.
+        $transaction = $DB->start_delegated_transaction();
+        $DB->get_record_sql('SELECT id FROM {course} WHERE id = ? FOR UPDATE', [$courseid]);
+
+        // Reconfere DEPOIS de travar: se a outra compra ja criou a instancia
+        // enquanto esta esperava a trava, usa a dela em vez de criar uma segunda.
+        $instance = $DB->get_record('enrol', ['courseid' => $courseid, 'enrol' => 'marketplace']);
+        if ($instance) {
+            $transaction->allow_commit();
+            return $instance;
+        }
+
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
         $instanceid = $this->add_instance($course, [
             'status' => ENROL_INSTANCE_ENABLED,
             'roleid' => $this->get_config('roleid', 0) ?: $this->get_student_roleid(),
         ]);
+        $transaction->allow_commit();
 
         return $DB->get_record('enrol', ['id' => $instanceid], '*', MUST_EXIST);
     }
@@ -138,6 +157,15 @@ class enrol_marketplace_plugin extends enrol_plugin {
      */
     public function sync_user(int $userid): array {
         global $DB;
+
+        // Trava a linha do USUARIO ate o commit no fim da funcao: esta funcao
+        // e chamada tanto pelo cron horario quanto por todo webhook de
+        // pagamento, sem mutex entre eles. Cada escrita por curso e
+        // individualmente idempotente hoje, mas sem isolamento nenhum uma
+        // mudanca futura que tornasse a logica por curso multi-etapa herdaria
+        // essa corrida em silencio.
+        $transaction = $DB->start_delegated_transaction();
+        $DB->get_record_sql('SELECT id FROM {user} WHERE id = ? FOR UPDATE', [$userid]);
 
         // Curso => ate quando o acesso vale. Zero e vitalicio.
         //
@@ -211,6 +239,8 @@ class enrol_marketplace_plugin extends enrol_plugin {
                 $suspended++;
             }
         }
+
+        $transaction->allow_commit();
 
         return [$enrolled, $suspended, $reactivated];
     }

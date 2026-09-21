@@ -108,7 +108,21 @@ class api {
      * @return void
      */
     public static function confirm(application $application): void {
-        if ($application->get('status') !== application::STATUS_UNCONFIRMED) {
+        global $DB;
+
+        // Trava a linha (FOR UPDATE) antes de checar o status: sem isto, um
+        // prefetcher de seguranca de email (Outlook Safe Links) acessando o
+        // link antes do clique real do destinatario passava pela mesma
+        // checagem em memoria que o clique real, e notify_reviewers() saia
+        // duas vezes para uma unica candidatura.
+        $transaction = $DB->start_delegated_transaction();
+        $locked = $DB->get_record_sql(
+            'SELECT status FROM {' . application::TABLE . '} WHERE id = ? FOR UPDATE',
+            [$application->get('id')],
+            MUST_EXIST
+        );
+        if ($locked->status !== application::STATUS_UNCONFIRMED) {
+            $transaction->allow_commit();
             throw new \moodle_exception('erroralreadyconfirmed', 'local_partners');
         }
 
@@ -117,6 +131,7 @@ class api {
         // O token e de uso unico: some assim que cumpre a funcao.
         $application->set('confirmtoken', null);
         $application->update();
+        $transaction->allow_commit();
 
         self::notify_reviewers($application);
     }
@@ -145,7 +160,10 @@ class api {
         $to = self::synthetic_recipient($application);
 
         $context = (object) [
-            'company' => format_string($application->get('companyname')),
+            // Escape=>false: o corpo do e-mail e FORMAT_PLAIN, e o escape
+            // padrao do format_string() (pensado para HTML) transformava "&"
+            // em "&amp;amp;" literal no texto puro.
+            'company' => format_string($application->get('companyname'), true, ['escape' => false]),
             'url' => (new moodle_url('/local/partners/confirm.php', [
                 'token' => $application->get('confirmtoken'),
             ]))->out(false),
@@ -209,8 +227,11 @@ class api {
         }
 
         $context = (object) [
-            'company' => format_string($application->get('companyname')),
-            'contact' => format_string($application->get('contactname')),
+            // Escape=>false: o corpo do e-mail e FORMAT_PLAIN, e o escape
+            // padrao do format_string() (pensado para HTML) transformava "&"
+            // em "&amp;amp;" literal no texto puro.
+            'company' => format_string($application->get('companyname'), true, ['escape' => false]),
+            'contact' => format_string($application->get('contactname'), true, ['escape' => false]),
             'url' => (new moodle_url('/local/partners/admin/applications.php'))->out(false),
         ];
 
@@ -309,9 +330,16 @@ class api {
      * @return company A empresa criada.
      */
     public static function approve(application $application, \stdClass $decision): company {
-        // A guarda vem ANTES de qualquer escrita. Duas submissoes do formulario
-        // - um duplo clique, um F5 na tela de confirmacao - nao podem produzir
-        // duas categorias de curso.
+        global $DB;
+
+        // A guarda vem ANTES de qualquer escrita, e trava a linha (FOR UPDATE)
+        // ate o commit. Duas submissoes do formulario - um duplo clique, um F5
+        // na tela de confirmacao - chegavam aqui com a mesma leitura de
+        // status=pending antes de qualquer escrita, e produziam duas
+        // categorias de curso para uma unica candidatura. Sem a trava, o
+        // guard_pending() so lia um snapshot em memoria que a segunda
+        // submissao tambem enxergava como pendente.
+        $transaction = $DB->start_delegated_transaction();
         self::guard_pending($application);
 
         $company = marketplace::create_company((object) [
@@ -326,6 +354,7 @@ class api {
         $application->set('status', application::STATUS_APPROVED);
         self::stamp_review($application, $decision);
         $application->update();
+        $transaction->allow_commit();
 
         self::notify_applicant($application, true);
 
@@ -340,11 +369,15 @@ class api {
      * @return void
      */
     public static function reject(application $application, \stdClass $decision): void {
+        global $DB;
+
+        $transaction = $DB->start_delegated_transaction();
         self::guard_pending($application);
 
         $application->set('status', application::STATUS_REJECTED);
         self::stamp_review($application, $decision);
         $application->update();
+        $transaction->allow_commit();
 
         self::notify_applicant($application, false);
     }
@@ -352,11 +385,22 @@ class api {
     /**
      * Recusa decidir de novo o que ja foi decidido.
      *
+     * Trava a linha com FOR UPDATE ate o chamador commitar: precisa rodar
+     * DENTRO de uma transacao aberta pelo chamador (approve()/reject()), senao
+     * a trava e liberada antes da escrita seguinte e nao protege nada.
+     *
      * @param application $application
      * @return void
      */
     protected static function guard_pending(application $application): void {
-        if ($application->get('status') !== application::STATUS_PENDING) {
+        global $DB;
+
+        $locked = $DB->get_record_sql(
+            'SELECT status FROM {' . application::TABLE . '} WHERE id = ? FOR UPDATE',
+            [$application->get('id')],
+            MUST_EXIST
+        );
+        if ($locked->status !== application::STATUS_PENDING) {
             throw new \moodle_exception('erroralreadydecided', 'local_partners');
         }
     }
@@ -397,7 +441,10 @@ class api {
         $to = self::synthetic_recipient($application);
 
         $context = (object) [
-            'company' => format_string($application->get('companyname')),
+            // Escape=>false: o corpo do e-mail e FORMAT_PLAIN, e o escape
+            // padrao do format_string() (pensado para HTML) transformava "&"
+            // em "&amp;amp;" literal no texto puro.
+            'company' => format_string($application->get('companyname'), true, ['escape' => false]),
             'note' => (string) $application->get('reviewnote'),
             'url' => $CFG->wwwroot,
         ];
@@ -505,16 +552,25 @@ class api {
             return (int) $application->get('userid');
         }
 
-        $email = $application->get('contactemail');
+        // So confia no e-mail digitado quando ha prova de controle da caixa
+        // postal: candidatura enviada por usuario autenticado ja voltou acima,
+        // e confirm() so grava timeconfirmed quando o candidato clicou no
+        // link mandado para o proprio e-mail. Sem uma das duas provas,
+        // procurar conta existente por esse e-mail e dar ownership da empresa
+        // a quem quer que seja dono dele hoje - um estranho que nunca
+        // participou da candidatura, se o e-mail foi so digitado.
+        if (!empty($application->get('timeconfirmed'))) {
+            $email = $application->get('contactemail');
 
-        $existing = $DB->get_record('user', [
-            'email' => $email,
-            'deleted' => 0,
-            'mnethostid' => $CFG->mnet_localhost_id,
-        ], 'id', IGNORE_MULTIPLE);
+            $existing = $DB->get_record('user', [
+                'email' => $email,
+                'deleted' => 0,
+                'mnethostid' => $CFG->mnet_localhost_id,
+            ], 'id', IGNORE_MULTIPLE);
 
-        if ($existing) {
-            return (int) $existing->id;
+            if ($existing) {
+                return (int) $existing->id;
+            }
         }
 
         return self::create_owner($application);

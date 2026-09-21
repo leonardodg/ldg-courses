@@ -63,10 +63,23 @@ class sync_entitlements extends scheduled_task {
 
         $affected = [];
         foreach ($expired as $record) {
-            $ent = new entitlement(0, $record);
+            // Carrega FRESCO pelo id, e nao pelo snapshot puxado no SELECT
+            // acima: um webhook pode ter renovado este MESMO direito
+            // enquanto a tarefa estava no meio do loop, e o snapshot antigo
+            // sobrescreveria a renovacao recem-paga com o timeend/status de
+            // antes. Reconfere a condicao de vencimento contra o dado atual
+            // antes de expirar - se ja nao vence mais, alguem ja cuidou disto.
+            $ent = new entitlement((int) $record->id);
+            if (
+                $ent->get('status') !== entitlement::STATUS_ACTIVE
+                || (int) $ent->get('timeend') <= 0
+                || (int) $ent->get('timeend') > time()
+            ) {
+                continue;
+            }
             $ent->set('status', entitlement::STATUS_EXPIRED);
             $ent->update();
-            $affected[$record->userid] = true;
+            $affected[(int) $ent->get('userid')] = true;
         }
         mtrace('Direitos vencidos: ' . count($expired));
 

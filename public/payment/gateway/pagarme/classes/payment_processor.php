@@ -28,6 +28,18 @@ use moodle_url;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class payment_processor {
+    /**
+     * Comissao de fabrica quando o local_marketplace nao esta instalado.
+     *
+     * So entra em jogo sem o marketplace, caso em que
+     * local_marketplace\api::default_commission_percent() nem existe para
+     * ser chamado - por isso o mesmo valor esta duplicado aqui e nos
+     * equivalentes de paygw_mercadopago e paygw_asaas, sem plugin de
+     * gateway compartilhado neste projeto onde morar uma vez so. Mudar o
+     * padrao de fabrica da plataforma exige editar os tres.
+     */
+    const DEFAULT_COMMISSION_PERCENT = 25.0;
+
     /** @var string Tabela do plugin. */
     const TABLE = 'paygw_pagarme';
 
@@ -116,7 +128,7 @@ class payment_processor {
         // Termos da comissao. Os valores de queda existem para o gateway
         // funcionar com qualquer componente do core_payment, nao so com o
         // marketplace.
-        $feepercent = 25.0;
+        $feepercent = self::DEFAULT_COMMISSION_PERCENT;
         $feebase = 'gross';
         $feesource = 'site';
         if (class_exists('\local_marketplace\api')) {
@@ -277,10 +289,21 @@ class payment_processor {
 
         $DB->update_record(self::TABLE, $record);
 
+        // Order/assinatura criada mas SEM cobranca nenhuma na resposta -
+        // documentado acima como acontecendo com recipient invalido.
+        // charge_verdict([]) devolve status vazio, nunca 'failed', entao sem
+        // esta guarda a linha ficava presa para sempre em status='pending',
+        // chargeid='' - fora do alcance do webhook (que so chega para um
+        // chargeid real) e do sweep do reconcile.php (que exige
+        // chargeid <> '').
+        if (!$charge) {
+            throw new moodle_exception('errorchargemissing', 'paygw_pagarme');
+        }
+
         // O HTTP 200 do POST nao diz nada: uma order com recipient inexistente
         // tambem volta 200, e so a releitura denuncia. Estourar aqui e o que
         // impede o aluno de encarar um QR Code que nunca vai ser pago.
-        [$status, $code, $message] = pagarme_client::charge_verdict($charge ?: []);
+        [$status, $code, $message] = pagarme_client::charge_verdict($charge);
         if ($status === 'failed') {
             throw new moodle_exception('errorchargefailed', 'paygw_pagarme', '', $code . ' ' . $message);
         }
@@ -488,14 +511,33 @@ class payment_processor {
             return false;
         }
 
-        $record = $DB->get_record(self::TABLE, ['chargeid' => $chargeid]);
+        // Trava a linha (FOR UPDATE) ate o commit logo abaixo: o webhook e a
+        // tarefa de reconciliacao horaria batendo no mesmo chargeid quase ao
+        // mesmo tempo liam ambos paymentid vazio ANTES de qualquer escrita, e
+        // chamavam save_payment()/record_sale() duas vezes para uma unica
+        // cobranca real.
+        $transaction = $DB->start_delegated_transaction();
+
+        $record = $DB->get_record_sql(
+            'SELECT * FROM {' . self::TABLE . '} WHERE chargeid = ? FOR UPDATE',
+            [$chargeid]
+        );
 
         // Ciclo 2 em diante: a cobranca nasce no gateway e o Moodle ainda nao
         // a conhece.
         if (!$record && $subscriptionid !== '') {
-            $record = self::adopt_subscription_cycle($chargeid, $subscriptionid);
+            // Trava a linha mais recente da ASSINATURA antes de decidir se
+            // adota um ciclo novo - fecha a mesma janela de corrida para o
+            // caso em que a linha ainda nao existe.
+            $DB->get_record_sql(
+                'SELECT id FROM {' . self::TABLE . '} WHERE subscriptionid = ? ORDER BY id DESC LIMIT 1 FOR UPDATE',
+                [$subscriptionid]
+            );
+            $record = $DB->get_record(self::TABLE, ['chargeid' => $chargeid])
+                ?: self::adopt_subscription_cycle($chargeid, $subscriptionid);
         }
         if (!$record) {
+            $transaction->allow_commit();
             return false;
         }
 
@@ -524,6 +566,7 @@ class payment_processor {
         // dublê pegaria, porque depende de a cobranca nascer paga.
         if (!self::is_paid($status) || !empty($record->paymentid)) {
             $DB->update_record(self::TABLE, $record);
+            $transaction->allow_commit();
             return false;
         }
 
@@ -569,6 +612,11 @@ class payment_processor {
         );
 
         $DB->update_record(self::TABLE, $record);
+
+        // Libera a trava aqui: record_sale()/deliver_order() sao mais lentas
+        // (chamam o marketplace, matriculam o aluno) e segurar o lock da
+        // linha durante isso so aumentaria contencao sem necessidade.
+        $transaction->allow_commit();
 
         if (class_exists('\local_marketplace\api')) {
             $terms = null;

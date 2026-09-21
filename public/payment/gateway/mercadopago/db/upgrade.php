@@ -194,5 +194,19 @@ function xmldb_paygw_mercadopago_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026091763, 'paygw', 'mercadopago');
     }
 
+    if ($oldversion < 2026091772) {
+        // Duas execucoes da tarefa se sobrepondo (cron atrasado, disparo
+        // manual em cima de uma execucao ja em curso) inseriam dois proximos
+        // ciclos para a mesma assinatura, sem nada no banco para impedir.
+        $table = new xmldb_table('paygw_mercadopago');
+        $index = new xmldb_index('subscriptionid-cycles', XMLDB_INDEX_UNIQUE, ['subscriptionid', 'cycles']);
+
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2026091772, 'paygw', 'mercadopago');
+    }
+
     return true;
 }

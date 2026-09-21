@@ -42,6 +42,12 @@ if (!isset(asaas_client::BASE_URL[$environment])) {
     throw new moodle_exception('errorunknownenvironment', 'paygw_asaas');
 }
 
+// Falha limpa para id invalido, em vez de deixar o construtor lancar
+// dml_missing_record_exception cru antes de qualquer checagem de capability.
+if (!$DB->record_exists('payment_accounts', ['id' => $accountid])) {
+    throw new moodle_exception('invalidrecord', 'error', '', 'payment_accounts');
+}
+
 $account = new \core_payment\account($accountid);
 
 // A capability e avaliada no contexto DA CONTA - a categoria da empresa. E o
@@ -126,6 +132,11 @@ if ($data = $form->get_data()) {
     // A carteira da plataforma nao pode ser a mesma do vendedor: o Asaas recusa
     // split para a propria carteira, e o erro so apareceria na primeira compra.
     // Barrar aqui e o mesmo principio do resto desta tela.
+    //
+    // ESTA GUARDA DE ISENCAO EXISTE EM DUAS COPIAS: aqui e em
+    // paygw_pagarme/link.php (funcao is_platform_account() do local_marketplace,
+    // a mesma nos dois). Nao ha um plugin de gateway compartilhado neste
+    // projeto onde ela more uma vez so - mudar a regra exige editar as duas.
     //
     // EXCETO quando a conta sendo vinculada e a PROPRIA conta da plataforma
     // (local_marketplace\api::get_or_create_platform_account() - assinatura
