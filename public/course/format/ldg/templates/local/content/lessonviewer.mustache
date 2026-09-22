@@ -35,6 +35,8 @@
 
     Context variables required for this template:
     * haslesson - Se ha aula para mostrar
+    * locked - Bloqueado por restricao de acesso (Forum/Certificado, sem lista propria)
+    * lockinfo - Texto do cadeado, ja com HTML, quando locked
     * name - Nome da aula
     * frameurl - Endereco embutido
     * openurl - Endereco direto da atividade
@@ -43,6 +45,8 @@
     Example context (json):
     {
         "haslesson": true,
+        "locked": false,
+        "lockinfo": "",
         "cmid": 42,
         "name": "Aula 1 - O que e o portal",
         "modname": "page",
@@ -57,41 +61,54 @@
 }}
 <div class="ldg-lesson" data-region="ldg-lesson">
     {{#haslesson}}
-        <div class="ldg-lesson__head">
-            <h2 class="ldg-lesson__title">{{name}}</h2>
-            <a class="ldg-lesson__open" href="{{openurl}}" target="_blank" rel="noopener">
-                {{#str}}openactivity, format_ldg{{/str}}
-                <span class="visually-hidden">{{#str}}opensinnewwindow, format_ldg{{/str}}</span>
-            </a>
-        </div>
-
-        {{#hasdescription}}
-            <div class="ldg-lesson__description">{{{description}}}</div>
-        {{/hasdescription}}
-
-        {{#hasframe}}
-            <div class="ldg-lesson__frame-wrap">
-                <iframe class="ldg-lesson__frame"
-                        id="ldg-lesson-frame-{{cmid}}"
-                        src="{{frameurl}}"
-                        title="{{name}}"
-                        loading="lazy"
-                        allowfullscreen></iframe>
+        {{#locked}}
+            <div class="ldg-lesson__locked">
+                <span class="ldg-lesson__lockicon">
+                    {{#pix}}t/locked, core{{/pix}}
+                </span>
+                <p class="ldg-lesson__lockname">{{name}}</p>
+                {{#lockinfo}}
+                    <div class="ldg-lesson__lockinfo">{{{lockinfo}}}</div>
+                {{/lockinfo}}
             </div>
-        {{/hasframe}}
+        {{/locked}}
+        {{^locked}}
+            <div class="ldg-lesson__head">
+                <h2 class="ldg-lesson__title">{{name}}</h2>
+                <a class="ldg-lesson__open" href="{{openurl}}" target="_blank" rel="noopener">
+                    {{#str}}openactivity, format_ldg{{/str}}
+                    <span class="visually-hidden">{{#str}}opensinnewwindow, format_ldg{{/str}}</span>
+                </a>
+            </div>
 
-        {{!
-            NAO ha bloco de conclusao aqui, e ja houve.
+            {{#hasdescription}}
+                <div class="ldg-lesson__description">{{{description}}}</div>
+            {{/hasdescription}}
 
-            A atividade embutida desenha o proprio estado de conclusao - o
-            "Completion requirements" e o botao de marcar - porque e a view.php
-            dela que carrega no quadro. Repetir do lado de fora mostrava a MESMA
-            frase duas vezes na mesma tela, uma dentro do quadro e outra logo
-            abaixo. So se via em navegador.
+            {{#hasframe}}
+                <div class="ldg-lesson__frame-wrap">
+                    <iframe class="ldg-lesson__frame"
+                            id="ldg-lesson-frame-{{cmid}}"
+                            src="{{frameurl}}"
+                            title="{{name}}"
+                            loading="lazy"
+                            allowfullscreen></iframe>
+                </div>
+            {{/hasframe}}
 
-            Se um dia o quadro deixar de existir para algum tipo de atividade,
-            e aqui que o bloco volta.
-        }}
+            {{!
+                NAO ha bloco de conclusao aqui, e ja houve.
+
+                A atividade embutida desenha o proprio estado de conclusao - o
+                "Completion requirements" e o botao de marcar - porque e a view.php
+                dela que carrega no quadro. Repetir do lado de fora mostrava a MESMA
+                frase duas vezes na mesma tela, uma dentro do quadro e outra logo
+                abaixo. So se via em navegador.
+
+                Se um dia o quadro deixar de existir para algum tipo de atividade,
+                e aqui que o bloco volta.
+            }}
+        {{/locked}}
     {{/haslesson}}
     {{^haslesson}}
         <div class="ldg-lesson__empty">

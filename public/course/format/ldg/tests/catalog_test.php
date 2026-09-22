@@ -167,4 +167,87 @@ final class catalog_test extends \advanced_testcase {
         $this->assertCount(1, $aulas);
         $this->assertSame('Visivel', reset($aulas)->name);
     }
+
+    /**
+     * has() so olha o balde; has_visible() olha o usuario atual.
+     *
+     * Destino de item UNICO (forum, certificado) sem lista propria que mostre
+     * cadeado por item: has() true com o unico item bloqueado deixaria a aba
+     * aparecendo e o aluno cairia num embed de "acesso negado".
+     *
+     * @return void
+     */
+    public function test_has_visible_do_forum_bloqueado_e_falso(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $CFG->enableavailability = 1;
+
+        $gerador = $this->getDataGenerator();
+        $curso = $gerador->create_course(['format' => 'ldg']);
+        $aluno = $gerador->create_user();
+        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+
+        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
+        $gerador->create_module('forum', [
+            'course' => $curso->id,
+            'section' => 1,
+            'name' => 'Duvidas',
+            'availability' => json_encode((object) [
+                'op' => '&',
+                'c' => [(object) ['type' => 'date', 'd' => '>=', 't' => time() + WEEKSECS]],
+                'showc' => [true],
+            ]),
+        ]);
+
+        $this->setUser($aluno);
+        $catalogo = new catalog(course_get_format($curso));
+
+        $this->assertTrue($catalogo->has(catalog::FORUM), 'O balde tem o forum, bloqueado ou nao.');
+        $this->assertFalse(
+            $catalogo->has_visible(catalog::FORUM),
+            'Unico item bloqueado nao pode deixar a aba aparecer.'
+        );
+        $this->assertTrue($catalogo->has_visible(catalog::AULA));
+    }
+
+    /**
+     * Forum liberado: has_visible() acompanha has().
+     *
+     * @return void
+     */
+    public function test_has_visible_do_forum_liberado_e_verdadeiro(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $CFG->enableavailability = 1;
+
+        $gerador = $this->getDataGenerator();
+        $curso = $gerador->create_course(['format' => 'ldg']);
+        $aluno = $gerador->create_user();
+        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+
+        $gerador->create_module('forum', ['course' => $curso->id, 'section' => 1, 'name' => 'Duvidas']);
+
+        $this->setUser($aluno);
+        $catalogo = new catalog(course_get_format($curso));
+
+        $this->assertTrue($catalogo->has(catalog::FORUM));
+        $this->assertTrue($catalogo->has_visible(catalog::FORUM));
+    }
+
+    /**
+     * Balde inexistente nao e erro em has_visible().
+     *
+     * @return void
+     */
+    public function test_has_visible_sem_balde_e_falso(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $curso = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $catalogo = new catalog(course_get_format($curso));
+
+        $this->assertFalse($catalogo->has_visible(catalog::CERTIFICADO));
+    }
 }

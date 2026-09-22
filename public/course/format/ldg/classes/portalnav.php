@@ -44,7 +44,7 @@ use core_courseformat\base as course_format;
  */
 class portalnav {
     /** @var string[] A ordem em que os destinos aparecem, sempre. */
-    public const ORDEM = [catalog::AULA, catalog::MATERIAL, catalog::CERTIFICADO, catalog::FORUM];
+    public const ORDER = [catalog::AULA, catalog::MATERIAL, catalog::CERTIFICADO, catalog::FORUM];
 
     /** @var course_format */
     protected course_format $format;
@@ -63,13 +63,13 @@ class portalnav {
      *
      * @param course_format $format
      * @param catalog $catalog
-     * @param string $pedido O que veio na URL, cru.
+     * @param string $requested O que veio na URL, cru.
      * @param cm_info|null $selected A aula em foco, para nao se perder na troca.
      */
     public function __construct(
         course_format $format,
         catalog $catalog,
-        string $pedido,
+        string $requested,
         ?cm_info $selected = null
     ) {
         $this->format = $format;
@@ -79,9 +79,9 @@ class portalnav {
         // Pedido invalido, desconhecido ou de destino vazio cai em aulas. Nao e
         // erro: URL velha, link colado e curso que perdeu o forum sao normais, e
         // nenhum deles justifica uma tela de erro para o aluno.
-        $valido = in_array($pedido, self::ORDEM, true) && $catalog->has($pedido);
+        $valid = in_array($requested, self::ORDER, true) && $catalog->has($requested);
 
-        $this->current = $valido ? $pedido : catalog::AULA;
+        $this->current = $valid ? $requested : catalog::AULA;
     }
 
     /**
@@ -102,29 +102,38 @@ class portalnav {
      * @return array
      */
     public function destinations(): array {
-        $destinos = [];
+        $destinations = [];
 
         // A aula em foco viaja em TODOS os links: ir em Materiais e voltar tem
         // que devolver a mesma aula, e nao a primeira do curso.
-        $opcoes = [];
+        $options = [];
 
         if ($this->selected !== null) {
-            $opcoes['lesson'] = $this->selected->id;
+            $options['lesson'] = $this->selected->id;
         }
 
-        foreach (self::ORDEM as $chave) {
-            if (!$this->catalog->has($chave)) {
+        // Forum e Certificado sao destino de item UNICO, sem lista propria que
+        // mostre cadeado por item (ao contrario de Aula e Material) - has()
+        // sozinho mostraria a aba com o unico item bloqueado, levando a um
+        // embed cru de "acesso negado" em vez de a aba nao aparecer.
+        $onlyifvisible = [catalog::FORUM, catalog::CERTIFICADO];
+
+        foreach (self::ORDER as $key) {
+            $hascontent = in_array($key, $onlyifvisible, true)
+                ? $this->catalog->has_visible($key)
+                : $this->catalog->has($key);
+            if (!$hascontent) {
                 continue;
             }
 
-            $destinos[] = [
-                'key' => $chave,
-                'label' => get_string('view' . $chave, 'format_ldg'),
-                'url' => $this->format->get_view_url(null, $opcoes + ['ldgview' => $chave])->out(false),
-                'active' => $chave === $this->current,
+            $destinations[] = [
+                'key' => $key,
+                'label' => get_string('view' . $key, 'format_ldg'),
+                'url' => $this->format->get_view_url(null, $options + ['ldgview' => $key])->out(false),
+                'active' => $key === $this->current,
             ];
         }
 
-        return $destinos;
+        return $destinations;
     }
 }

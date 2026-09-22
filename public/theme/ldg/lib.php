@@ -285,7 +285,7 @@ function theme_ldg_pluginfile($course, $cm, $context, $filearea, $args, $forcedo
     $fileareas = ['logo', 'logodark', 'favicon', 'loginbg'];
 
     if ($context->contextlevel == CONTEXT_SYSTEM && in_array($filearea, $fileareas, true)) {
-        $theme = theme_config::load('ldg');
+        $theme = \theme_ldg\util\settings::theme_config();
 
         // Por padrao os arquivos de tema devem poder ser cacheados por
         // navegador e por proxy.

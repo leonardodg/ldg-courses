@@ -31,6 +31,7 @@ $string['aspectratio_help'] = 'La forma del cuadro del video. El ancho siempre s
 Si pegaste el fragmento para incrustar, la forma se leyó de ahí y ya está seleccionada.';
 $string['configaspectratio'] = 'La proporción propuesta para las actividades de video nuevas.';
 $string['erroraddressnotvideo'] = 'Esto no parece una dirección de video. Pegá el enlace del video, o el fragmento para incrustar completo que te dio el servicio de video.';
+$string['errornopermissions'] = 'Lo sentís, pero no tenés permiso para ver esta actividad de video.';
 $string['errorplayerdisabled'] = 'Este servicio de video se reconoce, pero su reproductor está apagado en este sitio. Pedile a un administrador que lo habilite en Administración del sitio > Plugins > Reproductores multimedia.';
 $string['errorselfhosted'] = 'Los videos se alojan fuera de la plataforma. Pegá una dirección de YouTube, Vimeo u otro servicio de video, y no un archivo de este sitio.';
 $string['ldgvideo:addinstance'] = 'Agregar una actividad de video';

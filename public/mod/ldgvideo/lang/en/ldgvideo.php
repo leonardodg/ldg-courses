@@ -31,6 +31,7 @@ $string['aspectratio_help'] = 'The shape of the video frame. The width always fo
 If you pasted the embed snippet, the shape was read from it and is already selected.';
 $string['configaspectratio'] = 'The aspect ratio proposed for new video activities.';
 $string['erroraddressnotvideo'] = 'This does not look like a video address. Paste the link to the video, or the whole embed snippet the video service gave you.';
+$string['errornopermissions'] = 'Sorry, but you do not have permission to view this video activity.';
 $string['errorplayerdisabled'] = 'This video service is recognised, but its media player is turned off on this site. Ask an administrator to enable it in Site administration > Plugins > Media players.';
 $string['errorselfhosted'] = 'Videos are hosted outside the platform. Paste an address from YouTube, Vimeo or another video service - not a file from this site.';
 $string['ldgvideo:addinstance'] = 'Add a new video activity';

@@ -36,6 +36,11 @@ use theme_config;
  */
 class settings {
     /**
+     * @var \theme_config|null $sharedtheme Config deste tema, carregada uma vez por requisicao.
+     */
+    private static $sharedtheme = null;
+
+    /**
      * @var \theme_config $theme A configuracao deste tema.
      */
     protected $theme;
@@ -55,10 +60,36 @@ class settings {
     ];
 
     /**
+     * A configuracao deste tema, carregada no maximo uma vez por requisicao.
+     *
+     * theme_config::load reexecuta get_config() e a cadeia de temas-pai a cada
+     * chamada. O renderer e as layouts chamam de varios pontos do caminho mais
+     * quente; sem este cache a mesma config era reconstruida ate seis vezes.
+     *
+     * @return \theme_config
+     */
+    public static function theme_config(): \theme_config {
+        if (self::$sharedtheme === null) {
+            self::$sharedtheme = theme_config::load('ldg');
+        }
+
+        return self::$sharedtheme;
+    }
+
+    /**
+     * Esquece a config cacheada - so para teste que mude settings no meio.
+     *
+     * @return void
+     */
+    public static function reset_theme_config(): void {
+        self::$sharedtheme = null;
+    }
+
+    /**
      * Construtor.
      */
     public function __construct() {
-        $this->theme = theme_config::load('ldg');
+        $this->theme = self::theme_config();
     }
 
     /**

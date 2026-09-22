@@ -259,6 +259,32 @@
     border: 0;
 }
 
+/* Cadeado do quadro da aula em foco (Forum/Certificado sem lista propria).
+   Estrutura so: empilha icone, nome e motivo. A marca fica no tema. */
+.ldg-lesson__locked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--ldg-space);
+    padding: var(--ldg-gutter) var(--ldg-space);
+    text-align: center;
+}
+
+.ldg-lesson__lockicon {
+    display: flex;
+    line-height: 0;
+}
+
+.ldg-lesson__lockname {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.ldg-lesson__lockinfo {
+    max-width: 36rem;
+}
+
 /* A partir de lg entra o menu lateral, e as abas e a barra saem. */
 @media (min-width: 992px) {
     .ldg-portal__body {

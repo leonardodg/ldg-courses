@@ -275,10 +275,17 @@ antes de qualquer push adicional confirme que ele ainda está aberto:
 ## Estado atual
 
 **Funciona em produção:** compra completa validada — preferência, checkout,
-webhook, matrícula. **395 testes** (123 no núcleo, 48 no Asaas, 47 no
-`format_ldg`, **37 no `mod_ldgvideo`**, **82 no `local_partners`**, **24 no MP**,
-e 34 em `enrol_marketplace`, `availability_marketplace`, `block_marketplace` e
-`theme_ldg`). phpcs limpo, e o CI valida **um job por plugin, em paralelo**.
+webhook, matrícula. **740 testes** em 11 testsuites de plugins customizados
+(165 no `local_marketplace`, 127 no MP, 119 no Pagar.me, 86 no
+`local_partners`, 69 no Asaas, 70 no `format_ldg`, 43 no `mod_ldgvideo`, 21 no
+`block_marketplace`, 15 no `theme_ldg`, 13 no `enrol_marketplace`, 12 no
+`availability_marketplace`). phpcs limpo, e o CI valida **um job por plugin,
+em paralelo**.
+
+**Code review completo (11/11 plugins) fechado em 22/09/2026**: 54 findings,
+54 corrigidos. Checkpoints 1-8 no PR #110; checkpoints 9-11
+(`format_ldg`, `theme_ldg`, `mod_ldgvideo`) nesta rodada — histórico em
+`docs/codereview/`.
 
 O behat cobre **51 cenários** de quatro plugins, e **vinte e um deles medem a
 tela** — três no vídeo, dezessete na captação de parceiros e um no tema. Os do

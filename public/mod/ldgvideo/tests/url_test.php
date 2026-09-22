@@ -109,6 +109,16 @@ final class url_test extends \basic_testcase {
                 'https://vimeo.com/226053498',
                 null,
             ],
+            'www no player do Vimeo tambem e canonicalizado' => [
+                'https://www.player.vimeo.com/video/226053498',
+                'https://vimeo.com/226053498',
+                null,
+            ],
+            'videoseries de playlist NAO vira watch de video inexistente' => [
+                'https://www.youtube.com/embed/videoseries?list=PL1234567890',
+                'https://www.youtube.com/embed/videoseries?list=PL1234567890',
+                null,
+            ],
         ];
     }
 

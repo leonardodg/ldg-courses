@@ -414,6 +414,36 @@ body.format-ldg #page.drawers .main-inner {
         margin-top: var(--ldg-gutter);
     }
 
+    // O cadeado do quadro: Forum/Certificado sem lista propria, so o primeiro
+    // item do balde - e ele pode estar bloqueado. Mesma linguagem visual do
+    // is-locked da lista ao lado.
+    &__locked {
+        background-color: var(--ldg-surface);
+        border: 1px solid var(--ldg-border);
+        border-radius: 14px;
+        box-shadow: var(--ldg-shadow-raised);
+        color: var(--ldg-text-muted);
+        min-height: 240px;
+        justify-content: center;
+    }
+
+    &__lockicon .icon {
+        width: 2rem;
+        height: 2rem;
+        color: var(--ldg-text-muted);
+        margin: 0;
+    }
+
+    &__lockname {
+        color: var(--ldg-text);
+    }
+
+    &__lockinfo {
+        color: var(--ldg-text-muted);
+        font-size: var(--ldg-fs-caption);
+        margin: 0;
+    }
+
     &__empty {
         color: var(--ldg-text-muted);
         padding: var(--ldg-gutter) 0;

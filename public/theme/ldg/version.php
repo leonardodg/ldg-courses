@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Tema global da plataforma. Filho do Moove.
+ * Tema global da plataforma. Filho do Boost.
  *
  * @package    theme_ldg
  * @copyright  2026 LeoDG <callme@leodg.dev>
@@ -31,10 +31,10 @@ $plugin->supported = [502, 502];
 $plugin->maturity  = MATURITY_ALPHA;
 $plugin->release   = '0.1.0';
 
-// O Moove NAO declara $plugin->supported, entao a versao abaixo e a unica
-// garantia de que o pai instalado e o 5.2.1 - a release que este filho conhece.
-// Subir o Moove sem reconferir os overrides de core_renderer e util\settings e
-// a forma mais provavel de este tema quebrar em silencio.
+// O pai e o Boost (config.php: $THEME->parents = ['boost']), e e so dele a
+// dependencia declarada. Subir o Boost sem reconferir os overrides de
+// core_renderer e util\settings e a forma mais provavel de este tema quebrar
+// em silencio.
 $plugin->dependencies = [
     'theme_boost' => 2026042000,
 ];

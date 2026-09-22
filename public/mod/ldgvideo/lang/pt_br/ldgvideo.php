@@ -31,6 +31,7 @@ $string['aspectratio_help'] = 'O formato do quadro do vídeo. A largura acompanh
 Se você colou o trecho de incorporação, o formato foi lido dele e já está selecionado.';
 $string['configaspectratio'] = 'A proporção proposta para atividades de vídeo novas.';
 $string['erroraddressnotvideo'] = 'Isto não parece um endereço de vídeo. Cole o link do vídeo, ou o trecho de incorporação inteiro que o serviço de vídeo te deu.';
+$string['errornopermissions'] = 'Desculpe, mas você não tem permissão para ver esta atividade de vídeo.';
 $string['errorplayerdisabled'] = 'Este serviço de vídeo é reconhecido, mas o player dele está desligado neste site. Peça a um administrador para habilitá-lo em Administração do site > Plugins > Players de mídia.';
 $string['errorselfhosted'] = 'Os vídeos ficam hospedados fora da plataforma. Cole um endereço do YouTube, do Vimeo ou de outro serviço de vídeo — não um arquivo deste site.';
 $string['ldgvideo:addinstance'] = 'Acrescentar uma atividade de vídeo';

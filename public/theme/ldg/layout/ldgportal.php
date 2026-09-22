@@ -49,34 +49,13 @@ $primarymenu = $primary->export_for_template($renderer);
 // nao tem navbar, e a navegacao do curso mora nela. Ninguem espera isso, e foi o
 // que o usuario notou ao abrir o portal como manager.
 //
-// E o mesmo caminho do layout de drawers deste tema, nao um menu paralelo: um
+// E o mesmo helper do layout de drawers deste tema, nao um menu paralelo: um
 // segundo lugar decidindo o que o professor pode ver seria uma segunda verdade
-// sobre permissao.
-$secondarynavigation = false;
-
-// SO PARA QUEM GERENCIA, e a trava e esta linha.
-//
-// A navegacao secundaria do core NAO e exclusiva de professor: o aluno tambem
-// tem uma - Curso, Notas, Competencias -, e sem esta condicao ela voltava para
-// ele. Seria reintroduzir no portal exatamente o chrome que o portal existe para
-// tirar. Conferido: com o aluno, o cabecalho vinha com a barra.
-$podegerenciar = has_capability('moodle/course:update', $PAGE->context);
-
-if ($podegerenciar && $PAGE->has_secondary_navigation()) {
-    $secondary = $PAGE->secondarynav;
-
-    if ($secondary->get_children_key_list()) {
-        $tablistnav = $PAGE->has_tablist_secondary_navigation();
-        $moremenu = new \core\navigation\output\more_menu($PAGE->secondarynav, 'nav-tabs', true, $tablistnav);
-        $secondarynavigation = $moremenu->export_for_template($OUTPUT);
-    }
-}
+// sobre permissao. A trava de "so quem gerencia" e o argumento true.
+$secondarynavigation = \theme_ldg\util\layouthead::secondary_more_menu(true);
 
 $templatecontext = [
-    'sitename' => format_string($SITE->shortname, true, [
-        'context' => \core\context\course::instance(SITEID),
-        'escape' => false,
-    ]),
+    'sitename' => \theme_ldg\util\layouthead::sitename(),
     'output' => $OUTPUT,
     // A classe e 'ldg-portal-page', e NAO 'ldg-portal': o formato usa .ldg-portal na div
     // raiz dele, e as duas classes iguais casavam com a mesma regra: o recuo

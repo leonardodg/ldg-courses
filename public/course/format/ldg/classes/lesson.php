@@ -83,15 +83,15 @@ class lesson extends persistent {
      * @return int|null
      */
     public static function duration_for(int $cmid): ?int {
-        $registro = self::get_record(['cmid' => $cmid]);
+        $record = self::get_record(['cmid' => $cmid]);
 
-        if (!$registro) {
+        if (!$record) {
             return null;
         }
 
-        $duracao = $registro->get('duration');
+        $duration = $record->get('duration');
 
-        return $duracao === null ? null : (int) $duracao;
+        return $duration === null ? null : (int) $duration;
     }
 
     /**
@@ -112,15 +112,15 @@ class lesson extends persistent {
 
         [$sql, $params] = $DB->get_in_or_equal($cmids, SQL_PARAMS_NAMED);
 
-        $registros = $DB->get_records_select(self::TABLE, "cmid $sql", $params, '', 'cmid, duration');
+        $records = $DB->get_records_select(self::TABLE, "cmid $sql", $params, '', 'cmid, duration');
 
-        $saida = [];
+        $out = [];
 
-        foreach ($registros as $registro) {
-            $saida[(int) $registro->cmid] = $registro->duration === null ? null : (int) $registro->duration;
+        foreach ($records as $record) {
+            $out[(int) $record->cmid] = $record->duration === null ? null : (int) $record->duration;
         }
 
-        return $saida;
+        return $out;
     }
 
     /**

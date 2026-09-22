@@ -64,7 +64,7 @@ class catalog {
     public const MODS_MATERIAL = ['resource', 'folder', 'url'];
 
     /** @var array<string, cm_info[]> Preenchido uma vez, no construtor. */
-    protected array $baldes;
+    protected array $buckets;
 
     /**
      * Varre o curso UMA vez.
@@ -72,7 +72,7 @@ class catalog {
      * @param course_format $format
      */
     public function __construct(course_format $format) {
-        $this->baldes = [
+        $this->buckets = [
             self::AULA => [],
             self::MATERIAL => [],
             self::FORUM => [],
@@ -88,13 +88,13 @@ class catalog {
 
             foreach ($modinfo->sections[$section->sectionnum] ?? [] as $cmid) {
                 $cm = $modinfo->cms[$cmid];
-                $tipo = self::classify($cm);
+                $type = self::classify($cm);
 
-                if ($tipo === self::NENHUM) {
+                if ($type === self::NENHUM) {
                     continue;
                 }
 
-                $this->baldes[$tipo][$cm->id] = $cm;
+                $this->buckets[$type][$cm->id] = $cm;
             }
         }
     }
@@ -142,11 +142,11 @@ class catalog {
     /**
      * As atividades de um destino, na ordem do curso.
      *
-     * @param string $tipo
+     * @param string $type
      * @return cm_info[]
      */
-    public function get(string $tipo): array {
-        return $this->baldes[$tipo] ?? [];
+    public function get(string $type): array {
+        return $this->buckets[$type] ?? [];
     }
 
     /**
@@ -156,10 +156,31 @@ class catalog {
      * e assim que classificar por tipo deixa de ter o risco de mostrar uma tela
      * sem nada dentro.
      *
-     * @param string $tipo
+     * @param string $type
      * @return bool
      */
-    public function has(string $tipo): bool {
-        return !empty($this->baldes[$tipo]);
+    public function has(string $type): bool {
+        return !empty($this->buckets[$type]);
+    }
+
+    /**
+     * Se o destino tem conteudo que o usuario ATUAL pode ver.
+     *
+     * Diferente de has(): FORUM e CERTIFICADO sao destinos de item UNICO, sem
+     * lista propria que mostre cadeado por item (ao contrario de AULA e
+     * MATERIAL). Mostrar a aba com o unico item bloqueado levava o aluno a um
+     * embed cru de "acesso negado", em vez da aba simplesmente nao aparecer.
+     *
+     * @param string $type
+     * @return bool
+     */
+    public function has_visible(string $type): bool {
+        foreach ($this->buckets[$type] ?? [] as $cm) {
+            if ($cm->uservisible) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

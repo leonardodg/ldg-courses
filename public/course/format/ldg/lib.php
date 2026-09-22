@@ -171,40 +171,36 @@ class format_ldg extends core_courseformat\base {
      *
      * @return cm_info|null
      */
-    public function get_selected_cm(): ?cm_info {
-        $modinfo = $this->get_modinfo();
-        $pedido = optional_param('lesson', 0, PARAM_INT);
+    public function get_selected_cm(?\format_ldg\catalog $catalog = null): ?cm_info {
+        // Aceita um catalogo ja construido para nao repetir a varredura de
+        // classificacao do curso: o construtor do catalogo ja percorre secao
+        // por secao, cm por cm, e classifica cada um - refazer isso aqui era a
+        // MESMA varredura pela segunda vez a cada renderizacao de pagina
+        // (content.php faz uma terceira, parcial, em lessonlist).
+        $catalog = $catalog ?? new \format_ldg\catalog($this);
+        $requested = optional_param('lesson', 0, PARAM_INT);
 
-        $primeira = null;
+        $first = null;
+        $requestedcm = null;
 
-        foreach ($modinfo->get_section_info_all() as $section) {
-            if (!$this->is_section_visible($section)) {
-                continue;
+        foreach ($catalog->get(\format_ldg\catalog::AULA) as $cm) {
+            if ($requested && $cm->id == $requested) {
+                // Existe no curso, bloqueada ou nao - devolve ELA, e nao
+                // teleporta para a primeira disponivel do curso inteiro.
+                // lessonviewer::export_for_template() mostra o cadeado quando
+                // nao uservisible; pular em silencio escondia o bloqueio
+                // atras de uma aula sem relacao nenhuma com a que o aluno pediu.
+                $requestedcm = $cm;
             }
 
-            foreach ($modinfo->sections[$section->sectionnum] ?? [] as $cmid) {
-                $cm = $modinfo->cms[$cmid];
-
-                // So AULA. Material, forum e certificado tem destino proprio no
-                // portal, e sem este corte um link velho para a apostila abriria
-                // um PDF no lugar da aula. O catalogo e a unica regra sobre o
-                // que e cada coisa - antes ela vivia duplicada aqui e no
-                // lessonlist.
-                if (\format_ldg\catalog::classify($cm) !== \format_ldg\catalog::AULA) {
-                    continue;
-                }
-
-                if ($pedido && $cm->id == $pedido && $cm->uservisible) {
-                    return $cm;
-                }
-
-                if ($primeira === null && $cm->uservisible) {
-                    $primeira = $cm;
-                }
+            if ($first === null && $cm->uservisible) {
+                $first = $cm;
             }
         }
 
-        return $primeira;
+        // Sem pedido especifico (entrada fresca no curso), ou pedido que nao
+        // corresponde a nenhuma aula deste curso: cai na primeira disponivel.
+        return $requestedcm ?? $first;
     }
 
     /**

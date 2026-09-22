@@ -93,21 +93,21 @@ class materiallist implements named_templatable, renderable {
         require_once($CFG->libdir . '/resourcelib.php');
 
         $modinfo = $this->format->get_modinfo();
-        $materiais = [];
+        $materials = [];
 
         foreach ($this->catalog->get(catalog::MATERIAL) as $cm) {
             if (!$cm->uservisible) {
                 continue;
             }
 
-            $secao = $modinfo->get_section_info($cm->sectionnum);
+            $section = $modinfo->get_section_info($cm->sectionnum);
 
-            $materiais[] = $this->export_material($cm, $this->format->get_section_name($secao));
+            $materials[] = $this->export_material($cm, $this->format->get_section_name($section));
         }
 
         return (object) [
-            'hasmaterials' => !empty($materiais),
-            'materials' => $materiais,
+            'hasmaterials' => !empty($materials),
+            'materials' => $materials,
         ];
     }
 
@@ -115,10 +115,10 @@ class materiallist implements named_templatable, renderable {
      * Um material.
      *
      * @param cm_info $cm
-     * @param string $secao Nome do modulo a que ele pertence.
+     * @param string $section Nome do modulo a que ele pertence.
      * @return stdClass
      */
-    protected function export_material(cm_info $cm, string $secao): stdClass {
+    protected function export_material(cm_info $cm, string $section): stdClass {
         $display = $cm->customdata['display'] ?? null;
         $display = ($display === null) ? null : (int) $display;
 
@@ -131,15 +131,15 @@ class materiallist implements named_templatable, renderable {
         // Sem esta distincao, "Leitura complementar" apontando para moodle.org
         // aparecia como "(baixa o arquivo)" e ainda ganhava o atributo download,
         // que faria o navegador tentar salvar a pagina.
-        $externo = ($cm->modname === 'url');
+        $external = ($cm->modname === 'url');
 
-        $baixa = (!$externo && $display === RESOURCELIB_DISPLAY_DOWNLOAD);
+        $isdownload = (!$external && $display === RESOURCELIB_DISPLAY_DOWNLOAD);
 
         // Link externo sai do portal por decisao, e nao por limitacao: site de
         // terceiro dentro de iframe quebra na maioria dos casos, por
         // X-Frame-Options, e o quadro ficaria vazio sem explicacao.
-        $abrefora = !empty($cm->onclick)
-            || $externo
+        $opensnewwindow = !empty($cm->onclick)
+            || $external
             || $display === RESOURCELIB_DISPLAY_NEW
             || $display === RESOURCELIB_DISPLAY_POPUP;
 
@@ -150,13 +150,13 @@ class materiallist implements named_templatable, renderable {
             'modfullname' => $cm->modfullname,
             'iconurl' => $cm->get_icon_url()->out(false),
             'url' => $cm->url ? $cm->url->out(false) : '',
-            'section' => $secao,
-            'isdownload' => $baixa,
-            'opensnewwindow' => $abrefora,
+            'section' => $section,
+            'isdownload' => $isdownload,
+            'opensnewwindow' => $opensnewwindow,
 
             // So entra no quadro o que tem pagina propria e nao pediu janela
             // nova. O resto e link, e quem resolve e o navegador.
-            'inframe' => !$baixa && !$abrefora && !empty($cm->url),
+            'inframe' => !$isdownload && !$opensnewwindow && !empty($cm->url),
         ];
     }
 }
