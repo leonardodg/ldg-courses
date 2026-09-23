@@ -61,16 +61,16 @@ class behat_local_partners extends behat_base {
      * @return void
      */
     public function the_elements_should_be_stacked_in_one_column(string $selector): void {
-        $caixas = $this->medir_caixas($selector);
-        $esquerdas = array_unique(array_column($caixas, 'left'));
+        $boxes = $this->measure_boxes($selector);
+        $lefts = array_unique(array_column($boxes, 'left'));
 
-        if (count($esquerdas) !== 1) {
+        if (count($lefts) !== 1) {
             throw new ExpectationException(
                 sprintf(
                     'Esperava "%s" em uma coluna, e os elementos comecam em %d posicoes horizontais: %s.',
                     $selector,
-                    count($esquerdas),
-                    implode(', ', $esquerdas)
+                    count($lefts),
+                    implode(', ', $lefts)
                 ),
                 $this->getSession()
             );
@@ -83,16 +83,16 @@ class behat_local_partners extends behat_base {
      * @Then /^the "(?P<selector_string>(?:[^"]|\\")*)" elements should sit in (?P<count_number>\d+) columns$/
      *
      * @param string $selector Seletor CSS.
-     * @param int $esperado Numero de colunas.
+     * @param int $expected Numero de colunas.
      * @return void
      */
-    public function the_elements_should_sit_in_columns(string $selector, int $esperado): void {
-        $caixas = $this->medir_caixas($selector);
-        $colunas = count(array_unique(array_column($caixas, 'left')));
+    public function the_elements_should_sit_in_columns(string $selector, int $expected): void {
+        $boxes = $this->measure_boxes($selector);
+        $columns = count(array_unique(array_column($boxes, 'left')));
 
-        if ($colunas !== (int) $esperado) {
+        if ($columns !== (int) $expected) {
             throw new ExpectationException(
-                sprintf('Esperava %d colunas em "%s", e encontrei %d.', $esperado, $selector, $colunas),
+                sprintf('Esperava %d colunas em "%s", e encontrei %d.', $expected, $selector, $columns),
                 $this->getSession()
             );
         }
@@ -113,38 +113,38 @@ class behat_local_partners extends behat_base {
      * @return void
      */
     public function the_page_should_not_scroll_sideways(): void {
-        $estouro = $this->evaluate_script(
+        $overflow = $this->evaluate_script(
             '(function() {'
-            . 'var largura = document.documentElement.clientWidth;'
-            . 'var piores = [];'
-            . 'var todos = document.querySelectorAll(".ldgp, .ldgp *");'
+            . 'var width = document.documentElement.clientWidth;'
+            . 'var worst = [];'
+            . 'var all = document.querySelectorAll(".ldgp, .ldgp *");'
             // Container que rola na horizontal DE PROPOSITO - a lista de
             // ancoras da barra no celular - tem filhos que passam da tela por
             // desenho. Quem precisa caber e o container; medir os filhos dele
             // acusaria falha onde ha uma decisao.
-            . 'var deliberado = function(el) {'
+            . 'var isDeliberate = function(el) {'
             . '  for (var p = el.parentElement; p && p !== document.body; p = p.parentElement) {'
             . '    var ox = window.getComputedStyle(p).overflowX;'
             . '    if (ox === "auto" || ox === "scroll") { return true; }'
             . '  }'
             . '  return false;'
             . '};'
-            . 'for (var i = 0; i < todos.length; i++) {'
-            . '  var r = todos[i].getBoundingClientRect();'
-            . '  if (r.width > 0 && Math.round(r.right) > largura + 1 && !deliberado(todos[i])) {'
-            . '    piores.push(todos[i].className + " ate " + Math.round(r.right));'
+            . 'for (var i = 0; i < all.length; i++) {'
+            . '  var r = all[i].getBoundingClientRect();'
+            . '  if (r.width > 0 && Math.round(r.right) > width + 1 && !isDeliberate(all[i])) {'
+            . '    worst.push(all[i].className + " ate " + Math.round(r.right));'
             . '  }'
             . '}'
-            . 'return {largura: largura, piores: piores.slice(0, 5)};'
+            . 'return {width: width, worst: worst.slice(0, 5)};'
             . '})()'
         );
 
-        if (!empty($estouro['piores'])) {
+        if (!empty($overflow['worst'])) {
             throw new ExpectationException(
                 sprintf(
                     'A pagina tem %dpx de largura e algo passa disso: %s.',
-                    $estouro['largura'],
-                    implode(' | ', $estouro['piores'])
+                    $overflow['width'],
+                    implode(' | ', $overflow['worst'])
                 ),
                 $this->getSession()
             );
@@ -162,28 +162,28 @@ class behat_local_partners extends behat_base {
      * @return void
      */
     public function the_section_bar_should_stick_below_the_header(): void {
-        $medida = $this->evaluate_script(
+        $measured = $this->evaluate_script(
             '(function() {'
-            . 'var barra = document.querySelector(".ldgp-bar");'
-            . 'if (!barra) { return null; }'
-            . 'var cabecalho = document.querySelector(".navbar.fixed-top");'
-            . 'var alturaCabecalho = cabecalho ? cabecalho.getBoundingClientRect().height : 0;'
-            . 'return {topo: barra.getBoundingClientRect().top, cabecalho: alturaCabecalho};'
+            . 'var bar = document.querySelector(".ldgp-bar");'
+            . 'if (!bar) { return null; }'
+            . 'var header = document.querySelector(".navbar.fixed-top");'
+            . 'var headerheight = header ? header.getBoundingClientRect().height : 0;'
+            . 'return {top: bar.getBoundingClientRect().top, header: headerheight};'
             . '})()'
         );
 
-        if ($medida === null) {
+        if ($measured === null) {
             throw new ExpectationException('Nao ha barra de secoes nesta pagina.', $this->getSession());
         }
 
         // Dois pixels de folga: o navegador arredonda a posicao quando a pagina
         // esta a meio caminho de um pixel logico.
-        if (abs($medida['topo'] - $medida['cabecalho']) > 2) {
+        if (abs($measured['top'] - $measured['header']) > 2) {
             throw new ExpectationException(
                 sprintf(
                     'A barra deveria parar em %dpx, logo abaixo do cabecalho, e parou em %dpx.',
-                    round($medida['cabecalho']),
-                    round($medida['topo'])
+                    round($measured['header']),
+                    round($measured['top'])
                 ),
                 $this->getSession()
             );
@@ -196,16 +196,16 @@ class behat_local_partners extends behat_base {
      * @Then /^every "(?P<selector_string>(?:[^"]|\\")*)" touch target should be at least (?P<pixels_number>\d+) pixels tall$/
      *
      * @param string $selector Seletor CSS.
-     * @param int $minimo Altura minima em pixels.
+     * @param int $minimum Altura minima em pixels.
      * @return void
      */
-    public function every_touch_target_should_be_at_least_pixels_tall(string $selector, int $minimo): void {
-        $alturas = array_column($this->medir_caixas($selector), 'height');
-        $menor = min($alturas);
+    public function every_touch_target_should_be_at_least_pixels_tall(string $selector, int $minimum): void {
+        $heights = array_column($this->measure_boxes($selector), 'height');
+        $smallest = min($heights);
 
-        if ($menor < (int) $minimo) {
+        if ($smallest < (int) $minimum) {
             throw new ExpectationException(
-                sprintf('O menor alvo "%s" tem %dpx de altura, e o minimo e %dpx.', $selector, $menor, $minimo),
+                sprintf('O menor alvo "%s" tem %dpx de altura, e o minimo e %dpx.', $selector, $smallest, $minimum),
                 $this->getSession()
             );
         }
@@ -222,7 +222,7 @@ class behat_local_partners extends behat_base {
      * @return void
      */
     public function the_honeypot_field_should_be_off_screen(): void {
-        $esquerda = $this->evaluate_script(
+        $left = $this->evaluate_script(
             '(function() {'
             . 'var el = document.querySelector("#fitem_id_fax") || document.querySelector(".local-partners-honeypot");'
             . 'if (!el) { return null; }'
@@ -230,16 +230,16 @@ class behat_local_partners extends behat_base {
             . '})()'
         );
 
-        if ($esquerda === null) {
+        if ($left === null) {
             throw new ExpectationException('Nao encontrei o campo-armadilha nesta pagina.', $this->getSession());
         }
 
-        if ($esquerda > -1000) {
+        if ($left > -1000) {
             throw new ExpectationException(
                 sprintf(
                     'O campo-armadilha esta em %dpx da esquerda, ou seja, visivel. '
                     . 'A regra que o esconde nao chegou a este tema.',
-                    round($esquerda)
+                    round($left)
                 ),
                 $this->getSession()
             );
@@ -251,20 +251,20 @@ class behat_local_partners extends behat_base {
      *
      * @Then /^the partner page should be in "(?P<mode_string>dark|light)" mode$/
      *
-     * @param string $esperado 'dark' ou 'light'.
+     * @param string $expected 'dark' ou 'light'.
      * @return void
      */
-    public function the_partner_page_should_be_in_mode(string $esperado): void {
-        $modo = $this->evaluate_script(
+    public function the_partner_page_should_be_in_mode(string $expected): void {
+        $mode = $this->evaluate_script(
             '(function() {'
             . 'var el = document.querySelector(".ldgp");'
             . 'return el ? el.getAttribute("data-bs-theme") : null;'
             . '})()'
         );
 
-        if ($modo !== $esperado) {
+        if ($mode !== $expected) {
             throw new ExpectationException(
-                sprintf('Esperava a pagina em modo "%s", e ela esta em "%s".', $esperado, (string) $modo),
+                sprintf('Esperava a pagina em modo "%s", e ela esta em "%s".', $expected, (string) $mode),
                 $this->getSession()
             );
         }
@@ -292,7 +292,7 @@ class behat_local_partners extends behat_base {
      * @return void
      */
     public function the_page_should_have_the_bootstrap_components_loaded(): void {
-        $carregado = $this->evaluate_script(
+        $loaded = $this->evaluate_script(
             '(function() {'
             . 'if (typeof require !== "function" || typeof require.defined !== "function") {'
             . 'return "sem-requirejs";'
@@ -301,12 +301,12 @@ class behat_local_partners extends behat_base {
             . '})()'
         );
 
-        if ($carregado !== 'sim') {
+        if ($loaded !== 'sim') {
             throw new ExpectationException(
                 sprintf(
                     'O theme_boost/loader nao esta carregado nesta pagina (%s), '
                     . 'entao nenhum componente do Bootstrap responde - dropdown de idioma inclusive.',
-                    (string) $carregado
+                    (string) $loaded
                 ),
                 $this->getSession()
             );
@@ -322,18 +322,18 @@ class behat_local_partners extends behat_base {
      * HTML estava correto nos dois; o defeito era haver dois.
      *
      * @Then /^I should see exactly (?P<count_number>\d+) "(?P<selector_string>(?:[^"]|\\")*)" elements$/
-     * @param int $esperado
+     * @param int $expected
      * @param string $selector
      * @return void
      */
-    public function i_should_see_exactly_elements(int $esperado, string $selector): void {
+    public function i_should_see_exactly_elements(int $expected, string $selector): void {
         $total = $this->evaluate_script(
             'document.querySelectorAll(' . json_encode($selector) . ').length'
         );
 
-        if ((int) $total !== $esperado) {
+        if ((int) $total !== $expected) {
             throw new ExpectationException(
-                sprintf('Esperava %d elementos "%s", e a pagina tem %d.', $esperado, $selector, $total),
+                sprintf('Esperava %d elementos "%s", e a pagina tem %d.', $expected, $selector, $total),
                 $this->getSession()
             );
         }
@@ -353,21 +353,21 @@ class behat_local_partners extends behat_base {
      * @return void
      */
     public function the_element_should_span_the_full_viewport_width(string $selector): void {
-        $caixa = $this->medir_caixas($selector)[0];
+        $box = $this->measure_boxes($selector)[0];
 
         // A medida e contra o BODY, e nao contra o documentElement: o Chrome do
         // Selenium desenha barra de rolagem classica, de 15px, e ela entra na
         // largura do documentElement mas nao na do body. Comparar com o
         // documentElement acusaria 15px de falta numa pagina que ocupa tudo.
-        $largura = (int) $this->evaluate_script('document.body.clientWidth');
+        $width = (int) $this->evaluate_script('document.body.clientWidth');
 
-        if (abs($caixa['width'] - $largura) > 2) {
+        if (abs($box['width'] - $width) > 2) {
             throw new ExpectationException(
                 sprintf(
                     'O "%s" tem %dpx numa janela de %dpx - deveria ocupar a largura toda.',
                     $selector,
-                    $caixa['width'],
-                    $largura
+                    $box['width'],
+                    $width
                 ),
                 $this->getSession()
             );
@@ -382,15 +382,15 @@ class behat_local_partners extends behat_base {
      *
      * @Then /^the "(?P<selector_string>(?:[^"]|\\")*)" element should be at most (?P<pixels_number>\d+) pixels tall$/
      * @param string $selector
-     * @param int $maximo
+     * @param int $maximum
      * @return void
      */
-    public function the_element_should_be_at_most_pixels_tall(string $selector, int $maximo): void {
-        $caixa = $this->medir_caixas($selector)[0];
+    public function the_element_should_be_at_most_pixels_tall(string $selector, int $maximum): void {
+        $box = $this->measure_boxes($selector)[0];
 
-        if ($caixa['height'] > $maximo) {
+        if ($box['height'] > $maximum) {
             throw new ExpectationException(
-                sprintf('O "%s" tem %dpx de altura, e o limite e %d.', $selector, $caixa['height'], $maximo),
+                sprintf('O "%s" tem %dpx de altura, e o limite e %d.', $selector, $box['height'], $maximum),
                 $this->getSession()
             );
         }
@@ -409,12 +409,12 @@ class behat_local_partners extends behat_base {
      * @return void
      */
     public function the_element_should_have_a_dark_background(string $selector): void {
-        $luminancia = $this->evaluate_script(
+        $luminance = $this->evaluate_script(
             '(function() {'
             . 'var el = document.querySelector(' . json_encode($selector) . ');'
             . 'if (!el) { return null; }'
-            . 'var cor = window.getComputedStyle(el).backgroundColor;'
-            . 'var n = cor.match(/[\\d.]+/g);'
+            . 'var color = window.getComputedStyle(el).backgroundColor;'
+            . 'var n = color.match(/[\\d.]+/g);'
             . 'if (!n || n.length < 3) { return null; }'
             // As tres primeiras casas de rgb() e de color(srgb ...). O srgb vem
             // em 0..1, e o rgb em 0..255 - a normalizacao cobre os dois.
@@ -423,12 +423,12 @@ class behat_local_partners extends behat_base {
             . '})()'
         );
 
-        if ($luminancia === null || $luminancia > 0.25) {
+        if ($luminance === null || $luminance > 0.25) {
             throw new ExpectationException(
                 sprintf(
                     'O fundo de "%s" tem luminancia %s - nao e uma superficie escura.',
                     $selector,
-                    var_export($luminancia, true)
+                    var_export($luminance, true)
                 ),
                 $this->getSession()
             );
@@ -441,30 +441,30 @@ class behat_local_partners extends behat_base {
      * @param string $selector
      * @return array
      */
-    protected function medir_caixas(string $selector): array {
+    protected function measure_boxes(string $selector): array {
         // ENVOLVIDO NUMA FUNCAO de proposito: o evaluate_script avalia uma
         // EXPRESSAO, e nao um bloco. Declarar const ali devolve
         // "Unexpected token 'const'" vindo do Chrome, longe da causa.
-        $caixas = $this->evaluate_script(
+        $boxes = $this->evaluate_script(
             '(function() {'
-            . 'var todos = document.querySelectorAll(' . json_encode($selector) . ');'
-            . 'var saida = [];'
-            . 'for (var i = 0; i < todos.length; i++) {'
-            . '  var r = todos[i].getBoundingClientRect();'
-            . '  saida.push({left: Math.round(r.left), top: Math.round(r.top),'
+            . 'var all = document.querySelectorAll(' . json_encode($selector) . ');'
+            . 'var output = [];'
+            . 'for (var i = 0; i < all.length; i++) {'
+            . '  var r = all[i].getBoundingClientRect();'
+            . '  output.push({left: Math.round(r.left), top: Math.round(r.top),'
             . '              width: Math.round(r.width), height: Math.round(r.height)});'
             . '}'
-            . 'return saida;'
+            . 'return output;'
             . '})()'
         );
 
-        if (empty($caixas)) {
+        if (empty($boxes)) {
             throw new ExpectationException(
                 sprintf('Nao ha nenhum elemento "%s" nesta pagina.', $selector),
                 $this->getSession()
             );
         }
 
-        return $caixas;
+        return $boxes;
     }
 }

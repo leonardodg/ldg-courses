@@ -43,7 +43,7 @@ final class landing_page_test extends \advanced_testcase {
      *
      * @return array
      */
-    private function contexto(): array {
+    private function context(): array {
         global $PAGE;
 
         return (new landing_page())->export_for_template(
@@ -61,7 +61,7 @@ final class landing_page_test extends \advanced_testcase {
 
         $output = $PAGE->get_renderer('local_partners', null, RENDERER_TARGET_GENERAL);
 
-        return $output->render_from_template('local_partners/landing', $this->contexto());
+        return $output->render_from_template('local_partners/landing', $this->context());
     }
 
     /**
@@ -78,10 +78,10 @@ final class landing_page_test extends \advanced_testcase {
         $this->resetAfterTest();
         $DB->set_field('local_marketplace_plan', 'ispublic', 0, []);
 
-        $contexto = $this->contexto();
+        $context = $this->context();
 
-        $this->assertFalse($contexto['hasplans']);
-        $this->assertEmpty($contexto['plans']);
+        $this->assertFalse($context['hasplans']);
+        $this->assertEmpty($context['plans']);
     }
 
     /**
@@ -95,19 +95,19 @@ final class landing_page_test extends \advanced_testcase {
     public function test_o_preco_vem_do_banco_e_nao_do_template(): void {
         $this->resetAfterTest();
 
-        $pornome = [];
-        foreach ($this->contexto()['plans'] as $plano) {
-            $pornome[$plano['name']] = $plano;
+        $byname = [];
+        foreach ($this->context()['plans'] as $plan) {
+            $byname[$plan['name']] = $plan;
         }
 
         $startfree = plan::get_record_by_shortname('start_free');
         $pro = plan::get_record_by_shortname('pro');
         $this->assertNotFalse($startfree, 'o seed da instalacao deveria ter criado o plano start_free');
 
-        $this->assertTrue($pornome[$startfree->get('name')]['isfree']);
-        $this->assertFalse($pornome[$pro->get('name')]['isfree']);
+        $this->assertTrue($byname[$startfree->get('name')]['isfree']);
+        $this->assertFalse($byname[$pro->get('name')]['isfree']);
         // A comissao sai do registro, com duas casas.
-        $this->assertSame('10.00', $pornome[$startfree->get('name')]['commissionpct']);
+        $this->assertSame('10.00', $byname[$startfree->get('name')]['commissionpct']);
     }
 
     /**
@@ -125,39 +125,39 @@ final class landing_page_test extends \advanced_testcase {
         // Os planos do seed (start_free/start_50/start_100/pro, desde
         // 17/09/2026) tem uma faixa SO cada - o teste da faixa MULTIPLA
         // precisa do proprio plano, criado aqui, e nao mais do seed.
-        $plano = new plan(0, (object) [
+        $plan = new plan(0, (object) [
             'shortname' => 'multiplasfaixas' . random_int(100000, 999999),
             'name' => 'Plano de tres faixas',
             'monthlyfee' => 0,
             'commissionpct' => 10,
         ]);
-        $plano->create();
+        $plan->create();
 
-        $faixas = [
+        $tierdefs = [
             ['maxprice' => 49.90, 'maxresolution' => '720p', 'sortorder' => 10],
             ['maxprice' => 200.00, 'maxresolution' => '1080p', 'sortorder' => 20],
             ['maxprice' => null, 'maxresolution' => '4k', 'sortorder' => 30],
         ];
-        foreach ($faixas as $dados) {
-            $dados['planid'] = (int) $plano->get('id');
-            (new plan_tier(0, (object) $dados))->create();
+        foreach ($tierdefs as $tierdef) {
+            $tierdef['planid'] = (int) $plan->get('id');
+            (new plan_tier(0, (object) $tierdef))->create();
         }
 
         $tiers = [];
-        foreach ($this->contexto()['plans'] as $item) {
-            if ($item['name'] === $plano->get('name')) {
+        foreach ($this->context()['plans'] as $item) {
+            if ($item['name'] === $plan->get('name')) {
                 $tiers = $item['tiers'];
             }
         }
 
         $this->assertCount(3, $tiers);
 
-        $ultima = end($tiers);
+        $last = end($tiers);
 
-        $this->assertSame('4k', $ultima['resolution']);
+        $this->assertSame('4k', $last['resolution']);
         // O teto da faixa do meio e 200,00, entao a ultima e "acima de" esse
         // valor - e nao "acima de" o teto dela propria, que e nulo.
-        $this->assertStringContainsString('200', $ultima['label']);
+        $this->assertStringContainsString('200', $last['label']);
     }
 
     /**
@@ -171,19 +171,19 @@ final class landing_page_test extends \advanced_testcase {
     public function test_quatro_passos_e_quatro_perguntas(): void {
         $this->resetAfterTest();
 
-        $contexto = $this->contexto();
+        $context = $this->context();
 
-        $this->assertCount(4, $contexto['steps']);
-        $this->assertCount(4, $contexto['faq']);
+        $this->assertCount(4, $context['steps']);
+        $this->assertCount(4, $context['faq']);
 
-        foreach ($contexto['steps'] as $passo) {
-            $this->assertStringNotContainsString('[[', $passo['title']);
-            $this->assertStringNotContainsString('[[', $passo['text']);
+        foreach ($context['steps'] as $step) {
+            $this->assertStringNotContainsString('[[', $step['title']);
+            $this->assertStringNotContainsString('[[', $step['text']);
         }
 
-        foreach ($contexto['faq'] as $pergunta) {
-            $this->assertStringNotContainsString('[[', $pergunta['question']);
-            $this->assertStringNotContainsString('[[', $pergunta['answer']);
+        foreach ($context['faq'] as $question) {
+            $this->assertStringNotContainsString('[[', $question['question']);
+            $this->assertStringNotContainsString('[[', $question['answer']);
         }
     }
 
@@ -199,25 +199,25 @@ final class landing_page_test extends \advanced_testcase {
     public function test_as_ancoras_saem_da_mesma_fonte_que_a_barra(): void {
         $this->resetAfterTest();
 
-        $secoes = $this->contexto()['sections'];
+        $sections = $this->context()['sections'];
         $html = $this->html();
 
-        $this->assertNotEmpty($secoes);
+        $this->assertNotEmpty($sections);
 
-        $ids = array_column($secoes, 'id');
+        $ids = array_column($sections, 'id');
         $this->assertSame($ids, array_unique($ids), 'id de secao repetido faz a ancora pular para a primeira');
 
-        foreach ($secoes as $secao) {
-            $this->assertStringNotContainsString('[[', $secao['label']);
+        foreach ($sections as $section) {
+            $this->assertStringNotContainsString('[[', $section['label']);
             // A secao existe na pagina, esteja ela na barra ou nao.
-            $this->assertStringContainsString('id="' . $secao['id'] . '"', $html);
+            $this->assertStringContainsString('id="' . $section['id'] . '"', $html);
 
-            if (empty($secao['inbar'])) {
+            if (empty($section['inbar'])) {
                 continue;
             }
 
             // E quem esta na barra tem um link que aponta para ela.
-            $this->assertStringContainsString('href="#' . $secao['id'] . '"', $html);
+            $this->assertStringContainsString('href="#' . $section['id'] . '"', $html);
         }
     }
 
@@ -237,12 +237,12 @@ final class landing_page_test extends \advanced_testcase {
     public function test_a_ancora_de_candidatura_nao_repete_o_botao_da_barra(): void {
         $this->resetAfterTest();
 
-        $secoes = $this->contexto()['sections'];
+        $sections = $this->context()['sections'];
         $apply = null;
 
-        foreach ($secoes as $secao) {
-            if ($secao['id'] === 'ldgp-apply') {
-                $apply = $secao;
+        foreach ($sections as $section) {
+            if ($section['id'] === 'ldgp-apply') {
+                $apply = $section;
             }
         }
 
@@ -250,10 +250,10 @@ final class landing_page_test extends \advanced_testcase {
         $this->assertFalse($apply['inbar'], 'a candidatura voltou a ser ancora da barra');
 
         $html = $this->html();
-        $barra = substr($html, strpos($html, 'ldgp-bar-list'));
-        $barra = substr($barra, 0, strpos($barra, '</ul>'));
+        $bar = substr($html, strpos($html, 'ldgp-bar-list'));
+        $bar = substr($bar, 0, strpos($bar, '</ul>'));
 
-        $this->assertStringNotContainsString('href="#ldgp-apply"', $barra);
+        $this->assertStringNotContainsString('href="#ldgp-apply"', $bar);
         $this->assertStringContainsString('id="ldgp-apply"', $html);
     }
 
@@ -265,7 +265,7 @@ final class landing_page_test extends \advanced_testcase {
     public function test_modo_escuro_e_o_padrao_para_quem_nunca_escolheu(): void {
         $this->resetAfterTest();
 
-        $this->assertSame('dark', $this->contexto()['colormode']);
+        $this->assertSame('dark', $this->context()['colormode']);
     }
 
     /**
@@ -283,10 +283,10 @@ final class landing_page_test extends \advanced_testcase {
         $this->setUser($user);
 
         set_user_preference('dark-mode-on', 0, $user);
-        $this->assertSame('light', $this->contexto()['colormode']);
+        $this->assertSame('light', $this->context()['colormode']);
 
         set_user_preference('dark-mode-on', 1, $user);
-        $this->assertSame('dark', $this->contexto()['colormode']);
+        $this->assertSame('dark', $this->context()['colormode']);
     }
 
     /**
@@ -319,22 +319,22 @@ final class landing_page_test extends \advanced_testcase {
     public function test_o_seletor_lista_o_que_o_site_tem(): void {
         $this->resetAfterTest();
 
-        $instalados = array_keys(get_string_manager()->get_list_of_translations());
-        $oferecidos = array_column(landing_page::languages(), 'code');
+        $installed = array_keys(get_string_manager()->get_list_of_translations());
+        $offered = array_column(landing_page::languages(), 'code');
 
-        if (count($instalados) < 2) {
+        if (count($installed) < 2) {
             // Com um idioma so NAO ha seletor, e isso e a regra e nao uma
             // limitacao: um seletor de uma opcao so ocupa espaco e nao decide
             // nada. E o caso do ambiente do phpunit, que instala so o ingles.
-            $this->assertSame([], $oferecidos);
+            $this->assertSame([], $offered);
 
             return;
         }
 
-        sort($instalados);
-        sort($oferecidos);
+        sort($installed);
+        sort($offered);
 
-        $this->assertSame($instalados, $oferecidos);
+        $this->assertSame($installed, $offered);
     }
 
     /**
@@ -349,16 +349,16 @@ final class landing_page_test extends \advanced_testcase {
     public function test_o_hreflang_do_link_nao_usa_sublinhado(): void {
         $this->resetAfterTest();
 
-        $idiomas = landing_page::languages();
+        $languages = landing_page::languages();
 
-        if (!$idiomas) {
+        if (!$languages) {
             $this->markTestSkipped('o site de teste tem um idioma so, e ai nao ha seletor');
         }
 
-        foreach ($idiomas as $idioma) {
-            $this->assertStringNotContainsString('_', $idioma['hreflang']);
+        foreach ($languages as $language) {
+            $this->assertStringNotContainsString('_', $language['hreflang']);
             // A URL, ao contrario, usa o codigo do Moodle - e ele que o site le.
-            $this->assertStringContainsString('lang=' . $idioma['code'], $idioma['url']);
+            $this->assertStringContainsString('lang=' . $language['code'], $language['url']);
         }
     }
 
@@ -377,7 +377,7 @@ final class landing_page_test extends \advanced_testcase {
         $CFG->langmenu = 0;
 
         $this->assertSame([], landing_page::languages());
-        $this->assertFalse($this->contexto()['haslanguages']);
+        $this->assertFalse($this->context()['haslanguages']);
     }
 
     /**
@@ -398,8 +398,8 @@ final class landing_page_test extends \advanced_testcase {
 
         $html = $this->html();
 
-        foreach (['@template', 'Context variables', 'Example context'] as $marca) {
-            $this->assertStringNotContainsString($marca, $html, 'o docblock do template escapou para a pagina');
+        foreach (['@template', 'Context variables', 'Example context'] as $needle) {
+            $this->assertStringNotContainsString($needle, $html, 'o docblock do template escapou para a pagina');
         }
     }
     /**
@@ -448,10 +448,10 @@ final class landing_page_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $this->setUser(null);
-        $this->assertStringContainsString('/local/partners/apply.php', $this->contexto()['applyurl']);
+        $this->assertStringContainsString('/local/partners/apply.php', $this->context()['applyurl']);
 
         $this->setUser($this->getDataGenerator()->create_user());
-        $this->assertStringContainsString('/local/partners/apply.php', $this->contexto()['applyurl']);
+        $this->assertStringContainsString('/local/partners/apply.php', $this->context()['applyurl']);
     }
 
     /**
@@ -472,7 +472,7 @@ final class landing_page_test extends \advanced_testcase {
         ], (int) $owner->id);
 
         $this->setUser($owner);
-        $url = $this->contexto()['applyurl'];
+        $url = $this->context()['applyurl'];
 
         $this->assertStringContainsString('/local/marketplace/company.php', $url);
         $this->assertStringContainsString((string) $company->get('shortname'), $url);
@@ -501,7 +501,7 @@ final class landing_page_test extends \advanced_testcase {
 
         $this->setUser($owner);
 
-        $this->assertStringContainsString('/local/partners/apply.php', $this->contexto()['applyurl']);
+        $this->assertStringContainsString('/local/partners/apply.php', $this->context()['applyurl']);
     }
 
     /**
@@ -519,15 +519,15 @@ final class landing_page_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $doplugin = $PAGE->get_renderer('local_partners');
-        $marca = landing_page::brand($doplugin);
+        $fromplugin = $PAGE->get_renderer('local_partners');
+        $brand = landing_page::brand($fromplugin);
 
         // Sem logo configurada no site de teste, o que se prova e que a busca
         // percorre os dois renderers e devolve a estrutura completa - e nao que
         // ha imagem, que depende de configuracao.
-        $this->assertArrayHasKey('haslogo', $marca);
-        $this->assertArrayHasKey('logolight', $marca);
-        $this->assertNotEmpty($marca['name']);
+        $this->assertArrayHasKey('haslogo', $brand);
+        $this->assertArrayHasKey('logolight', $brand);
+        $this->assertNotEmpty($brand['name']);
     }
 
     /**
@@ -542,11 +542,11 @@ final class landing_page_test extends \advanced_testcase {
     public function test_o_rodape_do_site_leva_marca_e_frase(): void {
         $this->resetAfterTest();
 
-        $rodape = \local_partners\landing::site_footer();
+        $footer = \local_partners\landing::site_footer();
 
-        $this->assertArrayHasKey('brand', $rodape);
-        $this->assertArrayHasKey('haslogo', $rodape['brand']);
-        $this->assertNotEmpty($rodape['tagline']);
-        $this->assertStringNotContainsString('[[', $rodape['tagline']);
+        $this->assertArrayHasKey('brand', $footer);
+        $this->assertArrayHasKey('haslogo', $footer['brand']);
+        $this->assertNotEmpty($footer['tagline']);
+        $this->assertStringNotContainsString('[[', $footer['tagline']);
     }
 }

@@ -145,11 +145,11 @@ class seo {
      * @return array{name: string, url: string}
      */
     public static function creator(): array {
-        $marca = self::brand();
+        $brand = self::brand();
 
         return [
-            'name' => trim((string) $marca['creatorname']),
-            'url' => trim((string) $marca['creatorurl']),
+            'name' => trim((string) $brand['creatorname']),
+            'url' => trim((string) $brand['creatorurl']),
         ];
     }
 
@@ -167,21 +167,21 @@ class seo {
      * false no segundo parametro do set_title(), senao o nome do site vem por
      * cima e o titulo fica com duas marcas.
      *
-     * @param string $superficie
+     * @param string $surface
      * @return string
      */
-    public static function page_title(string $superficie = self::SURFACE_LANDING): string {
-        $titulo = $superficie === self::SURFACE_APPLY
+    public static function page_title(string $surface = self::SURFACE_LANDING): string {
+        $title = $surface === self::SURFACE_APPLY
             ? get_string('applytitle', 'local_partners')
             : get_string('seotitle', 'local_partners');
 
-        $marca = trim(get_string('brandname', 'local_partners'));
+        $brand = trim(get_string('brandname', 'local_partners'));
 
-        if ($marca === '') {
-            return $titulo;
+        if ($brand === '') {
+            return $title;
         }
 
-        return $titulo . ' | ' . $marca;
+        return $title . ' | ' . $brand;
     }
 
     /**
@@ -204,11 +204,11 @@ class seo {
     /**
      * A descricao desta superficie.
      *
-     * @param string $superficie
+     * @param string $surface
      * @return string
      */
-    protected static function meta_description(string $superficie): string {
-        return $superficie === self::SURFACE_APPLY
+    protected static function meta_description(string $surface): string {
+        return $surface === self::SURFACE_APPLY
             ? get_string('applymetadescription', 'local_partners')
             : get_string('metadescription', 'local_partners');
     }
@@ -235,14 +235,14 @@ class seo {
      *
      * @return string
      */
-    public static function head_html(string $superficie = self::SURFACE_LANDING): string {
-        $partes = array_merge(
-            self::meta_tags($superficie),
-            self::alternate_links($superficie),
-            [self::structured_data($superficie)]
+    public static function head_html(string $surface = self::SURFACE_LANDING): string {
+        $parts = array_merge(
+            self::meta_tags($surface),
+            self::alternate_links($surface),
+            [self::structured_data($surface)]
         );
 
-        return implode("\n", array_filter($partes)) . "\n"
+        return implode("\n", array_filter($parts)) . "\n"
             . self::verification_html()
             . self::analytics_html();
     }
@@ -258,11 +258,11 @@ class seo {
      * sozinho, e a resposta certa para quem o buscador nao conseguiu
      * classificar por idioma.
      *
-     * @param string $superficie
+     * @param string $surface
      * @return string
      */
-    public static function base_url(string $superficie = self::SURFACE_LANDING): string {
-        if ($superficie === self::SURFACE_APPLY) {
+    public static function base_url(string $surface = self::SURFACE_LANDING): string {
+        if ($surface === self::SURFACE_APPLY) {
             return (new moodle_url('/local/partners/apply.php'))->out(false);
         }
 
@@ -288,15 +288,15 @@ class seo {
      * devolve vazio para idioma que nao esta instalado, entao um ?lang=xyz nao
      * vira canonica.
      *
-     * @param string $superficie
+     * @param string $surface
      * @param string|null $lang Nulo le da requisicao.
      * @return string
      */
     public static function canonical_url(
-        string $superficie = self::SURFACE_LANDING,
+        string $surface = self::SURFACE_LANDING,
         ?string $lang = null
     ): string {
-        $base = self::base_url($superficie);
+        $base = self::base_url($surface);
         $lang ??= optional_param('lang', '', PARAM_LANG);
 
         if ($lang === '') {
@@ -309,10 +309,10 @@ class seo {
     /**
      * Meta tags de indexacao e de compartilhamento.
      *
-     * @param string $superficie
+     * @param string $surface
      * @return array
      */
-    protected static function meta_tags(string $superficie = self::SURFACE_LANDING): array {
+    protected static function meta_tags(string $surface = self::SURFACE_LANDING): array {
         // O nome do SITE fica no og:site_name, que e o campo dele. O og:title e
         // a manchete que o WhatsApp, o LinkedIn e o assistente de IA mostram:
         // repetir a marca ali gasta a manchete sem dizer o que a pagina resolve.
@@ -321,13 +321,13 @@ class seo {
         // vez so. Escapar nos dois lugares fazia um "&" no nome do site virar
         // "&amp;amp;" no atributo, e o compartilhamento mostrava a entidade.
         $site = self::site_name();
-        $title = self::page_title($superficie);
-        $descricao = self::meta_description($superficie);
-        $url = self::canonical_url($superficie);
-        $imagem = (new moodle_url('/local/partners/pix/hero.jpg'))->out(false);
+        $title = self::page_title($surface);
+        $description = self::meta_description($surface);
+        $url = self::canonical_url($surface);
+        $image = (new moodle_url('/local/partners/pix/hero.jpg'))->out(false);
 
         $tags = [
-            '<meta name="description" content="' . s($descricao) . '">',
+            '<meta name="description" content="' . s($description) . '">',
             '<link rel="canonical" href="' . s($url) . '">',
         ];
 
@@ -340,17 +340,17 @@ class seo {
         //
         // So na landing: a candidatura nao mostra o hero, e preload de recurso
         // que a pagina nao usa e aviso no console e banda jogada fora.
-        if ($superficie === self::SURFACE_LANDING) {
-            $tags[] = '<link rel="preload" as="image" href="' . s($imagem) . '" fetchpriority="high">';
+        if ($surface === self::SURFACE_LANDING) {
+            $tags[] = '<link rel="preload" as="image" href="' . s($image) . '" fetchpriority="high">';
         }
 
         $tags = array_merge($tags, [
             '<meta property="og:type" content="website">',
             '<meta property="og:site_name" content="' . s($site) . '">',
             '<meta property="og:title" content="' . s($title) . '">',
-            '<meta property="og:description" content="' . s($descricao) . '">',
+            '<meta property="og:description" content="' . s($description) . '">',
             '<meta property="og:url" content="' . s($url) . '">',
-            '<meta property="og:image" content="' . s($imagem) . '">',
+            '<meta property="og:image" content="' . s($image) . '">',
             '<meta property="og:locale" content="' . s(self::og_locale()) . '">',
         ]);
 
@@ -364,8 +364,8 @@ class seo {
         $tags = array_merge($tags, [
             '<meta name="twitter:card" content="summary_large_image">',
             '<meta name="twitter:title" content="' . s($title) . '">',
-            '<meta name="twitter:description" content="' . s($descricao) . '">',
-            '<meta name="twitter:image" content="' . s($imagem) . '">',
+            '<meta name="twitter:description" content="' . s($description) . '">',
+            '<meta name="twitter:image" content="' . s($image) . '">',
         ]);
 
         // So pedimos indexacao quando o site permite. Ver indexing_allowed().
@@ -424,13 +424,13 @@ class seo {
             return '';
         }
 
-        $seguro = s($id);
+        $safe = s($id);
 
-        return '<script async src="https://www.googletagmanager.com/gtag/js?id=' . $seguro . '"></script>' . "\n"
+        return '<script async src="https://www.googletagmanager.com/gtag/js?id=' . $safe . '"></script>' . "\n"
             . '<script>window.dataLayer=window.dataLayer||[];'
             . 'function gtag(){dataLayer.push(arguments);}'
             . 'gtag("js", new Date());'
-            . 'gtag("config", "' . $seguro . '", {"anonymize_ip": true});'
+            . 'gtag("config", "' . $safe . '", {"anonymize_ip": true});'
             . '</script>' . "\n";
     }
 
@@ -443,7 +443,7 @@ class seo {
      *
      * @return array
      */
-    protected static function alternate_links(string $superficie = self::SURFACE_LANDING): array {
+    protected static function alternate_links(string $surface = self::SURFACE_LANDING): array {
         $links = [];
 
         // Cada alternate e a CANONICA daquele idioma, e nao uma URL montada por
@@ -451,14 +451,14 @@ class seo {
         // de retorno no endereco anunciado, nao acha, e descarta o cluster.
         foreach (array_keys(get_string_manager()->get_list_of_translations()) as $lang) {
             $links[] = '<link rel="alternate" hreflang="' . s(self::hreflang($lang))
-                . '" href="' . s(self::canonical_url($superficie, $lang)) . '">';
+                . '" href="' . s(self::canonical_url($surface, $lang)) . '">';
         }
 
         // O x-default aponta para a pagina SEM parametro de idioma: e a versao
         // que o Moodle escolhe sozinho, e a resposta certa para quem o buscador
         // nao conseguiu classificar.
         $links[] = '<link rel="alternate" hreflang="x-default" href="'
-            . s(self::base_url($superficie)) . '">';
+            . s(self::base_url($surface)) . '">';
 
         return $links;
     }
@@ -478,36 +478,36 @@ class seo {
      * @return array
      */
     public static function sitemap_entries(): array {
-        $superficies = [
+        $surfaces = [
             [self::SURFACE_LANDING, '1.0', 'weekly'],
             [self::SURFACE_APPLY, '0.8', 'monthly'],
         ];
 
-        $idiomas = array_keys(get_string_manager()->get_list_of_translations());
-        $entradas = [];
+        $languages = array_keys(get_string_manager()->get_list_of_translations());
+        $entries = [];
 
-        foreach ($superficies as [$superficie, $prioridade, $frequencia]) {
+        foreach ($surfaces as [$surface, $priority, $frequency]) {
             $alternates = [];
 
-            foreach ($idiomas as $lang) {
-                $alternates[self::hreflang($lang)] = self::canonical_url($superficie, $lang);
+            foreach ($languages as $lang) {
+                $alternates[self::hreflang($lang)] = self::canonical_url($surface, $lang);
             }
 
-            $alternates['x-default'] = self::base_url($superficie);
+            $alternates['x-default'] = self::base_url($surface);
 
             // A URL limpa e as por idioma sao todas <loc> proprias, e todas
             // carregam o mesmo cluster.
             foreach ($alternates as $url) {
-                $entradas[] = [
+                $entries[] = [
                     'url' => $url,
-                    'priority' => $prioridade,
-                    'changefreq' => $frequencia,
+                    'priority' => $priority,
+                    'changefreq' => $frequency,
                     'alternates' => $alternates,
                 ];
             }
         }
 
-        return $entradas;
+        return $entries;
     }
 
     /**
@@ -520,14 +520,14 @@ class seo {
      * @return string
      */
     protected static function hreflang(string $lang): string {
-        $partes = explode('_', str_replace('-', '_', $lang));
-        $partes[0] = strtolower($partes[0]);
+        $parts = explode('_', str_replace('-', '_', $lang));
+        $parts[0] = strtolower($parts[0]);
 
-        if (isset($partes[1])) {
-            $partes[1] = strtoupper($partes[1]);
+        if (isset($parts[1])) {
+            $parts[1] = strtoupper($parts[1]);
         }
 
-        return implode('-', array_slice($partes, 0, 2));
+        return implode('-', array_slice($parts, 0, 2));
     }
 
     /**
@@ -567,11 +567,11 @@ class seo {
      * @return array
      */
     protected static function alternate_locales(): array {
-        $atual = current_language();
+        $current = current_language();
         $locales = [];
 
         foreach (array_keys(get_string_manager()->get_list_of_translations()) as $lang) {
-            if ($lang === $atual) {
+            if ($lang === $current) {
                 continue;
             }
 
@@ -590,24 +590,24 @@ class seo {
      *
      * @return string
      */
-    protected static function structured_data(string $superficie = self::SURFACE_LANDING): string {
+    protected static function structured_data(string $surface = self::SURFACE_LANDING): string {
         // A candidatura leva so a identidade e a propria pagina. O FAQ e os
         // planos descrevem a landing: repeti-los aqui seria declarar que esta
         // pagina responde perguntas que ela nao mostra, e validador recusa.
-        $pecas = $superficie === self::SURFACE_APPLY
-            ? [self::organization(), self::website(), self::webpage($superficie)]
+        $pieces = $surface === self::SURFACE_APPLY
+            ? [self::organization(), self::website(), self::webpage($surface)]
             : [
                 self::organization(),
                 self::website(),
-                self::webpage($superficie),
+                self::webpage($surface),
                 self::faq_page(),
                 self::offer_catalog(),
             ];
 
-        $grafo = array_values(array_filter($pecas));
+        $graph = array_values(array_filter($pieces));
 
         $json = json_encode(
-            ['@context' => 'https://schema.org', '@graph' => $grafo],
+            ['@context' => 'https://schema.org', '@graph' => $graph],
             // Sem UNESCAPED_SLASHES de proposito: com as barras escapadas, um
             // "</script>" que venha de dado nao consegue fechar o bloco.
             JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_PRETTY_PRINT
@@ -622,46 +622,46 @@ class seo {
      * @return array
      */
     protected static function organization(): array {
-        $marca = self::brand();
-        $raiz = (new moodle_url('/'))->out(false);
+        $brand = self::brand();
+        $root = (new moodle_url('/'))->out(false);
 
         $org = [
             '@type' => 'Organization',
-            '@id' => $raiz . '#organization',
+            '@id' => $root . '#organization',
             'name' => self::site_name(),
-            'url' => $raiz,
+            'url' => $root,
         ];
 
         if ($logo = self::logo_url()) {
             $org['logo'] = $logo;
         }
 
-        foreach (['legalname' => 'legalName', 'taxid' => 'taxID', 'telephone' => 'telephone'] as $de => $para) {
-            if (!empty($marca[$de])) {
-                $org[$para] = $marca[$de];
+        foreach (['legalname' => 'legalName', 'taxid' => 'taxID', 'telephone' => 'telephone'] as $from => $to) {
+            if (!empty($brand[$from])) {
+                $org[$to] = $brand[$from];
             }
         }
 
-        if (!empty($marca['email'])) {
-            $org['email'] = $marca['email'];
+        if (!empty($brand['email'])) {
+            $org['email'] = $brand['email'];
         }
 
-        if (!empty($marca['sameas'])) {
-            $org['sameAs'] = array_values($marca['sameas']);
+        if (!empty($brand['sameas'])) {
+            $org['sameAs'] = array_values($brand['sameas']);
         }
 
         // Endereco so entra INTEIRO. Pela metade, os validadores recusam e o
         // resultado e pior que nao ter endereco nenhum.
-        $endereco = array_filter([
-            'streetAddress' => $marca['street'],
-            'addressLocality' => $marca['city'],
-            'addressRegion' => $marca['region'],
-            'postalCode' => $marca['postalcode'],
-            'addressCountry' => $marca['countrycode'],
+        $address = array_filter([
+            'streetAddress' => $brand['street'],
+            'addressLocality' => $brand['city'],
+            'addressRegion' => $brand['region'],
+            'postalCode' => $brand['postalcode'],
+            'addressCountry' => $brand['countrycode'],
         ]);
 
-        if (count($endereco) === 5) {
-            $org['address'] = ['@type' => 'PostalAddress'] + $endereco;
+        if (count($address) === 5) {
+            $org['address'] = ['@type' => 'PostalAddress'] + $address;
         }
 
         return $org;
@@ -673,14 +673,14 @@ class seo {
      * @return array
      */
     protected static function website(): array {
-        $raiz = (new moodle_url('/'))->out(false);
+        $root = (new moodle_url('/'))->out(false);
 
         return [
             '@type' => 'WebSite',
-            '@id' => $raiz . '#website',
+            '@id' => $root . '#website',
             'name' => self::site_name(),
-            'url' => $raiz,
-            'publisher' => ['@id' => $raiz . '#organization'],
+            'url' => $root,
+            'publisher' => ['@id' => $root . '#organization'],
             'inLanguage' => self::hreflang(current_language()),
         ];
     }
@@ -690,10 +690,10 @@ class seo {
      *
      * @return array
      */
-    protected static function webpage(string $superficie = self::SURFACE_LANDING): array {
-        $raiz = (new moodle_url('/'))->out(false);
-        $url = self::canonical_url($superficie);
-        $nome = $superficie === self::SURFACE_APPLY
+    protected static function webpage(string $surface = self::SURFACE_LANDING): array {
+        $root = (new moodle_url('/'))->out(false);
+        $url = self::canonical_url($surface);
+        $name = $surface === self::SURFACE_APPLY
             ? get_string('applytitle', 'local_partners')
             : get_string('landingtitle', 'local_partners');
 
@@ -701,10 +701,10 @@ class seo {
             '@type' => 'WebPage',
             '@id' => $url . '#webpage',
             'url' => $url,
-            'name' => $nome,
-            'description' => self::meta_description($superficie),
-            'isPartOf' => ['@id' => $raiz . '#website'],
-            'about' => ['@id' => $raiz . '#organization'],
+            'name' => $name,
+            'description' => self::meta_description($surface),
+            'isPartOf' => ['@id' => $root . '#website'],
+            'about' => ['@id' => $root . '#organization'],
             'inLanguage' => self::hreflang(current_language()),
             'primaryImageOfPage' => (new moodle_url('/local/partners/pix/hero.jpg'))->out(false),
         ];
@@ -721,10 +721,10 @@ class seo {
      * @return array
      */
     protected static function faq_page(): array {
-        $itens = [];
+        $items = [];
 
         foreach ((new landing_page())->faq_items() as $item) {
-            $itens[] = [
+            $items[] = [
                 '@type' => 'Question',
                 'name' => $item['question'],
                 'acceptedAnswer' => [
@@ -737,7 +737,7 @@ class seo {
         return [
             '@type' => 'FAQPage',
             '@id' => self::canonical_url() . '#faq',
-            'mainEntity' => $itens,
+            'mainEntity' => $items,
         ];
     }
 
@@ -751,10 +751,10 @@ class seo {
      * @return array|null Nulo quando nao ha plano publico.
      */
     protected static function offer_catalog(): ?array {
-        $ofertas = [];
+        $offers = [];
 
         foreach (plan::get_public_plans() as $plan) {
-            $ofertas[] = [
+            $offers[] = [
                 '@type' => 'Offer',
                 'name' => format_string($plan->get('name')),
                 'description' => format_string((string) $plan->get('description')),
@@ -765,7 +765,7 @@ class seo {
             ];
         }
 
-        if (!$ofertas) {
+        if (!$offers) {
             return null;
         }
 
@@ -776,7 +776,7 @@ class seo {
             'description' => get_string('metadescription', 'local_partners'),
             'provider' => ['@id' => (new moodle_url('/'))->out(false) . '#organization'],
             'areaServed' => self::area_served(),
-            'offers' => $ofertas,
+            'offers' => $offers,
         ];
     }
 
@@ -793,22 +793,22 @@ class seo {
     protected static function area_served(): array {
         global $DB, $CFG;
 
-        $paises = [];
+        $countries = [];
 
         if ($DB->get_manager()->table_exists('local_marketplace_offer')) {
-            $paises = $DB->get_fieldset_sql(
-                'SELECT DISTINCT country FROM {local_marketplace_offer} WHERE country IS NOT NULL AND country <> :vazio',
-                ['vazio' => '']
+            $countries = $DB->get_fieldset_sql(
+                'SELECT DISTINCT country FROM {local_marketplace_offer} WHERE country IS NOT NULL AND country <> :empty',
+                ['empty' => '']
             );
         }
 
-        if (!$paises && !empty($CFG->country)) {
-            $paises = [$CFG->country];
+        if (!$countries && !empty($CFG->country)) {
+            $countries = [$CFG->country];
         }
 
-        return array_values(array_map(static function ($pais) {
-            return ['@type' => 'Country', 'identifier' => $pais];
-        }, $paises));
+        return array_values(array_map(static function ($country) {
+            return ['@type' => 'Country', 'identifier' => $country];
+        }, $countries));
     }
 
     /**

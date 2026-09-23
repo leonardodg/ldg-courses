@@ -100,9 +100,9 @@ class hook_callbacks {
         }
 
         $path = rtrim($path, '/') ?: '';
-        $catalogo = rtrim((new moodle_url('/course/index.php'))->get_path(), '/');
+        $catalog = rtrim((new moodle_url('/course/index.php'))->get_path(), '/');
 
-        return $path === $catalogo || $path === dirname($catalogo);
+        return $path === $catalog || $path === dirname($catalog);
     }
 
     /**
@@ -113,22 +113,22 @@ class hook_callbacks {
      */
     protected static function surface_for(string $path): ?string {
         $path = rtrim($path, '/') ?: '';
-        $raiz = rtrim((new moodle_url('/'))->get_path(), '/');
-        $indice = (new moodle_url('/local/partners/index.php'))->get_path();
-        $candidatura = (new moodle_url('/local/partners/apply.php'))->get_path();
+        $root = rtrim((new moodle_url('/'))->get_path(), '/');
+        $index = (new moodle_url('/local/partners/index.php'))->get_path();
+        $apply = (new moodle_url('/local/partners/apply.php'))->get_path();
 
-        if ($path === rtrim($candidatura, '/')) {
+        if ($path === rtrim($apply, '/')) {
             return seo::SURFACE_APPLY;
         }
 
-        if ($path === rtrim($indice, '/')) {
+        if ($path === rtrim($index, '/')) {
             return seo::SURFACE_LANDING;
         }
 
         // A raiz so e a landing quando o administrador escolheu isso. A consulta
         // de configuracao fica por ultimo, depois de todas as comparacoes de
         // string, que sao baratas.
-        if (($path === $raiz || $path === $raiz . '/index.php') && landing::replaces_frontpage()) {
+        if (($path === $root || $path === $root . '/index.php') && landing::replaces_frontpage()) {
             return seo::SURFACE_LANDING;
         }
 

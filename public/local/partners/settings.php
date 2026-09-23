@@ -114,11 +114,11 @@ if ($hassiteconfig) {
     // Documentos legais do rodape. Cada link so aparece quando tem destino:
     // link legal que nao leva a lugar nenhum e pior que link ausente, porque ele
     // PROMETE um documento. O de termos cai na politica do site quando existir.
-    foreach (['termsurl' => 'footerterms', 'privacyurl' => 'footerprivacy', 'cookiesurl' => 'footercookies'] as $nome => $rotulo) {
+    foreach (['termsurl' => 'footerterms', 'privacyurl' => 'footerprivacy', 'cookiesurl' => 'footercookies'] as $name => $label) {
         $settings->add(new admin_setting_configtext(
-            'local_partners/' . $nome,
-            get_string($nome, 'local_partners'),
-            get_string($nome . '_desc', 'local_partners', get_string($rotulo, 'local_partners')),
+            'local_partners/' . $name,
+            get_string($name, 'local_partners'),
+            get_string($name . '_desc', 'local_partners', get_string($label, 'local_partners')),
             '',
             PARAM_URL
         ));

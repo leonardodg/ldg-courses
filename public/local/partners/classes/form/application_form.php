@@ -380,13 +380,13 @@ class application_form extends \moodleform {
         }
 
         $fee = (float) $plan->get('monthlyfee');
-        $preco = $fee <= 0
+        $price = $fee <= 0
             ? get_string('planfree', 'local_partners')
             : \core_payment\helper::get_cost_as_string($fee, $plan->get('currency'));
 
         return \html_writer::div(
             \html_writer::tag('strong', format_string($plan->get('name')), ['class' => 'ldgp-plancard__name'])
-            . \html_writer::span($preco, 'ldgp-plancard__price')
+            . \html_writer::span($price, 'ldgp-plancard__price')
             . \html_writer::span(
                 get_string('plancommission', 'local_partners', format_float((float) $plan->get('commissionpct'), 2)),
                 'ldgp-plancard__note'
