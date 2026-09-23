@@ -88,14 +88,14 @@ class payment_processor {
         // Vem ANTES da configuracao porque decide qual APLICACAO precisa estar
         // vinculada. Conferir a de Preferencias e depois cobrar por Bricks
         // deixaria a venda falhar adiante, com o aluno ja decidido a comprar.
-        $recorrencia = self::recurrence_for($component, $itemid, $paymentarea);
-        $apptype = $recorrencia
+        $recurrence = self::recurrence_for($component, $itemid, $paymentarea);
+        $apptype = $recurrence
             ? application::type_for_recurring()
             : application::TYPE_PREFERENCES;
 
         $config = self::get_gateway_config($accountid, $apptype);
 
-        $reference = self::build_reference($userid, $itemid, (bool) $recorrencia);
+        $reference = self::build_reference($userid, $itemid, (bool) $recurrence);
 
         // A comissao e regra do marketplace, nao do gateway. Perguntamos a ele
         // quando ele esta presente, e caimos no padrao de fabrica quando outro
@@ -140,14 +140,14 @@ class payment_processor {
             // Bricks, com application_fee no pagamento. Sem esta coluna nao se
             // sabe com que token consultar o pagamento de volta.
             'apptype' => $apptype,
-            'subscriptionid' => $recorrencia ? $reference : null,
-            'cycles' => $recorrencia ? 1 : 0,
+            'subscriptionid' => $recurrence ? $reference : null,
+            'cycles' => $recurrence ? 1 : 0,
             'timecreated' => time(),
             'timemodified' => time(),
         ];
         $record->id = $DB->insert_record(self::TABLE, $record);
 
-        if ($recorrencia) {
+        if ($recurrence) {
             // A assinatura NAO comeca no Mercado Pago, e essa e a diferenca
             // estrutural para a venda avulsa. Para cobrar um ciclo e preciso um
             // cartao guardado, e o cartao so nasce token no navegador do aluno
@@ -273,7 +273,7 @@ class payment_processor {
         $record->timemodified = time();
         $DB->update_record(self::TABLE, $record);
 
-        $corpo = self::build_cycle_payment_body(
+        $body = self::build_cycle_payment_body(
             (float) $record->amount,
             (string) $record->currency,
             (string) $record->externalreference,
@@ -291,7 +291,7 @@ class payment_processor {
             self::describe_subscription($record)
         );
 
-        $payment = (array) self::step('payment', fn() => $client->create_payment($corpo));
+        $payment = (array) self::step('payment', fn() => $client->create_payment($body));
 
         $record->mppaymentid = (string) ($payment['id'] ?? '');
         $record->status = (string) ($payment['status'] ?? 'pending');
@@ -340,7 +340,7 @@ class payment_processor {
         $client = new mp_client($config['accesstoken']);
         $user = \core_user::get_user((int) $record->userid, 'id, email', MUST_EXIST);
 
-        $corpo = self::build_invoice_payment_body(
+        $body = self::build_invoice_payment_body(
             (float) $record->amount,
             (string) $record->currency,
             (string) $record->externalreference,
@@ -352,7 +352,7 @@ class payment_processor {
             self::describe_subscription($record)
         );
 
-        $payment = (array) self::step('payment', fn() => $client->create_payment($corpo));
+        $payment = (array) self::step('payment', fn() => $client->create_payment($body));
 
         $record->paymentmethod = $paymentmethod;
         $record->payerinfo = json_encode($payerinfo);
@@ -474,8 +474,8 @@ class payment_processor {
             $e->getMessage();
         }
 
-        $encontrados = $client->search_customer($email);
-        $id = (string) ($encontrados[0]['id'] ?? '');
+        $found = $client->search_customer($email);
+        $id = (string) ($found[0]['id'] ?? '');
         if ($id === '') {
             throw new moodle_exception('errorcustomer', 'paygw_mercadopago');
         }
@@ -899,9 +899,9 @@ class payment_processor {
             // reenvio no topo desta funcao so dispara com status='approved').
             // Uma proxima tentativa nao recria o pagamento porque
             // empty($record->paymentid) ja sera falso.
-            $reserva = clone $record;
-            $reserva->status = $statusanterior;
-            $DB->update_record(self::TABLE, $reserva);
+            $reservation = clone $record;
+            $reservation->status = $statusanterior;
+            $DB->update_record(self::TABLE, $reservation);
 
             // Libera a trava aqui: record_sale()/deliver_order() sao mais
             // lentas (chamam o marketplace, matriculam o aluno) e segurar o
@@ -974,11 +974,11 @@ class payment_processor {
             (int) $record->accountid,
             (string) ($record->apptype ?? application::TYPE_PREFERENCES)
         );
-        $pagamentos = (new mp_client($config['accesstoken']))
+        $payments = (new mp_client($config['accesstoken']))
             ->search_by_reference((string) $record->externalreference);
 
-        foreach ($pagamentos as $pagamento) {
-            $id = (string) ($pagamento['id'] ?? '');
+        foreach ($payments as $payment) {
+            $id = (string) ($payment['id'] ?? '');
             if ($id === '') {
                 continue;
             }
@@ -1185,23 +1185,23 @@ class payment_processor {
         global $DB;
 
         $user = \core_user::get_user((int) $record->userid, '*', MUST_EXIST);
-        $valor = helper::get_cost_as_string((float) $record->amount, (string) $record->currency);
+        $amount = helper::get_cost_as_string((float) $record->amount, (string) $record->currency);
 
-        $mensagem = new \core\message\message();
-        $mensagem->component = 'paygw_mercadopago';
-        $mensagem->name = 'reminderupcoming';
-        $mensagem->userfrom = \core_user::get_noreply_user();
-        $mensagem->userto = $user;
-        $mensagem->subject = get_string('reminderupcoming_subject', 'paygw_mercadopago');
-        $mensagem->fullmessage = get_string('reminderupcoming_body', 'paygw_mercadopago', $valor);
-        $mensagem->fullmessageformat = FORMAT_PLAIN;
-        $mensagem->fullmessagehtml = '<p>' . $mensagem->fullmessage . '</p>';
-        $mensagem->smallmessage = $mensagem->subject;
-        $mensagem->notification = 1;
-        $mensagem->contexturl = (new \moodle_url('/local/marketplace/mysubscriptions.php'))->out(false);
-        $mensagem->contexturlname = get_string('reminderupcoming_subject', 'paygw_mercadopago');
+        $message = new \core\message\message();
+        $message->component = 'paygw_mercadopago';
+        $message->name = 'reminderupcoming';
+        $message->userfrom = \core_user::get_noreply_user();
+        $message->userto = $user;
+        $message->subject = get_string('reminderupcoming_subject', 'paygw_mercadopago');
+        $message->fullmessage = get_string('reminderupcoming_body', 'paygw_mercadopago', $amount);
+        $message->fullmessageformat = FORMAT_PLAIN;
+        $message->fullmessagehtml = '<p>' . $message->fullmessage . '</p>';
+        $message->smallmessage = $message->subject;
+        $message->notification = 1;
+        $message->contexturl = (new \moodle_url('/local/marketplace/mysubscriptions.php'))->out(false);
+        $message->contexturlname = get_string('reminderupcoming_subject', 'paygw_mercadopago');
 
-        message_send($mensagem);
+        message_send($message);
 
         $DB->set_field(self::TABLE, 'reminderat', time(), ['id' => $record->id]);
     }
@@ -1223,7 +1223,7 @@ class payment_processor {
      * @return \stdClass Ainda nao gravada
      */
     public static function build_next_cycle(\stdClass $previous): \stdClass {
-        $agora = time();
+        $now = time();
 
         return (object) [
             'preferenceid' => '',
@@ -1257,8 +1257,8 @@ class payment_processor {
             // contrario do card_id. Ver o comentario do campo no install.xml.
             'payerinfo' => $previous->payerinfo ?? null,
             'subscriptionstatus' => 'active',
-            'timecreated' => $agora,
-            'timemodified' => $agora,
+            'timecreated' => $now,
+            'timemodified' => $now,
         ];
     }
 
@@ -1508,26 +1508,26 @@ class payment_processor {
      */
     protected static function notify_invoice_due(\stdClass $record, string $payurl): void {
         $user = \core_user::get_user((int) $record->userid, '*', MUST_EXIST);
-        $valor = helper::get_cost_as_string((float) $record->amount, (string) $record->currency);
+        $amount = helper::get_cost_as_string((float) $record->amount, (string) $record->currency);
 
-        $mensagem = new \core\message\message();
-        $mensagem->component = 'paygw_mercadopago';
-        $mensagem->name = 'invoicedue';
-        $mensagem->userfrom = \core_user::get_noreply_user();
-        $mensagem->userto = $user;
-        $mensagem->subject = get_string('invoicedue_subject', 'paygw_mercadopago');
-        $mensagem->fullmessage = get_string('invoicedue_body', 'paygw_mercadopago', (object) [
-            'amount' => $valor,
+        $message = new \core\message\message();
+        $message->component = 'paygw_mercadopago';
+        $message->name = 'invoicedue';
+        $message->userfrom = \core_user::get_noreply_user();
+        $message->userto = $user;
+        $message->subject = get_string('invoicedue_subject', 'paygw_mercadopago');
+        $message->fullmessage = get_string('invoicedue_body', 'paygw_mercadopago', (object) [
+            'amount' => $amount,
             'url' => $payurl,
         ]);
-        $mensagem->fullmessageformat = FORMAT_PLAIN;
-        $mensagem->fullmessagehtml = '<p>' . $mensagem->fullmessage . '</p>';
-        $mensagem->smallmessage = $mensagem->subject;
-        $mensagem->notification = 1;
-        $mensagem->contexturl = $payurl;
-        $mensagem->contexturlname = get_string('invoicedue_subject', 'paygw_mercadopago');
+        $message->fullmessageformat = FORMAT_PLAIN;
+        $message->fullmessagehtml = '<p>' . $message->fullmessage . '</p>';
+        $message->smallmessage = $message->subject;
+        $message->notification = 1;
+        $message->contexturl = $payurl;
+        $message->contexturlname = get_string('invoicedue_subject', 'paygw_mercadopago');
 
-        message_send($mensagem);
+        message_send($message);
     }
 
     /**
@@ -1733,10 +1733,10 @@ class payment_processor {
             return null;
         }
 
-        $linha = '';
+        $line = '';
         if (!empty($record->mppaymentid) && in_array((string) $record->paymentmethod, self::INVOICE_METHODS, true)) {
-            $fatura = self::invoice_details($record);
-            $linha = (string) ($fatura['barcode'] ?? '');
+            $invoice = self::invoice_details($record);
+            $line = (string) ($invoice['barcode'] ?? '');
         }
 
         // Ciclo de cartao recem-emitido por issue_card_cycle() (sem
@@ -1755,7 +1755,7 @@ class payment_processor {
             // um prazo que nao existe.
             'duedate' => '',
             'value' => (float) $record->amount,
-            'line' => $linha,
+            'line' => $line,
         ];
     }
 
@@ -1771,13 +1771,13 @@ class payment_processor {
      * @return string
      */
     public static function payment_method_label(\stdClass $record): string {
-        $metodo = (string) $record->paymentmethod;
+        $method = (string) $record->paymentmethod;
 
-        if ($metodo === 'pix') {
+        if ($method === 'pix') {
             return get_string('subscribepix', 'paygw_mercadopago');
         }
 
-        if ($metodo === 'bolbradesco') {
+        if ($method === 'bolbradesco') {
             return get_string('subscribeboleto', 'paygw_mercadopago');
         }
 

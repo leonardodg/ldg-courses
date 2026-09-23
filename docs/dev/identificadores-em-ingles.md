@@ -31,7 +31,17 @@ está tocando por outro motivo, nasce com identificador em inglês.
   (`test_aluno_no_curso_ldg_usa_o_portal`, etc.) continuam em português — é
   convenção separada e deliberada, documentada em
   `docs/dev/padrao-de-implementacao.md`.
-- Os outros 10 plugins seguem pendentes.
+- **`paygw_mercadopago`: convertido em 23/09/2026.** 23 arquivos (produção +
+  testes + AMD), 11 deles com pelo menos um identificador em português na
+  estimativa original — a varredura real achou mais (o dicionário inicial
+  era incompleto). `phpcs` (42 arquivos), `phpunit` (127 testes, 308
+  asserções) e `grunt` (eslint do `card_form.js`, build regenerado) verdes
+  depois da conversão. Um bug de shadowing foi pego antes de commitar: em
+  `webhook.php` a variável de loop teria colidido com um `$type` já existente
+  fora do loop (renomeada para `$apptype`); em `card_form.js`, `documento`
+  não virou `document` porque isso teria sombreado o `document` global do
+  navegador dentro da mesma função (virou `cpf`).
+- Os outros 9 plugins seguem pendentes.
 
 ## Tamanho estimado, por plugin
 
@@ -48,7 +58,7 @@ número real de arquivos e de identificadores é maior.
 | `local/marketplace` | 76 | 16.932 | 7 |
 | `local/partners` | 39 | 8.843 | 6 |
 | `blocks/marketplace` | 10 | 1.226 | 0 |
-| `paygw_mercadopago` | 42 | 10.692 | 11 |
+| `paygw_mercadopago` | 42 | 10.692 | ~~11~~ 0 (convertido) |
 | `paygw_asaas` | 25 | 5.177 | 2 |
 | `paygw_pagarme` | 31 | 6.525 | 3 |
 | `enrol_marketplace` | 11 | 1.095 | 1 |
@@ -56,7 +66,7 @@ número real de arquivos e de identificadores é maior.
 | `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
 | `theme_ldg` | 22 | 3.289 | 6 |
 | `mod_ldgvideo` | 31 | 3.400 | 8 |
-| **Total** | **333** | **63.695** | **62** (≈19% dos arquivos, por baixo) |
+| **Total** | **333** | **63.695** | **51 restantes** (≈15% dos arquivos, por baixo) |
 
 `format_ldg` e `paygw_mercadopago` concentram a maior densidade — ambos
 plugins antigos, com bastante lógica de negócio nomeada em português desde o

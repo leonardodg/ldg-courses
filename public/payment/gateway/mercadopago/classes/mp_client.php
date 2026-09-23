@@ -294,12 +294,12 @@ class mp_client {
      * @return array Lista de pagamentos, vazia quando ninguem pagou
      */
     public function search_by_reference(string $reference): array {
-        $resposta = $this->request(
+        $response = $this->request(
             'GET',
             '/v1/payments/search?external_reference=' . rawurlencode($reference)
         );
 
-        return $resposta['results'] ?? [];
+        return $response['results'] ?? [];
     }
 
     /**
@@ -384,9 +384,9 @@ class mp_client {
      * @return array Lista de clientes, vazia quando nao ha
      */
     public function search_customer(string $email): array {
-        $resposta = $this->request('GET', '/v1/customers/search?email=' . rawurlencode($email));
+        $response = $this->request('GET', '/v1/customers/search?email=' . rawurlencode($email));
 
-        return $resposta['results'] ?? [];
+        return $response['results'] ?? [];
     }
 
     /**
@@ -467,8 +467,8 @@ class mp_client {
             try {
                 $tokeninfo = $this->get_card_token($cardtoken);
                 $bin = ($tokeninfo['first_six_digits'] ?? '?') . ' status=' . ($tokeninfo['status'] ?? '?');
-            } catch (moodle_exception $ignorada) {
-                $bin = '<token nao encontrado: ' . $ignorada->getMessage() . '>';
+            } catch (moodle_exception $ignored) {
+                $bin = '<token nao encontrado: ' . $ignored->getMessage() . '>';
             }
 
             throw new moodle_exception(
@@ -525,10 +525,10 @@ class mp_client {
      * @return array
      */
     public function create_payment(array $body): array {
-        $referencia = (string) ($body['external_reference'] ?? '');
+        $reference = (string) ($body['external_reference'] ?? '');
 
         return $this->request('POST', '/v1/payments', $body, [
-            'X-Idempotency-Key: ' . ($referencia !== '' ? $referencia : self::random_idempotency_key()),
+            'X-Idempotency-Key: ' . ($reference !== '' ? $reference : self::random_idempotency_key()),
         ]);
     }
 
@@ -636,17 +636,17 @@ class mp_client {
      * @return array{id: string, issuerid: string} Vazio quando nao reconhecido
      */
     public static function guess_payment_method(string $publickey, string $bin): array {
-        $resposta = self::get_json(self::API_BASE . '/v1/payment_methods/search?' . http_build_query([
+        $response = self::get_json(self::API_BASE . '/v1/payment_methods/search?' . http_build_query([
             'marketplace' => 'NONE',
             'status' => 'active',
             'bins' => $bin,
             'public_key' => $publickey,
         ]));
 
-        foreach (($resposta['results'] ?? []) as $metodo) {
-            $tipo = (string) ($metodo['payment_type_id'] ?? '');
-            if ($tipo === 'credit_card' || $tipo === 'debit_card') {
-                $id = (string) ($metodo['id'] ?? '');
+        foreach (($response['results'] ?? []) as $method) {
+            $type = (string) ($method['payment_type_id'] ?? '');
+            if ($type === 'credit_card' || $type === 'debit_card') {
+                $id = (string) ($method['id'] ?? '');
 
                 return [
                     'id' => $id,
@@ -674,13 +674,13 @@ class mp_client {
      * @return string Vazio quando nao ha exatamente um emissor
      */
     protected static function guess_issuer(string $publickey, string $paymentmethod, string $bin): string {
-        $emissores = self::get_json(self::API_BASE . '/v1/payment_methods/card_issuers?' . http_build_query([
+        $issuers = self::get_json(self::API_BASE . '/v1/payment_methods/card_issuers?' . http_build_query([
             'payment_method_id' => $paymentmethod,
             'bin' => $bin,
             'public_key' => $publickey,
         ]));
 
-        return (string) ($emissores[0]['id'] ?? '');
+        return (string) ($issuers[0]['id'] ?? '');
     }
 
     /**
@@ -810,14 +810,14 @@ class mp_client {
             // distintas. O "cause" e onde o Mercado Pago poe o code numerico
             // que distingue um caso do outro, e sem ele cada erro novo vira
             // outra rodada de curl para adivinhar.
-            $causas = array_map(
-                static fn(array $causa): string => trim(
-                    ($causa['code'] ?? '?') . ': ' . ($causa['description'] ?? '')
+            $causes = array_map(
+                static fn(array $cause): string => trim(
+                    ($cause['code'] ?? '?') . ': ' . ($cause['description'] ?? '')
                 ),
                 $decoded['cause'] ?? []
             );
-            if ($causas) {
-                $message .= ' [' . implode('; ', $causas) . ']';
+            if ($causes) {
+                $message .= ' [' . implode('; ', $causes) . ']';
             }
 
             throw new moodle_exception('errorapi', 'paygw_mercadopago', '', $status . ': ' . $message);

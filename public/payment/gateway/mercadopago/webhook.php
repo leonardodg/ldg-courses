@@ -62,30 +62,30 @@ if ($type !== 'payment' || empty($paymentid)) {
 // notificacao veio antes de achar a linha. Entao a assinatura passa se bater
 // com QUALQUER um dos configurados - o que ainda exclui quem nao tem nenhum
 // deles, que e o ponto.
-$assinatura = $_SERVER['HTTP_X_SIGNATURE'] ?? '';
+$signature = $_SERVER['HTTP_X_SIGNATURE'] ?? '';
 $requestid = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
-$confere = false;
+$matches = false;
 
-foreach (\paygw_mercadopago\application::TYPES as $tipo) {
-    $segredo = (string) get_config(
+foreach (\paygw_mercadopago\application::TYPES as $apptype) {
+    $secret = (string) get_config(
         'paygw_mercadopago',
-        \paygw_mercadopago\application::config_key($tipo, 'webhooksecret')
+        \paygw_mercadopago\application::config_key($apptype, 'webhooksecret')
     );
 
-    $valida = \paygw_mercadopago\webhook_signature::is_valid(
-        (string) $assinatura,
+    $valid = \paygw_mercadopago\webhook_signature::is_valid(
+        (string) $signature,
         (string) $requestid,
         (string) $paymentid,
-        $segredo
+        $secret
     );
 
-    if ($valida) {
-        $confere = true;
+    if ($valid) {
+        $matches = true;
         break;
     }
 }
 
-if (!$confere) {
+if (!$matches) {
     // 401, e nao 200: o Mercado Pago precisa saber que a entrega falhou, e uma
     // notificacao legitima recusada por segredo errado tem que aparecer no
     // painel dele em vez de sumir como se tivesse sido processada.

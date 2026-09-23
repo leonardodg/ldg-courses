@@ -112,14 +112,14 @@ class gateway extends \core_payment\gateway {
         $mform->setDefault('cardcapture', '');
         $mform->addHelpButton('cardcapture', 'cardcaptureaccount', 'paygw_mercadopago');
 
-        foreach (payment_methods::METHODS as $metodo) {
+        foreach (payment_methods::METHODS as $method) {
             $mform->addElement(
                 'select',
-                'method' . $metodo,
-                get_string('methodaccount' . $metodo, 'paygw_mercadopago'),
+                'method' . $method,
+                get_string('methodaccount' . $method, 'paygw_mercadopago'),
                 payment_methods::form_options()
             );
-            $mform->setDefault('method' . $metodo, '');
+            $mform->setDefault('method' . $method, '');
         }
 
         // NAO ha caixa de "modo de teste" aqui.
@@ -197,9 +197,9 @@ class gateway extends \core_payment\gateway {
      * @return array|null url, duedate, value e line, ou null quando nao ha
      */
     public static function pending_invoice(string $component, int $itemid, int $userid): ?array {
-        $linha = self::latest_subscription_row($component, $itemid, $userid);
+        $record = self::latest_subscription_row($component, $itemid, $userid);
 
-        return $linha ? payment_processor::pending_invoice($linha) : null;
+        return $record ? payment_processor::pending_invoice($record) : null;
     }
 
     /**
@@ -215,9 +215,9 @@ class gateway extends \core_payment\gateway {
      * @return string|null
      */
     public static function payment_method(string $component, int $itemid, int $userid): ?string {
-        $linha = self::latest_subscription_row($component, $itemid, $userid);
+        $record = self::latest_subscription_row($component, $itemid, $userid);
 
-        return $linha ? payment_processor::payment_method_label($linha) : null;
+        return $record ? payment_processor::payment_method_label($record) : null;
     }
 
     /**
@@ -233,15 +233,15 @@ class gateway extends \core_payment\gateway {
      * @return string|null
      */
     public static function switch_to_card_url(string $component, int $itemid, int $userid): ?string {
-        $linha = self::latest_subscription_row($component, $itemid, $userid);
+        $record = self::latest_subscription_row($component, $itemid, $userid);
 
-        if (!$linha || !payment_processor::can_switch_to_card($linha)) {
+        if (!$record || !payment_processor::can_switch_to_card($record)) {
             return null;
         }
 
         return (new \moodle_url(
             '/payment/gateway/mercadopago/switch_to_card.php',
-            ['ref' => (string) $linha->externalreference]
+            ['ref' => (string) $record->externalreference]
         ))->out(false);
     }
 
@@ -254,9 +254,9 @@ class gateway extends \core_payment\gateway {
     public static function refund(int $paymentid): bool {
         global $DB;
 
-        $linha = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
+        $record = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
 
-        return $linha ? payment_processor::refund($linha) : false;
+        return $record ? payment_processor::refund($record) : false;
     }
 
     /**
@@ -271,9 +271,9 @@ class gateway extends \core_payment\gateway {
     public static function refund_blocker(int $paymentid): string {
         global $DB;
 
-        $linha = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
+        $record = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
 
-        return $linha ? payment_processor::refund_blocker($linha) : 'errorrefundunknown';
+        return $record ? payment_processor::refund_blocker($record) : 'errorrefundunknown';
     }
 
     /**
@@ -289,13 +289,13 @@ class gateway extends \core_payment\gateway {
      * @return bool Verdadeiro se havia assinatura ativa e ela foi cancelada
      */
     public static function cancel_recurring(string $component, int $itemid, int $userid): bool {
-        $linha = self::latest_subscription_row($component, $itemid, $userid);
+        $record = self::latest_subscription_row($component, $itemid, $userid);
 
-        if (!$linha || empty($linha->subscriptionid)) {
+        if (!$record || empty($record->subscriptionid)) {
             return false;
         }
 
-        return payment_processor::cancel_subscription((string) $linha->subscriptionid);
+        return payment_processor::cancel_subscription((string) $record->subscriptionid);
     }
 
     /**
@@ -336,7 +336,7 @@ class gateway extends \core_payment\gateway {
     protected static function latest_subscription_row(string $component, int $itemid, int $userid): ?\stdClass {
         global $DB;
 
-        $linhas = $DB->get_records_select(
+        $rows = $DB->get_records_select(
             payment_processor::TABLE,
             "component = :component AND itemid = :itemid AND userid = :userid
              AND subscriptionid IS NOT NULL AND subscriptionid <> ''",
@@ -347,7 +347,7 @@ class gateway extends \core_payment\gateway {
             1
         );
 
-        return reset($linhas) ?: null;
+        return reset($rows) ?: null;
     }
 
     /**
@@ -376,9 +376,9 @@ class gateway extends \core_payment\gateway {
             return get_string('errormissingappconfig', 'paygw_mercadopago', '');
         }
 
-        $linhas = [];
+        $lines = [];
         foreach ($types as $type) {
-            $linhas[] = \html_writer::tag(
+            $lines[] = \html_writer::tag(
                 'div',
                 \html_writer::tag('strong', get_string('apptype_' . $type, 'paygw_mercadopago'))
                     . '<br>' . self::describe_one_application($type, $accountid, $config),
@@ -386,7 +386,7 @@ class gateway extends \core_payment\gateway {
             );
         }
 
-        return implode('', $linhas);
+        return implode('', $lines);
     }
 
     /**
@@ -398,7 +398,7 @@ class gateway extends \core_payment\gateway {
      * @return string
      */
     protected static function describe_one_application(string $type, int $accountid, array $config): string {
-        $rotulo = get_string('apptype_' . $type, 'paygw_mercadopago');
+        $label = get_string('apptype_' . $type, 'paygw_mercadopago');
         $token = (string) ($config[application::token_field($type, 'accesstoken')] ?? '');
 
         // Link, NAO single_button. single_button renderiza um <form>, e este
@@ -406,20 +406,20 @@ class gateway extends \core_payment\gateway {
         // Formulario aninhado e HTML invalido: o navegador descarta o interno,
         // e o clique submete o externo - que aponta para manage_gateway.php sem
         // accountid nem gateway, produzindo "Gateway not found".
-        $vincular = static fn(string $chave, string $classe): string => \html_writer::link(
+        $link = static fn(string $key, string $class): string => \html_writer::link(
             new \moodle_url('/payment/gateway/mercadopago/oauth_start.php', [
                 'accountid' => $accountid,
                 'apptype' => $type,
             ]),
-            $chave === 'linkaccounttype'
-                ? get_string('linkaccounttype', 'paygw_mercadopago', $rotulo)
-                : get_string($chave, 'paygw_mercadopago'),
-            ['class' => $classe, 'target' => '_self']
+            $key === 'linkaccounttype'
+                ? get_string('linkaccounttype', 'paygw_mercadopago', $label)
+                : get_string($key, 'paygw_mercadopago'),
+            ['class' => $class, 'target' => '_self']
         );
 
         if ($token === '') {
             return get_string('oauthnotlinked', 'paygw_mercadopago')
-                . '<br>' . $vincular('linkaccounttype', 'btn btn-secondary');
+                . '<br>' . $link('linkaccounttype', 'btn btn-secondary');
         }
 
         $expires = (int) ($config[application::token_field($type, 'tokenexpires')] ?? 0);
@@ -427,7 +427,7 @@ class gateway extends \core_payment\gateway {
         // Trocar de conta nao exige desvincular - autorizar de novo sobrescreve
         // o token. Os dois botoes existem porque as intencoes sao diferentes:
         // um corrige a conta errada, o outro encerra a operacao.
-        $acoes = $vincular('relinkaccount', 'btn btn-secondary') . ' ' . \html_writer::link(
+        $actions = $link('relinkaccount', 'btn btn-secondary') . ' ' . \html_writer::link(
             new \moodle_url('/payment/gateway/mercadopago/oauth_unlink.php', [
                 'accountid' => $accountid,
                 'apptype' => $type,
@@ -437,7 +437,7 @@ class gateway extends \core_payment\gateway {
         );
 
         if ($expires && $expires <= time()) {
-            return get_string('oauthexpired', 'paygw_mercadopago') . '<br>' . $acoes;
+            return get_string('oauthexpired', 'paygw_mercadopago') . '<br>' . $actions;
         }
 
         $currency = (string) ($config[application::token_field($type, 'currency')] ?? '');
@@ -447,6 +447,6 @@ class gateway extends \core_payment\gateway {
             'expires' => $expires ? userdate($expires) : '-',
         ])
             . ($currency !== '' ? ' ' . get_string('oauthcurrency', 'paygw_mercadopago', s($currency)) : '')
-            . '<br>' . $acoes;
+            . '<br>' . $actions;
     }
 }

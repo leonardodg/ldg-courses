@@ -108,10 +108,10 @@ final class application_test extends \advanced_testcase {
         );
 
         set_config('clientsecret_subscriptions', 'segredo', 'paygw_mercadopago');
-        $credenciais = application::credentials(application::TYPE_SUBSCRIPTIONS);
-        $this->assertNotNull($credenciais);
-        $this->assertSame('6990306155285574', $credenciais->clientid);
-        $this->assertSame('segredo', $credenciais->clientsecret);
+        $credentials = application::credentials(application::TYPE_SUBSCRIPTIONS);
+        $this->assertNotNull($credentials);
+        $this->assertSame('6990306155285574', $credentials->clientid);
+        $this->assertSame('segredo', $credentials->clientsecret);
     }
 
     /**

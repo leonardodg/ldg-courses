@@ -199,7 +199,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_a_cobranca_do_ciclo_leva_a_comissao(): void {
-        $corpo = payment_processor::build_cycle_payment_body(
+        $body = payment_processor::build_cycle_payment_body(
             100.0,
             'BRL',
             'mdlsub-1-2-abc',
@@ -210,10 +210,10 @@ final class payment_processor_test extends \advanced_testcase {
             'Assinatura'
         );
 
-        $this->assertEquals(100.0, $corpo['transaction_amount']);
-        $this->assertEquals(25.0, $corpo['application_fee']);
-        $this->assertSame('tok', $corpo['token']);
-        $this->assertSame('mdlsub-1-2-abc', $corpo['external_reference']);
+        $this->assertEquals(100.0, $body['transaction_amount']);
+        $this->assertEquals(25.0, $body['application_fee']);
+        $this->assertSame('tok', $body['token']);
+        $this->assertSame('mdlsub-1-2-abc', $body['external_reference']);
     }
 
     /**
@@ -227,7 +227,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_sem_comissao_o_campo_nao_vai_no_corpo(): void {
-        $corpo = payment_processor::build_cycle_payment_body(
+        $body = payment_processor::build_cycle_payment_body(
             100.0,
             'BRL',
             'ref',
@@ -238,7 +238,7 @@ final class payment_processor_test extends \advanced_testcase {
             'Assinatura'
         );
 
-        $this->assertArrayNotHasKey('application_fee', $corpo);
+        $this->assertArrayNotHasKey('application_fee', $body);
     }
 
     /**
@@ -257,7 +257,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_cartao_novo_cobra_so_com_o_email(): void {
-        $corpo = payment_processor::build_cycle_payment_body(
+        $body = payment_processor::build_cycle_payment_body(
             50.0,
             'BRL',
             'ref',
@@ -268,9 +268,9 @@ final class payment_processor_test extends \advanced_testcase {
             'Assinatura'
         );
 
-        $this->assertSame(['email' => 'aluno@exemplo.test'], $corpo['payer']);
-        $this->assertArrayNotHasKey('type', $corpo['payer']);
-        $this->assertSame('visa', $corpo['payment_method_id']);
+        $this->assertSame(['email' => 'aluno@exemplo.test'], $body['payer']);
+        $this->assertArrayNotHasKey('type', $body['payer']);
+        $this->assertSame('visa', $body['payment_method_id']);
     }
 
     /**
@@ -282,7 +282,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_cartao_guardado_cobra_com_o_cliente(): void {
-        $corpo = payment_processor::build_cycle_payment_body(
+        $body = payment_processor::build_cycle_payment_body(
             50.0,
             'BRL',
             'ref',
@@ -293,8 +293,8 @@ final class payment_processor_test extends \advanced_testcase {
             'Assinatura'
         );
 
-        $this->assertSame('customer', $corpo['payer']['type']);
-        $this->assertSame('cus_9', $corpo['payer']['id']);
+        $this->assertSame('customer', $body['payer']['type']);
+        $this->assertSame('cus_9', $body['payer']['id']);
     }
 
     /**
@@ -307,7 +307,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_pix_so_exige_cpf(): void {
-        $corpo = payment_processor::build_invoice_payment_body(
+        $body = payment_processor::build_invoice_payment_body(
             5.0,
             'BRL',
             'ref',
@@ -319,10 +319,10 @@ final class payment_processor_test extends \advanced_testcase {
             'Assinatura'
         );
 
-        $this->assertSame('pix', $corpo['payment_method_id']);
-        $this->assertSame('19119119100', $corpo['payer']['identification']['number']);
-        $this->assertArrayNotHasKey('address', $corpo['payer']);
-        $this->assertArrayNotHasKey('type', $corpo['payer'], 'Pix nao tem cliente guardado');
+        $this->assertSame('pix', $body['payment_method_id']);
+        $this->assertSame('19119119100', $body['payer']['identification']['number']);
+        $this->assertArrayNotHasKey('address', $body['payer']);
+        $this->assertArrayNotHasKey('type', $body['payer'], 'Pix nao tem cliente guardado');
     }
 
     /**
@@ -334,7 +334,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_boleto_exige_endereco(): void {
-        $corpo = payment_processor::build_invoice_payment_body(
+        $body = payment_processor::build_invoice_payment_body(
             20.0,
             'BRL',
             'ref',
@@ -361,7 +361,7 @@ final class payment_processor_test extends \advanced_testcase {
             'neighborhood' => 'Bela Vista',
             'city' => 'Sao Paulo',
             'federal_unit' => 'SP',
-        ], $corpo['payer']['address']);
+        ], $body['payer']['address']);
     }
 
     /**
@@ -374,7 +374,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_o_ciclo_nao_e_parcelado(): void {
-        $corpo = payment_processor::build_cycle_payment_body(
+        $body = payment_processor::build_cycle_payment_body(
             100.0,
             'BRL',
             'ref',
@@ -385,7 +385,7 @@ final class payment_processor_test extends \advanced_testcase {
             'Assinatura'
         );
 
-        $this->assertSame(1, $corpo['installments']);
+        $this->assertSame(1, $body['installments']);
     }
 
     /**
@@ -394,7 +394,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_o_webhook_do_ciclo_sai_do_wwwroot(): void {
-        $corpo = payment_processor::build_cycle_payment_body(
+        $body = payment_processor::build_cycle_payment_body(
             10.0,
             'BRL',
             'ref',
@@ -405,8 +405,8 @@ final class payment_processor_test extends \advanced_testcase {
             'Assinatura'
         );
 
-        $this->assertStringStartsWith('https://outro.exemplo/', $corpo['notification_url']);
-        $this->assertStringEndsWith('/payment/gateway/mercadopago/webhook.php', $corpo['notification_url']);
+        $this->assertStringStartsWith('https://outro.exemplo/', $body['notification_url']);
+        $this->assertStringEndsWith('/payment/gateway/mercadopago/webhook.php', $body['notification_url']);
     }
 
     /**
@@ -419,24 +419,24 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_a_referencia_da_assinatura_tem_prefixo_proprio(): void {
-        $avulsa = payment_processor::build_reference(7, 3, false);
-        $assinatura = payment_processor::build_reference(7, 3, true);
+        $oneoff = payment_processor::build_reference(7, 3, false);
+        $subscription = payment_processor::build_reference(7, 3, true);
 
-        $this->assertStringStartsWith('mdl-7-3-', $avulsa);
-        $this->assertStringStartsWith('mdlsub-7-3-', $assinatura);
-        $this->assertNotSame($assinatura, payment_processor::build_reference(7, 3, true));
+        $this->assertStringStartsWith('mdl-7-3-', $oneoff);
+        $this->assertStringStartsWith('mdlsub-7-3-', $subscription);
+        $this->assertNotSame($subscription, payment_processor::build_reference(7, 3, true));
     }
 
     /**
      * Cria uma linha do gateway para os testes de estorno e cancelamento.
      *
-     * @param array $campos
+     * @param array $fields
      * @return \stdClass
      */
-    protected function linha(array $campos = []): \stdClass {
+    protected function row(array $fields = []): \stdClass {
         global $DB;
 
-        $registro = (object) array_merge([
+        $record = (object) array_merge([
             'preferenceid' => '',
             'externalreference' => 'ref-' . random_string(8),
             'component' => 'local_marketplace',
@@ -462,11 +462,11 @@ final class payment_processor_test extends \advanced_testcase {
             'paymentmethod' => 'master',
             'timecreated' => time(),
             'timemodified' => time(),
-        ], $campos);
+        ], $fields);
 
-        $registro->id = $DB->insert_record(payment_processor::TABLE, $registro);
+        $record->id = $DB->insert_record(payment_processor::TABLE, $record);
 
-        return $registro;
+        return $record;
     }
 
     /**
@@ -477,7 +477,7 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_venda_aprovada_pode_ser_estornada(): void {
         $this->resetAfterTest();
 
-        $this->assertSame('', payment_processor::refund_blocker($this->linha()));
+        $this->assertSame('', payment_processor::refund_blocker($this->row()));
     }
 
     /**
@@ -490,11 +490,11 @@ final class payment_processor_test extends \advanced_testcase {
 
         $this->assertSame(
             'errorrefundnotpaid',
-            payment_processor::refund_blocker($this->linha(['status' => 'pending']))
+            payment_processor::refund_blocker($this->row(['status' => 'pending']))
         );
         $this->assertSame(
             'errorrefundalready',
-            payment_processor::refund_blocker($this->linha(['status' => 'refunded']))
+            payment_processor::refund_blocker($this->row(['status' => 'refunded']))
         );
     }
 
@@ -511,10 +511,10 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_ciclo_do_meio_nao_se_estorna(): void {
         $this->resetAfterTest();
 
-        $assinatura = 'mdlsub-2-1-abc';
+        $subscription = 'mdlsub-2-1-abc';
 
-        $primeiro = $this->linha(['subscriptionid' => $assinatura, 'cycles' => 1, 'paymentid' => 10]);
-        $segundo = $this->linha(['subscriptionid' => $assinatura, 'cycles' => 2, 'paymentid' => 11]);
+        $primeiro = $this->row(['subscriptionid' => $subscription, 'cycles' => 1, 'paymentid' => 10]);
+        $segundo = $this->row(['subscriptionid' => $subscription, 'cycles' => 2, 'paymentid' => 11]);
 
         $this->assertSame('', payment_processor::refund_blocker($primeiro), 'o primeiro ciclo pode');
         $this->assertSame('errorrefundnotfirstcycle', payment_processor::refund_blocker($segundo));
@@ -534,17 +534,17 @@ final class payment_processor_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $assinatura = 'mdlsub-2-1-xyz';
-        $this->linha(['subscriptionid' => $assinatura, 'cycles' => 1]);
-        $this->linha(['subscriptionid' => $assinatura, 'cycles' => 2]);
-        $outra = $this->linha(['subscriptionid' => 'mdlsub-9-9-zzz', 'cycles' => 1]);
+        $subscription = 'mdlsub-2-1-xyz';
+        $this->row(['subscriptionid' => $subscription, 'cycles' => 1]);
+        $this->row(['subscriptionid' => $subscription, 'cycles' => 2]);
+        $outra = $this->row(['subscriptionid' => 'mdlsub-9-9-zzz', 'cycles' => 1]);
 
-        $this->assertTrue(payment_processor::cancel_subscription($assinatura));
+        $this->assertTrue(payment_processor::cancel_subscription($subscription));
 
-        $marcadas = $DB->get_records(payment_processor::TABLE, ['subscriptionid' => $assinatura]);
-        $this->assertCount(2, $marcadas);
-        foreach ($marcadas as $linha) {
-            $this->assertSame('cancelled', $linha->subscriptionstatus);
+        $marked = $DB->get_records(payment_processor::TABLE, ['subscriptionid' => $subscription]);
+        $this->assertCount(2, $marked);
+        foreach ($marked as $record) {
+            $this->assertSame('cancelled', $record->subscriptionstatus);
         }
 
         $intacta = $DB->get_record(payment_processor::TABLE, ['id' => $outra->id]);
@@ -559,10 +559,10 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_cancelar_duas_vezes_nao_inventa_cancelamento(): void {
         $this->resetAfterTest();
 
-        $assinatura = 'mdlsub-3-3-aaa';
-        $this->linha(['subscriptionid' => $assinatura, 'subscriptionstatus' => 'cancelled']);
+        $subscription = 'mdlsub-3-3-aaa';
+        $this->row(['subscriptionid' => $subscription, 'subscriptionstatus' => 'cancelled']);
 
-        $this->assertFalse(payment_processor::cancel_subscription($assinatura));
+        $this->assertFalse(payment_processor::cancel_subscription($subscription));
     }
 
     /**
@@ -573,11 +573,11 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_o_ciclo_vence_depois_do_intervalo(): void {
         $this->resetAfterTest();
 
-        $agora = 1789000000;
-        $linha = $this->linha(['timecreated' => $agora, 'cycles' => 1]);
+        $now = 1789000000;
+        $record = $this->row(['timecreated' => $now, 'cycles' => 1]);
 
-        $this->assertFalse(payment_processor::is_due($linha, 30, 0, $agora + (29 * DAYSECS)));
-        $this->assertTrue(payment_processor::is_due($linha, 30, 0, $agora + (30 * DAYSECS)));
+        $this->assertFalse(payment_processor::is_due($record, 30, 0, $now + (29 * DAYSECS)));
+        $this->assertTrue(payment_processor::is_due($record, 30, 0, $now + (30 * DAYSECS)));
     }
 
     /**
@@ -591,18 +591,18 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_o_teto_de_ciclos_para_a_cobranca(): void {
         $this->resetAfterTest();
 
-        $agora = 1789000000;
-        $vencido = $agora + (60 * DAYSECS);
+        $now = 1789000000;
+        $due = $now + (60 * DAYSECS);
 
         $this->assertTrue(
-            payment_processor::is_due($this->linha(['timecreated' => $agora, 'cycles' => 11]), 30, 12, $vencido)
+            payment_processor::is_due($this->row(['timecreated' => $now, 'cycles' => 11]), 30, 12, $due)
         );
         $this->assertFalse(
-            payment_processor::is_due($this->linha(['timecreated' => $agora, 'cycles' => 12]), 30, 12, $vencido),
+            payment_processor::is_due($this->row(['timecreated' => $now, 'cycles' => 12]), 30, 12, $due),
             'chegou ao teto: nao cobra o decimo terceiro'
         );
         $this->assertTrue(
-            payment_processor::is_due($this->linha(['timecreated' => $agora, 'cycles' => 99]), 30, 0, $vencido),
+            payment_processor::is_due($this->row(['timecreated' => $now, 'cycles' => 99]), 30, 0, $due),
             'sem teto configurado, nao ha limite'
         );
     }
@@ -619,14 +619,14 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_ciclo_nao_pago_nao_puxa_o_seguinte(): void {
         $this->resetAfterTest();
 
-        $agora = 1789000000;
-        $vencido = $agora + (60 * DAYSECS);
+        $now = 1789000000;
+        $due = $now + (60 * DAYSECS);
 
-        $pendente = $this->linha(['timecreated' => $agora, 'status' => 'pending']);
-        $recusado = $this->linha(['timecreated' => $agora, 'status' => 'rejected']);
+        $pending = $this->row(['timecreated' => $now, 'status' => 'pending']);
+        $rejected = $this->row(['timecreated' => $now, 'status' => 'rejected']);
 
-        $this->assertFalse(payment_processor::is_due($pendente, 30, 0, $vencido));
-        $this->assertFalse(payment_processor::is_due($recusado, 30, 0, $vencido));
+        $this->assertFalse(payment_processor::is_due($pending, 30, 0, $due));
+        $this->assertFalse(payment_processor::is_due($rejected, 30, 0, $due));
     }
 
     /**
@@ -637,10 +637,10 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_assinatura_cancelada_nao_cobra(): void {
         $this->resetAfterTest();
 
-        $agora = 1789000000;
-        $linha = $this->linha(['timecreated' => $agora, 'subscriptionstatus' => 'cancelled']);
+        $now = 1789000000;
+        $record = $this->row(['timecreated' => $now, 'subscriptionstatus' => 'cancelled']);
 
-        $this->assertFalse(payment_processor::is_due($linha, 30, 0, $agora + (90 * DAYSECS)));
+        $this->assertFalse(payment_processor::is_due($record, 30, 0, $now + (90 * DAYSECS)));
     }
 
     /**
@@ -651,10 +651,10 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_sem_cartao_guardado_nao_cobra(): void {
         $this->resetAfterTest();
 
-        $agora = 1789000000;
-        $linha = $this->linha(['timecreated' => $agora, 'mpcardid' => null, 'mpcustomerid' => null]);
+        $now = 1789000000;
+        $record = $this->row(['timecreated' => $now, 'mpcardid' => null, 'mpcustomerid' => null]);
 
-        $this->assertFalse(payment_processor::is_due($linha, 30, 0, $agora + (60 * DAYSECS)));
+        $this->assertFalse(payment_processor::is_due($record, 30, 0, $now + (60 * DAYSECS)));
     }
 
     /**
@@ -667,24 +667,24 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_fatura_vence_pela_bandeira_nao_pelo_cartao(): void {
         $this->resetAfterTest();
 
-        $agora = 1789000000;
-        $vencido = $agora + (60 * DAYSECS);
+        $now = 1789000000;
+        $due = $now + (60 * DAYSECS);
 
-        $pix = $this->linha([
-            'timecreated' => $agora,
+        $pix = $this->row([
+            'timecreated' => $now,
             'mpcardid' => null,
             'mpcustomerid' => null,
             'paymentmethod' => 'pix',
         ]);
-        $this->assertTrue(payment_processor::is_due_for_invoice($pix, 30, 0, $vencido));
+        $this->assertTrue(payment_processor::is_due_for_invoice($pix, 30, 0, $due));
         $this->assertFalse(
-            payment_processor::is_due($pix, 30, 0, $vencido),
+            payment_processor::is_due($pix, 30, 0, $due),
             'is_due() e do cartao - uma linha de Pix nao tem card_id para cobrar sozinha'
         );
 
-        $cartao = $this->linha(['timecreated' => $agora]);
+        $cartao = $this->row(['timecreated' => $now]);
         $this->assertFalse(
-            payment_processor::is_due_for_invoice($cartao, 30, 0, $vencido),
+            payment_processor::is_due_for_invoice($cartao, 30, 0, $due),
             'a bandeira padrao da fixture e cartao, nao pix/bolbradesco'
         );
     }
@@ -699,15 +699,15 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_lembrete_e_so_para_pix_e_boleto(): void {
         $this->resetAfterTest();
 
-        $agora = 1789000000;
+        $now = 1789000000;
         // Vencimento em 30 dias, lembrete 3 dias antes: a janela abre no
         // dia 27.
-        $dentrodajanela = $agora + (28 * DAYSECS);
+        $dentrodajanela = $now + (28 * DAYSECS);
 
-        $pix = $this->linha(['timecreated' => $agora, 'paymentmethod' => 'pix']);
+        $pix = $this->row(['timecreated' => $now, 'paymentmethod' => 'pix']);
         $this->assertTrue(payment_processor::needs_reminder($pix, 30, 3, 0, $dentrodajanela));
 
-        $cartao = $this->linha(['timecreated' => $agora]);
+        $cartao = $this->row(['timecreated' => $now]);
         $this->assertFalse(
             payment_processor::needs_reminder($cartao, 30, 3, 0, $dentrodajanela),
             'cartao cobra sozinho, o lembrete nao se aplica'
@@ -723,10 +723,10 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_lembrete_so_vale_dentro_da_janela(): void {
         $this->resetAfterTest();
 
-        $agora = 1789000000;
-        $vencimento = $agora + (30 * DAYSECS);
+        $now = 1789000000;
+        $vencimento = $now + (30 * DAYSECS);
 
-        $pix = $this->linha(['timecreated' => $agora, 'paymentmethod' => 'pix']);
+        $pix = $this->row(['timecreated' => $now, 'paymentmethod' => 'pix']);
 
         $this->assertFalse(
             payment_processor::needs_reminder($pix, 30, 3, 0, $vencimento - (4 * DAYSECS)),
@@ -751,13 +751,13 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_ja_lembrado_nao_lembra_de_novo(): void {
         $this->resetAfterTest();
 
-        $agora = 1789000000;
-        $dentrodajanela = $agora + (28 * DAYSECS);
+        $now = 1789000000;
+        $dentrodajanela = $now + (28 * DAYSECS);
 
-        $jalembrado = $this->linha([
-            'timecreated' => $agora,
+        $jalembrado = $this->row([
+            'timecreated' => $now,
             'paymentmethod' => 'pix',
-            'reminderat' => $agora,
+            'reminderat' => $now,
         ]);
 
         $this->assertFalse(payment_processor::needs_reminder($jalembrado, 30, 3, 0, $dentrodajanela));
@@ -781,15 +781,15 @@ final class payment_processor_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $user = $this->getDataGenerator()->create_user();
-        $linha = $this->linha(['userid' => $user->id, 'paymentmethod' => 'pix']);
+        $record = $this->row(['userid' => $user->id, 'paymentmethod' => 'pix']);
 
-        $this->assertEmpty($linha->reminderat ?? null);
+        $this->assertEmpty($record->reminderat ?? null);
 
-        payment_processor::send_reminder($linha);
+        payment_processor::send_reminder($record);
         $this->assertDebuggingCalled();
 
-        $atualizada = $DB->get_record(payment_processor::TABLE, ['id' => $linha->id]);
-        $this->assertNotEmpty($atualizada->reminderat);
+        $updated = $DB->get_record(payment_processor::TABLE, ['id' => $record->id]);
+        $this->assertNotEmpty($updated->reminderat);
     }
 
     /**
@@ -804,7 +804,7 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_o_ciclo_novo_copia_os_termos_do_anterior(): void {
         $this->resetAfterTest();
 
-        $anterior = $this->linha([
+        $previous = $this->row([
             'subscriptionid' => 'mdlsub-2-1-termos',
             'cycles' => 1,
             'feepercent' => 12.5,
@@ -815,20 +815,20 @@ final class payment_processor_test extends \advanced_testcase {
             'paymentmethod' => 'master',
         ]);
 
-        $novo = payment_processor::build_next_cycle($anterior);
+        $new = payment_processor::build_next_cycle($previous);
 
-        $this->assertSame(2, $novo->cycles);
-        $this->assertEquals(12.5, $novo->feepercent);
-        $this->assertSame('company', $novo->feesource);
-        $this->assertSame('mdlsub-2-1-termos', $novo->subscriptionid);
-        $this->assertSame('cus_1', $novo->mpcustomerid);
-        $this->assertSame('card_1', $novo->mpcardid);
-        $this->assertSame('pending', $novo->status);
-        $this->assertEmpty($novo->mppaymentid ?? '');
-        $this->assertEmpty($novo->paymentid ?? null);
+        $this->assertSame(2, $new->cycles);
+        $this->assertEquals(12.5, $new->feepercent);
+        $this->assertSame('company', $new->feesource);
+        $this->assertSame('mdlsub-2-1-termos', $new->subscriptionid);
+        $this->assertSame('cus_1', $new->mpcustomerid);
+        $this->assertSame('card_1', $new->mpcardid);
+        $this->assertSame('pending', $new->status);
+        $this->assertEmpty($new->mppaymentid ?? '');
+        $this->assertEmpty($new->paymentid ?? null);
         $this->assertNotSame(
-            $anterior->externalreference,
-            $novo->externalreference,
+            $previous->externalreference,
+            $new->externalreference,
             'cada ciclo precisa da propria referencia, senao o webhook nao sabe qual linha e'
         );
     }
@@ -847,15 +847,15 @@ final class payment_processor_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $json = json_encode(['cpf' => '19119119100', 'city' => 'Sao Paulo']);
-        $anterior = $this->linha([
+        $previous = $this->row([
             'subscriptionid' => 'mdlsub-2-1-payerinfo',
             'paymentmethod' => 'pix',
             'payerinfo' => $json,
         ]);
 
-        $novo = payment_processor::build_next_cycle($anterior);
+        $new = payment_processor::build_next_cycle($previous);
 
-        $this->assertSame($json, $novo->payerinfo);
+        $this->assertSame($json, $new->payerinfo);
     }
 
     /**
@@ -873,7 +873,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_sem_bandeira_o_campo_nao_vai_no_corpo(): void {
-        $corpo = payment_processor::build_cycle_payment_body(
+        $body = payment_processor::build_cycle_payment_body(
             5.0,
             'BRL',
             'ref',
@@ -884,7 +884,7 @@ final class payment_processor_test extends \advanced_testcase {
             'Assinatura'
         );
 
-        $this->assertArrayNotHasKey('payment_method_id', $corpo);
+        $this->assertArrayNotHasKey('payment_method_id', $body);
     }
 
     /**
@@ -893,7 +893,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_com_bandeira_conhecida_o_campo_vai(): void {
-        $corpo = payment_processor::build_cycle_payment_body(
+        $body = payment_processor::build_cycle_payment_body(
             5.0,
             'BRL',
             'ref',
@@ -904,7 +904,7 @@ final class payment_processor_test extends \advanced_testcase {
             'Assinatura'
         );
 
-        $this->assertSame('master', $corpo['payment_method_id']);
+        $this->assertSame('master', $body['payment_method_id']);
     }
 
     /**
@@ -916,16 +916,16 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_pending_invoice_sem_linha_no_cartao(): void {
         $this->resetAfterTest();
 
-        $linha = $this->linha([
+        $record = $this->row([
             'subscriptionid' => 'mdlsub-1-2-invoice1',
             'status' => 'pending',
             'mppaymentid' => '999',
             'paymentmethod' => 'master',
         ]);
 
-        $fatura = payment_processor::pending_invoice($linha);
+        $invoice = payment_processor::pending_invoice($record);
 
-        $this->assertSame('', $fatura['line']);
+        $this->assertSame('', $invoice['line']);
     }
 
     /**
@@ -938,17 +938,17 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_pending_invoice_manda_ciclo_de_cartao_para_confirmar_cvv(): void {
         $this->resetAfterTest();
 
-        $linha = $this->linha([
+        $record = $this->row([
             'subscriptionid' => 'mdlsub-1-2-invoice5',
             'status' => 'pending',
             'mppaymentid' => null,
             'paymentmethod' => 'visa',
         ]);
 
-        $fatura = payment_processor::pending_invoice($linha);
+        $invoice = payment_processor::pending_invoice($record);
 
-        $this->assertStringContainsString('confirm_cycle.php', $fatura['url']);
-        $this->assertStringNotContainsString('subscribe.php', $fatura['url']);
+        $this->assertStringContainsString('confirm_cycle.php', $invoice['url']);
+        $this->assertStringNotContainsString('subscribe.php', $invoice['url']);
     }
 
     /**
@@ -960,16 +960,16 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_pending_invoice_sem_pagamento_ainda_nao_consulta(): void {
         $this->resetAfterTest();
 
-        $linha = $this->linha([
+        $record = $this->row([
             'subscriptionid' => 'mdlsub-1-2-invoice2',
             'status' => 'pending',
             'paymentmethod' => 'pix',
             'mppaymentid' => null,
         ]);
 
-        $fatura = payment_processor::pending_invoice($linha);
+        $invoice = payment_processor::pending_invoice($record);
 
-        $this->assertSame('', $fatura['line']);
+        $this->assertSame('', $invoice['line']);
     }
 
     /**
@@ -980,10 +980,10 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_pending_invoice_nula_quando_aprovada_ou_cancelada(): void {
         $this->resetAfterTest();
 
-        $aprovada = $this->linha(['subscriptionid' => 'mdlsub-1-2-invoice3', 'status' => 'approved']);
+        $aprovada = $this->row(['subscriptionid' => 'mdlsub-1-2-invoice3', 'status' => 'approved']);
         $this->assertNull(payment_processor::pending_invoice($aprovada));
 
-        $cancelada = $this->linha([
+        $cancelada = $this->row([
             'subscriptionid' => 'mdlsub-1-2-invoice4',
             'status' => 'pending',
             'subscriptionstatus' => 'cancelled',
@@ -1001,16 +1001,16 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_so_troca_para_cartao_quem_paga_por_fatura(): void {
         $this->resetAfterTest();
 
-        $pix = $this->linha(['subscriptionid' => 'mdlsub-1-2-switch1', 'paymentmethod' => 'pix']);
+        $pix = $this->row(['subscriptionid' => 'mdlsub-1-2-switch1', 'paymentmethod' => 'pix']);
         $this->assertTrue(payment_processor::can_switch_to_card($pix));
 
-        $cartao = $this->linha(['subscriptionid' => 'mdlsub-1-2-switch2', 'paymentmethod' => 'visa']);
+        $cartao = $this->row(['subscriptionid' => 'mdlsub-1-2-switch2', 'paymentmethod' => 'visa']);
         $this->assertFalse(
             payment_processor::can_switch_to_card($cartao),
             'quem ja paga com cartao nao tem para onde trocar'
         );
 
-        $cancelada = $this->linha([
+        $cancelada = $this->row([
             'subscriptionid' => 'mdlsub-1-2-switch3',
             'paymentmethod' => 'pix',
             'subscriptionstatus' => 'cancelled',
@@ -1035,7 +1035,7 @@ final class payment_processor_test extends \advanced_testcase {
 
         set_config('methodcard', 0, 'paygw_mercadopago');
 
-        $pix = $this->linha(['subscriptionid' => 'mdlsub-1-2-switch4', 'paymentmethod' => 'pix']);
+        $pix = $this->row(['subscriptionid' => 'mdlsub-1-2-switch4', 'paymentmethod' => 'pix']);
 
         $this->assertFalse(
             payment_processor::can_switch_to_card($pix),
@@ -1053,13 +1053,13 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_payment_method_label_distingue_os_tres_meios(): void {
         $this->resetAfterTest();
 
-        $pix = $this->linha(['subscriptionid' => 'mdlsub-1-2-label1', 'paymentmethod' => 'pix']);
+        $pix = $this->row(['subscriptionid' => 'mdlsub-1-2-label1', 'paymentmethod' => 'pix']);
         $this->assertSame(
             get_string('subscribepix', 'paygw_mercadopago'),
             payment_processor::payment_method_label($pix)
         );
 
-        $boleto = $this->linha(['subscriptionid' => 'mdlsub-1-2-label2', 'paymentmethod' => 'bolbradesco']);
+        $boleto = $this->row(['subscriptionid' => 'mdlsub-1-2-label2', 'paymentmethod' => 'bolbradesco']);
         $this->assertSame(
             get_string('subscribeboleto', 'paygw_mercadopago'),
             payment_processor::payment_method_label($boleto)
@@ -1067,7 +1067,7 @@ final class payment_processor_test extends \advanced_testcase {
 
         // Qualquer bandeira de cartao (visa, master, elo...) cai no mesmo
         // rotulo generico: a bandeira nao muda nada que a tela decida.
-        $cartao = $this->linha(['subscriptionid' => 'mdlsub-1-2-label3', 'paymentmethod' => 'visa']);
+        $cartao = $this->row(['subscriptionid' => 'mdlsub-1-2-label3', 'paymentmethod' => 'visa']);
         $this->assertSame(
             get_string('subscribecard', 'paygw_mercadopago'),
             payment_processor::payment_method_label($cartao)
@@ -1084,15 +1084,15 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_so_confirma_com_cvv_ciclo_de_cartao_nao_cobrado(): void {
         $this->resetAfterTest();
 
-        $pendente = $this->linha([
+        $pending = $this->row([
             'subscriptionid' => 'mdlsub-1-2-confirm1',
             'status' => 'pending',
             'mppaymentid' => null,
             'paymentmethod' => 'visa',
         ]);
-        $this->assertTrue(payment_processor::can_confirm_card_cycle($pendente));
+        $this->assertTrue(payment_processor::can_confirm_card_cycle($pending));
 
-        $jacobrado = $this->linha([
+        $jacobrado = $this->row([
             'subscriptionid' => 'mdlsub-1-2-confirm2',
             'status' => 'approved',
             'mppaymentid' => '123',
@@ -1103,7 +1103,7 @@ final class payment_processor_test extends \advanced_testcase {
             'ciclo ja pago nao pode ser confirmado de novo'
         );
 
-        $pix = $this->linha([
+        $pix = $this->row([
             'subscriptionid' => 'mdlsub-1-2-confirm3',
             'status' => 'pending',
             'mppaymentid' => null,
@@ -1114,7 +1114,7 @@ final class payment_processor_test extends \advanced_testcase {
             'Pix/boleto nao tem CVV para confirmar'
         );
 
-        $semcartao = $this->linha([
+        $semcartao = $this->row([
             'subscriptionid' => 'mdlsub-1-2-confirm4',
             'status' => 'pending',
             'mppaymentid' => null,

@@ -91,9 +91,9 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
     var submitWith = function(form, token, method, issuer) {
         form.querySelector('[name="cardtoken"]').value = token;
         form.querySelector('[name="paymentmethod"]').value = method || '';
-        var campoemissor = form.querySelector('[name="issuerid"]');
-        if (campoemissor) {
-            campoemissor.value = issuer || '';
+        var issuerfield = form.querySelector('[name="issuerid"]');
+        if (issuerfield) {
+            issuerfield.value = issuer || '';
         }
         form.submit();
     };
@@ -134,14 +134,14 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
         // "tente de novo", e tentar de novo nao muda nada quando a causa e de
         // configuracao. Quem esta provando o fluxo precisa da causa, e quem
         // nao tem devtools aberto tambem.
-        var detalhe = '';
+        var detail = '';
         if (error) {
-            detalhe = error.message || error.cause || error.type || '';
-            if (!detalhe && typeof error === 'object') {
+            detail = error.message || error.cause || error.type || '';
+            if (!detail && typeof error === 'object') {
                 try {
-                    detalhe = JSON.stringify(error);
+                    detail = JSON.stringify(error);
                 } catch (e) {
-                    detalhe = String(error);
+                    detail = String(error);
                 }
             }
         }
@@ -156,12 +156,12 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
 
         Str.get_string('errorcardtokenmissing', 'paygw_mercadopago')
             .then(function(message) {
-                var texto = detalhe ? message + ' [' + detalhe + ']' : message;
-                Notification.addNotification({message: texto, type: 'error'});
+                var text = detail ? message + ' [' + detail + ']' : message;
+                Notification.addNotification({message: text, type: 'error'});
                 if (area) {
-                    area.textContent = texto;
+                    area.textContent = text;
                 }
-                return texto;
+                return text;
             })
             .catch(Notification.exception);
 
@@ -249,7 +249,7 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
         // A cor sai do computado da propria pagina, e nao de um valor fixo:
         // assim acompanha o alternador claro/escuro do tema sem saber que ele
         // existe.
-        var estilo = {
+        var style = {
             color: window.getComputedStyle(form).color || '#212529',
             fontSize: '16px',
             placeholderColor: '#9aa0a6'
@@ -258,19 +258,19 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
         try {
             mp.fields.create('cardNumber', {
                 placeholder: '0000 0000 0000 0000',
-                style: estilo
+                style: style
             })
                 .mount('mp-field-number')
-                .on('binChange', function(dados) {
-                    bin = (dados && dados.bin) || '';
+                .on('binChange', function(data) {
+                    bin = (data && data.bin) || '';
                 });
             mp.fields.create('expirationDate', {
                 placeholder: 'MM/AA',
-                style: estilo
+                style: style
             }).mount('mp-field-expiration');
             mp.fields.create('securityCode', {
                 placeholder: 'CVV',
-                style: estilo
+                style: style
             }).mount('mp-field-security');
         } catch (error) {
             fail(form, error);
@@ -283,15 +283,15 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
         if (doc) {
             doc.addEventListener('input', function() {
                 var d = doc.value.replace(/\D/g, '').slice(0, 11);
-                var saida = d;
+                var output = d;
                 if (d.length > 9) {
-                    saida = d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9);
+                    output = d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9);
                 } else if (d.length > 6) {
-                    saida = d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6);
+                    output = d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6);
                 } else if (d.length > 3) {
-                    saida = d.slice(0, 3) + '.' + d.slice(3);
+                    output = d.slice(0, 3) + '.' + d.slice(3);
                 }
-                doc.value = saida;
+                doc.value = output;
             });
         }
 
@@ -299,13 +299,13 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
             event.preventDefault();
 
             var holder = form.querySelector('#mp-holdername');
-            var nome = holder ? holder.value.trim() : '';
-            var documento = doc ? doc.value.replace(/\D/g, '') : '';
+            var name = holder ? holder.value.trim() : '';
+            var cpf = doc ? doc.value.replace(/\D/g, '') : '';
 
             // Validado AQUI porque o erro do Mercado Pago para nome vazio nao
             // diz que e o nome: ele volta como falha generica de tokenizacao,
             // e o aluno fica tentando trocar de cartao.
-            if (nome === '' || documento === '') {
+            if (name === '' || cpf === '') {
                 fail(form, new Error('Informe o nome impresso no cartao e o CPF do titular'));
                 return;
             }
@@ -325,7 +325,7 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
             }
 
             mp.getPaymentMethods({bin: bin})
-                .then(function(resposta) {
+                .then(function(response) {
                     // O PRIMEIRO RESULTADO NAO E, NECESSARIAMENTE, UM CARTAO.
                     //
                     // Medido em 16/09/2026: para um BIN comum a varios emissores
@@ -334,18 +334,18 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
                     // "consumer_credits" - que o /customers/{id}/cards recusa
                     // com "400 invalid parameter in payment method", porque nao
                     // e bandeira de cartao nenhuma.
-                    var metodos = (resposta && resposta.results) || [];
-                    var cartoes = metodos.filter(function(metodo) {
-                        return metodo && (
-                            metodo.payment_type_id === 'credit_card' ||
-                            metodo.payment_type_id === 'debit_card'
+                    var methods = (response && response.results) || [];
+                    var cards = methods.filter(function(method) {
+                        return method && (
+                            method.payment_type_id === 'credit_card' ||
+                            method.payment_type_id === 'debit_card'
                         );
                     });
-                    if (!cartoes.length) {
+                    if (!cards.length) {
                         throw new Error('Cartao nao reconhecido pelo Mercado Pago');
                     }
 
-                    var bandeira = cartoes[0].id;
+                    var brand = cards[0].id;
 
                     // O EMISSOR NAO SAI DA BUSCA POR BIN - medido em
                     // 16/09/2026, uma compra real com a bandeira certa (visa)
@@ -356,19 +356,19 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
                     // do site inteiro; o endpoint que resolve o emissor de
                     // VERDADE para aquele BIN e outro, e o SDK o expoe como
                     // mp.getIssuers().
-                    return mp.getIssuers({bin: bin, paymentMethodId: bandeira})
-                        .then(function(emissores) {
-                            var emissor = (emissores && emissores[0] && emissores[0].id) || '';
+                    return mp.getIssuers({bin: bin, paymentMethodId: brand})
+                        .then(function(issuers) {
+                            var issuer = (issuers && issuers[0] && issuers[0].id) || '';
 
                             return mp.createCardToken({
-                                cardholderName: nome,
+                                cardholderName: name,
                                 identificationType: 'CPF',
-                                identificationNumber: documento
+                                identificationNumber: cpf
                             }).then(function(token) {
                                 if (!token || !token.id) {
                                     throw new Error('O Mercado Pago nao devolveu token para este cartao');
                                 }
-                                submitWith(form, token.id, bandeira, emissor);
+                                submitWith(form, token.id, brand, issuer);
                                 return token;
                             });
                         });
@@ -395,7 +395,7 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
      * @param {string} cardid Id do cartao guardado no Mercado Pago
      */
     var mountCvvOnly = function(mp, form, cardid) {
-        var estilo = {
+        var style = {
             color: window.getComputedStyle(form).color || '#212529',
             fontSize: '16px',
             placeholderColor: '#9aa0a6'
@@ -404,7 +404,7 @@ define(['core/notification', 'core/str'], function(Notification, Str) {
         try {
             mp.fields.create('securityCode', {
                 placeholder: 'CVV',
-                style: estilo
+                style: style
             }).mount('mp-field-cvv');
         } catch (error) {
             fail(form, error);

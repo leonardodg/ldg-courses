@@ -98,15 +98,15 @@ class card_capture {
      * @return string Um dos MODES
      */
     public static function current(int $accountid = 0): string {
-        $configurado = self::configured_mode($accountid);
+        $configured = self::configured_mode($accountid);
 
         // Inclui o valor vazio e o desconhecido: qualquer duvida cai no modo
         // que nao toca no cartao.
-        if (!in_array($configurado, self::MODES, true)) {
+        if (!in_array($configured, self::MODES, true)) {
             return self::MODE_BRICK;
         }
 
-        return self::mode_is_allowed($configurado) ? $configurado : self::MODE_BRICK;
+        return self::mode_is_allowed($configured) ? $configured : self::MODE_BRICK;
     }
 
     /**
@@ -118,9 +118,9 @@ class card_capture {
      */
     protected static function configured_mode(int $accountid): string {
         if ($accountid > 0) {
-            $daconta = (string) (self::account_config($accountid)['cardcapture'] ?? '');
-            if ($daconta !== '') {
-                return $daconta;
+            $fromaccount = (string) (self::account_config($accountid)['cardcapture'] ?? '');
+            if ($fromaccount !== '') {
+                return $fromaccount;
             }
         }
 
@@ -147,19 +147,19 @@ class card_capture {
      * (settings.php) e por conta (gateway.php), para a lista nao poder
      * divergir entre as duas telas.
      *
-     * @param bool $comopcaopadrao Inclui uma opcao vazia = "usar o padrao do plugin"
+     * @param bool $withdefaultoption Inclui uma opcao vazia = "usar o padrao do plugin"
      * @return array<string,string>
      */
-    public static function form_options(bool $comopcaopadrao = false): array {
-        $opcoes = $comopcaopadrao ? ['' => get_string('cardcaptureusesite', 'paygw_mercadopago')] : [];
+    public static function form_options(bool $withdefaultoption = false): array {
+        $options = $withdefaultoption ? ['' => get_string('cardcaptureusesite', 'paygw_mercadopago')] : [];
 
-        foreach (self::MODES as $modo) {
-            $opcoes[$modo] = get_string('cardcapture' . $modo, 'paygw_mercadopago', (object) [
-                'scope' => self::scope_of($modo),
+        foreach (self::MODES as $mode) {
+            $options[$mode] = get_string('cardcapture' . $mode, 'paygw_mercadopago', (object) [
+                'scope' => self::scope_of($mode),
             ]);
         }
 
-        return $opcoes;
+        return $options;
     }
 
     /**
@@ -219,8 +219,8 @@ class card_capture {
      * @return bool
      */
     public static function is_blocked(int $accountid = 0): bool {
-        $configurado = self::configured_mode($accountid);
+        $configured = self::configured_mode($accountid);
 
-        return in_array($configurado, self::MODES, true) && !self::mode_is_allowed($configurado);
+        return in_array($configured, self::MODES, true) && !self::mode_is_allowed($configured);
     }
 }

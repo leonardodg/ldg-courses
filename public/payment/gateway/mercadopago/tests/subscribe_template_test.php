@@ -38,10 +38,10 @@ final class subscribe_template_test extends \advanced_testcase {
     /**
      * Contexto minimo da pagina, num modo de cada vez.
      *
-     * @param string $modo
+     * @param string $mode
      * @return array
      */
-    protected function contexto(string $modo): array {
+    protected function context(string $mode): array {
         return [
             'formaction' => 'https://exemplo.test/payment/gateway/mercadopago/subscribe.php?ref=mdlsub-1-2-abc',
             'sesskey' => 'abc123',
@@ -54,9 +54,9 @@ final class subscribe_template_test extends \advanced_testcase {
             'cardurl' => '#',
             'pixurl' => '#',
             'boletourl' => '#',
-            'brick' => $modo === card_capture::MODE_BRICK,
-            'direct' => $modo === card_capture::MODE_DIRECT,
-            'native' => $modo === card_capture::MODE_NATIVE,
+            'brick' => $mode === card_capture::MODE_BRICK,
+            'direct' => $mode === card_capture::MODE_DIRECT,
+            'native' => $mode === card_capture::MODE_NATIVE,
         ];
     }
 
@@ -74,10 +74,10 @@ final class subscribe_template_test extends \advanced_testcase {
         // teste passa verificando quase nada.
         $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
 
-        foreach (card_capture::MODES as $modo) {
-            $html = $output->render_from_template('paygw_mercadopago/subscribe', $this->contexto($modo));
+        foreach (card_capture::MODES as $mode) {
+            $html = $output->render_from_template('paygw_mercadopago/subscribe', $this->context($mode));
 
-            $this->assertStringContainsString('name="cardtoken"', $html, "modo $modo");
+            $this->assertStringContainsString('name="cardtoken"', $html, "modo $mode");
         }
     }
 
@@ -101,17 +101,17 @@ final class subscribe_template_test extends \advanced_testcase {
         $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
         $html = $output->render_from_template(
             'paygw_mercadopago/subscribe',
-            $this->contexto(card_capture::MODE_BRICK)
+            $this->context(card_capture::MODE_BRICK)
         );
 
-        $posbrick = strpos($html, 'id="mp-card-brick"');
-        $posform = strpos($html, '<form');
+        $brickpos = strpos($html, 'id="mp-card-brick"');
+        $formpos = strpos($html, '<form');
 
-        $this->assertNotFalse($posbrick);
-        $this->assertNotFalse($posform);
+        $this->assertNotFalse($brickpos);
+        $this->assertNotFalse($formpos);
         $this->assertLessThan(
-            $posform,
-            $posbrick,
+            $formpos,
+            $brickpos,
             'o Brick precisa vir ANTES do nosso <form>, e nao dentro dele'
         );
 
@@ -134,9 +134,9 @@ final class subscribe_template_test extends \advanced_testcase {
 
         $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
 
-        foreach ([card_capture::MODE_DIRECT, card_capture::MODE_NATIVE] as $modo) {
-            $html = $output->render_from_template('paygw_mercadopago/subscribe', $this->contexto($modo));
-            $this->assertStringContainsString('data-action="mp-pay"', $html, "modo $modo");
+        foreach ([card_capture::MODE_DIRECT, card_capture::MODE_NATIVE] as $mode) {
+            $html = $output->render_from_template('paygw_mercadopago/subscribe', $this->context($mode));
+            $this->assertStringContainsString('data-action="mp-pay"', $html, "modo $mode");
         }
     }
 
@@ -153,7 +153,7 @@ final class subscribe_template_test extends \advanced_testcase {
         $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
         $html = $output->render_from_template(
             'paygw_mercadopago/subscribe',
-            $this->contexto(card_capture::MODE_BRICK)
+            $this->context(card_capture::MODE_BRICK)
         );
 
         $this->assertStringNotContainsString('@template', $html);
@@ -179,15 +179,15 @@ final class subscribe_template_test extends \advanced_testcase {
 
         $brick = $output->render_from_template(
             'paygw_mercadopago/subscribe',
-            $this->contexto(card_capture::MODE_BRICK)
+            $this->context(card_capture::MODE_BRICK)
         );
         $direct = $output->render_from_template(
             'paygw_mercadopago/subscribe',
-            $this->contexto(card_capture::MODE_DIRECT)
+            $this->context(card_capture::MODE_DIRECT)
         );
         $native = $output->render_from_template(
             'paygw_mercadopago/subscribe',
-            $this->contexto(card_capture::MODE_NATIVE)
+            $this->context(card_capture::MODE_NATIVE)
         );
 
         $this->assertStringNotContainsString('name="cardnumber"', $brick);
@@ -215,7 +215,7 @@ final class subscribe_template_test extends \advanced_testcase {
         $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
 
         $pix = $output->render_from_template('paygw_mercadopago/subscribe', array_merge(
-            $this->contexto(card_capture::MODE_BRICK),
+            $this->context(card_capture::MODE_BRICK),
             ['methodcard' => false, 'methodpix' => true]
         ));
         $this->assertStringContainsString('name="payerdoc"', $pix);
@@ -223,7 +223,7 @@ final class subscribe_template_test extends \advanced_testcase {
         $this->assertStringNotContainsString('name="cardtoken"', $pix, 'sem cartao no modo Pix');
 
         $boleto = $output->render_from_template('paygw_mercadopago/subscribe', array_merge(
-            $this->contexto(card_capture::MODE_BRICK),
+            $this->context(card_capture::MODE_BRICK),
             ['methodcard' => false, 'methodboleto' => true]
         ));
         $this->assertStringContainsString('name="payerzipcode"', $boleto, 'boleto exige CEP');
