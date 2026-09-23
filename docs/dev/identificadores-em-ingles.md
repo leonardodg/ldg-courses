@@ -72,7 +72,14 @@ está tocando por outro motivo, nasce com identificador em inglês.
   `phpunit` (86 testes, 248 asserções, 1 skip pré-existente) e `grunt`
   (eslint dos dois módulos AMD, build regenerado) verdes depois da
   conversão.
-- Os outros 6 plugins seguem pendentes.
+- **`theme_ldg`: convertido em 23/09/2026.** 22 arquivos, 6 na estimativa
+  original — a varredura real achou só um caso a mais
+  (`classes/privacy/provider.php`: `$valor`/`$sufixo` → `$value`/`$suffix`,
+  repetido em dois métodos). Quase todo o plugin já nascia com identificador
+  em inglês; os módulos AMD (`accessibilitybar.js`, `colormode.js`,
+  `navmenu.js`) já estavam limpos. `phpcs` (22 arquivos) e `phpunit` (15
+  testes, 30 asserções) verdes. Sem mudança em AMD, sem `grunt` necessário.
+- Os outros 5 plugins seguem pendentes.
 
 ## Tamanho estimado, por plugin
 
@@ -95,9 +102,9 @@ número real de arquivos e de identificadores é maior.
 | `enrol_marketplace` | 11 | 1.095 | 1 |
 | `availability_marketplace` | 8 | 822 | 1 |
 | `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
-| `theme_ldg` | 22 | 3.289 | 6 |
+| `theme_ldg` | 22 | 3.289 | ~~6~~ 0 (convertido) |
 | `mod_ldgvideo` | 31 | 3.400 | ~~8~~ 0 (convertido) |
-| **Total** | **333** | **63.695** | **30 restantes** (≈9% dos arquivos, por baixo) |
+| **Total** | **333** | **63.695** | **24 restantes** (≈7% dos arquivos, por baixo) |
 
 `format_ldg` e `paygw_mercadopago` concentram a maior densidade — ambos
 plugins antigos, com bastante lógica de negócio nomeada em português desde o

@@ -96,8 +96,8 @@ class provider implements metadata_provider, user_preference_provider {
      * @return collection
      */
     public static function get_metadata(collection $items): collection {
-        foreach (self::preferences() as $name => $sufixo) {
-            $items->add_user_preference($name, 'privacy:metadata:preference:' . $sufixo);
+        foreach (self::preferences() as $name => $suffix) {
+            $items->add_user_preference($name, 'privacy:metadata:preference:' . $suffix);
         }
 
         return $items;
@@ -115,18 +115,18 @@ class provider implements metadata_provider, user_preference_provider {
      * @return void
      */
     public static function export_user_preferences(int $userid) {
-        foreach (self::preferences() as $name => $sufixo) {
-            $valor = get_user_preferences($name, null, $userid);
+        foreach (self::preferences() as $name => $suffix) {
+            $value = get_user_preferences($name, null, $userid);
 
-            if ($valor === null) {
+            if ($value === null) {
                 continue;
             }
 
             writer::export_user_preference(
                 'theme_ldg',
                 $name,
-                $valor,
-                get_string('privacy:preference:' . $sufixo, 'theme_ldg', $valor)
+                $value,
+                get_string('privacy:preference:' . $suffix, 'theme_ldg', $value)
             );
         }
     }
