@@ -63,12 +63,12 @@ class backup_format_ldg_plugin extends backup_format_plugin {
 
         $wrapper = new backup_nested_element($this->get_recommended_name());
 
-        $aula = new backup_nested_element('lesson', ['id'], ['duration']);
+        $lesson = new backup_nested_element('lesson', ['id'], ['duration']);
 
         $plugin->add_child($wrapper);
-        $wrapper->add_child($aula);
+        $wrapper->add_child($lesson);
 
-        $aula->set_source_table('format_ldg_lesson', ['cmid' => backup::VAR_MODID]);
+        $lesson->set_source_table('format_ldg_lesson', ['cmid' => backup::VAR_MODID]);
 
         return $plugin;
     }

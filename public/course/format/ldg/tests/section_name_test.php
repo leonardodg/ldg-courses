@@ -61,7 +61,7 @@ final class section_name_test extends \advanced_testcase {
      * @param int $num
      * @return \stdClass
      */
-    protected function registro_cru(int $num): \stdClass {
+    protected function raw_record(int $num): \stdClass {
         global $DB;
 
         return $DB->get_record('course_sections', [
@@ -84,11 +84,11 @@ final class section_name_test extends \advanced_testcase {
     public function test_registro_cru_do_banco(): void {
         $this->assertSame(
             get_string('section0name', 'format_ldg'),
-            $this->format->get_default_section_name($this->registro_cru(0))
+            $this->format->get_default_section_name($this->raw_record(0))
         );
         $this->assertSame(
             get_string('sectionname', 'format_ldg') . ' 1',
-            $this->format->get_default_section_name($this->registro_cru(1))
+            $this->format->get_default_section_name($this->raw_record(1))
         );
     }
 
@@ -132,7 +132,7 @@ final class section_name_test extends \advanced_testcase {
      * @return void
      */
     public function test_secao_zero_tem_nome_proprio(): void {
-        $zero = $this->format->get_default_section_name($this->registro_cru(0));
+        $zero = $this->format->get_default_section_name($this->raw_record(0));
 
         $this->assertStringNotContainsString('0', $zero);
         $this->assertNotSame(
@@ -149,9 +149,9 @@ final class section_name_test extends \advanced_testcase {
     public function test_nome_proprio_vence_o_padrao(): void {
         global $DB;
 
-        $registro = $this->registro_cru(1);
-        $registro->name = 'Fundamentos';
-        $DB->update_record('course_sections', $registro);
+        $record = $this->raw_record(1);
+        $record->name = 'Fundamentos';
+        $DB->update_record('course_sections', $record);
         rebuild_course_cache($this->course->id, true);
 
         $format = course_get_format($this->course);

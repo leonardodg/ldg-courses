@@ -45,18 +45,18 @@ final class lessonviewer_test extends \advanced_testcase {
      * @param array $extra Campos extras da aula bloqueada.
      * @return array [curso, aula bloqueada, aluno]
      */
-    private function curso_com_bloqueada(array $extra = []): array {
+    private function course_with_locked(array $extra = []): array {
         global $CFG;
 
         $CFG->enableavailability = 1;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $aluno = $gerador->create_user();
-        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id, 'student');
 
-        $bloqueada = $gerador->create_module('page', [
-            'course' => $curso->id,
+        $locked = $generator->create_module('page', [
+            'course' => $course->id,
             'section' => 1,
             'name' => 'Aula trancada',
             'availability' => json_encode((object) [
@@ -66,7 +66,7 @@ final class lessonviewer_test extends \advanced_testcase {
             ]),
         ] + $extra);
 
-        return [$curso, $bloqueada, $aluno];
+        return [$course, $locked, $student];
     }
 
     /**
@@ -78,19 +78,19 @@ final class lessonviewer_test extends \advanced_testcase {
         global $PAGE;
 
         $this->resetAfterTest();
-        [$curso, $bloqueada, $aluno] = $this->curso_com_bloqueada();
-        $this->setUser($aluno);
+        [$course, $locked, $student] = $this->course_with_locked();
+        $this->setUser($student);
 
-        $format = course_get_format($curso);
-        $cm = $format->get_modinfo()->get_cm($bloqueada->cmid);
-        $visualizador = new lessonviewer($format, $cm);
-        $dados = $visualizador->export_for_template($PAGE->get_renderer('core'));
+        $format = course_get_format($course);
+        $cm = $format->get_modinfo()->get_cm($locked->cmid);
+        $viewer = new lessonviewer($format, $cm);
+        $data = $viewer->export_for_template($PAGE->get_renderer('core'));
 
-        $this->assertTrue($dados->haslesson);
-        $this->assertTrue($dados->locked);
-        $this->assertFalse($dados->hasframe, 'Conteudo bloqueado nao pode ir para o iframe.');
-        $this->assertNotEmpty($dados->lockinfo, 'O cadeado diz POR QUE esta fechado.');
-        $this->assertArrayNotHasKey('frameurl', (array) $dados);
+        $this->assertTrue($data->haslesson);
+        $this->assertTrue($data->locked);
+        $this->assertFalse($data->hasframe, 'Conteudo bloqueado nao pode ir para o iframe.');
+        $this->assertNotEmpty($data->lockinfo, 'O cadeado diz POR QUE esta fechado.');
+        $this->assertArrayNotHasKey('frameurl', (array) $data);
     }
 
     /**
@@ -102,23 +102,23 @@ final class lessonviewer_test extends \advanced_testcase {
         global $PAGE;
 
         $this->resetAfterTest();
-        [$curso, , $aluno] = $this->curso_com_bloqueada();
+        [$course, , $student] = $this->course_with_locked();
         $this->setAdminUser();
 
-        $gerador = $this->getDataGenerator();
-        $livre = $gerador->create_module('page', [
-            'course' => $curso->id, 'section' => 1, 'name' => 'Aula livre',
+        $generator = $this->getDataGenerator();
+        $free = $generator->create_module('page', [
+            'course' => $course->id, 'section' => 1, 'name' => 'Aula livre',
         ]);
 
         // Admin ve o bloqueado tambem; o que importa e a aula livre.
-        $format = course_get_format($curso);
-        $cm = $format->get_modinfo()->get_cm($livre->cmid);
-        $dados = (new lessonviewer($format, $cm))->export_for_template($PAGE->get_renderer('core'));
+        $format = course_get_format($course);
+        $cm = $format->get_modinfo()->get_cm($free->cmid);
+        $data = (new lessonviewer($format, $cm))->export_for_template($PAGE->get_renderer('core'));
 
-        $this->assertTrue($dados->haslesson);
-        $this->assertFalse($dados->locked);
-        $this->assertTrue($dados->hasframe);
-        $this->assertStringContainsString('ldgembed=1', $dados->frameurl);
+        $this->assertTrue($data->haslesson);
+        $this->assertFalse($data->locked);
+        $this->assertTrue($data->hasframe);
+        $this->assertStringContainsString('ldgembed=1', $data->frameurl);
     }
 
     /**
@@ -132,10 +132,10 @@ final class lessonviewer_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $curso = $this->getDataGenerator()->create_course(['format' => 'ldg']);
-        $format = course_get_format($curso);
-        $dados = (new lessonviewer($format, null))->export_for_template($PAGE->get_renderer('core'));
+        $course = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $format = course_get_format($course);
+        $data = (new lessonviewer($format, null))->export_for_template($PAGE->get_renderer('core'));
 
-        $this->assertFalse($dados->haslesson);
+        $this->assertFalse($data->haslesson);
     }
 }

@@ -32,10 +32,10 @@
 import {setUserPreference} from 'core_user/repository';
 
 /** @var {string} A preferencia guarda os nomes das laterais escondidas. */
-const PREFERENCIA = 'format_ldg_aside_hidden';
+const PREFERENCE = 'format_ldg_aside_hidden';
 
 /** @var {string} Classe posta no portal para cada lateral escondida. */
-const CLASSE = 'ldg-portal--hide-';
+const CLASSNAME = 'ldg-portal--hide-';
 
 /**
  * As laterais escondidas agora, lidas do proprio DOM.
@@ -47,36 +47,36 @@ const CLASSE = 'ldg-portal--hide-';
  * @param {HTMLElement} portal
  * @returns {string[]}
  */
-const escondidas = (portal) => {
-    return ['nav', 'index'].filter((qual) => portal.classList.contains(CLASSE + qual));
+const hidden = (portal) => {
+    return ['nav', 'index'].filter((which) => portal.classList.contains(CLASSNAME + which));
 };
 
 /**
  * Liga o botao de uma lateral.
  *
  * @param {HTMLElement} portal
- * @param {HTMLElement} botao
+ * @param {HTMLElement} button
  */
-const ligar = (portal, botao) => {
-    const qual = botao.dataset.ldgAside;
+const bind = (portal, button) => {
+    const which = button.dataset.ldgAside;
 
-    if (!qual) {
+    if (!which) {
         return;
     }
 
-    botao.addEventListener('click', () => {
-        const some = portal.classList.toggle(CLASSE + qual);
+    button.addEventListener('click', () => {
+        const isHidden = portal.classList.toggle(CLASSNAME + which);
 
         // aria-expanded e o que diz ao leitor de tela o que aconteceu. Sem ele o
         // botao alterna em silencio, e quem nao ve a tela nao sabe do que se
         // trata.
-        botao.setAttribute('aria-expanded', some ? 'false' : 'true');
+        button.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
 
         // Falha de gravacao NAO desfaz o que o aluno acabou de fazer: ele pediu
         // para esconder, e a tela obedece. O que se perde e a memoria disso na
         // proxima carga, e isso e melhor do que a lateral voltar sozinha no meio
         // do clique.
-        setUserPreference(PREFERENCIA, escondidas(portal).join('-')).catch(() => {
+        setUserPreference(PREFERENCE, hidden(portal).join('-')).catch(() => {
             window.console.warn('format_ldg: nao consegui gravar a preferencia da lateral');
         });
     });
@@ -85,10 +85,10 @@ const ligar = (portal, botao) => {
 /**
  * Inicializa.
  *
- * @param {string} seletor Seletor do portal.
+ * @param {string} selector Seletor do portal.
  */
-export const init = (seletor) => {
-    const portal = document.querySelector(seletor);
+export const init = (selector) => {
+    const portal = document.querySelector(selector);
 
     if (!portal) {
         return;
@@ -98,5 +98,5 @@ export const init = (seletor) => {
     // botao, e a lateral fica visivel - que e o estado util.
     portal.classList.add('ldg-portal--can-hide');
 
-    portal.querySelectorAll('[data-ldg-aside]').forEach((botao) => ligar(portal, botao));
+    portal.querySelectorAll('[data-ldg-aside]').forEach((button) => bind(portal, button));
 };

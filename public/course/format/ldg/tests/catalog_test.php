@@ -39,19 +39,19 @@ final class catalog_test extends \advanced_testcase {
      *
      * @return array [curso, modinfo]
      */
-    private function curso_completo(): array {
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg', 'numsections' => 2]);
+    private function complete_course(): array {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg', 'numsections' => 2]);
 
-        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
-        $gerador->create_module('quiz', ['course' => $curso->id, 'section' => 1, 'name' => 'Prova']);
-        $gerador->create_module('resource', ['course' => $curso->id, 'section' => 1, 'name' => 'Apostila']);
-        $gerador->create_module('folder', ['course' => $curso->id, 'section' => 2, 'name' => 'Anexos']);
-        $gerador->create_module('url', ['course' => $curso->id, 'section' => 2, 'name' => 'Link']);
-        $gerador->create_module('forum', ['course' => $curso->id, 'section' => 2, 'name' => 'Duvidas']);
-        $gerador->create_module('label', ['course' => $curso->id, 'section' => 1]);
+        $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula um']);
+        $generator->create_module('quiz', ['course' => $course->id, 'section' => 1, 'name' => 'Prova']);
+        $generator->create_module('resource', ['course' => $course->id, 'section' => 1, 'name' => 'Apostila']);
+        $generator->create_module('folder', ['course' => $course->id, 'section' => 2, 'name' => 'Anexos']);
+        $generator->create_module('url', ['course' => $course->id, 'section' => 2, 'name' => 'Link']);
+        $generator->create_module('forum', ['course' => $course->id, 'section' => 2, 'name' => 'Duvidas']);
+        $generator->create_module('label', ['course' => $course->id, 'section' => 1]);
 
-        return [$curso, get_fast_modinfo($curso)];
+        return [$course, get_fast_modinfo($course)];
     }
 
     /**
@@ -63,19 +63,19 @@ final class catalog_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        [, $modinfo] = $this->curso_completo();
-        $pornome = [];
+        [, $modinfo] = $this->complete_course();
+        $byname = [];
 
         foreach ($modinfo->get_cms() as $cm) {
-            $pornome[$cm->name] = catalog::classify($cm);
+            $byname[$cm->name] = catalog::classify($cm);
         }
 
-        $this->assertSame(catalog::AULA, $pornome['Aula um']);
-        $this->assertSame(catalog::AULA, $pornome['Prova']);
-        $this->assertSame(catalog::MATERIAL, $pornome['Apostila']);
-        $this->assertSame(catalog::MATERIAL, $pornome['Anexos']);
-        $this->assertSame(catalog::MATERIAL, $pornome['Link']);
-        $this->assertSame(catalog::FORUM, $pornome['Duvidas']);
+        $this->assertSame(catalog::AULA, $byname['Aula um']);
+        $this->assertSame(catalog::AULA, $byname['Prova']);
+        $this->assertSame(catalog::MATERIAL, $byname['Apostila']);
+        $this->assertSame(catalog::MATERIAL, $byname['Anexos']);
+        $this->assertSame(catalog::MATERIAL, $byname['Link']);
+        $this->assertSame(catalog::FORUM, $byname['Duvidas']);
     }
 
     /**
@@ -91,7 +91,7 @@ final class catalog_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        [, $modinfo] = $this->curso_completo();
+        [, $modinfo] = $this->complete_course();
 
         foreach ($modinfo->get_cms() as $cm) {
             if ($cm->modname === 'label') {
@@ -113,14 +113,14 @@ final class catalog_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        [$curso] = $this->curso_completo();
-        $catalogo = new catalog(course_get_format($curso));
+        [$course] = $this->complete_course();
+        $catalog = new catalog(course_get_format($course));
 
-        $this->assertCount(2, $catalogo->get(catalog::AULA));
-        $this->assertCount(3, $catalogo->get(catalog::MATERIAL));
-        $this->assertCount(1, $catalogo->get(catalog::FORUM));
-        $this->assertTrue($catalogo->has(catalog::MATERIAL));
-        $this->assertFalse($catalogo->has(catalog::CERTIFICADO));
+        $this->assertCount(2, $catalog->get(catalog::AULA));
+        $this->assertCount(3, $catalog->get(catalog::MATERIAL));
+        $this->assertCount(1, $catalog->get(catalog::FORUM));
+        $this->assertTrue($catalog->has(catalog::MATERIAL));
+        $this->assertFalse($catalog->has(catalog::CERTIFICADO));
     }
 
     /**
@@ -132,11 +132,11 @@ final class catalog_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $curso = $this->getDataGenerator()->create_course(['format' => 'ldg']);
-        $catalogo = new catalog(course_get_format($curso));
+        $course = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $catalog = new catalog(course_get_format($course));
 
-        $this->assertSame([], $catalogo->get(catalog::AULA));
-        $this->assertFalse($catalogo->has(catalog::AULA));
+        $this->assertSame([], $catalog->get(catalog::AULA));
+        $this->assertFalse($catalog->has(catalog::AULA));
     }
 
     /**
@@ -147,25 +147,25 @@ final class catalog_test extends \advanced_testcase {
     public function test_atividade_escondida_fica_de_fora(): void {
         $this->resetAfterTest();
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $aluno = $gerador->create_user();
-        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id, 'student');
 
-        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Visivel']);
-        $gerador->create_module('page', [
-            'course' => $curso->id,
+        $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Visivel']);
+        $generator->create_module('page', [
+            'course' => $course->id,
             'section' => 1,
             'name' => 'Escondida',
             'visible' => 0,
         ]);
 
-        $this->setUser($aluno);
-        $catalogo = new catalog(course_get_format($curso));
-        $aulas = $catalogo->get(catalog::AULA);
+        $this->setUser($student);
+        $catalog = new catalog(course_get_format($course));
+        $lessons = $catalog->get(catalog::AULA);
 
-        $this->assertCount(1, $aulas);
-        $this->assertSame('Visivel', reset($aulas)->name);
+        $this->assertCount(1, $lessons);
+        $this->assertSame('Visivel', reset($lessons)->name);
     }
 
     /**
@@ -183,14 +183,14 @@ final class catalog_test extends \advanced_testcase {
         $this->resetAfterTest();
         $CFG->enableavailability = 1;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $aluno = $gerador->create_user();
-        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id, 'student');
 
-        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
-        $gerador->create_module('forum', [
-            'course' => $curso->id,
+        $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula um']);
+        $generator->create_module('forum', [
+            'course' => $course->id,
             'section' => 1,
             'name' => 'Duvidas',
             'availability' => json_encode((object) [
@@ -200,15 +200,15 @@ final class catalog_test extends \advanced_testcase {
             ]),
         ]);
 
-        $this->setUser($aluno);
-        $catalogo = new catalog(course_get_format($curso));
+        $this->setUser($student);
+        $catalog = new catalog(course_get_format($course));
 
-        $this->assertTrue($catalogo->has(catalog::FORUM), 'O balde tem o forum, bloqueado ou nao.');
+        $this->assertTrue($catalog->has(catalog::FORUM), 'O balde tem o forum, bloqueado ou nao.');
         $this->assertFalse(
-            $catalogo->has_visible(catalog::FORUM),
+            $catalog->has_visible(catalog::FORUM),
             'Unico item bloqueado nao pode deixar a aba aparecer.'
         );
-        $this->assertTrue($catalogo->has_visible(catalog::AULA));
+        $this->assertTrue($catalog->has_visible(catalog::AULA));
     }
 
     /**
@@ -222,18 +222,18 @@ final class catalog_test extends \advanced_testcase {
         $this->resetAfterTest();
         $CFG->enableavailability = 1;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $aluno = $gerador->create_user();
-        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id, 'student');
 
-        $gerador->create_module('forum', ['course' => $curso->id, 'section' => 1, 'name' => 'Duvidas']);
+        $generator->create_module('forum', ['course' => $course->id, 'section' => 1, 'name' => 'Duvidas']);
 
-        $this->setUser($aluno);
-        $catalogo = new catalog(course_get_format($curso));
+        $this->setUser($student);
+        $catalog = new catalog(course_get_format($course));
 
-        $this->assertTrue($catalogo->has(catalog::FORUM));
-        $this->assertTrue($catalogo->has_visible(catalog::FORUM));
+        $this->assertTrue($catalog->has(catalog::FORUM));
+        $this->assertTrue($catalog->has_visible(catalog::FORUM));
     }
 
     /**
@@ -245,9 +245,9 @@ final class catalog_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $curso = $this->getDataGenerator()->create_course(['format' => 'ldg']);
-        $catalogo = new catalog(course_get_format($curso));
+        $course = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $catalog = new catalog(course_get_format($course));
 
-        $this->assertFalse($catalogo->has_visible(catalog::CERTIFICADO));
+        $this->assertFalse($catalog->has_visible(catalog::CERTIFICADO));
     }
 }

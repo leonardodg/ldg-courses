@@ -22,6 +22,17 @@ e não tem prioridade definida. Até essa decisão existir, **não renomeie em
 massa por conta própria** — só código novo, ou arquivo que um code review já
 está tocando por outro motivo, nasce com identificador em inglês.
 
+## Progresso
+
+- **`format_ldg`: convertido em 23/09/2026.** 27 arquivos (produção + testes +
+  AMD), 17 deles com pelo menos um identificador em português na estimativa
+  original. `phpcs`, `phpunit` (70 testes) e `grunt` (eslint dos três módulos
+  AMD, build regenerado) verdes depois da conversão. Nomes de teste
+  (`test_aluno_no_curso_ldg_usa_o_portal`, etc.) continuam em português — é
+  convenção separada e deliberada, documentada em
+  `docs/dev/padrao-de-implementacao.md`.
+- Os outros 10 plugins seguem pendentes.
+
 ## Tamanho estimado, por plugin
 
 Levantamento com uma lista de ~60 palavras portuguesas comuns na base
@@ -42,7 +53,7 @@ número real de arquivos e de identificadores é maior.
 | `paygw_pagarme` | 31 | 6.525 | 3 |
 | `enrol_marketplace` | 11 | 1.095 | 1 |
 | `availability_marketplace` | 8 | 822 | 1 |
-| `format_ldg` | 38 | 5.694 | 17 |
+| `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
 | `theme_ldg` | 22 | 3.289 | 6 |
 | `mod_ldgvideo` | 31 | 3.400 | 8 |
 | **Total** | **333** | **63.695** | **62** (≈19% dos arquivos, por baixo) |

@@ -57,23 +57,23 @@ final class section_progress_test extends \advanced_testcase {
         $CFG->enablecompletion = 1;
 
         $generator = $this->getDataGenerator();
-        $curso = $generator->create_course(['format' => 'ldg', 'enablecompletion' => 1, 'numsections' => 3]);
-        $aluno = $generator->create_user();
-        $generator->enrol_user($aluno->id, $curso->id);
+        $course = $generator->create_course(['format' => 'ldg', 'enablecompletion' => 1, 'numsections' => 3]);
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id);
 
-        return [$curso, $aluno];
+        return [$course, $student];
     }
 
     /**
      * Cria uma page com conclusao manual.
      *
-     * @param \stdClass $curso
+     * @param \stdClass $course
      * @param int $section
      * @return \stdClass
      */
-    protected function make_manual(\stdClass $curso, int $section): \stdClass {
+    protected function make_manual(\stdClass $course, int $section): \stdClass {
         return $this->getDataGenerator()->get_plugin_generator('mod_page')->create_instance([
-            'course' => $curso->id,
+            'course' => $course->id,
             'section' => $section,
             'completion' => COMPLETION_TRACKING_MANUAL,
         ]);
@@ -91,21 +91,21 @@ final class section_progress_test extends \advanced_testcase {
     public function test_secao_sem_conclusao_nao_tem_progresso(): void {
         $this->resetAfterTest();
 
-        [$curso, $aluno] = $this->make_course();
+        [$course, $student] = $this->make_course();
 
         $this->getDataGenerator()->get_plugin_generator('mod_page')->create_instance([
-            'course' => $curso->id,
+            'course' => $course->id,
             'section' => 1,
             'completion' => COMPLETION_TRACKING_NONE,
         ]);
 
-        $this->setUser($aluno);
+        $this->setUser($student);
 
-        $progresso = $this->progress_for($curso, $aluno, 1);
+        $progress = $this->progress_for($course, $student, 1);
 
-        $this->assertFalse($progresso->has_tracking());
-        $this->assertSame(0, $progresso->total);
-        $this->assertSame(0, $progresso->percentage());
+        $this->assertFalse($progress->has_tracking());
+        $this->assertSame(0, $progress->total);
+        $this->assertSame(0, $progress->percentage());
     }
 
     /**
@@ -116,24 +116,24 @@ final class section_progress_test extends \advanced_testcase {
     public function test_conta_apenas_aulas_com_conclusao(): void {
         $this->resetAfterTest();
 
-        [$curso, $aluno] = $this->make_course();
+        [$course, $student] = $this->make_course();
 
-        $this->make_manual($curso, 1);
-        $this->make_manual($curso, 1);
+        $this->make_manual($course, 1);
+        $this->make_manual($course, 1);
 
         // Sem conclusao: nao entra no denominador.
         $this->getDataGenerator()->get_plugin_generator('mod_page')->create_instance([
-            'course' => $curso->id,
+            'course' => $course->id,
             'section' => 1,
             'completion' => COMPLETION_TRACKING_NONE,
         ]);
 
-        $this->setUser($aluno);
+        $this->setUser($student);
 
-        $progresso = $this->progress_for($curso, $aluno, 1);
+        $progress = $this->progress_for($course, $student, 1);
 
-        $this->assertSame(2, $progresso->total);
-        $this->assertSame(0, $progresso->complete);
+        $this->assertSame(2, $progress->total);
+        $this->assertSame(0, $progress->complete);
     }
 
     /**
@@ -144,23 +144,23 @@ final class section_progress_test extends \advanced_testcase {
     public function test_percentual(): void {
         $this->resetAfterTest();
 
-        [$curso, $aluno] = $this->make_course();
+        [$course, $student] = $this->make_course();
 
-        $primeira = $this->make_manual($curso, 1);
-        $this->make_manual($curso, 1);
+        $first = $this->make_manual($course, 1);
+        $this->make_manual($course, 1);
 
-        $this->setUser($aluno);
+        $this->setUser($student);
 
-        $completion = new completion_info(get_course($curso->id));
-        $modinfo = get_fast_modinfo($curso, $aluno->id);
-        $completion->update_state($modinfo->get_cm($primeira->cmid), COMPLETION_COMPLETE, $aluno->id);
+        $completion = new completion_info(get_course($course->id));
+        $modinfo = get_fast_modinfo($course, $student->id);
+        $completion->update_state($modinfo->get_cm($first->cmid), COMPLETION_COMPLETE, $student->id);
 
-        $progresso = $this->progress_for($curso, $aluno, 1);
+        $progress = $this->progress_for($course, $student, 1);
 
-        $this->assertSame(1, $progresso->complete);
-        $this->assertSame(2, $progresso->total);
-        $this->assertSame(50, $progresso->percentage());
-        $this->assertFalse($progresso->is_complete_section());
+        $this->assertSame(1, $progress->complete);
+        $this->assertSame(2, $progress->total);
+        $this->assertSame(50, $progress->percentage());
+        $this->assertFalse($progress->is_complete_section());
     }
 
     /**
@@ -171,22 +171,22 @@ final class section_progress_test extends \advanced_testcase {
     public function test_secao_completa(): void {
         $this->resetAfterTest();
 
-        [$curso, $aluno] = $this->make_course();
+        [$course, $student] = $this->make_course();
 
-        $a = $this->make_manual($curso, 1);
-        $b = $this->make_manual($curso, 1);
+        $a = $this->make_manual($course, 1);
+        $b = $this->make_manual($course, 1);
 
-        $this->setUser($aluno);
+        $this->setUser($student);
 
-        $completion = new completion_info(get_course($curso->id));
-        $modinfo = get_fast_modinfo($curso, $aluno->id);
-        $completion->update_state($modinfo->get_cm($a->cmid), COMPLETION_COMPLETE, $aluno->id);
-        $completion->update_state($modinfo->get_cm($b->cmid), COMPLETION_COMPLETE, $aluno->id);
+        $completion = new completion_info(get_course($course->id));
+        $modinfo = get_fast_modinfo($course, $student->id);
+        $completion->update_state($modinfo->get_cm($a->cmid), COMPLETION_COMPLETE, $student->id);
+        $completion->update_state($modinfo->get_cm($b->cmid), COMPLETION_COMPLETE, $student->id);
 
-        $progresso = $this->progress_for($curso, $aluno, 1);
+        $progress = $this->progress_for($course, $student, 1);
 
-        $this->assertSame(100, $progresso->percentage());
-        $this->assertTrue($progresso->is_complete_section());
+        $this->assertSame(100, $progress->percentage());
+        $this->assertTrue($progress->is_complete_section());
     }
 
     /**
@@ -205,14 +205,14 @@ final class section_progress_test extends \advanced_testcase {
         global $CFG;
         $CFG->enableavailability = 1;
 
-        [$curso, $aluno] = $this->make_course();
+        [$course, $student] = $this->make_course();
 
-        $visivel = $this->make_manual($curso, 1);
+        $visible = $this->make_manual($course, 1);
 
         // Bloqueada por uma data futura: e a condicao mais simples que existe,
         // e o que se testa aqui e a CONTAGEM, nao a condicao.
         $this->getDataGenerator()->get_plugin_generator('mod_page')->create_instance([
-            'course' => $curso->id,
+            'course' => $course->id,
             'section' => 1,
             'completion' => COMPLETION_TRACKING_MANUAL,
             'availability' => json_encode((object) [
@@ -222,19 +222,19 @@ final class section_progress_test extends \advanced_testcase {
             ]),
         ]);
 
-        $this->setUser($aluno);
+        $this->setUser($student);
 
-        $progresso = $this->progress_for($curso, $aluno, 1);
+        $progress = $this->progress_for($course, $student, 1);
 
-        $this->assertSame(1, $progresso->total, 'A aula bloqueada nao pode entrar no denominador.');
+        $this->assertSame(1, $progress->total, 'A aula bloqueada nao pode entrar no denominador.');
 
-        $completion = new completion_info(get_course($curso->id));
-        $modinfo = get_fast_modinfo($curso, $aluno->id);
-        $completion->update_state($modinfo->get_cm($visivel->cmid), COMPLETION_COMPLETE, $aluno->id);
+        $completion = new completion_info(get_course($course->id));
+        $modinfo = get_fast_modinfo($course, $student->id);
+        $completion->update_state($modinfo->get_cm($visible->cmid), COMPLETION_COMPLETE, $student->id);
 
-        $progresso = $this->progress_for($curso, $aluno, 1);
+        $progress = $this->progress_for($course, $student, 1);
 
-        $this->assertSame(100, $progresso->percentage(), 'Com a unica aula disponivel concluida, o modulo esta completo.');
+        $this->assertSame(100, $progress->percentage(), 'Com a unica aula disponivel concluida, o modulo esta completo.');
     }
 
     /**
@@ -245,30 +245,30 @@ final class section_progress_test extends \advanced_testcase {
     public function test_visitante_nao_tem_progresso(): void {
         $this->resetAfterTest();
 
-        [$curso, $aluno] = $this->make_course();
+        [$course, $student] = $this->make_course();
 
-        $this->make_manual($curso, 1);
+        $this->make_manual($course, 1);
 
         $this->setGuestUser();
 
-        $progresso = $this->progress_for($curso, $aluno, 1);
+        $progress = $this->progress_for($course, $student, 1);
 
-        $this->assertFalse($progresso->has_tracking());
-        $this->assertSame(0, $progresso->total);
+        $this->assertFalse($progress->has_tracking());
+        $this->assertSame(0, $progress->total);
     }
 
     /**
      * Atalho para calcular o progresso de uma secao.
      *
-     * @param \stdClass $curso
-     * @param \stdClass $aluno
+     * @param \stdClass $course
+     * @param \stdClass $student
      * @param int $sectionnum
      * @return section_progress
      */
-    protected function progress_for(\stdClass $curso, \stdClass $aluno, int $sectionnum): section_progress {
-        $curso = get_course($curso->id);
-        $modinfo = get_fast_modinfo($curso, $aluno->id);
-        $completion = new completion_info($curso);
+    protected function progress_for(\stdClass $course, \stdClass $student, int $sectionnum): section_progress {
+        $course = get_course($course->id);
+        $modinfo = get_fast_modinfo($course, $student->id);
+        $completion = new completion_info($course);
         $section = $modinfo->get_section_info($sectionnum);
 
         return section_progress::for_section($section, $modinfo, $completion);

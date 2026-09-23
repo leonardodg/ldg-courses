@@ -51,15 +51,15 @@ final class hook_callbacks_test extends \advanced_testcase {
      * parametro. Sem apontar o global para o mesmo curso, o teste do professor
      * editando passaria por engano.
      *
-     * @param string $formato
+     * @param string $format
      * @return \moodle_page
      */
-    private function pagina_de_curso(string $formato): \moodle_page {
+    private function course_page(string $format): \moodle_page {
         global $PAGE;
 
-        $curso = $this->getDataGenerator()->create_course(['format' => $formato]);
+        $course = $this->getDataGenerator()->create_course(['format' => $format]);
 
-        $PAGE->set_course($curso);
+        $PAGE->set_course($course);
         $PAGE->set_pagelayout('course');
 
         return $PAGE;
@@ -74,9 +74,9 @@ final class hook_callbacks_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setUser($this->getDataGenerator()->create_user());
 
-        $pagina = $this->pagina_de_curso('ldg');
+        $page = $this->course_page('ldg');
 
-        $this->assertTrue(hook_callbacks::should_use_portal($pagina, self::COM_PORTAL));
+        $this->assertTrue(hook_callbacks::should_use_portal($page, self::COM_PORTAL));
     }
 
     /**
@@ -88,9 +88,9 @@ final class hook_callbacks_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setUser($this->getDataGenerator()->create_user());
 
-        $pagina = $this->pagina_de_curso('ldg');
+        $page = $this->course_page('ldg');
 
-        $this->assertFalse(hook_callbacks::should_use_portal($pagina, self::SEM_PORTAL));
+        $this->assertFalse(hook_callbacks::should_use_portal($page, self::SEM_PORTAL));
     }
 
     /**
@@ -102,9 +102,9 @@ final class hook_callbacks_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setUser($this->getDataGenerator()->create_user());
 
-        $pagina = $this->pagina_de_curso('topics');
+        $page = $this->course_page('topics');
 
-        $this->assertFalse(hook_callbacks::should_use_portal($pagina, self::COM_PORTAL));
+        $this->assertFalse(hook_callbacks::should_use_portal($page, self::COM_PORTAL));
     }
 
     /**
@@ -118,10 +118,10 @@ final class hook_callbacks_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $pagina = $this->pagina_de_curso('ldg');
+        $page = $this->course_page('ldg');
         $USER->editing = 1;
 
-        $this->assertFalse(hook_callbacks::should_use_portal($pagina, self::COM_PORTAL));
+        $this->assertFalse(hook_callbacks::should_use_portal($page, self::COM_PORTAL));
     }
 
     /**
@@ -133,9 +133,9 @@ final class hook_callbacks_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setUser($this->getDataGenerator()->create_user());
 
-        $pagina = $this->pagina_de_curso('ldg');
-        $pagina->set_pagelayout('report');
+        $page = $this->course_page('ldg');
+        $page->set_pagelayout('report');
 
-        $this->assertFalse(hook_callbacks::should_use_portal($pagina, self::COM_PORTAL));
+        $this->assertFalse(hook_callbacks::should_use_portal($page, self::COM_PORTAL));
     }
 }

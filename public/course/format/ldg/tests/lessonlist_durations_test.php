@@ -47,30 +47,30 @@ final class lessonlist_durations_test extends \advanced_testcase {
      *
      * @return array [curso, cmids por secao]
      */
-    private function curso_com_duracoes(): array {
+    private function course_with_durations(): array {
         global $CFG;
 
         $CFG->enablecompletion = 1;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg', 'numsections' => 3, 'enablecompletion' => 1]);
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg', 'numsections' => 3, 'enablecompletion' => 1]);
 
-        $porsecao = [];
-        $duracao = 100;
+        $bysection = [];
+        $duration = 100;
 
-        for ($secao = 1; $secao <= 3; $secao++) {
-            $page = $gerador->create_module('page', [
-                'course' => $curso->id,
-                'section' => $secao,
-                'name' => 'Aula ' . $secao,
+        for ($section = 1; $section <= 3; $section++) {
+            $page = $generator->create_module('page', [
+                'course' => $course->id,
+                'section' => $section,
+                'name' => 'Aula ' . $section,
                 'completion' => COMPLETION_TRACKING_MANUAL,
             ]);
-            lesson::store_duration($page->cmid, $duracao);
-            $porsecao[$secao] = $page->cmid;
-            $duracao += 100;
+            lesson::store_duration($page->cmid, $duration);
+            $bysection[$section] = $page->cmid;
+            $duration += 100;
         }
 
-        return [$curso, $porsecao];
+        return [$course, $bysection];
     }
 
     /**
@@ -89,38 +89,38 @@ final class lessonlist_durations_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        [$curso, $porsecao] = $this->curso_com_duracoes();
+        [$course, $bysection] = $this->course_with_durations();
 
-        $format = course_get_format($curso);
-        $lista = new lessonlist($format, $format->get_selected_cm());
+        $format = course_get_format($course);
+        $list = new lessonlist($format, $format->get_selected_cm());
 
         // Aquece caches de estrutura que NAO sao da duracao (campos de tabela,
         // modinfo ja construida): a contagem comeca depois disso.
-        $reflexo = new \ReflectionMethod($lista, 'export_for_template');
-        $reflexo->invoke($lista, $PAGE->get_renderer('core'));
+        $reflection = new \ReflectionMethod($list, 'export_for_template');
+        $reflection->invoke($list, $PAGE->get_renderer('core'));
 
-        $antes = $DB->perf_get_reads();
-        $dados = $lista->export_for_template($PAGE->get_renderer('core'));
-        $consultas = $DB->perf_get_reads() - $antes;
+        $before = $DB->perf_get_reads();
+        $data = $list->export_for_template($PAGE->get_renderer('core'));
+        $reads = $DB->perf_get_reads() - $before;
 
         $this->assertLessThanOrEqual(
             1,
-            $consultas,
+            $reads,
             'A exportacao inteira (tres secoes) nao pode gastar mais de uma leitura - durations_for() e uma por pagina.'
         );
 
-        $duracoes = [];
-        foreach ($dados->modules as $modulo) {
-            foreach ($modulo->lessons as $aula) {
-                $this->assertTrue($aula->hasduration, 'Aula ' . $aula->name . ' ficou sem duracao.');
-                $duracoes[$aula->cmid] = $aula->duration;
+        $durations = [];
+        foreach ($data->modules as $module) {
+            foreach ($module->lessons as $lesson) {
+                $this->assertTrue($lesson->hasduration, 'Aula ' . $lesson->name . ' ficou sem duracao.');
+                $durations[$lesson->cmid] = $lesson->duration;
             }
         }
 
-        $this->assertCount(3, $duracoes);
-        $this->assertSame(100, $duracoes[$porsecao[1]]);
-        $this->assertSame(200, $duracoes[$porsecao[2]]);
-        $this->assertSame(300, $duracoes[$porsecao[3]]);
+        $this->assertCount(3, $durations);
+        $this->assertSame(100, $durations[$bysection[1]]);
+        $this->assertSame(200, $durations[$bysection[2]]);
+        $this->assertSame(300, $durations[$bysection[3]]);
     }
 
     /**
@@ -134,21 +134,21 @@ final class lessonlist_durations_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        [$curso, $porsecao] = $this->curso_com_duracoes();
+        [$course, $bysection] = $this->course_with_durations();
 
-        $format = course_get_format($curso);
-        $dados = (new lessonlist($format, null))->export_for_template($PAGE->get_renderer('core'));
+        $format = course_get_format($course);
+        $data = (new lessonlist($format, null))->export_for_template($PAGE->get_renderer('core'));
 
-        $this->assertCount(3, $dados->modules);
+        $this->assertCount(3, $data->modules);
 
-        $modulonum = array_column($dados->modules, 'num');
-        $this->assertSame([1, 2, 3], $modulonum);
+        $modulenum = array_column($data->modules, 'num');
+        $this->assertSame([1, 2, 3], $modulenum);
 
-        foreach ($dados->modules as $i => $modulo) {
-            $secao = $i + 1;
-            $aula = $modulo->lessons[0];
-            $this->assertSame((int) $porsecao[$secao], (int) $aula->cmid);
-            $this->assertTrue($aula->hasduration);
+        foreach ($data->modules as $i => $module) {
+            $section = $i + 1;
+            $lesson = $module->lessons[0];
+            $this->assertSame((int) $bysection[$section], (int) $lesson->cmid);
+            $this->assertTrue($lesson->hasduration);
         }
     }
 }

@@ -94,7 +94,7 @@ define(['core/log'], function(Log) {
             return;
         }
 
-        var atual = parseInt(frame.style.height, 10) || 0;
+        var current = parseInt(frame.style.height, 10) || 0;
 
         // ENCOLHE ANTES DE MEDIR. Enquanto o quadro tem altura, o documento de
         // dentro se estica ate ela - #page-wrapper e #page acompanham - e
@@ -105,21 +105,21 @@ define(['core/log'], function(Log) {
         // entre as duas atribuicoes - so recalcula o layout.
         frame.style.height = '0px';
 
-        var conteudo = Math.max(
+        var content = Math.max(
             doc.documentElement ? doc.documentElement.scrollHeight : 0,
             doc.body.scrollHeight
         );
 
-        var nova = Math.max(conteudo + PADDING, MIN_HEIGHT);
+        var newheight = Math.max(content + PADDING, MIN_HEIGHT);
 
-        frame.style.height = nova + 'px';
+        frame.style.height = newheight + 'px';
 
         // Se nada mudou, nao ha por que o observador reagir de novo.
-        if (nova === atual) {
+        if (newheight === current) {
             return;
         }
 
-        Log.debug('format_ldg/player: quadro ajustado para ' + nova + 'px.');
+        Log.debug('format_ldg/player: quadro ajustado para ' + newheight + 'px.');
     };
 
     /**

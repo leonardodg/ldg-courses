@@ -65,9 +65,9 @@ class hook_callbacks {
             return false;
         }
 
-        $curso = $page->course;
+        $course = $page->course;
 
-        if (empty($curso->id) || $curso->id == SITEID || $curso->format !== 'ldg') {
+        if (empty($course->id) || $course->id == SITEID || $course->format !== 'ldg') {
             return false;
         }
 
@@ -80,7 +80,7 @@ class hook_callbacks {
         // Professor editando volta para o chrome do Moodle: arrastar atividade,
         // renomear e o menu de acoes vivem nos ganchos que o core poe naquela
         // marcacao, e nenhum deles funciona dentro do portal.
-        return !course_get_format($curso)->show_editor();
+        return !course_get_format($course)->show_editor();
     }
 
     /**

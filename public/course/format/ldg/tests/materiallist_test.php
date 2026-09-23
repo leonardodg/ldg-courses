@@ -47,25 +47,25 @@ final class materiallist_test extends \advanced_testcase {
      * @param array $extra
      * @return \stdClass O primeiro material exportado.
      */
-    private function primeiro_material(string $modname, array $extra = []): \stdClass {
+    private function first_material(string $modname, array $extra = []): \stdClass {
         global $PAGE;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
 
-        $gerador->create_module($modname, [
-            'course' => $curso->id,
+        $generator->create_module($modname, [
+            'course' => $course->id,
             'section' => 1,
             'name' => 'Material',
         ] + $extra);
 
-        $format = course_get_format($curso);
-        $lista = new materiallist($format, new catalog($format));
-        $dados = $lista->export_for_template($PAGE->get_renderer('core'));
+        $format = course_get_format($course);
+        $list = new materiallist($format, new catalog($format));
+        $data = $list->export_for_template($PAGE->get_renderer('core'));
 
-        $this->assertNotEmpty($dados->materials);
+        $this->assertNotEmpty($data->materials);
 
-        return reset($dados->materials);
+        return reset($data->materials);
     }
 
     /**
@@ -81,7 +81,7 @@ final class materiallist_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $material = $this->primeiro_material('resource', ['display' => RESOURCELIB_DISPLAY_DOWNLOAD]);
+        $material = $this->first_material('resource', ['display' => RESOURCELIB_DISPLAY_DOWNLOAD]);
 
         $this->assertTrue($material->isdownload);
         $this->assertFalse($material->inframe);
@@ -96,7 +96,7 @@ final class materiallist_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $material = $this->primeiro_material('folder');
+        $material = $this->first_material('folder');
 
         $this->assertFalse($material->isdownload);
         $this->assertTrue($material->inframe);
@@ -115,7 +115,7 @@ final class materiallist_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $material = $this->primeiro_material('url', [
+        $material = $this->first_material('url', [
             'externalurl' => 'https://example.com/manual.pdf',
             'display' => RESOURCELIB_DISPLAY_NEW,
         ]);
@@ -139,7 +139,7 @@ final class materiallist_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $material = $this->primeiro_material('url', ['externalurl' => 'https://moodle.org/']);
+        $material = $this->first_material('url', ['externalurl' => 'https://moodle.org/']);
 
         $this->assertFalse($material->isdownload);
         $this->assertTrue($material->opensnewwindow);
@@ -157,19 +157,19 @@ final class materiallist_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg', 'numsections' => 2]);
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg', 'numsections' => 2]);
 
-        $gerador->create_module('folder', ['course' => $curso->id, 'section' => 1, 'name' => 'Anexos um']);
-        $gerador->create_module('folder', ['course' => $curso->id, 'section' => 2, 'name' => 'Anexos dois']);
+        $generator->create_module('folder', ['course' => $course->id, 'section' => 1, 'name' => 'Anexos um']);
+        $generator->create_module('folder', ['course' => $course->id, 'section' => 2, 'name' => 'Anexos dois']);
 
-        $format = course_get_format($curso);
-        $lista = new materiallist($format, new catalog($format));
-        $dados = $lista->export_for_template($PAGE->get_renderer('core'));
+        $format = course_get_format($course);
+        $list = new materiallist($format, new catalog($format));
+        $data = $list->export_for_template($PAGE->get_renderer('core'));
 
-        $secoes = array_column($dados->materials, 'section');
+        $sections = array_column($data->materials, 'section');
 
-        $this->assertCount(2, $dados->materials);
-        $this->assertNotSame($secoes[0], $secoes[1]);
+        $this->assertCount(2, $data->materials);
+        $this->assertNotSame($sections[0], $sections[1]);
     }
 }

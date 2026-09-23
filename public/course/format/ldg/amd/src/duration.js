@@ -40,12 +40,12 @@ define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
      * @return {void}
      */
     var flash = function(input, ok) {
-        var classe = ok ? 'is-valid' : 'is-invalid';
+        var className = ok ? 'is-valid' : 'is-invalid';
 
-        input.classList.add(classe);
+        input.classList.add(className);
 
         window.setTimeout(function() {
-            input.classList.remove(classe);
+            input.classList.remove(className);
         }, 1500);
     };
 
@@ -57,29 +57,29 @@ define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
      */
     var save = function(input) {
         var cmid = parseInt(input.dataset.cmid, 10);
-        var valor = parseInt(input.value, 10);
+        var value = parseInt(input.value, 10);
 
-        if (isNaN(valor) || valor < 0) {
-            valor = 0;
+        if (isNaN(value) || value < 0) {
+            value = 0;
         }
 
         // Nada mudou desde a ultima gravacao - nao ha por que chamar o servidor.
-        if (input.dataset.saved === String(valor)) {
+        if (input.dataset.saved === String(value)) {
             return;
         }
 
         Ajax.call([{
             methodname: 'format_ldg_set_duration',
-            args: {cmid: cmid, duration: valor}
-        }])[0].then(function(resposta) {
-            input.dataset.saved = String(resposta.duration);
-            input.value = resposta.duration ? resposta.duration : '';
+            args: {cmid: cmid, duration: value}
+        }])[0].then(function(response) {
+            input.dataset.saved = String(response.duration);
+            input.value = response.duration ? response.duration : '';
             flash(input, true);
 
-            return resposta;
-        }).catch(function(erro) {
+            return response;
+        }).catch(function(error) {
             flash(input, false);
-            Notification.exception(erro);
+            Notification.exception(error);
         });
     };
 
@@ -90,9 +90,9 @@ define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
          * @return {void}
          */
         init: function() {
-            var campos = document.querySelectorAll('[data-region="ldg-duration"]');
+            var fields = document.querySelectorAll('[data-region="ldg-duration"]');
 
-            campos.forEach(function(input) {
+            fields.forEach(function(input) {
                 input.dataset.saved = String(parseInt(input.value, 10) || 0);
 
                 input.addEventListener('change', function() {

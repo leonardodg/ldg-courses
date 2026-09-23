@@ -47,26 +47,26 @@ final class lessonlist_selection_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $material = $gerador->create_module('resource', [
-            'course' => $curso->id, 'section' => 1, 'name' => 'Apostila',
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $material = $generator->create_module('resource', [
+            'course' => $course->id, 'section' => 1, 'name' => 'Apostila',
         ]);
-        $gerador->create_module('page', [
-            'course' => $curso->id, 'section' => 1, 'name' => 'Aula um',
+        $generator->create_module('page', [
+            'course' => $course->id, 'section' => 1, 'name' => 'Aula um',
         ]);
 
         // Pede o material pela URL, como faria um link velho.
         $_GET['lesson'] = $material->cmid;
 
         try {
-            $selecionada = course_get_format($curso)->get_selected_cm();
+            $selected = course_get_format($course)->get_selected_cm();
         } finally {
             unset($_GET['lesson']);
         }
 
-        $this->assertNotNull($selecionada);
-        $this->assertSame('Aula um', $selecionada->name);
+        $this->assertNotNull($selected);
+        $this->assertSame('Aula um', $selected->name);
     }
 
     /**
@@ -78,13 +78,13 @@ final class lessonlist_selection_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $gerador->create_module('resource', ['course' => $curso->id, 'section' => 1]);
-        $gerador->create_module('forum', ['course' => $curso->id, 'section' => 1]);
-        $gerador->create_module('label', ['course' => $curso->id, 'section' => 1]);
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $generator->create_module('resource', ['course' => $course->id, 'section' => 1]);
+        $generator->create_module('forum', ['course' => $course->id, 'section' => 1]);
+        $generator->create_module('label', ['course' => $course->id, 'section' => 1]);
 
-        $this->assertNull(course_get_format($curso)->get_selected_cm());
+        $this->assertNull(course_get_format($course)->get_selected_cm());
     }
 
     /**
@@ -102,14 +102,14 @@ final class lessonlist_selection_test extends \advanced_testcase {
         $this->resetAfterTest();
         $CFG->enableavailability = 1;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $aluno = $gerador->create_user();
-        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id, 'student');
 
-        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
-        $bloqueada = $gerador->create_module('page', [
-            'course' => $curso->id,
+        $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula um']);
+        $locked = $generator->create_module('page', [
+            'course' => $course->id,
             'section' => 1,
             'name' => 'Aula trancada',
             'availability' => json_encode((object) [
@@ -119,18 +119,18 @@ final class lessonlist_selection_test extends \advanced_testcase {
             ]),
         ]);
 
-        $this->setUser($aluno);
-        $_GET['lesson'] = $bloqueada->cmid;
+        $this->setUser($student);
+        $_GET['lesson'] = $locked->cmid;
 
         try {
-            $selecionada = course_get_format($curso)->get_selected_cm();
+            $selected = course_get_format($course)->get_selected_cm();
         } finally {
             unset($_GET['lesson']);
         }
 
-        $this->assertNotNull($selecionada);
-        $this->assertSame((int) $bloqueada->cmid, (int) $selecionada->id);
-        $this->assertFalse($selecionada->uservisible, 'A aula devolvida e a bloqueada, para o cadeado aparecer.');
+        $this->assertNotNull($selected);
+        $this->assertSame((int) $locked->cmid, (int) $selected->id);
+        $this->assertFalse($selected->uservisible, 'A aula devolvida e a bloqueada, para o cadeado aparecer.');
     }
 
     /**
@@ -144,13 +144,13 @@ final class lessonlist_selection_test extends \advanced_testcase {
         $this->resetAfterTest();
         $CFG->enableavailability = 1;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $aluno = $gerador->create_user();
-        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id, 'student');
 
-        $gerador->create_module('page', [
-            'course' => $curso->id,
+        $generator->create_module('page', [
+            'course' => $course->id,
             'section' => 1,
             'name' => 'Aula trancada',
             'availability' => json_encode((object) [
@@ -159,14 +159,14 @@ final class lessonlist_selection_test extends \advanced_testcase {
                 'showc' => [true],
             ]),
         ]);
-        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
+        $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula um']);
 
-        $this->setUser($aluno);
-        $selecionada = course_get_format($curso)->get_selected_cm();
+        $this->setUser($student);
+        $selected = course_get_format($course)->get_selected_cm();
 
-        $this->assertNotNull($selecionada);
-        $this->assertSame('Aula um', $selecionada->name);
-        $this->assertTrue($selecionada->uservisible);
+        $this->assertNotNull($selected);
+        $this->assertSame('Aula um', $selected->name);
+        $this->assertTrue($selected->uservisible);
     }
 
     /**
@@ -182,30 +182,30 @@ final class lessonlist_selection_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg', 'numsections' => 1]);
-        $primeira = $gerador->create_module('page', [
-            'course' => $curso->id, 'section' => 1, 'name' => 'Aula um',
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg', 'numsections' => 1]);
+        $first = $generator->create_module('page', [
+            'course' => $course->id, 'section' => 1, 'name' => 'Aula um',
         ]);
 
-        $format = course_get_format($curso);
-        $catalogo = new catalog($format);
+        $format = course_get_format($course);
+        $catalog = new catalog($format);
 
         // Nasce DEPOIS do catalogo: nao esta nos baldes dele.
-        $nova = $gerador->create_module('page', [
-            'course' => $curso->id, 'section' => 1, 'name' => 'Aula nova',
+        $new = $generator->create_module('page', [
+            'course' => $course->id, 'section' => 1, 'name' => 'Aula nova',
         ]);
-        rebuild_course_cache($curso->id, true);
+        rebuild_course_cache($course->id, true);
 
-        $_GET['lesson'] = $nova->cmid;
+        $_GET['lesson'] = $new->cmid;
 
         try {
-            $selecionada = course_get_format($curso)->get_selected_cm($catalogo);
+            $selected = course_get_format($course)->get_selected_cm($catalog);
         } finally {
             unset($_GET['lesson']);
         }
 
         // O catalogo antigo nao tem a nova: pedido cai na primeira dele.
-        $this->assertSame((int) $primeira->cmid, (int) $selecionada->id);
+        $this->assertSame((int) $first->cmid, (int) $selected->id);
     }
 }
