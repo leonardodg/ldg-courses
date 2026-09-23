@@ -105,7 +105,13 @@ está tocando por outro motivo, nasce com identificador em inglês.
   alinhando com a convenção já usada em todos os outros testes do arquivo).
   `phpcs` (11 arquivos) e `phpunit` (13 testes, 35 asserções) verdes. Sem
   AMD neste plugin.
-- Os outros 2 plugins seguem pendentes.
+- **`availability_marketplace`: convertido em 23/09/2026.** 8 arquivos, 1 na
+  estimativa original — a varredura real achou tudo confinado a
+  `tests/condition_test.php` (`$aluno`/`$texto` → `$student`/`$text`,
+  repetido em quatro testes independentes). `phpcs` (8 arquivos) e
+  `phpunit` (12 testes, 21 asserções) verdes. Sem AMD/YUI tocado neste
+  plugin.
+- Falta só `blocks_marketplace` (já estimado em 0 arquivos flagrados).
 
 ## Tamanho estimado, por plugin
 
@@ -126,11 +132,11 @@ número real de arquivos e de identificadores é maior.
 | `paygw_asaas` | 25 | 5.177 | ~~2~~ 0 (convertido) |
 | `paygw_pagarme` | 31 | 6.525 | ~~3~~ 0 (convertido) |
 | `enrol_marketplace` | 11 | 1.095 | ~~1~~ 0 (convertido) |
-| `availability_marketplace` | 8 | 822 | 1 |
+| `availability_marketplace` | 8 | 822 | ~~1~~ 0 (convertido) |
 | `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
 | `theme_ldg` | 22 | 3.289 | ~~6~~ 0 (convertido) |
 | `mod_ldgvideo` | 31 | 3.400 | ~~8~~ 0 (convertido) |
-| **Total** | **333** | **63.695** | **18 restantes** (≈5% dos arquivos, por baixo) |
+| **Total** | **333** | **63.695** | **17 restantes** (0 apenas em `blocks_marketplace`, já limpo na estimativa original) |
 
 `format_ldg` e `paygw_mercadopago` concentram a maior densidade — ambos
 plugins antigos, com bastante lógica de negócio nomeada em português desde o
