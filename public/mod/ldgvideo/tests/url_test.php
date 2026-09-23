@@ -125,18 +125,18 @@ final class url_test extends \basic_testcase {
     /**
      * A entrada vira endereco limpo, e a proporcao sai junto quando da.
      *
-     * @param string $entrada
-     * @param string $esperado
-     * @param string|null $proporcao
+     * @param string $input
+     * @param string $expected
+     * @param string|null $ratio
      * @return void
      */
     #[DataProvider('entradas_aceitas')]
-    public function test_normalize_aceita(string $entrada, string $esperado, ?string $proporcao): void {
-        $saida = url::normalize($entrada);
+    public function test_normalize_aceita(string $input, string $expected, ?string $ratio): void {
+        $output = url::normalize($input);
 
-        $this->assertNotNull($saida, 'a entrada devia ter sido aceita');
-        $this->assertSame($esperado, $saida['url']->out(false));
-        $this->assertSame($proporcao, $saida['ratio']);
+        $this->assertNotNull($output, 'a entrada devia ter sido aceita');
+        $this->assertSame($expected, $output['url']->out(false));
+        $this->assertSame($ratio, $output['ratio']);
     }
 
     /**
@@ -168,12 +168,12 @@ final class url_test extends \basic_testcase {
      * Devolver algo "quase certo" aqui seria pior que recusar: o formulario
      * salvaria, e o erro apareceria na tela do aluno.
      *
-     * @param string $entrada
+     * @param string $input
      * @return void
      */
     #[DataProvider('entradas_recusadas')]
-    public function test_normalize_recusa(string $entrada): void {
-        $this->assertNull(url::normalize($entrada));
+    public function test_normalize_recusa(string $input): void {
+        $this->assertNull(url::normalize($input));
     }
 
     /**
@@ -185,18 +185,18 @@ final class url_test extends \basic_testcase {
      * @return void
      */
     public function test_o_html_colado_nao_sobrevive(): void {
-        $entrada = '<iframe src="https://vimeo.com/226053498" '
+        $input = '<iframe src="https://vimeo.com/226053498" '
             . 'onload="alert(1)" width="560" height="315"></iframe>';
 
-        $saida = url::normalize($entrada);
+        $output = url::normalize($input);
 
-        $this->assertNotNull($saida);
-        $guardado = $saida['url']->out(false);
+        $this->assertNotNull($output);
+        $stored = $output['url']->out(false);
 
-        $this->assertStringNotContainsString('<', $guardado);
-        $this->assertStringNotContainsString('onload', $guardado);
-        $this->assertStringNotContainsString('iframe', $guardado);
-        $this->assertSame('https://vimeo.com/226053498', $guardado);
+        $this->assertStringNotContainsString('<', $stored);
+        $this->assertStringNotContainsString('onload', $stored);
+        $this->assertStringNotContainsString('iframe', $stored);
+        $this->assertSame('https://vimeo.com/226053498', $stored);
     }
 
     /**

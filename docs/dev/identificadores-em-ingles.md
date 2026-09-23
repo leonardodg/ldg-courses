@@ -41,7 +41,17 @@ está tocando por outro motivo, nasce com identificador em inglês.
   fora do loop (renomeada para `$apptype`); em `card_form.js`, `documento`
   não virou `document` porque isso teria sombreado o `document` global do
   navegador dentro da mesma função (virou `cpf`).
-- Os outros 9 plugins seguem pendentes.
+- **`mod_ldgvideo`: convertido em 23/09/2026.** 31 arquivos (produção + testes;
+  sem AMD neste plugin), 8 deles com pelo menos um identificador em português
+  na estimativa original — a varredura real achou mais, incluindo a classe
+  inteira `classes/url.php` (nomes de método como `atributo`, `montar`,
+  `canonicalizar`, `proporcao_por_tamanho` viraram `attribute`, `assemble`,
+  `canonicalize`, `ratio_from_size`) e o passo de Behat
+  `tests/behat/behat_mod_ldgvideo.php` (`medir_quadro()` → `measure_frame()`,
+  incluindo variáveis dentro do JS embutido no `evaluate_script`). `phpcs`
+  (31 arquivos) e `phpunit` (43 testes, 118 asserções) verdes depois da
+  conversão.
+- Os outros 8 plugins seguem pendentes.
 
 ## Tamanho estimado, por plugin
 
@@ -65,8 +75,8 @@ número real de arquivos e de identificadores é maior.
 | `availability_marketplace` | 8 | 822 | 1 |
 | `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
 | `theme_ldg` | 22 | 3.289 | 6 |
-| `mod_ldgvideo` | 31 | 3.400 | 8 |
-| **Total** | **333** | **63.695** | **51 restantes** (≈15% dos arquivos, por baixo) |
+| `mod_ldgvideo` | 31 | 3.400 | ~~8~~ 0 (convertido) |
+| **Total** | **333** | **63.695** | **43 restantes** (≈13% dos arquivos, por baixo) |
 
 `format_ldg` e `paygw_mercadopago` concentram a maior densidade — ambos
 plugins antigos, com bastante lógica de negócio nomeada em português desde o

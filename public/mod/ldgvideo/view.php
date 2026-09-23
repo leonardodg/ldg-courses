@@ -51,17 +51,17 @@ $PAGE->set_title($course->shortname . ': ' . $video->name);
 $PAGE->set_heading($course->fullname);
 $PAGE->set_activity_record($video);
 
-$opcoes = empty($video->displayoptions) ? [] : (array) unserialize_array($video->displayoptions);
-$mostrardescricao = !isset($opcoes['printintro']) || !empty($opcoes['printintro']);
+$options = empty($video->displayoptions) ? [] : (array) unserialize_array($video->displayoptions);
+$showdescription = !isset($options['printintro']) || !empty($options['printintro']);
 
-$cabecalho = ['hidecompletion' => false];
-if (!$mostrardescricao) {
-    $cabecalho['description'] = '';
+$header = ['hidecompletion' => false];
+if (!$showdescription) {
+    $header['description'] = '';
 }
 if (!$PAGE->activityheader->is_title_allowed()) {
-    $cabecalho['title'] = '';
+    $header['title'] = '';
 }
-$PAGE->activityheader->set_attrs($cabecalho);
+$PAGE->activityheader->set_attrs($header);
 
 // NADA de limitedwidth aqui, ao contrario do mod_page. Aquela classe estreita a
 // coluna para largura de leitura, que e o certo para texto e o errado para
@@ -86,8 +86,8 @@ $player = core_media_manager::instance()->embed_url(
     ['nolink' => true]
 );
 
-$classe = 'ldgvideo__frame ldgvideo--' . str_replace(':', '-', $video->aspectratio);
+$class = 'ldgvideo__frame ldgvideo--' . str_replace(':', '-', $video->aspectratio);
 
-echo html_writer::div($player, $classe);
+echo html_writer::div($player, $class);
 
 echo $OUTPUT->footer();

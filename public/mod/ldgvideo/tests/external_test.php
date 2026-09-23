@@ -42,42 +42,42 @@ final class external_test extends \advanced_testcase {
     public function test_sem_capability_nao_devolve_o_video(): void {
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course();
+        $course = $this->getDataGenerator()->create_course();
         $cm = $this->getDataGenerator()->create_module('ldgvideo', [
-            'course' => $curso->id,
+            'course' => $course->id,
             'name' => 'Aula 1',
             'videourl' => 'https://vimeo.com/226053498',
         ]);
 
-        $aluno = $this->getDataGenerator()->create_and_enrol($curso, 'student');
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
 
         // Proibe no CONTEXTO DO CM: CAP_PROHIBIT local vence o allow herdado
         // do papel em nivel de curso/system.
-        $papeis = get_user_roles(\context_course::instance($curso->id), $aluno->id, true);
-        $this->assertNotEmpty($papeis);
-        $papel = array_values($papeis)[0];
+        $roles = get_user_roles(\context_course::instance($course->id), $student->id, true);
+        $this->assertNotEmpty($roles);
+        $role = array_values($roles)[0];
         assign_capability(
             'mod/ldgvideo:view',
             CAP_PROHIBIT,
-            $papel->roleid,
+            $role->roleid,
             \context_module::instance($cm->cmid)->id,
             true
         );
 
-        $this->setUser($aluno);
+        $this->setUser($student);
 
         $this->assertFalse(has_capability(
             'mod/ldgvideo:view',
             \context_module::instance($cm->cmid),
-            $aluno
+            $student
         ));
 
-        $resultado = \mod_ldgvideo_external::get_ldgvideos_by_courses([$curso->id]);
+        $result = \mod_ldgvideo_external::get_ldgvideos_by_courses([$course->id]);
 
-        $this->assertSame([], $resultado['ldgvideos']);
+        $this->assertSame([], $result['ldgvideos']);
         // Nenhum dos dois: nem o video, nem um aviso a mais vindo do core
         // (util::validate_courses nao tem o que avisar aqui).
-        $this->assertSame([], $resultado['warnings']);
+        $this->assertSame([], $result['warnings']);
     }
 
     /**
@@ -88,20 +88,20 @@ final class external_test extends \advanced_testcase {
     public function test_com_capability_devolve_o_video(): void {
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course();
+        $course = $this->getDataGenerator()->create_course();
         $cm = $this->getDataGenerator()->create_module('ldgvideo', [
-            'course' => $curso->id,
+            'course' => $course->id,
             'name' => 'Aula 1',
             'videourl' => 'https://vimeo.com/226053498',
         ]);
 
-        $aluno = $this->getDataGenerator()->create_and_enrol($curso, 'student');
-        $this->setUser($aluno);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
 
-        $resultado = \mod_ldgvideo_external::get_ldgvideos_by_courses([$curso->id]);
+        $result = \mod_ldgvideo_external::get_ldgvideos_by_courses([$course->id]);
 
-        $this->assertCount(1, $resultado['ldgvideos']);
-        $this->assertSame([], $resultado['warnings']);
-        $this->assertSame('https://vimeo.com/226053498', $resultado['ldgvideos'][0]->videourl);
+        $this->assertCount(1, $result['ldgvideos']);
+        $this->assertSame([], $result['warnings']);
+        $this->assertSame('https://vimeo.com/226053498', $result['ldgvideos'][0]->videourl);
     }
 }

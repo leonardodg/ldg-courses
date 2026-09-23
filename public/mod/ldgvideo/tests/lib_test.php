@@ -65,37 +65,37 @@ final class lib_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course();
+        $course = $this->getDataGenerator()->create_course();
         $cm = $this->getDataGenerator()->create_module('ldgvideo', [
-            'course' => $curso->id,
+            'course' => $course->id,
             'name' => 'Aula 1',
             'videourl' => 'https://vimeo.com/226053498',
             'aspectratio' => url::RATIO_PORTRAIT,
         ]);
 
-        $linha = $DB->get_record('ldgvideo', ['id' => $cm->id], '*', MUST_EXIST);
-        $this->assertSame('https://vimeo.com/226053498', $linha->videourl);
-        $this->assertSame(url::RATIO_PORTRAIT, $linha->aspectratio);
+        $record = $DB->get_record('ldgvideo', ['id' => $cm->id], '*', MUST_EXIST);
+        $this->assertSame('https://vimeo.com/226053498', $record->videourl);
+        $this->assertSame(url::RATIO_PORTRAIT, $record->aspectratio);
 
-        $atualizado = clone $linha;
-        $atualizado->instance = $linha->id;
-        $atualizado->coursemodule = $cm->cmid;
-        $atualizado->videourl = 'https://www.youtube.com/watch?v=d2bq9QW7fZg';
-        $atualizado->aspectratio = url::RATIO_CLASSIC;
-        $atualizado->printintro = 0;
+        $updated = clone $record;
+        $updated->instance = $record->id;
+        $updated->coursemodule = $cm->cmid;
+        $updated->videourl = 'https://www.youtube.com/watch?v=d2bq9QW7fZg';
+        $updated->aspectratio = url::RATIO_CLASSIC;
+        $updated->printintro = 0;
 
-        ldgvideo_update_instance($atualizado, null);
+        ldgvideo_update_instance($updated, null);
 
-        $linha = $DB->get_record('ldgvideo', ['id' => $cm->id], '*', MUST_EXIST);
-        $this->assertSame('https://www.youtube.com/watch?v=d2bq9QW7fZg', $linha->videourl);
-        $this->assertSame(url::RATIO_CLASSIC, $linha->aspectratio);
+        $record = $DB->get_record('ldgvideo', ['id' => $cm->id], '*', MUST_EXIST);
+        $this->assertSame('https://www.youtube.com/watch?v=d2bq9QW7fZg', $record->videourl);
+        $this->assertSame(url::RATIO_CLASSIC, $record->aspectratio);
 
         // O printintro viaja serializado, como no mod_page.
-        $opcoes = (array) unserialize_array($linha->displayoptions);
-        $this->assertSame(0, $opcoes['printintro']);
+        $options = (array) unserialize_array($record->displayoptions);
+        $this->assertSame(0, $options['printintro']);
 
-        $this->assertTrue(ldgvideo_delete_instance($linha->id));
-        $this->assertFalse($DB->record_exists('ldgvideo', ['id' => $linha->id]));
+        $this->assertTrue(ldgvideo_delete_instance($record->id));
+        $this->assertFalse($DB->record_exists('ldgvideo', ['id' => $record->id]));
     }
 
     /**
@@ -108,35 +108,35 @@ final class lib_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course(['enablecompletion' => 1]);
+        $course = $this->getDataGenerator()->create_course(['enablecompletion' => 1]);
         $cm = $this->getDataGenerator()->create_module('ldgvideo', [
-            'course' => $curso->id,
+            'course' => $course->id,
             'completion' => COMPLETION_TRACKING_AUTOMATIC,
             'completionview' => 1,
         ]);
 
-        $aluno = $this->getDataGenerator()->create_and_enrol($curso, 'student');
-        $this->setUser($aluno);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
 
         $video = $DB->get_record('ldgvideo', ['id' => $cm->id], '*', MUST_EXIST);
-        $modulo = get_coursemodule_from_instance('ldgvideo', $video->id);
-        $contexto = \context_module::instance($modulo->id);
+        $module = get_coursemodule_from_instance('ldgvideo', $video->id);
+        $context = \context_module::instance($module->id);
 
         $sink = $this->redirectEvents();
-        ldgvideo_view($video, $curso, $modulo, $contexto);
-        $eventos = $sink->get_events();
+        ldgvideo_view($video, $course, $module, $context);
+        $events = $sink->get_events();
         $sink->close();
 
-        $este = array_values(array_filter($eventos, function ($e) {
+        $matching = array_values(array_filter($events, function ($e) {
             return $e instanceof \mod_ldgvideo\event\course_module_viewed;
         }));
 
-        $this->assertCount(1, $este);
-        $this->assertSame($contexto->id, $este[0]->get_context()->id);
+        $this->assertCount(1, $matching);
+        $this->assertSame($context->id, $matching[0]->get_context()->id);
 
-        $completion = new \completion_info($curso);
-        $dados = $completion->get_data(\cm_info::create($modulo), false, $aluno->id);
-        $this->assertEquals(COMPLETION_COMPLETE, $dados->completionstate);
+        $completion = new \completion_info($course);
+        $data = $completion->get_data(\cm_info::create($module), false, $student->id);
+        $this->assertEquals(COMPLETION_COMPLETE, $data->completionstate);
     }
 
     /**
@@ -153,13 +153,13 @@ final class lib_test extends \advanced_testcase {
 
         $moduleid = $DB->get_field('modules', 'id', ['name' => 'ldgvideo'], MUST_EXIST);
 
-        $padrao = $DB->get_record('course_completion_defaults', [
+        $default = $DB->get_record('course_completion_defaults', [
             'course' => SITEID,
             'module' => $moduleid,
         ]);
 
-        $this->assertNotFalse($padrao, 'o db/install.php tinha que ter semeado o padrao do site');
-        $this->assertEquals(COMPLETION_TRACKING_MANUAL, $padrao->completion);
+        $this->assertNotFalse($default, 'o db/install.php tinha que ter semeado o padrao do site');
+        $this->assertEquals(COMPLETION_TRACKING_MANUAL, $default->completion);
     }
 
     /**
@@ -170,10 +170,10 @@ final class lib_test extends \advanced_testcase {
     public function test_check_updates_nao_procura_arquivo(): void {
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course();
-        $cm = $this->getDataGenerator()->create_module('ldgvideo', ['course' => $curso->id]);
-        $aluno = $this->getDataGenerator()->create_and_enrol($curso, 'student');
-        $this->setUser($aluno);
+        $course = $this->getDataGenerator()->create_course();
+        $cm = $this->getDataGenerator()->create_module('ldgvideo', ['course' => $course->id]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
 
         $info = \cm_info::create(get_coursemodule_from_instance('ldgvideo', $cm->id));
         $updates = ldgvideo_check_updates_since($info, 0);
@@ -189,19 +189,19 @@ final class lib_test extends \advanced_testcase {
     public function test_export_contents_devolve_o_endereco(): void {
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course();
+        $course = $this->getDataGenerator()->create_course();
         $cm = $this->getDataGenerator()->create_module('ldgvideo', [
-            'course' => $curso->id,
+            'course' => $course->id,
             'videourl' => 'https://vimeo.com/226053498',
         ]);
 
-        $conteudo = ldgvideo_export_contents(
+        $content = ldgvideo_export_contents(
             get_coursemodule_from_instance('ldgvideo', $cm->id),
             ''
         );
 
-        $this->assertCount(1, $conteudo);
-        $this->assertSame('url', $conteudo[0]['type']);
-        $this->assertSame('https://vimeo.com/226053498', $conteudo[0]['fileurl']);
+        $this->assertCount(1, $content);
+        $this->assertSame('url', $content[0]['type']);
+        $this->assertSame('https://vimeo.com/226053498', $content[0]['fileurl']);
     }
 }
