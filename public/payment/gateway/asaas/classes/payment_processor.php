@@ -138,7 +138,7 @@ class payment_processor {
             $document
         );
 
-        $comum = [
+        $common = [
             'customer' => $customerid,
             'billingtype' => self::billing_type(),
             'value' => $amount,
@@ -156,34 +156,34 @@ class payment_processor {
         // venda de curso, so que pelo lado errado. Mesmo padrao ja usado no
         // Mercado Pago (marketplace_fee ausente quando feeamount <= 0).
         if ($feepercent > 0) {
-            $comum['splitwalletid'] = credentials::platform_wallet($environment);
-            $comum['splitpercent'] = $feepercent;
-            $comum['splitbase'] = $feebase;
+            $common['splitwalletid'] = credentials::platform_wallet($environment);
+            $common['splitpercent'] = $feepercent;
+            $common['splitbase'] = $feebase;
         }
 
         // Assinatura ou cobranca avulsa? Quem sabe e o marketplace - o gateway
         // nao tem como saber o que e uma "oferta recorrente". Sem ele
         // instalado, ou para item que nao e assinatura, recurrence_for()
         // devolve null e nada muda em relacao ao que existia.
-        $recorrencia = class_exists('\local_marketplace\api')
+        $recurrence = class_exists('\local_marketplace\api')
             ? \local_marketplace\api::recurrence_for($component, $itemid, $paymentarea)
             : null;
 
-        if ($recorrencia) {
-            $response = $client->create_subscription($comum + [
+        if ($recurrence) {
+            $response = $client->create_subscription($common + [
                 'nextduedate' => date('Y-m-d', time() + (self::due_days() * DAYSECS)),
-                'cycle' => self::cycle_for($recorrencia->days),
-                'maxpayments' => $recorrencia->maxcycles,
+                'cycle' => self::cycle_for($recurrence->days),
+                'maxpayments' => $recurrence->maxcycles,
             ]);
 
             // A resposta de /subscriptions NAO traz invoiceUrl: ela descreve a
             // assinatura, e nao uma cobranca. A primeira cobranca ja existe, e
             // e para ela que o aluno precisa ir agora.
             $record->subscriptionid = (string) ($response['id'] ?? '');
-            $cobrancas = $client->subscription_payments($record->subscriptionid);
-            $response = self::earliest_charge($cobrancas);
+            $charges = $client->subscription_payments($record->subscriptionid);
+            $response = self::earliest_charge($charges);
         } else {
-            $response = $client->create_payment($comum + [
+            $response = $client->create_payment($common + [
                 'duedate' => date('Y-m-d', time() + (self::due_days() * DAYSECS)),
             ]);
         }
@@ -390,7 +390,7 @@ class payment_processor {
         global $DB;
 
         // A mais recente da mesma assinatura e a que tem o contexto mais atual.
-        $anterior = $DB->get_records(
+        $previous = $DB->get_records(
             self::TABLE,
             ['subscriptionid' => $subscriptionid],
             'id DESC',
@@ -398,40 +398,40 @@ class payment_processor {
             0,
             1
         );
-        $anterior = reset($anterior);
-        if (!$anterior) {
+        $previous = reset($previous);
+        if (!$previous) {
             return null;
         }
 
         // Referencia propria por ciclo: ela e UNIQUE na tabela, e reaproveitar
         // a do ciclo anterior faria o insert falhar bem no meio da renovacao.
-        $novo = (object) [
+        $new = (object) [
             'asaaspaymentid' => $asaaspaymentid,
             'subscriptionid' => $subscriptionid,
-            'externalreference' => 'mdl-' . (int) $anterior->userid . '-' . (int) $anterior->itemid
+            'externalreference' => 'mdl-' . (int) $previous->userid . '-' . (int) $previous->itemid
                 . '-' . random_string(12),
-            'customerid' => $anterior->customerid,
-            'component' => $anterior->component,
-            'paymentarea' => $anterior->paymentarea,
-            'itemid' => $anterior->itemid,
-            'userid' => $anterior->userid,
-            'accountid' => $anterior->accountid,
-            'amount' => $anterior->amount,
-            'currency' => $anterior->currency,
+            'customerid' => $previous->customerid,
+            'component' => $previous->component,
+            'paymentarea' => $previous->paymentarea,
+            'itemid' => $previous->itemid,
+            'userid' => $previous->userid,
+            'accountid' => $previous->accountid,
+            'amount' => $previous->amount,
+            'currency' => $previous->currency,
             'feeamount' => 0,
-            'feepercent' => $anterior->feepercent,
-            'feebase' => $anterior->feebase,
-            'feesource' => $anterior->feesource,
-            'billingtype' => $anterior->billingtype,
-            'environment' => $anterior->environment,
+            'feepercent' => $previous->feepercent,
+            'feebase' => $previous->feebase,
+            'feesource' => $previous->feesource,
+            'billingtype' => $previous->billingtype,
+            'environment' => $previous->environment,
             'status' => 'PENDING',
             'paymentid' => null,
             'timecreated' => time(),
             'timemodified' => time(),
         ];
-        $novo->id = $DB->insert_record(self::TABLE, $novo);
+        $new->id = $DB->insert_record(self::TABLE, $new);
 
-        return $novo;
+        return $new;
     }
 
     /**
@@ -549,9 +549,9 @@ class payment_processor {
             $client->cancel_subscription((string) $record->subscriptionid);
         }
 
-        $resposta = $client->refund_payment((string) $record->asaaspaymentid);
+        $response = $client->refund_payment((string) $record->asaaspaymentid);
 
-        $record->status = (string) ($resposta['status'] ?? 'REFUNDED');
+        $record->status = (string) ($response['status'] ?? 'REFUNDED');
         $record->timemodified = time();
         $DB->update_record(self::TABLE, $record);
 
@@ -587,32 +587,32 @@ class payment_processor {
 
         try {
             $client = new asaas_client($apikey, $record->environment);
-            $cobrancas = $client->subscription_payments((string) $record->subscriptionid);
+            $charges = $client->subscription_payments((string) $record->subscriptionid);
         } catch (\Throwable $e) {
             return null;
         }
 
         // A mais proxima entre as que ainda nao foram pagas. Vencida entra: ela
         // e justamente a que o aluno precisa pagar para o acesso voltar.
-        $abertas = array_filter(
-            $cobrancas,
+        $open = array_filter(
+            $charges,
             static fn(array $c): bool => !self::is_paid((string) ($c['status'] ?? ''))
                 && strtoupper((string) ($c['status'] ?? '')) !== 'REFUNDED'
         );
-        $alvo = self::earliest_charge($abertas);
-        if (!$alvo) {
+        $target = self::earliest_charge($open);
+        if (!$target) {
             return null;
         }
 
         return [
-            'url' => (string) ($alvo['invoiceUrl'] ?? ''),
-            'duedate' => (string) ($alvo['dueDate'] ?? ''),
-            'value' => (float) ($alvo['value'] ?? 0),
+            'url' => (string) ($target['invoiceUrl'] ?? ''),
+            'duedate' => (string) ($target['dueDate'] ?? ''),
+            'value' => (float) ($target['value'] ?? 0),
             // So o boleto tem; para Pix e cartao volta vazio, e a tela nao
             // mostra o campo em vez de mostrar um espaco vago.
-            'line' => empty($alvo['bankSlipUrl'])
+            'line' => empty($target['bankSlipUrl'])
                 ? ''
-                : $client->identification_field((string) $alvo['id']),
+                : $client->identification_field((string) $target['id']),
         ];
     }
 
@@ -628,21 +628,21 @@ class payment_processor {
      * Ordena por vencimento e devolve a mais proxima. Empate no vencimento cai
      * na ordem que veio, e tanto faz: mesmas data e valor.
      *
-     * @param array $cobrancas Resposta de subscription_payments()
+     * @param array $charges Resposta de subscription_payments()
      * @return array A cobranca mais proxima, ou vazio quando nao ha nenhuma
      */
-    public static function earliest_charge(array $cobrancas): array {
-        $melhor = [];
-        foreach ($cobrancas as $cobranca) {
-            if (!is_array($cobranca) || empty($cobranca['dueDate'])) {
+    public static function earliest_charge(array $charges): array {
+        $best = [];
+        foreach ($charges as $charge) {
+            if (!is_array($charge) || empty($charge['dueDate'])) {
                 continue;
             }
-            if (!$melhor || $cobranca['dueDate'] < $melhor['dueDate']) {
-                $melhor = $cobranca;
+            if (!$best || $charge['dueDate'] < $best['dueDate']) {
+                $best = $charge;
             }
         }
 
-        return $melhor;
+        return $best;
     }
 
     /**
@@ -689,17 +689,17 @@ class payment_processor {
         //
         // O <= no lugar do < e o que produz isso, porque CYCLES esta em ordem
         // crescente - trocar por < voltaria a preferir o menor em silencio.
-        $melhor = 'MONTHLY';
-        $distancia = PHP_INT_MAX;
-        foreach (self::CYCLES as $nome => $dias) {
-            $atual = abs($dias - $days);
-            if ($atual <= $distancia) {
-                $distancia = $atual;
-                $melhor = $nome;
+        $best = 'MONTHLY';
+        $distance = PHP_INT_MAX;
+        foreach (self::CYCLES as $name => $cycledays) {
+            $current = abs($cycledays - $days);
+            if ($current <= $distance) {
+                $distance = $current;
+                $best = $name;
             }
         }
 
-        return $melhor;
+        return $best;
     }
 
     /**

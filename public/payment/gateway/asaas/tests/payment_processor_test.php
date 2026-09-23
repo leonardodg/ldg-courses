@@ -351,7 +351,7 @@ final class payment_processor_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $primeiro = (object) [
+        $first = (object) [
             'asaaspaymentid' => 'pay_ciclo1',
             'subscriptionid' => 'sub_1',
             'externalreference' => 'mdl-7-9-primeiro',
@@ -373,32 +373,32 @@ final class payment_processor_test extends \advanced_testcase {
             'timecreated' => time() - DAYSECS,
             'timemodified' => time() - DAYSECS,
         ];
-        $DB->insert_record(payment_processor::TABLE, $primeiro);
+        $DB->insert_record(payment_processor::TABLE, $first);
 
-        $novo = payment_processor::adopt_subscription_cycle('pay_ciclo2', 'sub_1');
+        $new = payment_processor::adopt_subscription_cycle('pay_ciclo2', 'sub_1');
 
-        $this->assertNotNull($novo);
-        $this->assertSame('pay_ciclo2', $novo->asaaspaymentid);
-        $this->assertSame('sub_1', $novo->subscriptionid);
-        $this->assertSame('PENDING', $novo->status, 'o ciclo novo nasce pendente');
-        $this->assertNull($novo->paymentid);
-        $this->assertEquals(0, $novo->feeamount, 'a comissao do ciclo novo ainda nao aconteceu');
+        $this->assertNotNull($new);
+        $this->assertSame('pay_ciclo2', $new->asaaspaymentid);
+        $this->assertSame('sub_1', $new->subscriptionid);
+        $this->assertSame('PENDING', $new->status, 'o ciclo novo nasce pendente');
+        $this->assertNull($new->paymentid);
+        $this->assertEquals(0, $new->feeamount, 'a comissao do ciclo novo ainda nao aconteceu');
 
         // Contexto copiado.
-        $this->assertSame('local_marketplace', $novo->component);
-        $this->assertEquals(9, $novo->itemid);
-        $this->assertEquals(7, $novo->userid);
-        $this->assertEquals(3, $novo->accountid);
-        $this->assertSame('sandbox', $novo->environment);
+        $this->assertSame('local_marketplace', $new->component);
+        $this->assertEquals(9, $new->itemid);
+        $this->assertEquals(7, $new->userid);
+        $this->assertEquals(3, $new->accountid);
+        $this->assertSame('sandbox', $new->environment);
 
         // Termos vem da LINHA, e nao de nova resolucao - ver docs/adr/0007.
-        $this->assertEquals(25.0, $novo->feepercent);
-        $this->assertSame('net', $novo->feebase);
-        $this->assertSame('company', $novo->feesource);
+        $this->assertEquals(25.0, $new->feepercent);
+        $this->assertSame('net', $new->feebase);
+        $this->assertSame('company', $new->feesource);
 
         // Referencia propria: ela e UNIQUE, e repetir quebraria o insert bem no
         // meio da renovacao.
-        $this->assertNotSame($primeiro->externalreference, $novo->externalreference);
+        $this->assertNotSame($first->externalreference, $new->externalreference);
         $this->assertSame(2, $DB->count_records(payment_processor::TABLE, ['subscriptionid' => 'sub_1']));
     }
 
@@ -430,14 +430,14 @@ final class payment_processor_test extends \advanced_testcase {
      * @return void
      */
     public function test_escolhe_a_cobranca_que_vence_primeiro(): void {
-        $cobrancas = [
+        $charges = [
             ['id' => 'pay_d', 'dueDate' => '2026-10-07'],
             ['id' => 'pay_c', 'dueDate' => '2026-09-30'],
             ['id' => 'pay_a', 'dueDate' => '2026-09-09'],
             ['id' => 'pay_b', 'dueDate' => '2026-09-16'],
         ];
 
-        $this->assertSame('pay_a', payment_processor::earliest_charge($cobrancas)['id']);
+        $this->assertSame('pay_a', payment_processor::earliest_charge($charges)['id']);
     }
 
     /**
@@ -456,7 +456,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @param array $extra
      * @return \stdClass
      */
-    protected function linha(array $extra = []): \stdClass {
+    protected function row(array $extra = []): \stdClass {
         global $DB;
 
         $base = (object) array_merge([
@@ -495,8 +495,8 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_venda_avulsa_paga_pode_estornar(): void {
         $this->resetAfterTest();
 
-        $this->assertSame('', payment_processor::refund_blocker($this->linha()));
-        $this->assertSame('', payment_processor::refund_blocker($this->linha(['status' => 'RECEIVED'])));
+        $this->assertSame('', payment_processor::refund_blocker($this->row()));
+        $this->assertSame('', payment_processor::refund_blocker($this->row(['status' => 'RECEIVED'])));
     }
 
     /**
@@ -513,7 +513,7 @@ final class payment_processor_test extends \advanced_testcase {
 
         $this->assertSame(
             'errorrefundnotpaid',
-            payment_processor::refund_blocker($this->linha(['status' => 'PENDING']))
+            payment_processor::refund_blocker($this->row(['status' => 'PENDING']))
         );
     }
 
@@ -527,7 +527,7 @@ final class payment_processor_test extends \advanced_testcase {
 
         $this->assertSame(
             'errorrefundalready',
-            payment_processor::refund_blocker($this->linha(['status' => 'REFUNDED']))
+            payment_processor::refund_blocker($this->row(['status' => 'REFUNDED']))
         );
     }
 
@@ -539,9 +539,9 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_primeiro_ciclo_pode_estornar(): void {
         $this->resetAfterTest();
 
-        $primeiro = $this->linha(['subscriptionid' => 'sub_1']);
+        $first = $this->row(['subscriptionid' => 'sub_1']);
 
-        $this->assertSame('', payment_processor::refund_blocker($primeiro));
+        $this->assertSame('', payment_processor::refund_blocker($first));
     }
 
     /**
@@ -558,12 +558,12 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_ciclo_do_meio_nao_estorna(): void {
         $this->resetAfterTest();
 
-        $this->linha(['subscriptionid' => 'sub_1', 'paymentid' => 1]);
-        $segundo = $this->linha(['subscriptionid' => 'sub_1', 'paymentid' => 2]);
+        $this->row(['subscriptionid' => 'sub_1', 'paymentid' => 1]);
+        $second = $this->row(['subscriptionid' => 'sub_1', 'paymentid' => 2]);
 
         $this->assertSame(
             'errorrefundnotfirstcycle',
-            payment_processor::refund_blocker($segundo)
+            payment_processor::refund_blocker($second)
         );
     }
 
@@ -578,10 +578,10 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_ciclo_anterior_nao_pago_nao_bloqueia(): void {
         $this->resetAfterTest();
 
-        $this->linha(['subscriptionid' => 'sub_1', 'status' => 'PENDING', 'paymentid' => null]);
-        $pago = $this->linha(['subscriptionid' => 'sub_1', 'paymentid' => 5]);
+        $this->row(['subscriptionid' => 'sub_1', 'status' => 'PENDING', 'paymentid' => null]);
+        $paid = $this->row(['subscriptionid' => 'sub_1', 'paymentid' => 5]);
 
-        $this->assertSame('', payment_processor::refund_blocker($pago));
+        $this->assertSame('', payment_processor::refund_blocker($paid));
     }
 
     /**
@@ -602,11 +602,11 @@ final class payment_processor_test extends \advanced_testcase {
 
         $this->assertSame(
             'errorrefundbillingtype',
-            payment_processor::refund_blocker($this->linha(['billingtype' => 'BOLETO']))
+            payment_processor::refund_blocker($this->row(['billingtype' => 'BOLETO']))
         );
         $this->assertSame(
             'errorrefundbillingtype',
-            payment_processor::refund_blocker($this->linha([
+            payment_processor::refund_blocker($this->row([
                 'billingtype' => 'BOLETO',
                 'status' => 'RECEIVED_IN_CASH',
             ])),
@@ -622,7 +622,7 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_cartao_e_pix_estornam(): void {
         $this->resetAfterTest();
 
-        $this->assertSame('', payment_processor::refund_blocker($this->linha(['billingtype' => 'CREDIT_CARD'])));
-        $this->assertSame('', payment_processor::refund_blocker($this->linha(['billingtype' => 'PIX'])));
+        $this->assertSame('', payment_processor::refund_blocker($this->row(['billingtype' => 'CREDIT_CARD'])));
+        $this->assertSame('', payment_processor::refund_blocker($this->row(['billingtype' => 'PIX'])));
     }
 }
