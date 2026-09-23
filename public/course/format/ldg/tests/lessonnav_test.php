@@ -43,23 +43,23 @@ final class lessonnav_test extends \advanced_testcase {
     /**
      * Monta um curso com tres aulas e devolve o nav de uma delas.
      *
-     * @param int $qual Indice da aula em foco, comecando em zero.
+     * @param int $which Indice da aula em foco, comecando em zero.
      * @return \stdClass
      */
-    private function nav_da_aula(int $qual): \stdClass {
+    private function lesson_nav(int $which): \stdClass {
         global $PAGE;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg', 'numsections' => 2]);
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg', 'numsections' => 2]);
 
         $cms = [];
-        $cms[] = $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
-        $cms[] = $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula dois']);
-        $cms[] = $gerador->create_module('page', ['course' => $curso->id, 'section' => 2, 'name' => 'Aula tres']);
+        $cms[] = $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula um']);
+        $cms[] = $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula dois']);
+        $cms[] = $generator->create_module('page', ['course' => $course->id, 'section' => 2, 'name' => 'Aula tres']);
 
-        $format = course_get_format($curso);
-        $foco = $format->get_modinfo()->get_cm($cms[$qual]->cmid);
-        $nav = new lessonnav($format, new catalog($format), $foco);
+        $format = course_get_format($course);
+        $focus = $format->get_modinfo()->get_cm($cms[$which]->cmid);
+        $nav = new lessonnav($format, new catalog($format), $focus);
 
         return $nav->export_for_template($PAGE->get_renderer('core'));
     }
@@ -73,7 +73,7 @@ final class lessonnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $d = $this->nav_da_aula(1);
+        $d = $this->lesson_nav(1);
 
         $this->assertTrue($d->hasprev);
         $this->assertSame('Aula um', $d->prev->name);
@@ -95,13 +95,13 @@ final class lessonnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $primeira = $this->nav_da_aula(0);
-        $ultima = $this->nav_da_aula(2);
+        $first = $this->lesson_nav(0);
+        $last = $this->lesson_nav(2);
 
-        $this->assertFalse($primeira->hasprev);
-        $this->assertTrue($primeira->hasnext);
-        $this->assertTrue($ultima->hasprev);
-        $this->assertFalse($ultima->hasnext);
+        $this->assertFalse($first->hasprev);
+        $this->assertTrue($first->hasnext);
+        $this->assertTrue($last->hasprev);
+        $this->assertFalse($last->hasnext);
     }
 
     /**
@@ -115,15 +115,15 @@ final class lessonnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $a = $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
-        $gerador->create_module('resource', ['course' => $curso->id, 'section' => 1, 'name' => 'Apostila']);
-        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula dois']);
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $a = $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula um']);
+        $generator->create_module('resource', ['course' => $course->id, 'section' => 1, 'name' => 'Apostila']);
+        $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula dois']);
 
-        $format = course_get_format($curso);
-        $foco = $format->get_modinfo()->get_cm($a->cmid);
-        $nav = new lessonnav($format, new catalog($format), $foco);
+        $format = course_get_format($course);
+        $focus = $format->get_modinfo()->get_cm($a->cmid);
+        $nav = new lessonnav($format, new catalog($format), $focus);
         $d = $nav->export_for_template($PAGE->get_renderer('core'));
 
         $this->assertSame('Aula dois', $d->next->name);
@@ -141,8 +141,8 @@ final class lessonnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $curso = $this->getDataGenerator()->create_course(['format' => 'ldg']);
-        $format = course_get_format($curso);
+        $course = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $format = course_get_format($course);
         $nav = new lessonnav($format, new catalog($format), null);
         $d = $nav->export_for_template($PAGE->get_renderer('core'));
 
@@ -158,7 +158,7 @@ final class lessonnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $d = $this->nav_da_aula(2);
+        $d = $this->lesson_nav(2);
 
         $this->assertNotEmpty($d->position->module);
     }

@@ -55,19 +55,19 @@ final class set_duration_test extends externallib_advanced_testcase {
     public function test_professor_grava(): void {
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $course = $this->getDataGenerator()->create_course(['format' => 'ldg']);
         $page = $this->getDataGenerator()->get_plugin_generator('mod_page')->create_instance([
-            'course' => $curso->id,
+            'course' => $course->id,
         ]);
-        $professor = $this->getDataGenerator()->create_and_enrol($curso, 'editingteacher');
+        $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
 
-        $this->setUser($professor);
+        $this->setUser($teacher);
 
-        $resultado = set_duration::execute($page->cmid, 750);
+        $result = set_duration::execute($page->cmid, 750);
 
-        $this->assertSame(750, $resultado['duration']);
+        $this->assertSame(750, $result['duration']);
         $this->assertSame(750, lesson::duration_for($page->cmid));
-        $this->assertNotEmpty($resultado['formatted']);
+        $this->assertNotEmpty($result['formatted']);
     }
 
     /**
@@ -78,19 +78,19 @@ final class set_duration_test extends externallib_advanced_testcase {
     public function test_zero_limpa(): void {
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $course = $this->getDataGenerator()->create_course(['format' => 'ldg']);
         $page = $this->getDataGenerator()->get_plugin_generator('mod_page')->create_instance([
-            'course' => $curso->id,
+            'course' => $course->id,
         ]);
-        $professor = $this->getDataGenerator()->create_and_enrol($curso, 'editingteacher');
+        $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
 
-        $this->setUser($professor);
+        $this->setUser($teacher);
 
         set_duration::execute($page->cmid, 750);
-        $resultado = set_duration::execute($page->cmid, 0);
+        $result = set_duration::execute($page->cmid, 0);
 
-        $this->assertSame(0, $resultado['duration']);
-        $this->assertSame('', $resultado['formatted']);
+        $this->assertSame(0, $result['duration']);
+        $this->assertSame('', $result['formatted']);
         $this->assertNull(lesson::duration_for($page->cmid));
     }
 
@@ -102,13 +102,13 @@ final class set_duration_test extends externallib_advanced_testcase {
     public function test_aluno_e_recusado(): void {
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $course = $this->getDataGenerator()->create_course(['format' => 'ldg']);
         $page = $this->getDataGenerator()->get_plugin_generator('mod_page')->create_instance([
-            'course' => $curso->id,
+            'course' => $course->id,
         ]);
-        $aluno = $this->getDataGenerator()->create_and_enrol($curso, 'student');
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
 
-        $this->setUser($aluno);
+        $this->setUser($student);
 
         // O aluno ESTA matriculado, entao ele passa pela validacao de contexto
         // e e barrado pela permissao - diferente do professor de outro curso,
@@ -149,16 +149,16 @@ final class set_duration_test extends externallib_advanced_testcase {
     public function test_professor_de_outro_curso_e_recusado(): void {
         $this->resetAfterTest();
 
-        $meu = $this->getDataGenerator()->create_course(['format' => 'ldg']);
-        $alheio = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $mine = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $other = $this->getDataGenerator()->create_course(['format' => 'ldg']);
 
         $page = $this->getDataGenerator()->get_plugin_generator('mod_page')->create_instance([
-            'course' => $alheio->id,
+            'course' => $other->id,
         ]);
 
-        $professor = $this->getDataGenerator()->create_and_enrol($meu, 'editingteacher');
+        $teacher = $this->getDataGenerator()->create_and_enrol($mine, 'editingteacher');
 
-        $this->setUser($professor);
+        $this->setUser($teacher);
 
         $this->expectException(\core\exception\require_login_exception::class);
 

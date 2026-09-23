@@ -39,28 +39,28 @@ final class portalnav_test extends \advanced_testcase {
      *
      * @return \stdClass
      */
-    private function curso(): \stdClass {
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
+    private function course(): \stdClass {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
 
-        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
-        $gerador->create_module('resource', ['course' => $curso->id, 'section' => 1, 'name' => 'Apostila']);
-        $gerador->create_module('forum', ['course' => $curso->id, 'section' => 1, 'name' => 'Duvidas']);
+        $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula um']);
+        $generator->create_module('resource', ['course' => $course->id, 'section' => 1, 'name' => 'Apostila']);
+        $generator->create_module('forum', ['course' => $course->id, 'section' => 1, 'name' => 'Duvidas']);
 
-        return $curso;
+        return $course;
     }
 
     /**
      * Monta o nav para um pedido de destino.
      *
-     * @param \stdClass $curso
-     * @param string $pedido
+     * @param \stdClass $course
+     * @param string $request
      * @return portalnav
      */
-    private function nav(\stdClass $curso, string $pedido): portalnav {
-        $format = course_get_format($curso);
+    private function nav(\stdClass $course, string $request): portalnav {
+        $format = course_get_format($course);
 
-        return new portalnav($format, new catalog($format), $pedido, $format->get_selected_cm());
+        return new portalnav($format, new catalog($format), $request, $format->get_selected_cm());
     }
 
     /**
@@ -72,7 +72,7 @@ final class portalnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $this->assertSame(catalog::AULA, $this->nav($this->curso(), '')->current());
+        $this->assertSame(catalog::AULA, $this->nav($this->course(), '')->current());
     }
 
     /**
@@ -84,7 +84,7 @@ final class portalnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $this->assertSame(catalog::AULA, $this->nav($this->curso(), 'inventado')->current());
+        $this->assertSame(catalog::AULA, $this->nav($this->course(), 'inventado')->current());
     }
 
     /**
@@ -96,7 +96,7 @@ final class portalnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $this->assertSame(catalog::AULA, $this->nav($this->curso(), catalog::CERTIFICADO)->current());
+        $this->assertSame(catalog::AULA, $this->nav($this->course(), catalog::CERTIFICADO)->current());
     }
 
     /**
@@ -108,7 +108,7 @@ final class portalnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $this->assertSame(catalog::MATERIAL, $this->nav($this->curso(), catalog::MATERIAL)->current());
+        $this->assertSame(catalog::MATERIAL, $this->nav($this->course(), catalog::MATERIAL)->current());
     }
 
     /**
@@ -120,15 +120,15 @@ final class portalnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $destinos = $this->nav($this->curso(), catalog::MATERIAL)->destinations();
-        $chaves = array_column($destinos, 'key');
+        $destinations = $this->nav($this->course(), catalog::MATERIAL)->destinations();
+        $keys = array_column($destinations, 'key');
 
-        $this->assertSame([catalog::AULA, catalog::MATERIAL, catalog::FORUM], $chaves);
-        $this->assertNotContains(catalog::CERTIFICADO, $chaves);
+        $this->assertSame([catalog::AULA, catalog::MATERIAL, catalog::FORUM], $keys);
+        $this->assertNotContains(catalog::CERTIFICADO, $keys);
 
-        foreach ($destinos as $destino) {
-            $this->assertSame($destino['key'] === catalog::MATERIAL, $destino['active']);
-            $this->assertStringContainsString('ldgview=' . $destino['key'], $destino['url']);
+        foreach ($destinations as $destination) {
+            $this->assertSame($destination['key'] === catalog::MATERIAL, $destination['active']);
+            $this->assertStringContainsString('ldgview=' . $destination['key'], $destination['url']);
         }
     }
 
@@ -144,16 +144,16 @@ final class portalnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $curso = $this->curso();
-        $format = course_get_format($curso);
-        $aula = $format->get_selected_cm();
+        $course = $this->course();
+        $format = course_get_format($course);
+        $lesson = $format->get_selected_cm();
 
-        $this->assertNotNull($aula);
+        $this->assertNotNull($lesson);
 
-        $destinos = (new portalnav($format, new catalog($format), catalog::MATERIAL, $aula))->destinations();
+        $destinations = (new portalnav($format, new catalog($format), catalog::MATERIAL, $lesson))->destinations();
 
-        foreach ($destinos as $destino) {
-            $this->assertStringContainsString('lesson=' . $aula->id, $destino['url']);
+        foreach ($destinations as $destination) {
+            $this->assertStringContainsString('lesson=' . $lesson->id, $destination['url']);
         }
     }
 
@@ -171,14 +171,14 @@ final class portalnav_test extends \advanced_testcase {
         $this->resetAfterTest();
         $CFG->enableavailability = 1;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $aluno = $gerador->create_user();
-        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id, 'student');
 
-        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
-        $gerador->create_module('forum', [
-            'course' => $curso->id,
+        $generator->create_module('page', ['course' => $course->id, 'section' => 1, 'name' => 'Aula um']);
+        $generator->create_module('forum', [
+            'course' => $course->id,
             'section' => 1,
             'name' => 'Duvidas',
             'availability' => json_encode((object) [
@@ -188,11 +188,11 @@ final class portalnav_test extends \advanced_testcase {
             ]),
         ]);
 
-        $this->setUser($aluno);
-        $chaves = array_column($this->nav($curso, catalog::FORUM)->destinations(), 'key');
+        $this->setUser($student);
+        $keys = array_column($this->nav($course, catalog::FORUM)->destinations(), 'key');
 
-        $this->assertNotContains(catalog::FORUM, $chaves);
-        $this->assertContains(catalog::AULA, $chaves);
+        $this->assertNotContains(catalog::FORUM, $keys);
+        $this->assertContains(catalog::AULA, $keys);
     }
 
     /**
@@ -208,13 +208,13 @@ final class portalnav_test extends \advanced_testcase {
         $this->setAdminUser();
         $CFG->enableavailability = 1;
 
-        $gerador = $this->getDataGenerator();
-        $curso = $gerador->create_course(['format' => 'ldg']);
-        $aluno = $gerador->create_user();
-        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['format' => 'ldg']);
+        $student = $generator->create_user();
+        $generator->enrol_user($student->id, $course->id, 'student');
 
-        $gerador->create_module('page', [
-            'course' => $curso->id,
+        $generator->create_module('page', [
+            'course' => $course->id,
             'section' => 1,
             'name' => 'Aula um',
             'availability' => json_encode((object) [
@@ -223,8 +223,8 @@ final class portalnav_test extends \advanced_testcase {
                 'showc' => [true],
             ]),
         ]);
-        $gerador->create_module('resource', [
-            'course' => $curso->id,
+        $generator->create_module('resource', [
+            'course' => $course->id,
             'section' => 1,
             'name' => 'Apostila',
             'availability' => json_encode((object) [
@@ -234,10 +234,10 @@ final class portalnav_test extends \advanced_testcase {
             ]),
         ]);
 
-        $this->setUser($aluno);
-        $chaves = array_column($this->nav($curso, '')->destinations(), 'key');
+        $this->setUser($student);
+        $keys = array_column($this->nav($course, '')->destinations(), 'key');
 
-        $this->assertContains(catalog::AULA, $chaves);
-        $this->assertContains(catalog::MATERIAL, $chaves);
+        $this->assertContains(catalog::AULA, $keys);
+        $this->assertContains(catalog::MATERIAL, $keys);
     }
 }

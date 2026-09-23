@@ -163,16 +163,16 @@ $course = create_course((object) [
 // aqui, e nao por opcao de formato.
 course_create_sections_if_missing($course, [0, 1, 2, 3, 4]);
 
-$secoes = [
+$sections = [
     1 => 'Modulo 1 - Fundamentos',
     2 => 'Modulo 2 - Pratica',
     3 => 'Modulo 3 - Avaliacao',
     4 => 'Modulo 4 - Certificado',
 ];
 
-foreach ($secoes as $num => $nome) {
+foreach ($sections as $num => $name) {
     $section = $DB->get_record('course_sections', ['course' => $course->id, 'section' => $num], '*', MUST_EXIST);
-    course_update_section($course, $section, ['name' => $nome]);
+    course_update_section($course, $section, ['name' => $name]);
 }
 
 /**
@@ -208,20 +208,20 @@ function format_ldg_make_page($generator, $course, int $section, string $name, i
 
 cli_writeln('Criando as aulas...');
 
-$aulas = [];
+$lessons = [];
 
-$aulas[] = format_ldg_make_page($generator, $course, 0, 'Boas-vindas', COMPLETION_TRACKING_AUTOMATIC);
+$lessons[] = format_ldg_make_page($generator, $course, 0, 'Boas-vindas', COMPLETION_TRACKING_AUTOMATIC);
 
-$aulas[] = format_ldg_make_page($generator, $course, 1, 'Aula 1 - O que e o portal', COMPLETION_TRACKING_AUTOMATIC);
-$aulas[] = format_ldg_make_page($generator, $course, 1, 'Aula 2 - Como navegar', COMPLETION_TRACKING_AUTOMATIC);
-$aulas[] = format_ldg_make_page($generator, $course, 1, 'Aula 3 - Marque voce mesmo', COMPLETION_TRACKING_MANUAL);
+$lessons[] = format_ldg_make_page($generator, $course, 1, 'Aula 1 - O que e o portal', COMPLETION_TRACKING_AUTOMATIC);
+$lessons[] = format_ldg_make_page($generator, $course, 1, 'Aula 2 - Como navegar', COMPLETION_TRACKING_AUTOMATIC);
+$lessons[] = format_ldg_make_page($generator, $course, 1, 'Aula 3 - Marque voce mesmo', COMPLETION_TRACKING_MANUAL);
 
-$aulas[] = format_ldg_make_page($generator, $course, 2, 'Aula 4 - Primeiro exercicio', COMPLETION_TRACKING_AUTOMATIC);
-$aulas[] = format_ldg_make_page($generator, $course, 2, 'Aula 5 - Segundo exercicio', COMPLETION_TRACKING_MANUAL);
+$lessons[] = format_ldg_make_page($generator, $course, 2, 'Aula 4 - Primeiro exercicio', COMPLETION_TRACKING_AUTOMATIC);
+$lessons[] = format_ldg_make_page($generator, $course, 2, 'Aula 5 - Segundo exercicio', COMPLETION_TRACKING_MANUAL);
 
 // A url existe para exercitar o override de atividade que ficou pendente de
 // avaliacao quando o tema deixou de herdar do Moove.
-$aulas[] = $generator->get_plugin_generator('mod_url')->create_instance([
+$lessons[] = $generator->get_plugin_generator('mod_url')->create_instance([
     'course' => $course->id,
     'section' => 2,
     'name' => 'Leitura complementar',
@@ -230,7 +230,7 @@ $aulas[] = $generator->get_plugin_generator('mod_url')->create_instance([
     'completionview' => 1,
 ]);
 
-$aulas[] = format_ldg_make_page($generator, $course, 3, 'Aula 6 - Revisao', COMPLETION_TRACKING_AUTOMATIC);
+$lessons[] = format_ldg_make_page($generator, $course, 3, 'Aula 6 - Revisao', COMPLETION_TRACKING_AUTOMATIC);
 
 cli_writeln('Criando o material de apoio...');
 
@@ -297,19 +297,19 @@ $qbank = $generator->get_plugin_generator('mod_qbank')->create_instance([
 
 // O mod_qbank declara FEATURE_CAN_DISPLAY => false, entao ele nao vira uma aula
 // solta na lista, apesar de estar na secao 0.
-$categoria = question_get_default_category(context_module::instance($qbank->cmid)->id, true);
+$category = question_get_default_category(context_module::instance($qbank->cmid)->id, true);
 
 $qtype = question_bank::get_qtype('truefalse');
-$vazio = ['text' => '', 'format' => FORMAT_HTML, 'itemid' => 0];
-$formulario = (object) [
-    'category' => $categoria->id,
+$empty = ['text' => '', 'format' => FORMAT_HTML, 'itemid' => 0];
+$form = (object) [
+    'category' => $category->id,
     'name' => 'O portal mostra o progresso do aluno',
     'questiontext' => [
         'text' => 'O portal mostra o progresso do aluno na propria tela do curso?',
         'format' => FORMAT_HTML,
         'itemid' => 0,
     ],
-    'generalfeedback' => $vazio,
+    'generalfeedback' => $empty,
     'defaultmark' => 1,
     'penalty' => 0,
     'correctanswer' => 1,
@@ -317,18 +317,18 @@ $formulario = (object) [
     'feedbackfalse' => ['text' => 'Ela fica no topo da tela.', 'format' => FORMAT_HTML, 'itemid' => 0],
     'showstandardinstruction' => 1,
 ];
-$questao = $qtype->save_question((object) [
+$question = $qtype->save_question((object) [
     'qtype' => 'truefalse',
-    'category' => $categoria->id,
+    'category' => $category->id,
     'createdby' => $USER->id,
-], $formulario);
+], $form);
 
-quiz_add_quiz_question($questao->id, $quiz);
+quiz_add_quiz_question($question->id, $quiz);
 
 // Sem isto o quiz fica valendo zero, e a tentativa termina sem nota nenhuma.
 \mod_quiz\quiz_settings::create($quiz->id)->get_grade_calculator()->recompute_quiz_sumgrades();
 
-$aulas[] = $quiz;
+$lessons[] = $quiz;
 
 cli_writeln('Criando a oferta que tranca o certificado...');
 
@@ -351,18 +351,18 @@ cli_writeln('Criando o certificado bloqueado...');
 // As duas condicoes do enunciado, em E. O "100%" nao e uma condicao unica no
 // core: vira a conclusao de CADA aula, somada. Se uma aula nova entrar no curso
 // depois, ela NAO passa a contar aqui - a arvore e uma fotografia.
-$condicoes = [];
-$mostrar = [];
+$conditions = [];
+$showc = [];
 
-foreach ($aulas as $aula) {
-    $condicoes[] = \availability_completion\condition::get_json($aula->cmid, COMPLETION_COMPLETE);
-    $mostrar[] = true;
+foreach ($lessons as $lesson) {
+    $conditions[] = \availability_completion\condition::get_json($lesson->cmid, COMPLETION_COMPLETE);
+    $showc[] = true;
 }
 
-$condicoes[] = \availability_marketplace\condition::get_json($offer->get('id'));
-$mostrar[] = true;
+$conditions[] = \availability_marketplace\condition::get_json($offer->get('id'));
+$showc[] = true;
 
-$certificado = $generator->get_plugin_generator('mod_customcert')->create_instance([
+$certificate = $generator->get_plugin_generator('mod_customcert')->create_instance([
     'course' => $course->id,
     'section' => 4,
     'name' => 'Certificado de conclusao',
@@ -370,8 +370,8 @@ $certificado = $generator->get_plugin_generator('mod_customcert')->create_instan
     'introformat' => FORMAT_HTML,
     'availability' => json_encode((object) [
         'op' => '&',
-        'c' => $condicoes,
-        'showc' => $mostrar,
+        'c' => $conditions,
+        'showc' => $showc,
     ]),
 ]);
 
@@ -399,11 +399,11 @@ $modinfo = get_fast_modinfo($course, $student->id);
 // Tres concluidas de oito: o suficiente para a barra sair do zero sem chegar ao
 // fim - se chegasse, o certificado destrancaria e o cadeado, que e o que
 // queremos ver, sumiria da tela.
-$concluir = ['Boas-vindas', 'Aula 1 - O que e o portal', 'Aula 3 - Marque voce mesmo'];
-$feitas = 0;
+$tocomplete = ['Boas-vindas', 'Aula 1 - O que e o portal', 'Aula 3 - Marque voce mesmo'];
+$done = 0;
 
 foreach ($modinfo->get_cms() as $cm) {
-    if (!in_array($cm->name, $concluir, true)) {
+    if (!in_array($cm->name, $tocomplete, true)) {
         continue;
     }
 
@@ -415,7 +415,7 @@ foreach ($modinfo->get_cms() as $cm) {
         $completion->set_module_viewed($cm, $student->id);
     }
 
-    $feitas++;
+    $done++;
 }
 
 rebuild_course_cache($course->id, true);
@@ -426,8 +426,8 @@ cli_writeln('');
 cli_writeln('Pronto.');
 cli_writeln("  Curso        {$course->fullname} (id {$course->id})");
 cli_writeln('  Endereco     ' . $url->out(false));
-cli_writeln('  Aulas        ' . count($aulas) . ", {$feitas} concluidas para {$student->username}");
-cli_writeln("  Certificado  cmid {$certificado->cmid}, trancado por " . count($condicoes) . ' condicoes em E');
+cli_writeln('  Aulas        ' . count($lessons) . ", {$done} concluidas para {$student->username}");
+cli_writeln("  Certificado  cmid {$certificate->cmid}, trancado por " . count($conditions) . ' condicoes em E');
 cli_writeln('  Oferta       ' . $offer->get('id') . " ({$offername})");
 cli_writeln('  Autoinscr.   instancia ' . $selfinstanceid);
 cli_writeln('');

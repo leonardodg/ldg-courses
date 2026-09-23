@@ -134,19 +134,19 @@ class lesson extends persistent {
      * @return void
      */
     public static function store_duration(int $cmid, ?int $duration): void {
-        $registro = self::get_record(['cmid' => $cmid]);
+        $record = self::get_record(['cmid' => $cmid]);
 
         if ($duration === null) {
-            if ($registro) {
-                $registro->delete();
+            if ($record) {
+                $record->delete();
             }
 
             return;
         }
 
-        if ($registro) {
-            $registro->set('duration', $duration);
-            $registro->update();
+        if ($record) {
+            $record->set('duration', $duration);
+            $record->update();
 
             return;
         }

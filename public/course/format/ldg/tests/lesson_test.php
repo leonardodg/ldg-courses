@@ -114,11 +114,11 @@ final class lesson_test extends \advanced_testcase {
         lesson::store_duration(1, 100);
         lesson::store_duration(2, 200);
 
-        $lote = lesson::durations_for([1, 2, 3]);
+        $batch = lesson::durations_for([1, 2, 3]);
 
-        $this->assertSame(100, $lote[1]);
-        $this->assertSame(200, $lote[2]);
-        $this->assertArrayNotHasKey(3, $lote, 'Aula sem duracao nao entra no resultado.');
+        $this->assertSame(100, $batch[1]);
+        $this->assertSame(200, $batch[2]);
+        $this->assertArrayNotHasKey(3, $batch, 'Aula sem duracao nao entra no resultado.');
     }
 
     /**
@@ -140,10 +140,10 @@ final class lesson_test extends \advanced_testcase {
     public function test_duracao_negativa_e_recusada(): void {
         $this->resetAfterTest();
 
-        $registro = new lesson(0, (object) ['cmid' => 7, 'duration' => -1]);
+        $record = new lesson(0, (object) ['cmid' => 7, 'duration' => -1]);
 
-        $this->assertFalse($registro->is_valid());
-        $this->assertArrayHasKey('duration', $registro->get_errors());
+        $this->assertFalse($record->is_valid());
+        $this->assertArrayHasKey('duration', $record->get_errors());
     }
 
     /**
@@ -156,15 +156,15 @@ final class lesson_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $curso = $this->getDataGenerator()->create_course(['format' => 'ldg']);
+        $course = $this->getDataGenerator()->create_course(['format' => 'ldg']);
         $page = $this->getDataGenerator()->get_plugin_generator('mod_page')->create_instance([
-            'course' => $curso->id,
+            'course' => $course->id,
         ]);
 
         lesson::store_duration($page->cmid, 500);
         $this->assertSame(500, lesson::duration_for($page->cmid));
 
-        lesson::delete_for_course($curso->id);
+        lesson::delete_for_course($course->id);
 
         $this->assertSame(0, $DB->count_records('format_ldg_lesson'));
     }

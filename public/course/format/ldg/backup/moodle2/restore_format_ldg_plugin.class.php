@@ -64,8 +64,8 @@ class restore_format_ldg_plugin extends restore_format_plugin {
             return;
         }
 
-        $duracao = isset($data->duration) ? (int) $data->duration : 0;
+        $duration = isset($data->duration) ? (int) $data->duration : 0;
 
-        \format_ldg\lesson::store_duration($cmid, $duracao > 0 ? $duracao : null);
+        \format_ldg\lesson::store_duration($cmid, $duration > 0 ? $duration : null);
     }
 }
