@@ -301,12 +301,12 @@ class asaas_client {
      * @return array Lista de cobrancas, da mais antiga para a mais nova.
      */
     public function subscription_payments(string $subscriptionid): array {
-        $resposta = $this->request(
+        $response = $this->request(
             'GET',
             '/subscriptions/' . rawurlencode($subscriptionid) . '/payments'
         );
 
-        return $resposta['data'] ?? [];
+        return $response['data'] ?? [];
     }
 
     /**
@@ -325,7 +325,7 @@ class asaas_client {
      */
     public function identification_field(string $paymentid): string {
         try {
-            $resposta = $this->request(
+            $response = $this->request(
                 'GET',
                 '/payments/' . rawurlencode($paymentid) . '/identificationField'
             );
@@ -333,7 +333,7 @@ class asaas_client {
             return '';
         }
 
-        return (string) ($resposta['identificationField'] ?? '');
+        return (string) ($response['identificationField'] ?? '');
     }
 
     /**

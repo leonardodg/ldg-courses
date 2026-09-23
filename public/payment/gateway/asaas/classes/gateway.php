@@ -220,7 +220,7 @@ class gateway extends \core_payment\gateway {
     public static function pending_invoice(string $component, int $itemid, int $userid): ?array {
         global $DB;
 
-        $linhas = $DB->get_records_select(
+        $records = $DB->get_records_select(
             payment_processor::TABLE,
             "component = :component AND itemid = :itemid AND userid = :userid
              AND subscriptionid IS NOT NULL AND subscriptionid <> ''",
@@ -230,9 +230,9 @@ class gateway extends \core_payment\gateway {
             0,
             1
         );
-        $linha = reset($linhas);
+        $record = reset($records);
 
-        return $linha ? payment_processor::pending_invoice($linha) : null;
+        return $record ? payment_processor::pending_invoice($record) : null;
     }
 
     /**
@@ -248,12 +248,12 @@ class gateway extends \core_payment\gateway {
     public static function refund(int $paymentid): bool {
         global $DB;
 
-        $linha = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
-        if (!$linha) {
+        $record = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
+        if (!$record) {
             return false;
         }
 
-        return payment_processor::refund($linha);
+        return payment_processor::refund($record);
     }
 
     /**
@@ -268,9 +268,9 @@ class gateway extends \core_payment\gateway {
     public static function refund_blocker(int $paymentid): string {
         global $DB;
 
-        $linha = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
+        $record = $DB->get_record(payment_processor::TABLE, ['paymentid' => $paymentid]);
 
-        return $linha ? payment_processor::refund_blocker($linha) : 'errorrefundunknown';
+        return $record ? payment_processor::refund_blocker($record) : 'errorrefundunknown';
     }
 
     /**
@@ -292,7 +292,7 @@ class gateway extends \core_payment\gateway {
     public static function cancel_recurring(string $component, int $itemid, int $userid): bool {
         global $DB;
 
-        $linhas = $DB->get_records_select(
+        $records = $DB->get_records_select(
             payment_processor::TABLE,
             "component = :component AND itemid = :itemid AND userid = :userid
              AND subscriptionid IS NOT NULL AND subscriptionid <> ''",
@@ -300,26 +300,26 @@ class gateway extends \core_payment\gateway {
             'id DESC'
         );
 
-        $cancelou = false;
-        $jafeitas = [];
+        $cancelled = false;
+        $done = [];
 
-        foreach ($linhas as $linha) {
+        foreach ($records as $record) {
             // Uma assinatura tem varias linhas, uma por ciclo. Cancelar a mesma
             // duas vezes devolveria erro do Asaas por nada.
-            if (isset($jafeitas[$linha->subscriptionid])) {
+            if (isset($done[$record->subscriptionid])) {
                 continue;
             }
-            $jafeitas[$linha->subscriptionid] = true;
+            $done[$record->subscriptionid] = true;
 
-            $apikey = credentials::api_key((int) $linha->accountid, $linha->environment);
+            $apikey = credentials::api_key((int) $record->accountid, $record->environment);
             if ($apikey === '') {
                 continue;
             }
 
-            (new asaas_client($apikey, $linha->environment))->cancel_subscription($linha->subscriptionid);
-            $cancelou = true;
+            (new asaas_client($apikey, $record->environment))->cancel_subscription($record->subscriptionid);
+            $cancelled = true;
         }
 
-        return $cancelou;
+        return $cancelled;
     }
 }

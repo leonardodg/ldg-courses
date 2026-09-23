@@ -554,10 +554,10 @@ final class asaas_client_test extends \advanced_testcase {
         $client = new fake_asaas_client('$aact_hmlg_x', asaas_client::ENV_SANDBOX);
         $client->nextresponse = ['data' => [['id' => 'pay_1', 'invoiceUrl' => 'https://x.test/f']]];
 
-        $cobrancas = $client->subscription_payments('sub_1');
+        $charges = $client->subscription_payments('sub_1');
 
-        $this->assertCount(1, $cobrancas);
-        $this->assertSame('pay_1', $cobrancas[0]['id']);
+        $this->assertCount(1, $charges);
+        $this->assertSame('pay_1', $charges[0]['id']);
         $this->assertSame([['GET', '/subscriptions/sub_1/payments']], $client->calls);
     }
 

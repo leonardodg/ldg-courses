@@ -90,7 +90,14 @@ está tocando por outro motivo, nasce com identificador em inglês.
   (`test_veredito_da_cobranca_que_falhou_de_verdade`); pego e revertido antes
   do commit. `phpcs` (31 arquivos) e `phpunit` (119 testes, 213 asserções)
   verdes.
-- Os outros 4 plugins seguem pendentes.
+- **`paygw_asaas`: convertido em 23/09/2026.** 25 arquivos (produção +
+  testes; nenhum AMD tocado), 2 na estimativa original — a varredura real
+  achou mais, espalhado por `payment_processor.php`, `gateway.php` e
+  `asaas_client.php` (`$comum`, `$recorrencia`, `$cobrancas`, `$linha`,
+  `$resposta` → `$common`, `$recurrence`, `$charges`, `$record`,
+  `$response`, entre outros). `phpcs` (25 arquivos) e `phpunit` (69 testes,
+  157 asserções) verdes.
+- Os outros 3 plugins seguem pendentes.
 
 ## Tamanho estimado, por plugin
 
@@ -108,14 +115,14 @@ número real de arquivos e de identificadores é maior.
 | `local/partners` | 39 | 8.843 | ~~6~~ 0 (convertido) |
 | `blocks/marketplace` | 10 | 1.226 | 0 |
 | `paygw_mercadopago` | 42 | 10.692 | ~~11~~ 0 (convertido) |
-| `paygw_asaas` | 25 | 5.177 | 2 |
+| `paygw_asaas` | 25 | 5.177 | ~~2~~ 0 (convertido) |
 | `paygw_pagarme` | 31 | 6.525 | ~~3~~ 0 (convertido) |
 | `enrol_marketplace` | 11 | 1.095 | 1 |
 | `availability_marketplace` | 8 | 822 | 1 |
 | `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
 | `theme_ldg` | 22 | 3.289 | ~~6~~ 0 (convertido) |
 | `mod_ldgvideo` | 31 | 3.400 | ~~8~~ 0 (convertido) |
-| **Total** | **333** | **63.695** | **21 restantes** (≈6% dos arquivos, por baixo) |
+| **Total** | **333** | **63.695** | **19 restantes** (≈6% dos arquivos, por baixo) |
 
 `format_ldg` e `paygw_mercadopago` concentram a maior densidade — ambos
 plugins antigos, com bastante lógica de negócio nomeada em português desde o
