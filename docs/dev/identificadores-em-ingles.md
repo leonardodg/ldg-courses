@@ -60,7 +60,19 @@ está tocando por outro motivo, nasce com identificador em inglês.
   `passo_em()` → `step_at()`, constantes `REMOVIDAS`/`PLUGINS_DO_PROJETO` →
   `REMOVED`/`PROJECT_PLUGINS`). `phpcs` (76 arquivos) e `phpunit` (165 testes,
   570 asserções) verdes depois da conversão.
-- Os outros 7 plugins seguem pendentes.
+- **`local_partners`: convertido em 23/09/2026.** 39 arquivos (produção +
+  testes + 2 módulos AMD), 6 deles com pelo menos um identificador em
+  português na estimativa original — a varredura real achou muito mais,
+  incluindo os dois módulos AMD inteiros (`colormode.js`: `PREFERENCIA`,
+  `ESCURO`, `CLARO`, `aplicar()` → `PREFERENCE`, `DARK`, `LIGHT`, `apply()`;
+  `sectionbar.js`: `medirCabecalho()`, `observarSecoes()`, `adiar()` →
+  `measureHeader()`, `observeSections()`, `debounce()`) e a classe
+  `classes/seo.php` inteira (parâmetro `$superficie` usado em ~15 métodos →
+  `$surface`, mais dezenas de variáveis locais). `phpcs` (39 arquivos),
+  `phpunit` (86 testes, 248 asserções, 1 skip pré-existente) e `grunt`
+  (eslint dos dois módulos AMD, build regenerado) verdes depois da
+  conversão.
+- Os outros 6 plugins seguem pendentes.
 
 ## Tamanho estimado, por plugin
 
@@ -75,7 +87,7 @@ número real de arquivos e de identificadores é maior.
 | Plugin | Arquivos `.php` | Linhas | Arquivos com ≥1 identificador em português (estimativa) |
 |---|---|---|---|
 | `local/marketplace` | 76 | 16.932 | ~~7~~ 0 (convertido) |
-| `local/partners` | 39 | 8.843 | 6 |
+| `local/partners` | 39 | 8.843 | ~~6~~ 0 (convertido) |
 | `blocks/marketplace` | 10 | 1.226 | 0 |
 | `paygw_mercadopago` | 42 | 10.692 | ~~11~~ 0 (convertido) |
 | `paygw_asaas` | 25 | 5.177 | 2 |
@@ -85,7 +97,7 @@ número real de arquivos e de identificadores é maior.
 | `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
 | `theme_ldg` | 22 | 3.289 | 6 |
 | `mod_ldgvideo` | 31 | 3.400 | ~~8~~ 0 (convertido) |
-| **Total** | **333** | **63.695** | **36 restantes** (≈11% dos arquivos, por baixo) |
+| **Total** | **333** | **63.695** | **30 restantes** (≈9% dos arquivos, por baixo) |
 
 `format_ldg` e `paygw_mercadopago` concentram a maior densidade — ambos
 plugins antigos, com bastante lógica de negócio nomeada em português desde o

@@ -330,13 +330,13 @@ final class application_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->as_anonymous_visitor();
 
-        $antes = time();
+        $before = time();
         $application = api::submit($this->data(['termsaccepted' => 1]));
 
-        $aceite = (int) $application->get('termsaccepted');
+        $accepted = (int) $application->get('termsaccepted');
 
-        $this->assertGreaterThanOrEqual($antes, $aceite);
-        $this->assertLessThanOrEqual(time(), $aceite);
+        $this->assertGreaterThanOrEqual($before, $accepted);
+        $this->assertLessThanOrEqual(time(), $accepted);
     }
 
     /**

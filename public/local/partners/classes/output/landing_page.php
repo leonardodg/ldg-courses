@@ -223,12 +223,12 @@ class landing_page implements renderable, templatable {
      *
      * @return array
      */
-    public static function footer(bool $simples = false): array {
+    public static function footer(bool $simple = false): array {
         global $SITE;
 
-        $marca = seo::legal_name();
-        $criador = seo::creator();
-        $legais = self::legal_links();
+        $brand = seo::legal_name();
+        $creator = seo::creator();
+        $legal = self::legal_links();
 
         return [
             'sitename' => format_string($SITE->shortname),
@@ -243,16 +243,16 @@ class landing_page implements renderable, templatable {
             'sections' => self::sections(),
             // Vazia vira false para o mustache poder cair no nome do site, em
             // vez de imprimir uma empresa que ninguem declarou.
-            'legalname' => $marca !== '' ? $marca : false,
+            'legalname' => $brand !== '' ? $brand : false,
             'taxid' => seo::tax_id() !== '' ? seo::tax_id() : false,
-            'creatorname' => $criador['name'] !== '' ? $criador['name'] : false,
-            'creatorurl' => $criador['url'],
-            'legal' => $legais,
-            'haslegal' => !empty($legais),
+            'creatorname' => $creator['name'] !== '' ? $creator['name'] : false,
+            'creatorurl' => $creator['url'],
+            'legal' => $legal,
+            'haslegal' => !empty($legal),
             'year' => userdate(time(), '%Y'),
             // A variante simples e uma linha so, como no mockup do cadastro. A
             // completa e a da landing, com colunas.
-            'issimple' => $simples,
+            'issimple' => $simple,
         ];
     }
 
@@ -268,34 +268,34 @@ class landing_page implements renderable, templatable {
     public static function legal_links(): array {
         global $CFG;
 
-        $politica = !empty($CFG->sitepolicy) ? $CFG->sitepolicy : ($CFG->sitepolicyguest ?? '');
+        $policy = !empty($CFG->sitepolicy) ? $CFG->sitepolicy : ($CFG->sitepolicyguest ?? '');
 
-        $mapa = [
-            'termsurl' => ['chave' => 'footerterms', 'padrao' => $politica],
-            'privacyurl' => ['chave' => 'footerprivacy', 'padrao' => ''],
-            'cookiesurl' => ['chave' => 'footercookies', 'padrao' => ''],
+        $map = [
+            'termsurl' => ['key' => 'footerterms', 'default' => $policy],
+            'privacyurl' => ['key' => 'footerprivacy', 'default' => ''],
+            'cookiesurl' => ['key' => 'footercookies', 'default' => ''],
         ];
 
-        $saida = [];
+        $output = [];
 
-        foreach ($mapa as $config => $dados) {
+        foreach ($map as $config => $data) {
             $url = trim((string) get_config('local_partners', $config));
 
             if ($url === '') {
-                $url = (string) $dados['padrao'];
+                $url = (string) $data['default'];
             }
 
             if ($url === '') {
                 continue;
             }
 
-            $saida[] = [
-                'label' => get_string($dados['chave'], 'local_partners'),
+            $output[] = [
+                'label' => get_string($data['key'], 'local_partners'),
                 'url' => $url,
             ];
         }
 
-        return $saida;
+        return $output;
     }
 
     /**
@@ -310,45 +310,45 @@ class landing_page implements renderable, templatable {
      * Devolve vazio quando o menu de idiomas esta desligado no site: a landing
      * nao contraria a configuracao do Moodle.
      *
-     * @param moodle_url|null $atual A pagina em que o visitante esta.
+     * @param moodle_url|null $current A pagina em que o visitante esta.
      * @return array
      */
-    public static function languages(?moodle_url $atual = null): array {
+    public static function languages(?moodle_url $current = null): array {
         global $CFG, $PAGE;
 
         if (empty($CFG->langmenu)) {
             return [];
         }
 
-        $traducoes = get_string_manager()->get_list_of_translations();
+        $translations = get_string_manager()->get_list_of_translations();
 
-        if (count($traducoes) < 2) {
+        if (count($translations) < 2) {
             return [];
         }
 
-        $base = $atual ?? ($PAGE->has_set_url() ? $PAGE->url : new moodle_url('/local/partners/index.php'));
-        $corrente = current_language();
-        $saida = [];
+        $base = $current ?? ($PAGE->has_set_url() ? $PAGE->url : new moodle_url('/local/partners/index.php'));
+        $currentlang = current_language();
+        $output = [];
 
-        foreach ($traducoes as $codigo => $nome) {
-            $url = new moodle_url($base, ['lang' => $codigo]);
+        foreach ($translations as $code => $name) {
+            $url = new moodle_url($base, ['lang' => $code]);
 
-            $saida[] = [
-                'code' => $codigo,
+            $output[] = [
+                'code' => $code,
                 // O hreflang do link precisa do formato BCP 47, e nao do formato
                 // do Moodle - a mesma conversao que a classe seo faz.
-                'hreflang' => str_replace('_', '-', $codigo),
+                'hreflang' => str_replace('_', '-', $code),
                 // O nome vem do proprio pacote de idioma, entao cada opcao
                 // aparece no idioma dela: quem procura portugues reconhece
                 // "Portugues", e nao "Portuguese".
-                'label' => $nome,
-                'short' => self::language_short($codigo),
+                'label' => $name,
+                'short' => self::language_short($code),
                 'url' => $url->out(false),
-                'iscurrent' => $codigo === $corrente,
+                'iscurrent' => $code === $currentlang,
             ];
         }
 
-        return $saida;
+        return $output;
     }
 
     /**
@@ -370,9 +370,9 @@ class landing_page implements renderable, templatable {
      * @return string
      */
     public static function current_language_label(): string {
-        foreach (self::languages() as $idioma) {
-            if ($idioma['iscurrent']) {
-                return $idioma['short'];
+        foreach (self::languages() as $language) {
+            if ($language['iscurrent']) {
+                return $language['short'];
             }
         }
 

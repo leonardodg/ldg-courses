@@ -44,10 +44,10 @@
  */
 define(['core_user/repository'], function(UserRepository) {
 
-    var ARMAZENAMENTO = 'local_partners-colormode';
-    var PREFERENCIA = 'dark-mode-on';
-    var ESCURO = 'dark';
-    var CLARO = 'light';
+    var STORAGEKEY = 'local_partners-colormode';
+    var PREFERENCE = 'dark-mode-on';
+    var DARK = 'dark';
+    var LIGHT = 'light';
 
     /**
      * O wrapper da pagina, que e quem carrega o modo.
@@ -63,45 +63,45 @@ define(['core_user/repository'], function(UserRepository) {
      *
      * @returns {string}
      */
-    var atual = function() {
+    var current = function() {
         var el = wrapper();
 
-        return el && el.getAttribute('data-bs-theme') === CLARO ? CLARO : ESCURO;
+        return el && el.getAttribute('data-bs-theme') === LIGHT ? LIGHT : DARK;
     };
 
     /**
      * Aplica um modo e guarda a escolha.
      *
-     * @param {string} modo
-     * @param {boolean} autenticado
+     * @param {string} mode
+     * @param {boolean} authenticated
      * @returns {void}
      */
-    var aplicar = function(modo, autenticado) {
+    var apply = function(mode, authenticated) {
         var el = wrapper();
 
         if (!el) {
             return;
         }
 
-        el.setAttribute('data-bs-theme', modo);
+        el.setAttribute('data-bs-theme', mode);
 
         // So acompanha quem ja fala essa lingua. Ver a decisao 3 no cabecalho.
         if (document.body.hasAttribute('data-bs-theme')) {
-            document.body.setAttribute('data-bs-theme', modo);
+            document.body.setAttribute('data-bs-theme', mode);
         }
 
-        var botao = document.querySelector('[data-ldgp="colormode"]');
-        if (botao) {
-            botao.setAttribute('aria-pressed', modo === ESCURO ? 'true' : 'false');
+        var button = document.querySelector('[data-ldgp="colormode"]');
+        if (button) {
+            button.setAttribute('aria-pressed', mode === DARK ? 'true' : 'false');
         }
 
-        if (autenticado) {
-            UserRepository.setUserPreference(PREFERENCIA, modo === ESCURO ? 1 : 0);
+        if (authenticated) {
+            UserRepository.setUserPreference(PREFERENCE, mode === DARK ? 1 : 0);
             return;
         }
 
         try {
-            window.localStorage.setItem(ARMAZENAMENTO, modo);
+            window.localStorage.setItem(STORAGEKEY, mode);
         } catch (e) {
             // Navegacao privada do Safari lanca na ESCRITA. A pagina continua
             // funcionando, so nao lembra da escolha no proximo carregamento.
@@ -112,21 +112,21 @@ define(['core_user/repository'], function(UserRepository) {
         /**
          * Liga o alternador.
          *
-         * @param {boolean} autenticado Quem esta logado guarda a preferencia no
+         * @param {boolean} authenticated Quem esta logado guarda a preferencia no
          *                              perfil; quem nao esta, no navegador.
          * @returns {void}
          */
-        init: function(autenticado) {
-            var botao = document.querySelector('[data-ldgp="colormode"]');
+        init: function(authenticated) {
+            var button = document.querySelector('[data-ldgp="colormode"]');
 
-            if (!botao) {
+            if (!button) {
                 return;
             }
 
-            botao.setAttribute('aria-pressed', atual() === ESCURO ? 'true' : 'false');
+            button.setAttribute('aria-pressed', current() === DARK ? 'true' : 'false');
 
-            botao.addEventListener('click', function() {
-                aplicar(atual() === ESCURO ? CLARO : ESCURO, autenticado);
+            button.addEventListener('click', function() {
+                apply(current() === DARK ? LIGHT : DARK, authenticated);
             });
         }
     };

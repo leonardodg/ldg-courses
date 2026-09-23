@@ -39,34 +39,34 @@ final class seo_test extends \advanced_testcase {
      *
      * @return array
      */
-    private function grafo(): array {
+    private function graph(): array {
         $html = seo::head_html();
 
-        $achou = preg_match(
+        $found = preg_match(
             '~<script type="application/ld\+json">(.*?)</script>~s',
             $html,
-            $captura
+            $capture
         );
 
-        $this->assertSame(1, $achou, 'a pagina deveria publicar um bloco JSON-LD');
+        $this->assertSame(1, $found, 'a pagina deveria publicar um bloco JSON-LD');
 
-        $dados = json_decode($captura[1], true);
+        $decoded = json_decode($capture[1], true);
 
-        $this->assertNotNull($dados, 'o bloco JSON-LD precisa ser JSON valido: ' . json_last_error_msg());
+        $this->assertNotNull($decoded, 'o bloco JSON-LD precisa ser JSON valido: ' . json_last_error_msg());
 
-        return $dados;
+        return $decoded;
     }
 
     /**
      * Um no do grafo, pelo tipo.
      *
-     * @param string $tipo
+     * @param string $type
      * @return array|null
      */
-    private function no(string $tipo): ?array {
-        foreach ($this->grafo()['@graph'] as $no) {
-            if (($no['@type'] ?? '') === $tipo) {
-                return $no;
+    private function node(string $type): ?array {
+        foreach ($this->graph()['@graph'] as $item) {
+            if (($item['@type'] ?? '') === $type) {
+                return $item;
             }
         }
 
@@ -81,10 +81,10 @@ final class seo_test extends \advanced_testcase {
     public function test_o_json_ld_e_valido(): void {
         $this->resetAfterTest();
 
-        $grafo = $this->grafo();
+        $graph = $this->graph();
 
-        $this->assertSame('https://schema.org', $grafo['@context']);
-        $this->assertNotEmpty($grafo['@graph']);
+        $this->assertSame('https://schema.org', $graph['@context']);
+        $this->assertNotEmpty($graph['@graph']);
     }
 
     /**
@@ -100,11 +100,11 @@ final class seo_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $html = seo::head_html();
-        $inicio = strpos($html, '<script type="application/ld+json">');
-        $fim = strpos($html, '</script>', $inicio);
-        $corpo = substr($html, $inicio, $fim - $inicio);
+        $start = strpos($html, '<script type="application/ld+json">');
+        $end = strpos($html, '</script>', $start);
+        $body = substr($html, $start, $end - $start);
 
-        $this->assertStringNotContainsString('</', $corpo);
+        $this->assertStringNotContainsString('</', $body);
     }
 
     /**
@@ -115,11 +115,11 @@ final class seo_test extends \advanced_testcase {
     public function test_o_faq_do_schema_e_o_mesmo_da_tela(): void {
         $this->resetAfterTest();
 
-        $natela = array_column(\local_partners\output\landing_page::faq_items(), 'question');
-        $noschema = array_column($this->no('FAQPage')['mainEntity'], 'name');
+        $onscreen = array_column(\local_partners\output\landing_page::faq_items(), 'question');
+        $inschema = array_column($this->node('FAQPage')['mainEntity'], 'name');
 
-        $this->assertSame($natela, $noschema);
-        $this->assertCount(4, $noschema);
+        $this->assertSame($onscreen, $inschema);
+        $this->assertCount(4, $inschema);
     }
 
     /**
@@ -133,15 +133,15 @@ final class seo_test extends \advanced_testcase {
         $pro = plan::get_record_by_shortname('pro');
         $this->assertNotFalse($pro, 'o seed da instalacao deveria ter criado o plano pro');
 
-        $ofertas = [];
-        foreach ($this->no('Service')['offers'] as $oferta) {
-            $ofertas[$oferta['name']] = $oferta;
+        $offers = [];
+        foreach ($this->node('Service')['offers'] as $offer) {
+            $offers[$offer['name']] = $offer;
         }
 
-        $esperado = number_format((float) $pro->get('monthlyfee'), 2, '.', '');
+        $expected = number_format((float) $pro->get('monthlyfee'), 2, '.', '');
 
-        $this->assertSame($esperado, $ofertas[format_string($pro->get('name'))]['price']);
-        $this->assertSame($pro->get('currency'), $ofertas[format_string($pro->get('name'))]['priceCurrency']);
+        $this->assertSame($expected, $offers[format_string($pro->get('name'))]['price']);
+        $this->assertSame($pro->get('currency'), $offers[format_string($pro->get('name'))]['priceCurrency']);
     }
 
     /**
@@ -158,7 +158,7 @@ final class seo_test extends \advanced_testcase {
         $this->resetAfterTest();
         $DB->set_field('local_marketplace_plan', 'ispublic', 0, []);
 
-        $this->assertNull($this->no('Service'));
+        $this->assertNull($this->node('Service'));
     }
 
     /**
@@ -172,7 +172,7 @@ final class seo_test extends \advanced_testcase {
     public function test_campo_de_marca_vazio_nao_entra(): void {
         $this->resetAfterTest();
 
-        $org = $this->no('Organization');
+        $org = $this->node('Organization');
 
         // Vazios em seo::brand(): endereco (o do contrato social e residencial),
         // telefone e e-mail (ainda nao ha os de empresa).
@@ -321,10 +321,10 @@ final class seo_test extends \advanced_testcase {
         $this->assertSame('', seo::analytics_html());
 
         set_config('analyticsid', 'G-ABC123XYZ', 'local_partners');
-        $saida = seo::analytics_html();
+        $output = seo::analytics_html();
 
-        $this->assertStringContainsString('googletagmanager.com/gtag/js?id=G-ABC123XYZ', $saida);
-        $this->assertStringContainsString('anonymize_ip', $saida);
+        $this->assertStringContainsString('googletagmanager.com/gtag/js?id=G-ABC123XYZ', $output);
+        $this->assertStringContainsString('anonymize_ip', $output);
     }
 
     /**
@@ -412,19 +412,19 @@ final class seo_test extends \advanced_testcase {
         // o ingles instalado como TRADUCAO, entao tanto o force_current_language
         // quanto o get_string com idioma explicito caem no ingles - e o teste
         // passaria sem provar nada.
-        $marcas = [];
+        $brands = [];
 
         foreach (['en', 'pt_br', 'es'] as $lang) {
             $string = [];
             include(__DIR__ . "/../lang/{$lang}/local_partners.php");
 
             $this->assertArrayHasKey('brandname', $string, "o pacote {$lang} precisa definir a marca");
-            $marcas[$lang] = $string['brandname'];
+            $brands[$lang] = $string['brandname'];
         }
 
-        $this->assertSame('LDG Technology', $marcas['en']);
-        $this->assertSame('LDG Tecnologia', $marcas['pt_br']);
-        $this->assertSame('LDG Tecnología', $marcas['es']);
+        $this->assertSame('LDG Technology', $brands['en']);
+        $this->assertSame('LDG Tecnologia', $brands['pt_br']);
+        $this->assertSame('LDG Tecnología', $brands['es']);
     }
 
     /**
@@ -498,9 +498,9 @@ final class seo_test extends \advanced_testcase {
         $DB->set_field('course', 'fullname', 'LDG Courses & Technology', ['id' => $SITE->id]);
         $SITE = $DB->get_record('course', ['id' => $SITE->id]);
 
-        $organizacao = $this->no('Organization');
+        $organization = $this->node('Organization');
 
-        $this->assertSame('LDG Courses & Technology', $organizacao['name']);
+        $this->assertSame('LDG Courses & Technology', $organization['name']);
 
         // E no atributo o escape sai UMA vez, e nao duas. Escapado nos dois
         // lugares, o "&" vira "&amp;amp;" e o compartilhamento mostra a
@@ -531,9 +531,9 @@ final class seo_test extends \advanced_testcase {
         $this->assertStringContainsString('<meta property="og:locale" content="en">', $html);
 
         // E o territorio aparece quando ele existe no CODIGO do idioma.
-        $this->assertSame('pt_BR', self::locale_visivel('pt_br'));
-        $this->assertSame('es_AR', self::locale_visivel('es_ar'));
-        $this->assertSame('es', self::locale_visivel('es'));
+        $this->assertSame('pt_BR', self::visible_locale('pt_br'));
+        $this->assertSame('es_AR', self::visible_locale('es_ar'));
+        $this->assertSame('es', self::visible_locale('es'));
     }
 
     /**
@@ -542,10 +542,10 @@ final class seo_test extends \advanced_testcase {
      * @param string $lang
      * @return string
      */
-    private static function locale_visivel(string $lang): string {
-        $metodo = new \ReflectionMethod(seo::class, 'locale_for');
+    private static function visible_locale(string $lang): string {
+        $method = new \ReflectionMethod(seo::class, 'locale_for');
 
-        return $metodo->invoke(null, $lang);
+        return $method->invoke(null, $lang);
     }
 
     /**
@@ -585,15 +585,15 @@ final class seo_test extends \advanced_testcase {
 
         set_config('enablelanding', 1, 'local_partners');
 
-        $idiomas = count(get_string_manager()->get_list_of_translations());
-        $entradas = seo::sitemap_entries();
+        $languages = count(get_string_manager()->get_list_of_translations());
+        $entries = seo::sitemap_entries();
 
         // Duas paginas publicas, cada uma com a URL limpa mais uma por idioma.
-        $this->assertCount(2 * ($idiomas + 1), $entradas);
+        $this->assertCount(2 * ($languages + 1), $entries);
 
         // Toda entrada carrega o cluster inteiro, para servir de link de retorno.
-        foreach ($entradas as $entrada) {
-            $this->assertCount($idiomas + 1, $entrada['alternates']);
+        foreach ($entries as $entry) {
+            $this->assertCount($languages + 1, $entry['alternates']);
         }
     }
 }

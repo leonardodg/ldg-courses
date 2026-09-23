@@ -41,22 +41,22 @@ define([], function() {
      *
      * @returns {void}
      */
-    var medirCabecalho = function() {
-        var barra = document.querySelector('.ldgp-bar');
+    var measureHeader = function() {
+        var bar = document.querySelector('.ldgp-bar');
 
-        if (!barra) {
+        if (!bar) {
             return;
         }
 
-        var cabecalho = document.querySelector('.navbar.fixed-top');
-        var altura = cabecalho ? Math.round(cabecalho.getBoundingClientRect().height) : 0;
+        var header = document.querySelector('.navbar.fixed-top');
+        var height = header ? Math.round(header.getBoundingClientRect().height) : 0;
 
-        barra.style.setProperty('--ldgp-sticky-top', altura + 'px');
+        bar.style.setProperty('--ldgp-sticky-top', height + 'px');
 
         // O alvo da ancora tambem desconta, e ele nao esta dentro da barra.
-        var pagina = document.querySelector('.ldgp');
-        if (pagina) {
-            pagina.style.setProperty('--ldgp-sticky-top', altura + 'px');
+        var page = document.querySelector('.ldgp');
+        if (page) {
+            page.style.setProperty('--ldgp-sticky-top', height + 'px');
         }
     };
 
@@ -65,43 +65,43 @@ define([], function() {
      *
      * @returns {void}
      */
-    var observarSecoes = function() {
+    var observeSections = function() {
         var links = Array.prototype.slice.call(document.querySelectorAll('.ldgp-bar-link[href^="#"]'));
 
         if (!links.length || !window.IntersectionObserver) {
             return;
         }
 
-        var porId = {};
-        var secoes = [];
+        var byId = {};
+        var sections = [];
 
         links.forEach(function(link) {
             var id = link.getAttribute('href').slice(1);
-            var secao = document.getElementById(id);
+            var section = document.getElementById(id);
 
-            if (secao) {
-                porId[id] = link;
-                secoes.push(secao);
+            if (section) {
+                byId[id] = link;
+                sections.push(section);
             }
         });
 
-        var marcar = function(id) {
+        var mark = function(id) {
             links.forEach(function(link) {
                 link.removeAttribute('aria-current');
             });
 
-            if (porId[id]) {
+            if (byId[id]) {
                 // "true", e nao "page": sao ancoras dentro da mesma pagina, e
                 // "page" diria ao leitor de tela que aquele link e a pagina
                 // atual do site.
-                porId[id].setAttribute('aria-current', 'true');
+                byId[id].setAttribute('aria-current', 'true');
             }
         };
 
-        var observer = new window.IntersectionObserver(function(entradas) {
-            entradas.forEach(function(entrada) {
-                if (entrada.isIntersecting) {
-                    marcar(entrada.target.id);
+        var observer = new window.IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    mark(entry.target.id);
                 }
             });
         }, {
@@ -112,8 +112,8 @@ define([], function() {
             threshold: 0
         });
 
-        secoes.forEach(function(secao) {
-            observer.observe(secao);
+        sections.forEach(function(section) {
+            observer.observe(section);
         });
     };
 
@@ -121,15 +121,15 @@ define([], function() {
      * Debounce simples, para o redimensionamento.
      *
      * @param {Function} fn
-     * @param {number} espera
+     * @param {number} wait
      * @returns {Function}
      */
-    var adiar = function(fn, espera) {
+    var debounce = function(fn, wait) {
         var timer = null;
 
         return function() {
             window.clearTimeout(timer);
-            timer = window.setTimeout(fn, espera);
+            timer = window.setTimeout(fn, wait);
         };
     };
 
@@ -138,10 +138,10 @@ define([], function() {
          * @returns {void}
          */
         init: function() {
-            medirCabecalho();
-            observarSecoes();
+            measureHeader();
+            observeSections();
 
-            window.addEventListener('resize', adiar(medirCabecalho, 150));
+            window.addEventListener('resize', debounce(measureHeader, 150));
         }
     };
 });

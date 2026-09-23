@@ -164,7 +164,7 @@ final class approval_test extends \advanced_testcase {
 
         api::approve($application, $decision);
 
-        $antes = count(company::get_records());
+        $before = count(company::get_records());
 
         try {
             api::approve($application, (object) [
@@ -176,7 +176,7 @@ final class approval_test extends \advanced_testcase {
             $this->assertSame('erroralreadydecided', $e->errorcode);
         }
 
-        $this->assertCount($antes, company::get_records());
+        $this->assertCount($before, company::get_records());
     }
 
     /**
@@ -186,7 +186,7 @@ final class approval_test extends \advanced_testcase {
      */
     public function test_recusar_nao_cria_empresa(): void {
         $application = $this->make_application();
-        $antes = count(company::get_records());
+        $before = count(company::get_records());
 
         api::reject($application, (object) ['reviewnote' => 'Falta o CNPJ.']);
 
@@ -195,7 +195,7 @@ final class approval_test extends \advanced_testcase {
         $this->assertSame(application::STATUS_REJECTED, $application->get('status'));
         $this->assertNull($application->get('companyid'));
         $this->assertSame('Falta o CNPJ.', $application->get('reviewnote'));
-        $this->assertCount($antes, company::get_records());
+        $this->assertCount($before, company::get_records());
     }
 
     /**
@@ -259,18 +259,18 @@ final class approval_test extends \advanced_testcase {
             'ownerid' => null,
         ]);
 
-        $novo = $DB->get_record('user', ['email' => 'novoparceiro@exemplo.com']);
-        $this->assertNotFalse($novo);
+        $newuser = $DB->get_record('user', ['email' => 'novoparceiro@exemplo.com']);
+        $this->assertNotFalse($newuser);
 
         // A conta nasce com senha que ninguem conhece e um token de
         // redefinicao: o acesso e pelo link do convite, e nao por senha em
         // texto puro no e-mail.
-        $this->assertTrue($DB->record_exists('user_password_resets', ['userid' => $novo->id]));
+        $this->assertTrue($DB->record_exists('user_password_resets', ['userid' => $newuser->id]));
 
         // E ela e de fato a dona da empresa.
         $this->assertTrue($DB->record_exists('local_marketplace_member', [
             'companyid' => $company->get('id'),
-            'userid' => $novo->id,
+            'userid' => $newuser->id,
             'memberrole' => 'owner',
         ]));
     }
@@ -293,14 +293,14 @@ final class approval_test extends \advanced_testcase {
         $existente = $this->getDataGenerator()->create_user(['email' => 'jaexiste@exemplo.com']);
         $application = $this->make_application(['contactemail' => 'jaexiste@exemplo.com']);
 
-        $antes = $DB->count_records('user', ['deleted' => 0]);
+        $before = $DB->count_records('user', ['deleted' => 0]);
 
         $company = api::approve($application, (object) [
             'shortname' => 'jaexiste',
             'ownerid' => null,
         ]);
 
-        $this->assertEquals($antes + 1, $DB->count_records('user', ['deleted' => 0]));
+        $this->assertEquals($before + 1, $DB->count_records('user', ['deleted' => 0]));
         $this->assertFalse($DB->record_exists('local_marketplace_member', [
             'companyid' => $company->get('id'),
             'userid' => $existente->id,
@@ -333,14 +333,14 @@ final class approval_test extends \advanced_testcase {
         $application = application::get_record(['id' => $application->get('id')]);
 
         $this->setAdminUser();
-        $antes = $DB->count_records('user', ['deleted' => 0]);
+        $before = $DB->count_records('user', ['deleted' => 0]);
 
         $company = api::approve($application, (object) [
             'shortname' => 'confirmada',
             'ownerid' => null,
         ]);
 
-        $this->assertEquals($antes, $DB->count_records('user', ['deleted' => 0]));
+        $this->assertEquals($before, $DB->count_records('user', ['deleted' => 0]));
         $this->assertTrue($DB->record_exists('local_marketplace_member', [
             'companyid' => $company->get('id'),
             'userid' => $existente->id,
@@ -360,17 +360,17 @@ final class approval_test extends \advanced_testcase {
         global $DB;
 
         $this->getDataGenerator()->create_user(['email' => 'contato@exemplo.com']);
-        $escolhido = $this->getDataGenerator()->create_user();
+        $chosen = $this->getDataGenerator()->create_user();
         $application = $this->make_application(['contactemail' => 'contato@exemplo.com']);
 
         $company = api::approve($application, (object) [
             'shortname' => 'escolhido',
-            'ownerid' => (int) $escolhido->id,
+            'ownerid' => (int) $chosen->id,
         ]);
 
         $this->assertTrue($DB->record_exists('local_marketplace_member', [
             'companyid' => $company->get('id'),
-            'userid' => $escolhido->id,
+            'userid' => $chosen->id,
             'memberrole' => 'owner',
         ]));
     }
@@ -390,7 +390,7 @@ final class approval_test extends \advanced_testcase {
         global $DB;
 
         $application = $this->make_application(['contactemail' => 'semconta@exemplo.com']);
-        $antes = $DB->count_records('user', ['deleted' => 0]);
+        $before = $DB->count_records('user', ['deleted' => 0]);
 
         // Exatamente o que chega do formulario: string vazia, nao null.
         $company = api::approve($application, (object) [
@@ -399,7 +399,7 @@ final class approval_test extends \advanced_testcase {
         ]);
 
         $this->assertNotEmpty($company->get('id'));
-        $this->assertEquals($antes + 1, $DB->count_records('user', ['deleted' => 0]));
+        $this->assertEquals($before + 1, $DB->count_records('user', ['deleted' => 0]));
     }
 
     /**
