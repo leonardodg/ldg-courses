@@ -97,7 +97,15 @@ está tocando por outro motivo, nasce com identificador em inglês.
   `$resposta` → `$common`, `$recurrence`, `$charges`, `$record`,
   `$response`, entre outros). `phpcs` (25 arquivos) e `phpunit` (69 testes,
   157 asserções) verdes.
-- Os outros 3 plugins seguem pendentes.
+- **`enrol_marketplace`: convertido em 23/09/2026.** 11 arquivos, 1 na
+  estimativa original — a varredura real achou tudo confinado a
+  `tests/sync_user_test.php`, num teste isolado (`$primeiro`, `$segundo`,
+  `$direito`, `$matriculadas`, `$suspensas`, `$reativadas` → `$first`,
+  `$second`, `$entitlement`, `$enrolled`, `$suspended`, `$reactivated`,
+  alinhando com a convenção já usada em todos os outros testes do arquivo).
+  `phpcs` (11 arquivos) e `phpunit` (13 testes, 35 asserções) verdes. Sem
+  AMD neste plugin.
+- Os outros 2 plugins seguem pendentes.
 
 ## Tamanho estimado, por plugin
 
@@ -117,12 +125,12 @@ número real de arquivos e de identificadores é maior.
 | `paygw_mercadopago` | 42 | 10.692 | ~~11~~ 0 (convertido) |
 | `paygw_asaas` | 25 | 5.177 | ~~2~~ 0 (convertido) |
 | `paygw_pagarme` | 31 | 6.525 | ~~3~~ 0 (convertido) |
-| `enrol_marketplace` | 11 | 1.095 | 1 |
+| `enrol_marketplace` | 11 | 1.095 | ~~1~~ 0 (convertido) |
 | `availability_marketplace` | 8 | 822 | 1 |
 | `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
 | `theme_ldg` | 22 | 3.289 | ~~6~~ 0 (convertido) |
 | `mod_ldgvideo` | 31 | 3.400 | ~~8~~ 0 (convertido) |
-| **Total** | **333** | **63.695** | **19 restantes** (≈6% dos arquivos, por baixo) |
+| **Total** | **333** | **63.695** | **18 restantes** (≈5% dos arquivos, por baixo) |
 
 `format_ldg` e `paygw_mercadopago` concentram a maior densidade — ambos
 plugins antigos, com bastante lógica de negócio nomeada em português desde o
