@@ -86,12 +86,12 @@ class set_duration extends external_api {
 
         lesson::store_duration($cm->id, $duration > 0 ? $duration : null);
 
-        $gravada = lesson::duration_for($cm->id);
+        $stored = lesson::duration_for($cm->id);
 
         return [
             'cmid' => $cm->id,
-            'duration' => $gravada ?? 0,
-            'formatted' => $gravada ? format_time($gravada) : '',
+            'duration' => $stored ?? 0,
+            'formatted' => $stored ? format_time($stored) : '',
         ];
     }
 

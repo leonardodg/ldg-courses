@@ -342,13 +342,26 @@ class landing_page implements renderable, templatable {
                 // aparece no idioma dela: quem procura portugues reconhece
                 // "Portugues", e nao "Portuguese".
                 'label' => $nome,
-                'short' => strtoupper(explode('_', $codigo)[0]),
+                'short' => self::language_short($codigo),
                 'url' => $url->out(false),
                 'iscurrent' => $codigo === $corrente,
             ];
         }
 
         return $saida;
+    }
+
+    /**
+     * O codigo do Moodle reduzido a sigla de exibicao (pt_br -> PT).
+     *
+     * Unica implementacao da regra, compartilhada com o menu de idiomas do
+     * theme_ldg por class_exists - nao declara dependencia do tema.
+     *
+     * @param string $lang
+     * @return string
+     */
+    public static function language_short(string $lang): string {
+        return strtoupper(explode('_', str_replace('-', '_', $lang))[0]);
     }
 
     /**
@@ -363,7 +376,7 @@ class landing_page implements renderable, templatable {
             }
         }
 
-        return strtoupper(explode('_', current_language())[0]);
+        return self::language_short(current_language());
     }
 
     /**

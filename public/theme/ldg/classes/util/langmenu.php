@@ -94,10 +94,19 @@ class langmenu {
     /**
      * O codigo do Moodle reduzido a sigla de exibicao.
      *
+     * A regra mora em local_partners\output\landing_page::language_short()
+     * - o seletor da landing de captacao. Este tema repassa quando o plugin
+     * existe (nao declara dependencia dele: moodle-plugin-ci instala o tema
+     * sozinho). Sem o plugin, a mesma formula local evita menu sem sigla.
+     *
      * @param string $lang
      * @return string
      */
-    protected static function sigla(string $lang): string {
+    public static function sigla(string $lang): string {
+        if (class_exists(\local_partners\output\landing_page::class)) {
+            return \local_partners\output\landing_page::language_short($lang);
+        }
+
         return strtoupper(explode('_', str_replace('-', '_', $lang))[0]);
     }
 }

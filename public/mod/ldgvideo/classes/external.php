@@ -138,11 +138,26 @@ class mod_ldgvideo_external extends external_api {
         if (!empty($params['courseids'])) {
             [$courses, $warnings] = util::validate_courses($params['courseids'], $meuscursos);
 
-            // O get_all_instances_in_courses ja aplica a visibilidade do
-            // usuario, entao nao ha um validate_context por atividade aqui.
             $videos = get_all_instances_in_courses('ldgvideo', $courses);
 
             foreach ($videos as $video) {
+                // Checagem EXPLICITA por cm, a mesma guarda de view.php /
+                // view_ldgvideo(). Confiar so na filtragem de
+                // get_all_instances_in_courses acopla a seguranca da WS a um
+                // helper do core que pode mudar o criterio sem aviso.
+                $context = \context_module::instance((int) $video->coursemodule);
+                self::validate_context($context);
+
+                if (!has_capability('mod/ldgvideo:view', $context)) {
+                    $warnings[] = [
+                        'item' => 'ldgvideo',
+                        'itemid' => (int) $video->id,
+                        'warningcode' => 'nopermissions',
+                        'message' => get_string('errornopermissions', 'ldgvideo'),
+                    ];
+                    continue;
+                }
+
                 helper_for_get_mods_by_courses::format_name_and_intro($video, 'mod_ldgvideo');
                 $devolvidos[] = $video;
             }

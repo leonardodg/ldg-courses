@@ -98,42 +98,59 @@ class lessonlist implements named_templatable, renderable {
         $modinfo = $format->get_modinfo();
         $completion = new completion_info($course);
 
-        $modulos = [];
+        // Uma consulta para o CURSO inteiro, e nao uma por secao - o N+1 que ja
+        // mordeu este projeto (ver o docblock de export_lessons() sobre a
+        // mesma preocupacao, so que resolvida no nivel errado antes: reaparecia
+        // em nivel de secao, com N secoes em vez de N aulas).
+        $alllessonids = [];
+        foreach ($modinfo->get_section_info_all() as $section) {
+            if (!$format->is_section_visible($section)) {
+                continue;
+            }
+            foreach ($modinfo->sections[$section->sectionnum] ?? [] as $cmid) {
+                if (catalog::classify($modinfo->cms[$cmid]) === catalog::AULA) {
+                    $alllessonids[] = $cmid;
+                }
+            }
+        }
+        $durations = lesson::durations_for($alllessonids);
+
+        $modules = [];
 
         foreach ($modinfo->get_section_info_all() as $section) {
             if (!$format->is_section_visible($section)) {
                 continue;
             }
 
-            $aulas = $this->export_lessons($section->sectionnum, $modinfo, $completion, $course);
+            $lessons = $this->export_lessons($section->sectionnum, $modinfo, $completion, $course, $durations);
 
             // Modulo sem nenhuma aula visivel nao vira um cabecalho vazio: quem
             // le a lista tenta clicar nele e nao acontece nada.
-            if (empty($aulas)) {
+            if (empty($lessons)) {
                 continue;
             }
 
-            $progresso = section_progress::for_section($section, $modinfo, $completion);
+            $progress = section_progress::for_section($section, $modinfo, $completion);
 
-            $modulos[] = (object) [
-                'num' => $section->sectionnum,
+            $modules[] = (object) [
+                'num' => (int) $section->sectionnum,
                 'name' => $format->get_section_name($section),
-                'lessons' => $aulas,
-                'hasprogress' => $progresso->has_tracking(),
-                'complete' => $progresso->complete,
-                'total' => $progresso->total,
-                'percentage' => $progresso->percentage(),
-                'iscomplete' => $progresso->is_complete_section(),
+                'lessons' => $lessons,
+                'hasprogress' => $progress->has_tracking(),
+                'complete' => $progress->complete,
+                'total' => $progress->total,
+                'percentage' => $progress->percentage(),
+                'iscomplete' => $progress->is_complete_section(),
                 'progresslabel' => get_string('moduleprogress', 'format_ldg', (object) [
-                    'complete' => $progresso->complete,
-                    'total' => $progresso->total,
+                    'complete' => $progress->complete,
+                    'total' => $progress->total,
                 ]),
             ];
         }
 
         return (object) [
-            'modules' => $modulos,
-            'hasmodules' => !empty($modulos),
+            'modules' => $modules,
+            'hasmodules' => !empty($modules),
             // A duracao e editada aqui mesmo, com a edicao ligada. Uma tela de
             // formulario so para um numero seria caro para quem vai preencher
             // dezenas deles em sequencia.
@@ -149,17 +166,21 @@ class lessonlist implements named_templatable, renderable {
      * @param \course_modinfo $modinfo
      * @param completion_info $completion
      * @param stdClass $course
+     * @param array $durations cmid => segundos, ja resolvido para o CURSO
+     *                        inteiro por export_for_template() - uma consulta
+     *                        por pagina, e nao uma por secao.
      * @return array
      */
     protected function export_lessons(
         int $sectionnum,
         \course_modinfo $modinfo,
         completion_info $completion,
-        stdClass $course
+        stdClass $course,
+        array $durations
     ): array {
-        $aulas = [];
+        $lessons = [];
 
-        $candidatos = [];
+        $candidates = [];
 
         foreach ($modinfo->sections[$sectionnum] ?? [] as $cmid) {
             $cm = $modinfo->cms[$cmid];
@@ -168,40 +189,36 @@ class lessonlist implements named_templatable, renderable {
             // Material, forum e certificado saem daqui porque tem destino
             // proprio no portal - apareciam nas duas listas.
             if (catalog::classify($cm) === catalog::AULA) {
-                $candidatos[] = $cm;
+                $candidates[] = $cm;
             }
         }
 
-        // Uma consulta para o modulo inteiro. Perguntar a duracao aula por aula
-        // daria uma consulta por linha - o N+1 que ja mordeu este projeto.
-        $duracoes = lesson::durations_for(array_map(fn($cm) => $cm->id, $candidatos));
-
-        foreach ($candidatos as $cm) {
-            $acompanha = $completion->is_enabled($cm) != COMPLETION_TRACKING_NONE
+        foreach ($candidates as $cm) {
+            $tracks = $completion->is_enabled($cm) != COMPLETION_TRACKING_NONE
                 && isloggedin() && !isguestuser();
 
-            $duracao = $duracoes[$cm->id] ?? null;
+            $duration = $durations[$cm->id] ?? null;
 
-            $aulas[] = (object) [
-                'duration' => $duracao,
-                'hasduration' => $duracao !== null,
+            $lessons[] = (object) [
+                'duration' => $duration,
+                'hasduration' => $duration !== null,
                 // O format_time() do core, e nao uma conta a mao: ele ja traduz
                 // e ja escolhe entre segundos, minutos e horas.
-                'durationtext' => $duracao !== null ? format_time($duracao) : '',
+                'durationtext' => $duration !== null ? format_time($duration) : '',
                 'cmid' => $cm->id,
                 'name' => $cm->get_formatted_name(),
                 'modname' => $cm->modname,
                 'iconurl' => $cm->get_icon_url()->out(false),
                 'url' => $this->format->get_view_url(null, ['lesson' => $cm->id])->out(false),
-                'trackscompletion' => $acompanha,
-                'completed' => $acompanha && section_progress::is_complete($completion, $cm),
+                'trackscompletion' => $tracks,
+                'completed' => $tracks && section_progress::is_complete($completion, $cm),
                 'locked' => !$cm->uservisible,
                 'lockinfo' => $this->lock_info($cm, $course),
                 'current' => $this->selected !== null && $this->selected->id == $cm->id,
             ];
         }
 
-        return $aulas;
+        return $lessons;
     }
 
     /**

@@ -156,4 +156,88 @@ final class portalnav_test extends \advanced_testcase {
             $this->assertStringContainsString('lesson=' . $aula->id, $destino['url']);
         }
     }
+
+    /**
+     * Aba do forum some quando o unico item esta bloqueado.
+     *
+     * has() so olha o balde: mostraria a aba e levaria o aluno a um embed de
+     * "acesso negado". Destino de item unico filtra por has_visible().
+     *
+     * @return void
+     */
+    public function test_forum_bloqueado_nao_vira_aba(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $CFG->enableavailability = 1;
+
+        $gerador = $this->getDataGenerator();
+        $curso = $gerador->create_course(['format' => 'ldg']);
+        $aluno = $gerador->create_user();
+        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+
+        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
+        $gerador->create_module('forum', [
+            'course' => $curso->id,
+            'section' => 1,
+            'name' => 'Duvidas',
+            'availability' => json_encode((object) [
+                'op' => '&',
+                'c' => [(object) ['type' => 'date', 'd' => '>=', 't' => time() + WEEKSECS]],
+                'showc' => [true],
+            ]),
+        ]);
+
+        $this->setUser($aluno);
+        $chaves = array_column($this->nav($curso, catalog::FORUM)->destinations(), 'key');
+
+        $this->assertNotContains(catalog::FORUM, $chaves);
+        $this->assertContains(catalog::AULA, $chaves);
+    }
+
+    /**
+     * Aula e material nao somem por bloqueio item a item: tem lista propria
+     * com cadeado. So forum e certificado filtram por visibilidade.
+     *
+     * @return void
+     */
+    public function test_abas_de_lista_nao_filtram_por_item(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $CFG->enableavailability = 1;
+
+        $gerador = $this->getDataGenerator();
+        $curso = $gerador->create_course(['format' => 'ldg']);
+        $aluno = $gerador->create_user();
+        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+
+        $gerador->create_module('page', [
+            'course' => $curso->id,
+            'section' => 1,
+            'name' => 'Aula um',
+            'availability' => json_encode((object) [
+                'op' => '&',
+                'c' => [(object) ['type' => 'date', 'd' => '>=', 't' => time() + WEEKSECS]],
+                'showc' => [true],
+            ]),
+        ]);
+        $gerador->create_module('resource', [
+            'course' => $curso->id,
+            'section' => 1,
+            'name' => 'Apostila',
+            'availability' => json_encode((object) [
+                'op' => '&',
+                'c' => [(object) ['type' => 'date', 'd' => '>=', 't' => time() + WEEKSECS]],
+                'showc' => [true],
+            ]),
+        ]);
+
+        $this->setUser($aluno);
+        $chaves = array_column($this->nav($curso, '')->destinations(), 'key');
+
+        $this->assertContains(catalog::AULA, $chaves);
+        $this->assertContains(catalog::MATERIAL, $chaves);
+    }
 }

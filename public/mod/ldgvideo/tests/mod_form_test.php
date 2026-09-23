@@ -145,6 +145,47 @@ final class mod_form_test extends \advanced_testcase {
     }
 
     /**
+     * O proprio host e recusado; um host que so COMECA igual, nao.
+     *
+     * str_starts_with contra o wwwroot marcaria como proprio um host externo
+     * so porque a string comeca igual - ex. wwwroot https://ldg.example.com e
+     * video em https://ldg.example.com.cdn-video.net/..., que o Moodle nao
+     * serve.
+     *
+     * @return void
+     */
+    public function test_fronteira_de_dominio_na_autohospedagem(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+
+        $original = $CFG->wwwroot;
+        $CFG->wwwroot = 'https://ldg.example.com';
+
+        try {
+            // O proprio site, e o subdominio dele: fronteira de dominio casa.
+            $this->assertSame(
+                'errorselfhosted',
+                url::problem('https://ldg.example.com/pluginfile.php/1/aula.mp4')
+            );
+            $this->assertSame(
+                'errorselfhosted',
+                url::problem('https://cdn.ldg.example.com/pluginfile.php/1/aula.mp4')
+            );
+
+            // Prefixo textual SEM ponto de fronteira: host externo de verdade.
+            \core\plugininfo\media::set_enabled_plugins('videojs,youtube');
+            \core_media_manager::reset_caches();
+            $this->assertNotSame(
+                'errorselfhosted',
+                url::problem('https://ldg.example.com.cdn-video.net/embed/videoseries?list=PL1')
+            );
+        } finally {
+            $CFG->wwwroot = $original;
+        }
+    }
+
+    /**
      * O padrao do site cede a proporcao lida do trecho; a escolha do professor
      * nao.
      *

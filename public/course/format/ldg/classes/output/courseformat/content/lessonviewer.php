@@ -28,6 +28,7 @@ namespace format_ldg\output\courseformat\content;
 use cm_info;
 use core\output\named_templatable;
 use core\output\renderer_base;
+use core_availability\info;
 use core_courseformat\base as course_format;
 use renderable;
 use stdClass;
@@ -95,7 +96,7 @@ class lessonviewer implements named_templatable, renderable {
 
         $cm = $this->cm;
 
-        $dados = (object) [
+        $data = (object) [
             'haslesson' => true,
             'cmid' => $cm->id,
             'name' => $cm->get_formatted_name(),
@@ -103,22 +104,40 @@ class lessonviewer implements named_templatable, renderable {
             'modfullname' => $cm->modfullname,
             'description' => $cm->get_formatted_content(),
             'hasdescription' => trim(strip_tags((string) $cm->content)) !== '',
+            'locked' => false,
+            'lockinfo' => '',
         ];
+
+        // Bloqueado por restricao de acesso - o destino Forum/Certificado
+        // embute o primeiro item do balde sem filtrar por uservisible, ao
+        // contrario da lista de aulas (lessonlist::lock_info()), que ja trata
+        // isto. Sem esta checagem aqui tambem, o aluno via a pagina crua de
+        // "acesso negado" que o proprio modulo embutido desenha dentro do
+        // quadro, em vez do cadeado do portal.
+        if (!$cm->uservisible) {
+            $data->hasframe = false;
+            $data->locked = true;
+            if (!empty($cm->availableinfo)) {
+                $data->lockinfo = info::format_info($cm->availableinfo, $this->format->get_course());
+            }
+
+            return $data;
+        }
 
         // Atividade sem pagina propria - a etiqueta, por exemplo - nao tem o que
         // embutir. Mostra a descricao e pronto, em vez de um quadro vazio.
         if (empty($cm->url)) {
-            $dados->hasframe = false;
+            $data->hasframe = false;
 
-            return $dados;
+            return $data;
         }
 
         $url = new \moodle_url($cm->url);
         $url->param(self::EMBED_PARAM, 1);
 
-        $dados->hasframe = true;
-        $dados->frameurl = $url->out(false);
-        $dados->openurl = $cm->url->out(false);
+        $data->hasframe = true;
+        $data->frameurl = $url->out(false);
+        $data->openurl = $cm->url->out(false);
 
         // A CONCLUSAO NAO E MONTADA AQUI, e ja foi.
         //
@@ -129,6 +148,6 @@ class lessonviewer implements named_templatable, renderable {
         // pegaria isso: os dois blocos estao corretos, o problema e existirem
         // juntos.
 
-        return $dados;
+        return $data;
     }
 }

@@ -17,7 +17,6 @@
 namespace theme_ldg\output;
 
 use moodle_url;
-use theme_config;
 use theme_ldg\util\settings;
 
 /**
@@ -77,7 +76,7 @@ class core_renderer extends \theme_boost\output\core_renderer {
     public function standard_head_html() {
         $output = \theme_boost\output\core_renderer::standard_head_html();
 
-        $theme = theme_config::load('ldg');
+        $theme = settings::theme_config();
 
         if (!empty($theme->settings->googleanalytics)) {
             $gacode = trim($theme->settings->googleanalytics);
@@ -195,7 +194,7 @@ class core_renderer extends \theme_boost\output\core_renderer {
      * @return string
      */
     public function get_theme_logo_url() {
-        $theme = theme_config::load('ldg');
+        $theme = settings::theme_config();
 
         $logo = $theme->setting_file_url('logo', 'logo');
 
@@ -216,7 +215,7 @@ class core_renderer extends \theme_boost\output\core_renderer {
      * @return string
      */
     public function get_theme_logo_dark_url() {
-        $theme = theme_config::load('ldg');
+        $theme = settings::theme_config();
 
         $logo = $theme->setting_file_url('logodark', 'logodark');
 
@@ -235,7 +234,7 @@ class core_renderer extends \theme_boost\output\core_renderer {
     public function favicon() {
         global $CFG;
 
-        $theme = theme_config::load('ldg');
+        $theme = settings::theme_config();
 
         $favicon = $theme->setting_file_url('favicon', 'favicon');
 

@@ -41,3 +41,18 @@ Um checkpoint = um plugin. Reportar findings do plugin e aguardar antes de segui
 ## Verificação
 
 Não aplicável nesta fase (revisão apenas, sem edição de código). A verificação ocorrerá na fase de correção, depois que o usuário aprovar quais findings corrigir.
+
+## Status final (2026-09-22)
+
+- **11/11 checkpoints revisados** — 54 findings, todos com status em
+  `docs/codereview/README.md`.
+- **Checkpoints 1-8** (39 findings) corrigidos e mesclados no PR #110
+  (`5ca2cc363d0`).
+- **Checkpoints 9-11** (15 findings) corrigidos nesta rodada, branch
+  `feature/code-review-fixes-2026-09-21-part2`:
+  - 9 `course/format/ldg` — 6 findings (`09-format-ldg.md`)
+  - 10 `theme/ldg` — 5 findings (`10-theme-ldg.md`)
+  - 11 `mod/ldgvideo` — 4 findings (`11-mod-ldgvideo.md`)
+- Verificação local: phpunit nos 4 testsuites afetados + `local_partners`
+  (por causa de `landing_page::language_short()`), phpcs `--standard=moodle`
+  limpo nos 3 plugins tocados.

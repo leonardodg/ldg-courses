@@ -178,15 +178,13 @@ class url {
      * @return string|null Chave da string de erro, ou nulo se esta bom.
      */
     public static function problem(string $entrada): ?string {
-        global $CFG;
-
         $video = self::normalize($entrada);
 
         if ($video === null) {
             return 'erroraddressnotvideo';
         }
 
-        if (str_starts_with($video['url']->out(false), $CFG->wwwroot)) {
+        if (self::is_self_hosted($video['url'])) {
             return 'errorselfhosted';
         }
 
@@ -203,6 +201,30 @@ class url {
         }
 
         return null;
+    }
+
+    /**
+     * O endereco e do PROPRIO site (ou subdominio dele)?
+     *
+     * Compara POR HOST, com fronteira de dominio: str_starts_with contra o
+     * wwwroot marcaria como proprio um host externo so porque a string comeca
+     * igual - ex. wwwroot https://ldg.example.com e video em
+     * https://ldg.example.com.cdn-video.net/..., que o Moodle nao serve.
+     *
+     * @param \moodle_url $url
+     * @return bool
+     */
+    protected static function is_self_hosted(\moodle_url $url): bool {
+        global $CFG;
+
+        $sitio = strtolower((string) parse_url($CFG->wwwroot, PHP_URL_HOST));
+        $host = strtolower((string) $url->get_host());
+
+        if ($sitio === '' || $host === '') {
+            return false;
+        }
+
+        return $host === $sitio || str_ends_with($host, '.' . $sitio);
     }
 
     /**
@@ -369,11 +391,19 @@ class url {
      * @return array{scheme: string, host: string, port: string, path: string, query: string[], fragment: string}
      */
     protected static function canonicalizar(array $partes): array {
+        // Host SEM www/ m., o mesmo que o ramo do YouTube ja usava. O Vimeo
+        // checava o host cru: https://www.player.vimeo.com/video/123 nao
+        // casava, a URL passava intacta e o professor via erroraddressnotvideo
+        // num video legitimo.
         $host = preg_replace('/^(www|m)\./', '', $partes['host']);
 
+        // O segmento 'videoseries' e o embed de PLAYLIST do YouTube
+        // (/embed/videoseries?list=PL...), nao um id de video. Casar ele
+        // reescrevia para watch?v=videoseries, apontando para video inexistente.
         if (
             in_array($host, ['youtube.com', 'youtube-nocookie.com'], true)
                 && preg_match('~^/(?:embed|shorts|v)/([A-Za-z0-9_-]+)~', $partes['path'], $achado)
+                && $achado[1] !== 'videoseries'
         ) {
             $partes['path'] = '/watch';
             array_unshift($partes['query'], 'v=' . $achado[1]);
@@ -382,7 +412,7 @@ class url {
         }
 
         if (
-            $partes['host'] === 'player.vimeo.com'
+            $host === 'player.vimeo.com'
                 && preg_match('~^/video/(\d+)~', $partes['path'], $achado)
         ) {
             $partes['host'] = 'vimeo.com';

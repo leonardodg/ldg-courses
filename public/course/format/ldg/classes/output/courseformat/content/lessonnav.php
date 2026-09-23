@@ -92,45 +92,45 @@ class lessonnav implements named_templatable, renderable {
      * @return stdClass
      */
     public function export_for_template(renderer_base $output): stdClass {
-        $aulas = array_values($this->catalog->get(catalog::AULA));
+        $lessons = array_values($this->catalog->get(catalog::AULA));
 
-        if ($this->selected === null || empty($aulas)) {
+        if ($this->selected === null || empty($lessons)) {
             return (object) ['hasnav' => false];
         }
 
-        $posicao = null;
+        $position = null;
 
-        foreach ($aulas as $i => $cm) {
+        foreach ($lessons as $i => $cm) {
             if ($cm->id == $this->selected->id) {
-                $posicao = $i;
+                $position = $i;
                 break;
             }
         }
 
         // A aula em foco pode nao estar na lista - materia, forum ou certificado
         // aberto pelo destino proprio. Ali a barra nao faz sentido.
-        if ($posicao === null) {
+        if ($position === null) {
             return (object) ['hasnav' => false];
         }
 
-        $anterior = $aulas[$posicao - 1] ?? null;
-        $proxima = $aulas[$posicao + 1] ?? null;
+        $prev = $lessons[$position - 1] ?? null;
+        $next = $lessons[$position + 1] ?? null;
 
-        $secao = $this->format->get_modinfo()->get_section_info($this->selected->sectionnum);
+        $section = $this->format->get_modinfo()->get_section_info($this->selected->sectionnum);
 
         return (object) [
             'hasnav' => true,
-            'hasprev' => ($anterior !== null),
-            'prev' => $anterior ? $this->export_lesson($anterior) : null,
-            'hasnext' => ($proxima !== null),
-            'next' => $proxima ? $this->export_lesson($proxima) : null,
+            'hasprev' => ($prev !== null),
+            'prev' => $prev ? $this->export_lesson($prev) : null,
+            'hasnext' => ($next !== null),
+            'next' => $next ? $this->export_lesson($next) : null,
             'position' => (object) [
-                'index' => $posicao + 1,
-                'total' => count($aulas),
-                'module' => $this->format->get_section_name($secao),
+                'index' => $position + 1,
+                'total' => count($lessons),
+                'module' => $this->format->get_section_name($section),
                 'label' => get_string('lessonposition', 'format_ldg', (object) [
-                    'index' => $posicao + 1,
-                    'total' => count($aulas),
+                    'index' => $position + 1,
+                    'total' => count($lessons),
                 ]),
             ],
         ];

@@ -97,16 +97,15 @@ $forceblockdraweropen = $OUTPUT->firstview_fakeblocks();
 
 $secondarynavigation = false;
 $overflow = '';
+
+// O mesmo helper do layout do portal: uma copia do more-menu em cada arquivo
+// e como as duas superficies deixariam de andar juntas numa correcao futura.
+if (\theme_ldg\util\layouthead::has_secondary_children()) {
+    $secondarynavigation = \theme_ldg\util\layouthead::secondary_more_menu();
+    $extraclasses[] = 'has-secondarynavigation';
+}
+
 if ($PAGE->has_secondary_navigation()) {
-    $secondary = $PAGE->secondarynav;
-
-    if ($secondary->get_children_key_list()) {
-        $tablistnav = $PAGE->has_tablist_secondary_navigation();
-        $moremenu = new \core\navigation\output\more_menu($PAGE->secondarynav, 'nav-tabs', true, $tablistnav);
-        $secondarynavigation = $moremenu->export_for_template($OUTPUT);
-        $extraclasses[] = 'has-secondarynavigation';
-    }
-
     $overflowdata = $PAGE->secondarynav->get_overflow_menu_data();
     if (!is_null($overflowdata)) {
         $overflow = $overflowdata->export_for_template($OUTPUT);
@@ -125,7 +124,7 @@ $headercontent = $header->export_for_template($renderer);
 
 $bodyattributes = $OUTPUT->body_attributes($extraclasses);
 $templatecontext = [
-    'sitename' => format_string($SITE->shortname, true, ['context' => \core\context\course::instance(SITEID), "escape" => false]),
+    'sitename' => \theme_ldg\util\layouthead::sitename(),
     'output' => $OUTPUT,
     'sidepreblocks' => $blockshtml,
     'hasblocks' => $hasblocks,

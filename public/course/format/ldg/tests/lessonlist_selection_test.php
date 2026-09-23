@@ -86,4 +86,126 @@ final class lessonlist_selection_test extends \advanced_testcase {
 
         $this->assertNull(course_get_format($curso)->get_selected_cm());
     }
+
+    /**
+     * Aula bloqueada pedida na URL e devolvida ela mesma, sem teleportar.
+     *
+     * lessonviewer mostra o cadeado quando nao uservisible. Pular em silencio
+     * escondia o bloqueio atras de uma aula sem relacao com a pedida - o aluno
+     * clicava em "proxima" e caia na primeira disponivel do curso inteiro.
+     *
+     * @return void
+     */
+    public function test_aula_bloqueada_pedida_e_devolvida(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $CFG->enableavailability = 1;
+
+        $gerador = $this->getDataGenerator();
+        $curso = $gerador->create_course(['format' => 'ldg']);
+        $aluno = $gerador->create_user();
+        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+
+        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
+        $bloqueada = $gerador->create_module('page', [
+            'course' => $curso->id,
+            'section' => 1,
+            'name' => 'Aula trancada',
+            'availability' => json_encode((object) [
+                'op' => '&',
+                'c' => [(object) ['type' => 'date', 'd' => '>=', 't' => time() + WEEKSECS]],
+                'showc' => [true],
+            ]),
+        ]);
+
+        $this->setUser($aluno);
+        $_GET['lesson'] = $bloqueada->cmid;
+
+        try {
+            $selecionada = course_get_format($curso)->get_selected_cm();
+        } finally {
+            unset($_GET['lesson']);
+        }
+
+        $this->assertNotNull($selecionada);
+        $this->assertSame((int) $bloqueada->cmid, (int) $selecionada->id);
+        $this->assertFalse($selecionada->uservisible, 'A aula devolvida e a bloqueada, para o cadeado aparecer.');
+    }
+
+    /**
+     * Sem pedido, cai na primeira aula disponivel - nao na bloqueada.
+     *
+     * @return void
+     */
+    public function test_sem_pedido_cai_na_primeira_disponivel(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $CFG->enableavailability = 1;
+
+        $gerador = $this->getDataGenerator();
+        $curso = $gerador->create_course(['format' => 'ldg']);
+        $aluno = $gerador->create_user();
+        $gerador->enrol_user($aluno->id, $curso->id, 'student');
+
+        $gerador->create_module('page', [
+            'course' => $curso->id,
+            'section' => 1,
+            'name' => 'Aula trancada',
+            'availability' => json_encode((object) [
+                'op' => '&',
+                'c' => [(object) ['type' => 'date', 'd' => '>=', 't' => time() + WEEKSECS]],
+                'showc' => [true],
+            ]),
+        ]);
+        $gerador->create_module('page', ['course' => $curso->id, 'section' => 1, 'name' => 'Aula um']);
+
+        $this->setUser($aluno);
+        $selecionada = course_get_format($curso)->get_selected_cm();
+
+        $this->assertNotNull($selecionada);
+        $this->assertSame('Aula um', $selecionada->name);
+        $this->assertTrue($selecionada->uservisible);
+    }
+
+    /**
+     * get_selected_cm() usa o catalogo recebido, sem refazer a varredura.
+     *
+     * Prova pelo conteudo do balde: um catalogo construido ANTES de nascer a
+     * aula nova nao a conhece. Se o metodo ignorasse o parametro e
+     * reconstruisse o catalogo, a aula nova apareceria.
+     *
+     * @return void
+     */
+    public function test_get_selected_cm_usa_o_catalogo_recebido(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $gerador = $this->getDataGenerator();
+        $curso = $gerador->create_course(['format' => 'ldg', 'numsections' => 1]);
+        $primeira = $gerador->create_module('page', [
+            'course' => $curso->id, 'section' => 1, 'name' => 'Aula um',
+        ]);
+
+        $format = course_get_format($curso);
+        $catalogo = new catalog($format);
+
+        // Nasce DEPOIS do catalogo: nao esta nos baldes dele.
+        $nova = $gerador->create_module('page', [
+            'course' => $curso->id, 'section' => 1, 'name' => 'Aula nova',
+        ]);
+        rebuild_course_cache($curso->id, true);
+
+        $_GET['lesson'] = $nova->cmid;
+
+        try {
+            $selecionada = course_get_format($curso)->get_selected_cm($catalogo);
+        } finally {
+            unset($_GET['lesson']);
+        }
+
+        // O catalogo antigo nao tem a nova: pedido cai na primeira dele.
+        $this->assertSame((int) $primeira->cmid, (int) $selecionada->id);
+    }
 }
