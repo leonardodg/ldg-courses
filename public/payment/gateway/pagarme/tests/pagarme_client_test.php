@@ -313,11 +313,11 @@ final class pagarme_client_test extends \advanced_testcase {
         // Por isso cancel_charge() nao aceita valor: parametro que existe
         // acaba usado, e aqui usar significaria pagar o estorno do proprio
         // bolso sem nada na tela dizendo isso.
-        $metodo = new \ReflectionMethod(pagarme_client::class, 'cancel_charge');
+        $method = new \ReflectionMethod(pagarme_client::class, 'cancel_charge');
 
         $this->assertSame(
             1,
-            $metodo->getNumberOfParameters(),
+            $method->getNumberOfParameters(),
             'cancel_charge nao pode aceitar valor parcial'
         );
     }
@@ -428,7 +428,7 @@ final class pagarme_client_test extends \advanced_testcase {
     public function test_comissao_lida_da_resposta_documentada(): void {
         // O exemplo de criar-pedido-2 divide 50/50; aqui esta com os valores
         // que o nosso build_split produziria, em CENTAVOS.
-        $charge = documented_responses::cobranca_paga_com_split();
+        $charge = documented_responses::paid_charge_with_split();
 
         $this->assertSame(25.0, pagarme_client::commission_from($charge, 'rp_yLnAyVpHbQIqZxwO'));
         $this->assertSame(75.0, pagarme_client::commission_from($charge, 'rp_5yGwpMGckBHVYmb6'));
@@ -436,7 +436,7 @@ final class pagarme_client_test extends \advanced_testcase {
 
     public function test_veredito_da_cobranca_paga_documentada(): void {
         [$status, $code, $message] = pagarme_client::charge_verdict(
-            documented_responses::cobranca_paga_com_split()
+            documented_responses::paid_charge_with_split()
         );
 
         $this->assertSame('paid', $status);
@@ -447,7 +447,7 @@ final class pagarme_client_test extends \advanced_testcase {
     public function test_veredito_da_cobranca_que_falhou_de_verdade(): void {
         // Resposta real da conta de homologacao, e o unico fracasso medido.
         [$status, $code, $message] = pagarme_client::charge_verdict(
-            documented_responses::cobranca_que_falhou()
+            documented_responses::charge_that_failed()
         );
 
         $this->assertSame('failed', $status);
@@ -459,7 +459,7 @@ final class pagarme_client_test extends \advanced_testcase {
         // MEDIDO em 11/09/2026: o split rodou, o extrato dos dois recebedores
         // se moveu, e mesmo assim o GET da cobranca traz splits null. Ler
         // daqui concluiria que a comissao foi zero - e ela foi R$ 25,00.
-        $charge = documented_responses::cobranca_paga_sem_splits_no_get();
+        $charge = documented_responses::paid_charge_without_splits_on_get();
 
         $this->assertSame('paid', $charge['status']);
         $this->assertNull($charge['splits']);
@@ -468,7 +468,7 @@ final class pagarme_client_test extends \advanced_testcase {
 
     public function test_a_comissao_de_verdade_sai_dos_payables(): void {
         $client = new fake_pagarme_client('sk_test_x');
-        $client->nextresponse = ['data' => [documented_responses::payable_da_plataforma()]];
+        $client->nextresponse = ['data' => [documented_responses::payable_for_platform()]];
 
         $this->assertSame(25.0, $client->commission_for_charge(
             'ch_KME2JgJuJnT1XlX7',
@@ -480,11 +480,11 @@ final class pagarme_client_test extends \advanced_testcase {
     public function test_payable_de_outra_cobranca_nao_entra_na_conta(): void {
         // O filtro por charge_id nao funciona na API - o payable e listado por
         // recebedor e traz o charge_id dentro. A separacao e nossa.
-        $outro = documented_responses::payable_da_plataforma();
-        $outro['charge_id'] = 'ch_de_outra_venda';
+        $other = documented_responses::payable_for_platform();
+        $other['charge_id'] = 'ch_de_outra_venda';
 
         $client = new fake_pagarme_client('sk_test_x');
-        $client->nextresponse = ['data' => [$outro]];
+        $client->nextresponse = ['data' => [$other]];
 
         $this->assertSame(0.0, $client->commission_for_charge(
             'ch_KME2JgJuJnT1XlX7',
@@ -496,7 +496,7 @@ final class pagarme_client_test extends \advanced_testcase {
         // Hoje a plataforma tem charge_processing_fee false e fee zero. Se um
         // dia carregar taxa, o que ela RECEBE e amount menos fee - e e isso
         // que precisa ser gravado, nao o bruto da regra.
-        $payable = documented_responses::payable_da_plataforma();
+        $payable = documented_responses::payable_for_platform();
         $payable['fee'] = 300;
 
         $client = new fake_pagarme_client('sk_test_x');
@@ -511,12 +511,12 @@ final class pagarme_client_test extends \advanced_testcase {
     public function test_a_taxa_saiu_inteira_do_vendedor(): void {
         // R$ 100,00: vendedor 7500 bruto com 449 de taxa, plataforma 2500 com
         // zero. Soma 70,51 + 25,00 = 95,51, e os 4,49 que faltam sao a taxa.
-        $vendedor = documented_responses::payable_do_vendedor();
-        $plataforma = documented_responses::payable_da_plataforma();
+        $seller = documented_responses::payable_for_seller();
+        $platform = documented_responses::payable_for_platform();
 
-        $this->assertSame(449, $vendedor['fee']);
-        $this->assertSame(0, $plataforma['fee']);
-        $this->assertSame(10000, $vendedor['amount'] + $plataforma['amount']);
+        $this->assertSame(449, $seller['fee']);
+        $this->assertSame(0, $platform['fee']);
+        $this->assertSame(10000, $seller['amount'] + $platform['amount']);
     }
 
     public function test_sem_payable_a_comissao_e_zero(): void {
@@ -530,7 +530,7 @@ final class pagarme_client_test extends \advanced_testcase {
         // MEDIDO em 11/09/2026, depois de os recebedores serem liberados:
         // cartao e boleto passaram, e so o Pix continuou barrado.
         [$status, $code, $message] = pagarme_client::charge_verdict(
-            documented_responses::pix_sem_ambiente()
+            documented_responses::pix_without_environment()
         );
 
         $this->assertSame('failed', $status);
@@ -541,7 +541,7 @@ final class pagarme_client_test extends \advanced_testcase {
     public function test_o_200_com_recebedor_inexistente_nao_engana(): void {
         // A order voltou HTTP 200 e corpo completo. Se o codigo olhasse so o
         // status HTTP, registraria venda de uma cobranca que nunca existiu.
-        $order = documented_responses::split_para_recebedor_inexistente();
+        $order = documented_responses::split_for_nonexistent_recipient();
         $charge = $order['charges'][0];
 
         [$status, $code, $message] = pagarme_client::charge_verdict($charge);

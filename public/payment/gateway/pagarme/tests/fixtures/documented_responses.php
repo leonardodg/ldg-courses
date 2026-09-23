@@ -48,7 +48,7 @@ class documented_responses {
      *
      * @return array
      */
-    public static function pix_pendente(): array {
+    public static function pending_pix(): array {
         return [
             'id' => 'or_56GXnk6T0eU88qMm',
             'code' => 'YV3RCRIN24',
@@ -89,7 +89,7 @@ class documented_responses {
      *
      * @return array
      */
-    public static function cobranca_paga_com_split(): array {
+    public static function paid_charge_with_split(): array {
         return [
             'id' => 'ch_y9bdaX9JHns07L1Z',
             'code' => '4G63F90FOR',
@@ -169,7 +169,7 @@ class documented_responses {
      *
      * @return array
      */
-    public static function payable_da_plataforma(): array {
+    public static function payable_for_platform(): array {
         return [
             'id' => 4325808524,
             'status' => 'waiting_funds',
@@ -199,7 +199,7 @@ class documented_responses {
      *
      * @return array
      */
-    public static function payable_do_vendedor(): array {
+    public static function payable_for_seller(): array {
         return [
             'id' => 4325808523,
             'status' => 'waiting_funds',
@@ -226,7 +226,7 @@ class documented_responses {
      *
      * @return array
      */
-    public static function cobranca_paga_sem_splits_no_get(): array {
+    public static function paid_charge_without_splits_on_get(): array {
         return [
             'id' => 'ch_KME2JgJuJnT1XlX7',
             'amount' => 10000,
@@ -254,7 +254,7 @@ class documented_responses {
      *
      * @return array
      */
-    public static function pix_sem_ambiente(): array {
+    public static function pix_without_environment(): array {
         return [
             'id' => 'ch_yBrRwbnT2khbaJgP',
             'amount' => 10000,
@@ -284,7 +284,7 @@ class documented_responses {
      *
      * @return array
      */
-    public static function cobranca_que_falhou(): array {
+    public static function charge_that_failed(): array {
         return [
             'id' => 'ch_N6XEkm8ivuxnRPY8',
             'amount' => 10000,
@@ -315,7 +315,7 @@ class documented_responses {
      *
      * @return array
      */
-    public static function split_para_recebedor_inexistente(): array {
+    public static function split_for_nonexistent_recipient(): array {
         return [
             'id' => 'or_LlDa5NLH9eSdxPep',
             'code' => 'GPRYC60TV1',

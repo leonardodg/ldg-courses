@@ -37,7 +37,7 @@ final class payment_processor_test extends \advanced_testcase {
      * @param array $extra
      * @return \stdClass
      */
-    protected function linha(array $extra = []): \stdClass {
+    protected function row(array $extra = []): \stdClass {
         global $DB;
 
         $this->resetAfterTest();
@@ -210,17 +210,17 @@ final class payment_processor_test extends \advanced_testcase {
     // --------------------------------------------------------------------
 
     public function test_venda_avulsa_paga_pode_estornar(): void {
-        $this->assertSame('', payment_processor::refund_blocker($this->linha()));
+        $this->assertSame('', payment_processor::refund_blocker($this->row()));
     }
 
     public function test_cobranca_pendente_nao_estorna(): void {
-        $record = $this->linha(['status' => 'pending', 'paymentid' => null]);
+        $record = $this->row(['status' => 'pending', 'paymentid' => null]);
 
         $this->assertSame('errorrefundnotpaid', payment_processor::refund_blocker($record));
     }
 
     public function test_estorno_nao_se_repete(): void {
-        $record = $this->linha(['status' => 'canceled']);
+        $record = $this->row(['status' => 'canceled']);
 
         $this->assertSame('errorrefundalready', payment_processor::refund_blocker($record));
     }
@@ -229,21 +229,21 @@ final class payment_processor_test extends \advanced_testcase {
         // No Asaas boleto nao estorna em circunstancia nenhuma. Ate medir
         // aqui, o botao nao aparece - errar para o lado de nao oferecer custa
         // um clique, e o contrario custa erro cru na cara do gerente.
-        $record = $this->linha(['paymentmethod' => 'boleto']);
+        $record = $this->row(['paymentmethod' => 'boleto']);
 
         $this->assertSame('errorrefundmethod', payment_processor::refund_blocker($record));
     }
 
     public function test_cartao_e_pix_estornam(): void {
-        $this->assertSame('', payment_processor::refund_blocker($this->linha(['paymentmethod' => 'pix'])));
+        $this->assertSame('', payment_processor::refund_blocker($this->row(['paymentmethod' => 'pix'])));
         $this->assertSame(
             '',
-            payment_processor::refund_blocker($this->linha(['paymentmethod' => 'credit_card']))
+            payment_processor::refund_blocker($this->row(['paymentmethod' => 'credit_card']))
         );
     }
 
     public function test_primeiro_ciclo_pode_estornar(): void {
-        $record = $this->linha(['subscriptionid' => 'sub_1']);
+        $record = $this->row(['subscriptionid' => 'sub_1']);
 
         $this->assertSame('', payment_processor::refund_blocker($record));
     }
@@ -251,17 +251,17 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_ciclo_do_meio_nao_estorna(): void {
         // Estornar um mes do meio devolveria o dinheiro e deixaria a
         // assinatura cobrando os seguintes.
-        $this->linha(['subscriptionid' => 'sub_1']);
-        $segundo = $this->linha(['subscriptionid' => 'sub_1']);
+        $this->row(['subscriptionid' => 'sub_1']);
+        $second = $this->row(['subscriptionid' => 'sub_1']);
 
-        $this->assertSame('errorrefundnotfirstcycle', payment_processor::refund_blocker($segundo));
+        $this->assertSame('errorrefundnotfirstcycle', payment_processor::refund_blocker($second));
     }
 
     public function test_ciclo_anterior_nao_pago_nao_bloqueia(): void {
-        $this->linha(['subscriptionid' => 'sub_2', 'status' => 'pending', 'paymentid' => null]);
-        $segundo = $this->linha(['subscriptionid' => 'sub_2']);
+        $this->row(['subscriptionid' => 'sub_2', 'status' => 'pending', 'paymentid' => null]);
+        $second = $this->row(['subscriptionid' => 'sub_2']);
 
-        $this->assertSame('', payment_processor::refund_blocker($segundo));
+        $this->assertSame('', payment_processor::refund_blocker($second));
     }
 
     // --------------------------------------------------------------------
@@ -269,31 +269,31 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_ciclo_seguinte_copia_o_contexto(): void {
         global $DB;
 
-        $anterior = $this->linha([
+        $previous = $this->row([
             'subscriptionid' => 'sub_9',
             'feepercent' => 30.00,
             'feebase' => 'net',
             'feesource' => 'plan',
         ]);
 
-        $novo = payment_processor::adopt_subscription_cycle('ch_novo', 'sub_9');
+        $new = payment_processor::adopt_subscription_cycle('ch_novo', 'sub_9');
 
-        $this->assertNotNull($novo);
-        $this->assertSame('pending', $novo->status);
-        $this->assertNull($novo->paymentid);
-        $this->assertSame(0, (int) $novo->feeamount);
-        $this->assertSame((int) $anterior->itemid, (int) $novo->itemid);
-        $this->assertSame((int) $anterior->userid, (int) $novo->userid);
+        $this->assertNotNull($new);
+        $this->assertSame('pending', $new->status);
+        $this->assertNull($new->paymentid);
+        $this->assertSame(0, (int) $new->feeamount);
+        $this->assertSame((int) $previous->itemid, (int) $new->itemid);
+        $this->assertSame((int) $previous->userid, (int) $new->userid);
 
         // Os termos vem da linha anterior, e nao sao resolvidos de novo: se a
         // comissao mudar no meio da assinatura, o ciclo ja vendido continua
         // valendo o que valia.
-        $this->assertSame('30.00', (string) $novo->feepercent);
-        $this->assertSame('net', $novo->feebase);
-        $this->assertSame('plan', $novo->feesource);
+        $this->assertSame('30.00', (string) $new->feepercent);
+        $this->assertSame('net', $new->feebase);
+        $this->assertSame('plan', $new->feesource);
 
         // A referencia e unica, entao nao pode ser a mesma.
-        $this->assertNotSame($anterior->externalreference, $novo->externalreference);
+        $this->assertNotSame($previous->externalreference, $new->externalreference);
         $this->assertSame(2, $DB->count_records(payment_processor::TABLE, ['subscriptionid' => 'sub_9']));
     }
 
@@ -302,13 +302,13 @@ final class payment_processor_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $antes = $DB->count_records(payment_processor::TABLE);
-        $resultado = payment_processor::adopt_subscription_cycle('ch_x', 'sub_que_nao_existe');
+        $before = $DB->count_records(payment_processor::TABLE);
+        $result = payment_processor::adopt_subscription_cycle('ch_x', 'sub_que_nao_existe');
 
         // O webhook e publico. Adotar assinatura desconhecida deixaria
         // qualquer POST criar venda.
-        $this->assertNull($resultado);
-        $this->assertSame($antes, $DB->count_records(payment_processor::TABLE));
+        $this->assertNull($result);
+        $this->assertSame($before, $DB->count_records(payment_processor::TABLE));
     }
 
     // --------------------------------------------------------------------
@@ -319,7 +319,7 @@ final class payment_processor_test extends \advanced_testcase {
         // A falta do code nao vira erro 4xx: vira cobranca failed dentro de um
         // 200, com "The item Code is required" no gateway_response.
         $body = payment_processor::order_body(
-            $this->linha(['paymentmethod' => 'pix']),
+            $this->row(['paymentmethod' => 'pix']),
             ['email' => 'a@b.test'],
             []
         );
@@ -331,7 +331,7 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_order_sem_split_nao_manda_o_campo(): void {
         $this->resetAfterTest();
 
-        $body = payment_processor::order_body($this->linha(), ['email' => 'a@b.test'], []);
+        $body = payment_processor::order_body($this->row(), ['email' => 'a@b.test'], []);
 
         $this->assertArrayNotHasKey('split', $body['payments'][0]);
     }
@@ -340,7 +340,7 @@ final class payment_processor_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $split = pagarme_client::build_split('rp_a', 'rp_b', 25.0, 100.00);
-        $body = payment_processor::order_body($this->linha(), ['email' => 'a@b.test'], $split);
+        $body = payment_processor::order_body($this->row(), ['email' => 'a@b.test'], $split);
 
         $this->assertCount(2, $body['payments'][0]['split']);
     }
@@ -349,7 +349,7 @@ final class payment_processor_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $body = payment_processor::subscription_body(
-            $this->linha(),
+            $this->row(),
             ['email' => 'a@b.test'],
             [],
             (object) ['days' => 30, 'maxcycles' => 0]
@@ -365,7 +365,7 @@ final class payment_processor_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $body = payment_processor::subscription_body(
-            $this->linha(),
+            $this->row(),
             ['email' => 'a@b.test'],
             [],
             (object) ['days' => 30, 'maxcycles' => 12]
@@ -380,7 +380,7 @@ final class payment_processor_test extends \advanced_testcase {
         // Curso com prazo de acesso exige prepaid: primeiro paga, depois
         // assiste.
         $body = payment_processor::subscription_body(
-            $this->linha(),
+            $this->row(),
             ['email' => 'a@b.test'],
             [],
             (object) ['days' => 30, 'maxcycles' => 0]
@@ -479,8 +479,8 @@ final class payment_processor_test extends \advanced_testcase {
         // O cartao cria a linha ANTES de existir cobranca, entao ha linhas com
         // chargeid vazio. Procurar por '' acharia uma delas - e possivelmente
         // a de outro aluno.
-        $this->linha(['chargeid' => '', 'status' => 'pending', 'paymentid' => null]);
-        $this->linha(['chargeid' => '', 'status' => 'pending', 'paymentid' => null]);
+        $this->row(['chargeid' => '', 'status' => 'pending', 'paymentid' => null]);
+        $this->row(['chargeid' => '', 'status' => 'pending', 'paymentid' => null]);
 
         $this->assertFalse(payment_processor::process_notification(''));
     }
@@ -500,7 +500,7 @@ final class payment_processor_test extends \advanced_testcase {
 
         $pix = payment_processor::sweep_window_for('pix');
         $boleto = payment_processor::sweep_window_for('boleto');
-        $cartao = payment_processor::sweep_window_for('credit_card');
+        $card = payment_processor::sweep_window_for('credit_card');
 
         // O Pix expira em 30 min; a janela cobre isso mais a folga da
         // liquidacao, e fica MUITO abaixo do boleto.
@@ -511,19 +511,19 @@ final class payment_processor_test extends \advanced_testcase {
         $this->assertGreaterThan(3 * DAYSECS, $boleto);
 
         // Cartao liquida na hora; o que passa de um dia esta travado.
-        $this->assertLessThan($boleto, $cartao);
+        $this->assertLessThan($boleto, $card);
     }
 
     public function test_a_janela_acompanha_a_validade_configurada(): void {
         $this->resetAfterTest();
 
         set_config('pixexpiresin', '15', 'paygw_pagarme');
-        $curta = payment_processor::sweep_window_for('pix');
+        $shorter = payment_processor::sweep_window_for('pix');
 
         set_config('pixexpiresin', '60', 'paygw_pagarme');
-        $longa = payment_processor::sweep_window_for('pix');
+        $longer = payment_processor::sweep_window_for('pix');
 
-        $this->assertGreaterThan($curta, $longa);
+        $this->assertGreaterThan($shorter, $longer);
     }
 
     public function test_forma_desconhecida_nao_varre_para_sempre(): void {
@@ -566,7 +566,7 @@ final class payment_processor_test extends \advanced_testcase {
     }
 
     public function test_a_resposta_documentada_do_pix_da_o_qrcode(): void {
-        $order = documented_responses::pix_pendente();
+        $order = documented_responses::pending_pix();
         $charge = $order['charges'][0];
 
         $this->assertStringContainsString(
@@ -582,7 +582,7 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_o_status_da_transacao_nao_e_o_status_da_cobranca(): void {
         // Na resposta documentada a cobranca esta 'pending' e a transacao,
         // 'waiting_payment'. Ler o campo errado faria o Pix parecer recusado.
-        $charge = documented_responses::pix_pendente()['charges'][0];
+        $charge = documented_responses::pending_pix()['charges'][0];
 
         $this->assertSame('pending', $charge['status']);
         $this->assertSame('waiting_payment', $charge['last_transaction']['status']);
@@ -592,7 +592,7 @@ final class payment_processor_test extends \advanced_testcase {
     public function test_a_forma_de_pagamento_pode_vir_com_maiuscula(): void {
         // A documentacao devolve "Pix", com inicial maiuscula, onde a
         // requisicao manda "pix". Comparacao sensivel a caixa quebraria aqui.
-        $charge = documented_responses::pix_pendente()['charges'][0];
+        $charge = documented_responses::pending_pix()['charges'][0];
 
         $this->assertSame('Pix', $charge['payment_method']);
         $this->assertSame(
@@ -602,7 +602,7 @@ final class payment_processor_test extends \advanced_testcase {
     }
 
     public function test_a_cobranca_documentada_paga_libera_acesso(): void {
-        $charge = documented_responses::cobranca_paga_com_split();
+        $charge = documented_responses::paid_charge_with_split();
 
         $this->assertTrue(payment_processor::is_paid((string) $charge['status']));
     }
@@ -647,11 +647,11 @@ final class payment_processor_test extends \advanced_testcase {
         // do aluno, com o que ele precisa fazer, e nao deixa cobranca orfa.
         $this->resetAfterTest();
 
-        $aluno = $this->getDataGenerator()->create_user(['phone1' => '', 'phone2' => '']);
+        $student = $this->getDataGenerator()->create_user(['phone1' => '', 'phone2' => '']);
         set_config('documentfield', '', 'paygw_pagarme');
 
         $this->expectException(\moodle_exception::class);
-        payment_processor::build_customer((int) $aluno->id);
+        payment_processor::build_customer((int) $student->id);
     }
 
     public function test_o_celular_tem_precedencia_sobre_o_fixo(): void {

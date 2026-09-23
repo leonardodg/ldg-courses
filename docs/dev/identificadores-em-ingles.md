@@ -79,7 +79,18 @@ está tocando por outro motivo, nasce com identificador em inglês.
   em inglês; os módulos AMD (`accessibilitybar.js`, `colormode.js`,
   `navmenu.js`) já estavam limpos. `phpcs` (22 arquivos) e `phpunit` (15
   testes, 30 asserções) verdes. Sem mudança em AMD, sem `grunt` necessário.
-- Os outros 5 plugins seguem pendentes.
+- **`paygw_pagarme`: convertido em 23/09/2026.** 31 arquivos (produção +
+  testes; nenhum AMD tocado), 3 na estimativa original — a varredura real
+  achou mais, incluindo nomes de método de fixture inteiros
+  (`tests/fixtures/documented_responses.php`: `pix_pendente()`,
+  `cobranca_paga_com_split()`, `payable_do_vendedor()` →
+  `pending_pix()`, `paid_charge_with_split()`, `payable_for_seller()`, e
+  outros três). Um sed grosseiro renomeou por engano um nome de método
+  `test_*` que continha a substring convertida
+  (`test_veredito_da_cobranca_que_falhou_de_verdade`); pego e revertido antes
+  do commit. `phpcs` (31 arquivos) e `phpunit` (119 testes, 213 asserções)
+  verdes.
+- Os outros 4 plugins seguem pendentes.
 
 ## Tamanho estimado, por plugin
 
@@ -98,13 +109,13 @@ número real de arquivos e de identificadores é maior.
 | `blocks/marketplace` | 10 | 1.226 | 0 |
 | `paygw_mercadopago` | 42 | 10.692 | ~~11~~ 0 (convertido) |
 | `paygw_asaas` | 25 | 5.177 | 2 |
-| `paygw_pagarme` | 31 | 6.525 | 3 |
+| `paygw_pagarme` | 31 | 6.525 | ~~3~~ 0 (convertido) |
 | `enrol_marketplace` | 11 | 1.095 | 1 |
 | `availability_marketplace` | 8 | 822 | 1 |
 | `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
 | `theme_ldg` | 22 | 3.289 | ~~6~~ 0 (convertido) |
 | `mod_ldgvideo` | 31 | 3.400 | ~~8~~ 0 (convertido) |
-| **Total** | **333** | **63.695** | **24 restantes** (≈7% dos arquivos, por baixo) |
+| **Total** | **333** | **63.695** | **21 restantes** (≈6% dos arquivos, por baixo) |
 
 `format_ldg` e `paygw_mercadopago` concentram a maior densidade — ambos
 plugins antigos, com bastante lógica de negócio nomeada em português desde o
