@@ -13,13 +13,13 @@ aceitos pelo usuário**. São portões, não tarefas paralelas:
 
 | # | Pré-condição | O que é |
 |---|---|---|
-| 1 | **Lista de contradições, faltas e pontos em aberto** — entregue e aceita pelo usuário | Varredura do que PRD, TRD, ADR-0005 e o desenho Start/PRO implementado dizem **ao mesmo tempo** e não batem (rótulos de degrau, tier→resolução, mensalidade do degrau BYOS vs `pro`, ADR novo ainda não escrito, `hostingmodel` sem storage de chave). Aceite formal antes de abrir branch de vídeo. |
+| 1 | **Lista de contradições, faltas e pontos em aberto** — entregue e aceita pelo usuário | Documentada em [`gate-contradicoes.md`](gate-contradicoes.md): varredura do que PRD, TRD, ADR-0005 e o desenho Start/PRO implementado dizem **ao mesmo tempo** e não batem (rótulos de degrau, tier→resolução, mensalidade do degrau BYOS vs `pro`, ADR novo ainda não escrito, `hostingmodel` sem storage de chave). Aceite formal antes de abrir branch de vídeo. |
 | 2 | **Números de degraus comerciais: a confirmar** | Comissões (~10% / ~5%) e mensalidades (~R$ 50–100 / ~R$ 300) do [`prd.md`](prd.md) permanecem **a confirmar**. Nenhum código assume percentual ou faixa fechada — o que se lê é o banco (`commissionpct` / `monthlyfee` / tiers), nunca hardcode. |
 | 3 | **Cálculo de custo de banda vs mensalidade** | Antes de **qualquer degrau pago ser liberado**: banda Bunny (GB transferido; 4K custa várias vezes 720p) contra a mensalidade cobrada. É o gate de custo do PRD; sem o número na mão, degrau pago não abre. |
 
 A lista do item 1 é **pré-condição de implementação**, não revisão de meio de
 caminho: o que se descobre depois do primeiro commit já custou branch, review
-e rework.
+e rework. O arquivo da lista é [`gate-contradicoes.md`](gate-contradicoes.md).
 
 ## Sequência aprovada
 
@@ -106,6 +106,7 @@ executa segue os donos:
 | Assunto | Dono |
 |---|---|
 | Intenção de produto, ordem das frentes, gates | [`prd.md`](prd.md) |
+| Contradições, faltas e abertos (pré-condição 1) | [`gate-contradicoes.md`](gate-contradicoes.md) |
 | Requisitos técnicos por frente, pré-condições, riscos | [`trd.md`](trd.md) |
 | Estado atual e fases do marketplace | [`../architecture/estado-e-proximas-fases.md`](../architecture/estado-e-proximas-fases.md) |
 | Mecânica da assinatura SaaS (paymentarea `'plan'`) | [`../ai-plans/2026-09-17-assinatura-saas-planos-start-e-pro.md`](../ai-plans/2026-09-17-assinatura-saas-planos-start-e-pro.md) |

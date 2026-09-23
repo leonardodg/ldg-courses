@@ -53,7 +53,7 @@ configurado e as armadilhas dele:
 | [`data-validation/`](data-validation/) | como se verifica que funciona: painel de testes, cenários, dados de teste |
 | [`dev/`](dev/) | guias de quem desenvolve: ambiente, ferramentas, fluxo de trabalho |
 | [`operacao/`](operacao/) | colocar e manter no ar: configuração inicial, ordem das coisas |
-| [`produto/`](produto/) | hub de produto: PRD, TRD, fluxos, briefing UI/UX, intent de schema, plano de implementação |
+| [`produto/`](produto/) | hub de produto: PRD, TRD, fluxos, briefing UI/UX, intenção de schema, plano de implementação |
 | [`legal/`](legal/) | privacidade, termos de uso e o mapa do que é coletado |
 | [`ai-plans/`](ai-plans/) | **registro de todo plano executado por agente de IA** |
 | [`history/`](history/) | de onde o projeto veio: ideia inicial, conversas fundadoras |
