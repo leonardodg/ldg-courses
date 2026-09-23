@@ -211,27 +211,27 @@ final class service_provider_test extends \advanced_testcase {
         service_provider::deliver_order('offer', (int) $offer->get('id'), 1, $userid);
 
         // O aluno nao paga: o cron marca vencido.
-        $ativos = entitlement::get_active_for_user($userid);
-        $ent = reset($ativos);
+        $active = entitlement::get_active_for_user($userid);
+        $ent = reset($active);
         $ent->set('timeend', time() - DAYSECS);
         $ent->set('status', entitlement::STATUS_EXPIRED);
         $ent->update();
 
         service_provider::deliver_order('offer', (int) $offer->get('id'), 2, $userid);
 
-        $todos = entitlement::get_records(['userid' => $userid, 'offerid' => (int) $offer->get('id')]);
-        $this->assertCount(1, $todos, 'pagar a atrasada nao pode criar um segundo direito');
+        $all = entitlement::get_records(['userid' => $userid, 'offerid' => (int) $offer->get('id')]);
+        $this->assertCount(1, $all, 'pagar a atrasada nao pode criar um segundo direito');
 
-        $revivido = reset($todos);
-        $this->assertSame(entitlement::STATUS_ACTIVE, $revivido->get('status'));
-        $this->assertSame(2, (int) $revivido->get('cycles'), 'o ciclo continua contando de onde parou');
-        $this->assertGreaterThan(time(), (int) $revivido->get('timeend'));
+        $revived = reset($all);
+        $this->assertSame(entitlement::STATUS_ACTIVE, $revived->get('status'));
+        $this->assertSame(2, (int) $revived->get('cycles'), 'o ciclo continua contando de onde parou');
+        $this->assertGreaterThan(time(), (int) $revived->get('timeend'));
 
         // Quem ficou um dia sem pagar nao ganha o dia de volta: o novo periodo
         // conta de agora, e nao do vencimento que ja passou.
         $this->assertLessThanOrEqual(
             time() + (7 * DAYSECS) + 60,
-            (int) $revivido->get('timeend'),
+            (int) $revived->get('timeend'),
             'o periodo novo conta a partir de agora, e nao do vencimento vencido'
         );
     }
@@ -250,14 +250,14 @@ final class service_provider_test extends \advanced_testcase {
         $userid = (int) $this->user->id;
 
         service_provider::deliver_order('offer', (int) $offer->get('id'), 1, $userid);
-        $ativos = entitlement::get_active_for_user($userid);
-        $ent = reset($ativos);
+        $active = entitlement::get_active_for_user($userid);
+        $ent = reset($active);
         $ent->revoke();
 
         service_provider::deliver_order('offer', (int) $offer->get('id'), 2, $userid);
 
-        $todos = entitlement::get_records(['userid' => $userid, 'offerid' => (int) $offer->get('id')]);
-        $this->assertCount(2, $todos, 'o revogado fica no historico, e nasce um novo');
+        $all = entitlement::get_records(['userid' => $userid, 'offerid' => (int) $offer->get('id')]);
+        $this->assertCount(2, $all, 'o revogado fica no historico, e nasce um novo');
     }
 
     /**
@@ -354,19 +354,19 @@ final class service_provider_test extends \advanced_testcase {
         $this->company->set('planid', (int) $plan->get('id'));
         $this->company->update();
 
-        $antes = time();
-        $resultado = service_provider::deliver_order(
+        $before = time();
+        $result = service_provider::deliver_order(
             service_provider::PAYMENT_AREA_PLAN,
             (int) $this->company->get('id'),
             1,
             (int) $this->user->id
         );
 
-        $this->assertTrue($resultado);
+        $this->assertTrue($result);
 
         $this->company->read();
         $expiry = (int) $this->company->get('planexpiry');
-        $this->assertGreaterThanOrEqual($antes + (30 * DAYSECS), $expiry);
+        $this->assertGreaterThanOrEqual($before + (30 * DAYSECS), $expiry);
 
         // Idempotencia por soma: pagar de novo soma outros 30 dias ao
         // vencimento ATUAL, nao recomeca de agora - mesma regra da venda de
@@ -392,14 +392,14 @@ final class service_provider_test extends \advanced_testcase {
      * @return void
      */
     public function test_deliver_order_do_plano_sem_plano_nao_quebra(): void {
-        $resultado = service_provider::deliver_order(
+        $result = service_provider::deliver_order(
             service_provider::PAYMENT_AREA_PLAN,
             (int) $this->company->get('id'),
             1,
             (int) $this->user->id
         );
 
-        $this->assertFalse($resultado);
+        $this->assertFalse($result);
     }
 
     /**

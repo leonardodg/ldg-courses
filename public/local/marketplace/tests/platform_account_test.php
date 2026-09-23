@@ -52,10 +52,10 @@ final class platform_account_test extends \advanced_testcase {
     public function test_e_idempotente_por_pais(): void {
         $this->resetAfterTest();
 
-        $primeira = api::get_or_create_platform_account('BR');
-        $segunda = api::get_or_create_platform_account('BR');
+        $first = api::get_or_create_platform_account('BR');
+        $second = api::get_or_create_platform_account('BR');
 
-        $this->assertSame((int) $primeira->get('id'), (int) $segunda->get('id'));
+        $this->assertSame((int) $first->get('id'), (int) $second->get('id'));
     }
 
     /**

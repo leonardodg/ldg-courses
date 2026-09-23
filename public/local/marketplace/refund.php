@@ -42,10 +42,10 @@ $confirm = optional_param('confirm', 0, PARAM_BOOL);
 
 require_login();
 
-$venda = $DB->get_record('local_marketplace_sale', ['paymentid' => $paymentid], '*', MUST_EXIST);
-$pagamento = $DB->get_record('payments', ['id' => $paymentid], '*', MUST_EXIST);
-$company = company::get_record(['id' => (int) $venda->companyid]);
-$offer = offer::get_record(['id' => (int) $venda->offerid]);
+$sale = $DB->get_record('local_marketplace_sale', ['paymentid' => $paymentid], '*', MUST_EXIST);
+$payment = $DB->get_record('payments', ['id' => $paymentid], '*', MUST_EXIST);
+$company = company::get_record(['id' => (int) $sale->companyid]);
+$offer = offer::get_record(['id' => (int) $sale->offerid]);
 if (!$company || !$offer) {
     throw new moodle_exception('invalidrecord', 'error');
 }
@@ -56,7 +56,7 @@ if (!$company || !$offer) {
 $context = $company->get_context();
 require_capability('local/marketplace:refundsale', $context);
 
-$voltar = new moodle_url('/local/marketplace/report.php', [
+$back = new moodle_url('/local/marketplace/report.php', [
     'company' => $company->get('shortname'),
     'view' => 'transactions',
 ]);
@@ -70,27 +70,27 @@ $PAGE->set_heading(format_string($company->get('name')));
 
 // O impedimento e perguntado ao gateway ANTES de qualquer coisa. A tela pode
 // ter sido aberta por link antigo, ou por alguem que digitou o endereco.
-$bloqueio = api::refund_blocker($paymentid);
-if ($bloqueio !== '') {
+$blocker = api::refund_blocker($paymentid);
+if ($blocker !== '') {
     echo $OUTPUT->header();
-    echo $OUTPUT->notification(get_string($bloqueio, 'paygw_' . $pagamento->gateway), 'error');
-    echo $OUTPUT->continue_button($voltar);
+    echo $OUTPUT->notification(get_string($blocker, 'paygw_' . $payment->gateway), 'error');
+    echo $OUTPUT->continue_button($back);
     echo $OUTPUT->footer();
     exit;
 }
 
-$aluno = \core_user::get_user((int) $pagamento->userid, '*', IGNORE_MISSING);
+$student = \core_user::get_user((int) $payment->userid, '*', IGNORE_MISSING);
 
 if (!$confirm) {
     echo $OUTPUT->header();
     echo $OUTPUT->confirm(
         get_string('refundconfirm', 'local_marketplace', (object) [
-            'amount' => helper::get_cost_as_string((float) $pagamento->amount, $pagamento->currency),
+            'amount' => helper::get_cost_as_string((float) $payment->amount, $payment->currency),
             'offer' => format_string($offer->get('name')),
-            'user' => $aluno ? fullname($aluno) : '#' . (int) $pagamento->userid,
+            'user' => $student ? fullname($student) : '#' . (int) $payment->userid,
         ]),
         new moodle_url($url, ['confirm' => 1, 'sesskey' => sesskey()]),
-        $voltar
+        $back
     );
     echo $OUTPUT->footer();
     exit;
@@ -100,11 +100,11 @@ require_sesskey();
 
 // Gateway primeiro, direito depois: revogar antes deixaria o aluno sem curso e
 // sem reembolso se a chamada externa falhasse.
-$estornou = api::refund_sale($paymentid);
+$refunded = api::refund_sale($paymentid);
 
 redirect(
-    $voltar,
-    get_string($estornou ? 'refunddone' : 'refundfailed', 'local_marketplace'),
+    $back,
+    get_string($refunded ? 'refunddone' : 'refundfailed', 'local_marketplace'),
     null,
-    $estornou ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_ERROR
+    $refunded ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_ERROR
 );

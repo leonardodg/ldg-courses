@@ -483,8 +483,8 @@ class company extends persistent {
      * @return void
      */
     public function extend_plan(int $seconds): void {
-        $atual = (int) $this->get('planexpiry');
-        $base = max($atual, time());
+        $current = (int) $this->get('planexpiry');
+        $base = max($current, time());
 
         $this->set('planexpiry', $base + $seconds);
         $this->update();

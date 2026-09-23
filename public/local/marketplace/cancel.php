@@ -57,17 +57,17 @@ if (!$company || !$offer) {
 //
 // A capability e verificada no contexto da CATEGORIA da empresa, e nao no
 // sistema: quem gere uma empresa nao gere a assinatura de outra.
-$dono = (int) $ent->get('userid') === (int) $USER->id;
-$gestor = has_capability('local/marketplace:managesales', $company->get_context());
+$owner = (int) $ent->get('userid') === (int) $USER->id;
+$manager = has_capability('local/marketplace:managesales', $company->get_context());
 
-if (!$dono && !$gestor) {
+if (!$owner && !$manager) {
     throw new moodle_exception('invalidaccess', 'error');
 }
 
 // Para onde voltar depois. O aluno volta para a vitrine, onde renova se mudar
 // de ideia; o gestor volta para a lista de assinantes, que e de onde ele veio -
 // mandar o gestor para a vitrine da empresa dele nao ajuda em nada.
-$storefront = $dono
+$storefront = $owner
     ? new moodle_url('/local/marketplace/offers.php', ['company' => $company->get('shortname')])
     : new moodle_url('/local/marketplace/report.php', [
         'company' => $company->get('shortname'),

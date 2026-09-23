@@ -818,7 +818,7 @@ class api {
         foreach (self::billing_capable_gateways() as $name) {
             $classname = '\paygw_' . $name . '\gateway';
             try {
-                $fatura = \component_class_callback(
+                $invoice = \component_class_callback(
                     $classname,
                     'pending_invoice',
                     [$component, $itemid, $userid],
@@ -827,8 +827,8 @@ class api {
             } catch (\Throwable $e) {
                 continue;
             }
-            if (is_array($fatura) && !empty($fatura['url'])) {
-                return $fatura;
+            if (is_array($invoice) && !empty($invoice['url'])) {
+                return $invoice;
             }
         }
 
@@ -890,7 +890,7 @@ class api {
         foreach (self::billing_capable_gateways() as $name) {
             $classname = '\paygw_' . $name . '\gateway';
             try {
-                $metodo = \component_class_callback(
+                $method = \component_class_callback(
                     $classname,
                     'payment_method',
                     [$component, $itemid, $userid],
@@ -899,8 +899,8 @@ class api {
             } catch (\Throwable $e) {
                 continue;
             }
-            if ($metodo !== null && $metodo !== '') {
-                return $metodo;
+            if ($method !== null && $method !== '') {
+                return $method;
             }
         }
 
@@ -921,12 +921,12 @@ class api {
     public static function refund_blocker(int $paymentid): string {
         global $DB;
 
-        $pagamento = $DB->get_record('payments', ['id' => $paymentid]);
-        if (!$pagamento) {
+        $payment = $DB->get_record('payments', ['id' => $paymentid]);
+        if (!$payment) {
             return 'errorrefundunknown';
         }
 
-        $classname = '\paygw_' . $pagamento->gateway . '\gateway';
+        $classname = '\paygw_' . $payment->gateway . '\gateway';
 
         // Gateway que nao implementa estorno responde o padrao, e o padrao e
         // "nao da" - melhor esconder o botao do que oferecer o que nao existe.
@@ -951,32 +951,32 @@ class api {
     public static function refund_sale(int $paymentid): bool {
         global $DB;
 
-        $pagamento = $DB->get_record('payments', ['id' => $paymentid], '*', MUST_EXIST);
+        $payment = $DB->get_record('payments', ['id' => $paymentid], '*', MUST_EXIST);
 
         // Reserva o estorno ANTES de chamar o gateway, dentro de transacao
         // propria: sem isto, duplo clique no botao ou dois admins agindo
         // sobre o mesmo pagamento mandavam o gateway estornar duas vezes,
         // porque record_refund() so grava depois que a chamada externa ja
         // teve sucesso.
-        $venda = sale::get_record(['paymentid' => $paymentid]);
+        $sale = sale::get_record(['paymentid' => $paymentid]);
         $transaction = $DB->start_delegated_transaction();
-        if ($venda && $venda->get('refundedat')) {
+        if ($sale && $sale->get('refundedat')) {
             $transaction->allow_commit();
             return false;
         }
-        if ($venda) {
-            $venda->set('refundedat', time());
-            $venda->update();
+        if ($sale) {
+            $sale->set('refundedat', time());
+            $sale->update();
         }
         $transaction->allow_commit();
 
-        $classname = '\paygw_' . $pagamento->gateway . '\gateway';
-        $estornou = \component_class_callback($classname, 'refund', [$paymentid], false);
-        if (!$estornou) {
-            if ($venda) {
+        $classname = '\paygw_' . $payment->gateway . '\gateway';
+        $refunded = \component_class_callback($classname, 'refund', [$paymentid], false);
+        if (!$refunded) {
+            if ($sale) {
                 // O gateway recusou: libera a reserva para uma proxima tentativa.
-                $venda->set('refundedat', null);
-                $venda->update();
+                $sale->set('refundedat', null);
+                $sale->update();
             }
             return false;
         }
@@ -1009,40 +1009,40 @@ class api {
     public static function record_refund(int $paymentid): bool {
         global $DB;
 
-        $venda = $DB->get_record('local_marketplace_sale', ['paymentid' => $paymentid]);
-        if (!$venda) {
+        $sale = $DB->get_record('local_marketplace_sale', ['paymentid' => $paymentid]);
+        if (!$sale) {
             return false;
         }
 
-        $pagamento = $DB->get_record('payments', ['id' => $paymentid]);
-        if (!$pagamento) {
+        $payment = $DB->get_record('payments', ['id' => $paymentid]);
+        if (!$payment) {
             return false;
         }
 
-        $revogou = false;
-        $direitos = entitlement::get_records([
-            'userid' => (int) $pagamento->userid,
-            'offerid' => (int) $venda->offerid,
+        $revoked = false;
+        $entitlements = entitlement::get_records([
+            'userid' => (int) $payment->userid,
+            'offerid' => (int) $sale->offerid,
         ]);
 
-        foreach ($direitos as $direito) {
-            if ($direito->get('status') === entitlement::STATUS_CANCELLED) {
+        foreach ($entitlements as $entitlement) {
+            if ($entitlement->get('status') === entitlement::STATUS_CANCELLED) {
                 continue;
             }
-            $direito->revoke();
-            $revogou = true;
+            $entitlement->revoke();
+            $revoked = true;
         }
 
         // Sem o direito, a matricula tem que cair junto - senao o aluno recebe
         // o dinheiro de volta e continua no curso ate o cron passar.
-        if ($revogou) {
+        if ($revoked) {
             $plugin = enrol_get_plugin('marketplace');
             if ($plugin) {
-                $plugin->sync_user((int) $pagamento->userid);
+                $plugin->sync_user((int) $payment->userid);
             }
         }
 
-        return $revogou;
+        return $revoked;
     }
 
     /**
@@ -1144,12 +1144,12 @@ class api {
      */
     public static function assign_member_role(company $company, int $userid, string $memberrole): void {
         $contextid = $company->get_context()->id;
-        $escolhido = roles::shortname_for($memberrole);
+        $chosen = roles::shortname_for($memberrole);
 
-        role_assign(roles::get_id($escolhido), $userid, $contextid);
+        role_assign(roles::get_id($chosen), $userid, $contextid);
 
         foreach ([roles::MANAGER, roles::SELLER] as $shortname) {
-            if ($shortname !== $escolhido) {
+            if ($shortname !== $chosen) {
                 role_unassign(roles::get_id($shortname), $userid, $contextid);
             }
         }

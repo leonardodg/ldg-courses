@@ -157,8 +157,8 @@ class local_marketplace_generator extends component_generator_base {
         $e->set('userid', $userid);
         $e->set('offerid', $offerid);
         $e->set('companyid', (int) ($record->companyid ?? $offer->get('companyid')));
-        $e->set('timestart', $this->quando($record->timestart ?? null, time() - DAYSECS));
-        $e->set('timeend', $this->quando($record->timeend ?? null, 0));
+        $e->set('timestart', $this->when($record->timestart ?? null, time() - DAYSECS));
+        $e->set('timeend', $this->when($record->timeend ?? null, 0));
         $e->set('status', $record->status ?? entitlement::STATUS_ACTIVE);
         $e->set('cycles', (int) ($record->cycles ?? 1));
         $e->set('norenew', (int) ($record->norenew ?? 0));
@@ -184,21 +184,21 @@ class local_marketplace_generator extends component_generator_base {
     /**
      * Converte data relativa em epoch.
      *
-     * @param mixed $valor Numero, texto para strtotime, ou null.
-     * @param int $padrao
+     * @param mixed $value Numero, texto para strtotime, ou null.
+     * @param int $default
      * @return int
      */
-    protected function quando($valor, int $padrao): int {
-        if ($valor === null || $valor === '') {
-            return $padrao;
+    protected function when($value, int $default): int {
+        if ($value === null || $value === '') {
+            return $default;
         }
-        if (is_numeric($valor)) {
-            return (int) $valor;
+        if (is_numeric($value)) {
+            return (int) $value;
         }
 
-        $t = strtotime($valor);
+        $t = strtotime($value);
         if ($t === false) {
-            throw new coding_exception('data que o strtotime nao entende: ' . $valor);
+            throw new coding_exception('data que o strtotime nao entende: ' . $value);
         }
 
         return $t;

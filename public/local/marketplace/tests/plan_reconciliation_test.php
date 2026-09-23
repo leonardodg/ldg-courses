@@ -98,29 +98,29 @@ final class plan_reconciliation_test extends \advanced_testcase {
             }
         }
 
-        $antigo = new plan(0, (object) [
+        $old = new plan(0, (object) [
             'shortname' => 'pro',
             'name' => 'Pro (antigo)',
             'monthlyfee' => 97,
             'commissionpct' => 3.9,
             'hostingmodel' => plan::HOSTING_BYOS,
         ]);
-        $antigo->create();
+        $old->create();
 
         local_marketplace_archive_legacy_plans();
 
-        $renomeado = plan::get_record_by_shortname('pro_legado');
-        $this->assertNotFalse($renomeado, 'o antigo devia ter sido renomeado');
-        $this->assertSame(plan::STATUS_ARCHIVED, $renomeado->get('status'));
-        $this->assertSame((int) $antigo->get('id'), (int) $renomeado->get('id'), 'e a MESMA linha, so renomeada');
+        $renamed = plan::get_record_by_shortname('pro_legado');
+        $this->assertNotFalse($renamed, 'o antigo devia ter sido renomeado');
+        $this->assertSame(plan::STATUS_ARCHIVED, $renamed->get('status'));
+        $this->assertSame((int) $old->get('id'), (int) $renamed->get('id'), 'e a MESMA linha, so renomeada');
 
         // O caso que quebrou ao vivo: o 'pro' NOVO precisa existir, com a
         // comissao nova (5%) - nao pode ter sido pulado por achar o
         // shortname "ja ocupado" pelo antigo.
-        $novo = plan::get_record_by_shortname('pro');
-        $this->assertNotFalse($novo, 'o pro novo nao pode ter sido pulado pelo seed');
-        $this->assertSame(5.0, (float) $novo->get('commissionpct'));
-        $this->assertNotSame((int) $antigo->get('id'), (int) $novo->get('id'), 'tem que ser uma linha NOVA');
+        $new = plan::get_record_by_shortname('pro');
+        $this->assertNotFalse($new, 'o pro novo nao pode ter sido pulado pelo seed');
+        $this->assertSame(5.0, (float) $new->get('commissionpct'));
+        $this->assertNotSame((int) $old->get('id'), (int) $new->get('id'), 'tem que ser uma linha NOVA');
 
         $this->assertNotFalse(plan::get_record_by_shortname('start_free'));
         $this->assertNotFalse(plan::get_record_by_shortname('start_50'));

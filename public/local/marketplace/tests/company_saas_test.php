@@ -40,7 +40,7 @@ final class company_saas_test extends \advanced_testcase {
     public function test_sem_planexpiry_nao_esta_inadimplente(): void {
         $this->resetAfterTest();
 
-        $company = $this->criar_empresa();
+        $company = $this->create_company();
 
         $this->assertFalse($company->is_plan_overdue());
     }
@@ -53,7 +53,7 @@ final class company_saas_test extends \advanced_testcase {
     public function test_planexpiry_no_futuro_nao_e_inadimplente(): void {
         $this->resetAfterTest();
 
-        $company = $this->criar_empresa(['planexpiry' => time() + DAYSECS]);
+        $company = $this->create_company(['planexpiry' => time() + DAYSECS]);
 
         $this->assertFalse($company->is_plan_overdue());
     }
@@ -66,7 +66,7 @@ final class company_saas_test extends \advanced_testcase {
     public function test_planexpiry_no_passado_e_inadimplente(): void {
         $this->resetAfterTest();
 
-        $company = $this->criar_empresa(['planexpiry' => time() - DAYSECS]);
+        $company = $this->create_company(['planexpiry' => time() - DAYSECS]);
 
         $this->assertTrue($company->is_plan_overdue());
     }
@@ -80,12 +80,12 @@ final class company_saas_test extends \advanced_testcase {
     public function test_extend_plan_soma_ao_vencimento_futuro(): void {
         $this->resetAfterTest();
 
-        $futuro = time() + (10 * DAYSECS);
-        $company = $this->criar_empresa(['planexpiry' => $futuro]);
+        $future = time() + (10 * DAYSECS);
+        $company = $this->create_company(['planexpiry' => $future]);
 
         $company->extend_plan(30 * DAYSECS);
 
-        $this->assertEqualsWithDelta($futuro + (30 * DAYSECS), (int) $company->get('planexpiry'), 2);
+        $this->assertEqualsWithDelta($future + (30 * DAYSECS), (int) $company->get('planexpiry'), 2);
     }
 
     /**
@@ -97,15 +97,15 @@ final class company_saas_test extends \advanced_testcase {
     public function test_extend_plan_soma_a_partir_de_agora_quando_ja_venceu(): void {
         $this->resetAfterTest();
 
-        $company = $this->criar_empresa(['planexpiry' => time() - (10 * DAYSECS)]);
+        $company = $this->create_company(['planexpiry' => time() - (10 * DAYSECS)]);
 
-        $antes = time();
+        $before = time();
         $company->extend_plan(30 * DAYSECS);
-        $depois = time();
+        $after = time();
 
-        $novo = (int) $company->get('planexpiry');
-        $this->assertGreaterThanOrEqual($antes + (30 * DAYSECS), $novo);
-        $this->assertLessThanOrEqual($depois + (30 * DAYSECS), $novo);
+        $new = (int) $company->get('planexpiry');
+        $this->assertGreaterThanOrEqual($before + (30 * DAYSECS), $new);
+        $this->assertLessThanOrEqual($after + (30 * DAYSECS), $new);
     }
 
     /**
@@ -117,13 +117,13 @@ final class company_saas_test extends \advanced_testcase {
     public function test_extend_plan_sem_expiry_previo_conta_a_partir_de_agora(): void {
         $this->resetAfterTest();
 
-        $company = $this->criar_empresa();
+        $company = $this->create_company();
 
-        $antes = time();
+        $before = time();
         $company->extend_plan(30 * DAYSECS);
 
-        $novo = (int) $company->get('planexpiry');
-        $this->assertGreaterThanOrEqual($antes + (30 * DAYSECS), $novo);
+        $new = (int) $company->get('planexpiry');
+        $this->assertGreaterThanOrEqual($before + (30 * DAYSECS), $new);
     }
 
     /**
@@ -132,7 +132,7 @@ final class company_saas_test extends \advanced_testcase {
      * @param array $overrides
      * @return company
      */
-    protected function criar_empresa(array $overrides = []): company {
+    protected function create_company(array $overrides = []): company {
         $company = new company(0, (object) array_merge([
             'name' => 'Empresa SaaS de teste',
             'shortname' => 'saasteste' . random_int(100000, 999999),

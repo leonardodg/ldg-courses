@@ -83,7 +83,7 @@ function local_marketplace_require_category_themes() {
  * @return int Quantos planos foram criados.
  */
 function local_marketplace_seed_plans(): int {
-    $planos = [
+    $plans = [
         [
             'shortname' => 'start_free',
             'name' => get_string('planstartfreename', 'local_marketplace'),
@@ -140,24 +140,24 @@ function local_marketplace_seed_plans(): int {
 
     $created = 0;
 
-    foreach ($planos as $dados) {
-        if (\local_marketplace\plan::get_record_by_shortname($dados['shortname'])) {
+    foreach ($plans as $data) {
+        if (\local_marketplace\plan::get_record_by_shortname($data['shortname'])) {
             continue;
         }
 
-        $tiers = $dados['tiers'];
-        unset($dados['tiers']);
+        $tiers = $data['tiers'];
+        unset($data['tiers']);
 
-        $plan = new \local_marketplace\plan(0, (object) $dados);
+        $plan = new \local_marketplace\plan(0, (object) $data);
         $plan->create();
         $created++;
 
-        $ordem = 10;
+        $sortorder = 10;
         foreach ($tiers as $tier) {
             $tier['planid'] = (int) $plan->get('id');
-            $tier['sortorder'] = $ordem;
+            $tier['sortorder'] = $sortorder;
             (new \local_marketplace\plan_tier(0, (object) $tier))->create();
-            $ordem += 10;
+            $sortorder += 10;
         }
     }
 
@@ -189,38 +189,38 @@ function local_marketplace_seed_plans(): int {
 function local_marketplace_archive_legacy_plans(): void {
     global $DB;
 
-    $mapa = [
+    $map = [
         'starter' => 'start_free',
         'scale' => 'start_free',
         'pro' => 'pro',
     ];
 
-    $idsantigos = [];
+    $oldids = [];
 
-    foreach (array_keys($mapa) as $antigo) {
-        $planoantigo = \local_marketplace\plan::get_record_by_shortname($antigo);
-        if (!$planoantigo || $planoantigo->get('status') === \local_marketplace\plan::STATUS_ARCHIVED) {
+    foreach (array_keys($map) as $old) {
+        $oldplan = \local_marketplace\plan::get_record_by_shortname($old);
+        if (!$oldplan || $oldplan->get('status') === \local_marketplace\plan::STATUS_ARCHIVED) {
             continue;
         }
 
-        $idsantigos[$antigo] = (int) $planoantigo->get('id');
+        $oldids[$old] = (int) $oldplan->get('id');
 
-        $planoantigo->set('shortname', $antigo . '_legado');
-        $planoantigo->set('status', \local_marketplace\plan::STATUS_ARCHIVED);
-        $planoantigo->update();
+        $oldplan->set('shortname', $old . '_legado');
+        $oldplan->set('status', \local_marketplace\plan::STATUS_ARCHIVED);
+        $oldplan->update();
     }
 
     local_marketplace_seed_plans();
 
-    foreach ($mapa as $antigo => $novo) {
-        if (!isset($idsantigos[$antigo])) {
+    foreach ($map as $old => $new) {
+        if (!isset($oldids[$old])) {
             continue;
         }
 
-        $planonovo = \local_marketplace\plan::get_record_by_shortname($novo);
-        if ($planonovo) {
-            $DB->set_field('local_marketplace_company', 'planid', (int) $planonovo->get('id'), [
-                'planid' => $idsantigos[$antigo],
+        $newplan = \local_marketplace\plan::get_record_by_shortname($new);
+        if ($newplan) {
+            $DB->set_field('local_marketplace_company', 'planid', (int) $newplan->get('id'), [
+                'planid' => $oldids[$old],
             ]);
         }
     }

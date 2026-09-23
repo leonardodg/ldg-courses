@@ -175,7 +175,7 @@ class notify_expiring extends \core\task\scheduled_task {
         //
         // Ausencia nao e erro: sem assinatura, ou com o gateway fora do ar, o
         // aviso continua saindo com o caminho antigo.
-        $fatura = \local_marketplace\api::pending_invoice_for(
+        $invoice = \local_marketplace\api::pending_invoice_for(
             'local_marketplace',
             (int) $record->offerid,
             (int) $record->userid
@@ -186,36 +186,36 @@ class notify_expiring extends \core\task\scheduled_task {
             'company' => format_string($company->get('name')),
             'date' => userdate((int) $record->timeend, get_string('strftimedaydate')),
             'days' => max(1, (int) ceil(((int) $record->timeend - time()) / DAYSECS)),
-            'url' => $fatura ? $fatura['url'] : $renewurl->out(false),
+            'url' => $invoice ? $invoice['url'] : $renewurl->out(false),
             // Linha digitavel so existe em boleto. Vazia, o texto nao a menciona.
-            'line' => $fatura ? (string) $fatura['line'] : '',
+            'line' => $invoice ? (string) $invoice['line'] : '',
         ];
 
         // O ultimo marco fala em bloqueio, e nao em vencimento. Repetir o mesmo
         // texto duas vezes ensinaria o aluno a ignorar os dois.
-        $ultimo = $milestone === min(self::NOTICE_MILESTONES);
-        $prefixo = $ultimo ? 'expiringlast' : 'expiring';
+        $last = $milestone === min(self::NOTICE_MILESTONES);
+        $prefix = $last ? 'expiringlast' : 'expiring';
 
         $message = new \core\message\message();
         $message->component = 'local_marketplace';
         $message->name = 'expiring';
         $message->userfrom = \core_user::get_noreply_user();
         $message->userto = $user;
-        $message->subject = get_string($prefixo . 'subject', 'local_marketplace', $a);
-        $corpo = get_string($prefixo . 'body', 'local_marketplace', $a);
-        $corpohtml = get_string($prefixo . 'bodyhtml', 'local_marketplace', $a);
+        $message->subject = get_string($prefix . 'subject', 'local_marketplace', $a);
+        $body = get_string($prefix . 'body', 'local_marketplace', $a);
+        $bodyhtml = get_string($prefix . 'bodyhtml', 'local_marketplace', $a);
         if ($a->line !== '') {
-            $corpo .= "\n\n" . get_string('expiringline', 'local_marketplace', $a->line);
-            $corpohtml .= \html_writer::tag(
+            $body .= "\n\n" . get_string('expiringline', 'local_marketplace', $a->line);
+            $bodyhtml .= \html_writer::tag(
                 'p',
                 get_string('expiringline', 'local_marketplace', \html_writer::tag('code', $a->line))
             );
         }
 
-        $message->fullmessage = $corpo;
+        $message->fullmessage = $body;
         $message->fullmessageformat = FORMAT_PLAIN;
-        $message->fullmessagehtml = $corpohtml;
-        $message->smallmessage = get_string($prefixo . 'subject', 'local_marketplace', $a);
+        $message->fullmessagehtml = $bodyhtml;
+        $message->smallmessage = get_string($prefix . 'subject', 'local_marketplace', $a);
         $message->notification = 1;
         $message->contexturl = $a->url;
         $message->contexturlname = get_string('renewnow', 'local_marketplace');
