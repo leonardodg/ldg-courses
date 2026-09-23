@@ -23,6 +23,15 @@ são `en`, `pt_br` e `es`.
 **Comentários e mensagens de commit em português, sem acentos.** Prosa de
 documentação leva acentuação normal.
 
+**Identificador de código (variável, propriedade, parâmetro, método, classe) é
+sempre em inglês, daqui pra frente.** Só o comentário ao lado é português. Não
+renomeie o que já existe em português na base — a conversão em massa é
+trabalho separado, avaliado e não decidido ainda; ver
+`docs/dev/identificadores-em-ingles.md`. Código novo, e qualquer arquivo que
+um code review tocar, nasce com os dois em inglês. Confuso antes disto: uma
+rodada de code review em 23/09/2026 chegou a reverter arquivo já em inglês
+para português por interpretar mal esta regra — não repita.
+
 **Nada de regex cego em comentários.** Um padrão que capitaliza `// texto`
 também pega a segunda linha de comentários multi-linha — já corrompeu o cabeçalho
 GPL de 74 arquivos. Corrija por arquivo e linha exatos.
