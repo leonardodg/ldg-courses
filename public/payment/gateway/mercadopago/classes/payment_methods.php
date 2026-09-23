@@ -58,19 +58,19 @@ class payment_methods {
      * @return bool
      */
     public static function enabled(string $method, int $accountid = 0): bool {
-        $configurado = self::configured_value($method, $accountid);
+        $configured = self::configured_value($method, $accountid);
 
-        if ($configurado !== '') {
-            return $configurado === '1';
+        if ($configured !== '') {
+            return $configured === '1';
         }
 
-        $doplugin = get_config('paygw_mercadopago', 'method' . $method);
+        $fromplugin = get_config('paygw_mercadopago', 'method' . $method);
 
         // Nunca configurado no plugin (instalacao ainda nao visitou a tela de
         // configuracoes): o padrao HISTORICO deste plugin e habilitado, e
         // get_config() devolve false tanto para "nunca configurado" quanto
         // para "desligado" - so o primeiro caso cai aqui.
-        return $doplugin === false ? true : (bool) $doplugin;
+        return $fromplugin === false ? true : (bool) $fromplugin;
     }
 
     /**
@@ -82,7 +82,7 @@ class payment_methods {
     public static function enabled_methods(int $accountid = 0): array {
         return array_values(array_filter(
             self::METHODS,
-            static fn(string $metodo): bool => self::enabled($metodo, $accountid)
+            static fn(string $m): bool => self::enabled($m, $accountid)
         ));
     }
 
@@ -96,10 +96,10 @@ class payment_methods {
      */
     protected static function configured_value(string $method, int $accountid): string {
         if ($accountid > 0) {
-            $daconta = gateway::account_configuration($accountid)['method' . $method] ?? '';
+            $fromaccount = gateway::account_configuration($accountid)['method' . $method] ?? '';
 
-            if ($daconta !== '' && $daconta !== null) {
-                return (string) $daconta;
+            if ($fromaccount !== '' && $fromaccount !== null) {
+                return (string) $fromaccount;
             }
         }
 

@@ -51,7 +51,7 @@ if ($ADMIN->fulltree) {
     // simplesmente nao mostraria o campo, e o vinculo iria para uma
     // configuracao que ninguem le.
     foreach (application::TYPES as $type) {
-        $rotulo = get_string('apptype_' . $type, 'paygw_mercadopago');
+        $label = get_string('apptype_' . $type, 'paygw_mercadopago');
 
         // O nome da aplicacao entra em CADA rotulo, e nao so no cabecalho.
         //
@@ -60,21 +60,21 @@ if ($ADMIN->fulltree) {
         // que e ruim para quem usa leitor de tela, ambiguo para o behat, e
         // convida a colar a credencial da aplicacao errada. Errar isso nao da
         // erro: da OAuth que falha com mensagem generica.
-        $nomear = static fn(string $chave): string => get_string(
+        $makename = static fn(string $key): string => get_string(
             'settingforapp',
             'paygw_mercadopago',
-            (object) ['setting' => get_string($chave, 'paygw_mercadopago'), 'app' => $rotulo]
+            (object) ['setting' => get_string($key, 'paygw_mercadopago'), 'app' => $label]
         );
 
         $settings->add(new admin_setting_heading(
             'paygw_mercadopago/apptype_' . $type,
-            $rotulo,
+            $label,
             get_string('apptype_' . $type . '_desc', 'paygw_mercadopago')
         ));
 
         $settings->add(new admin_setting_configtext(
             'paygw_mercadopago/' . application::config_key($type, 'clientid'),
-            $nomear('clientid'),
+            $makename('clientid'),
             get_string('clientid_desc', 'paygw_mercadopago'),
             '',
             PARAM_ALPHANUMEXT
@@ -83,7 +83,7 @@ if ($ADMIN->fulltree) {
         // Configpasswordunmask esconde o valor na tela e no log de alteracoes.
         $settings->add(new admin_setting_configpasswordunmask(
             'paygw_mercadopago/' . application::config_key($type, 'clientsecret'),
-            $nomear('clientsecret'),
+            $makename('clientsecret'),
             get_string('clientsecret_desc', 'paygw_mercadopago'),
             ''
         ));
@@ -94,7 +94,7 @@ if ($ADMIN->fulltree) {
         // teatro.
         $settings->add(new admin_setting_configtext(
             'paygw_mercadopago/' . application::config_key($type, 'publickey'),
-            $nomear('publickey'),
+            $makename('publickey'),
             get_string('publickey_desc', 'paygw_mercadopago'),
             '',
             PARAM_RAW_TRIMMED
@@ -106,7 +106,7 @@ if ($ADMIN->fulltree) {
         // pagou caro para eliminar.
         $settings->add(new admin_setting_configtext(
             'paygw_mercadopago/' . application::config_key($type, 'publickeytest'),
-            $nomear('publickeytest'),
+            $makename('publickeytest'),
             get_string('publickeytest_desc', 'paygw_mercadopago'),
             '',
             PARAM_RAW_TRIMMED
@@ -118,7 +118,7 @@ if ($ADMIN->fulltree) {
         // que nao entrega - o pior desfecho possivel.
         $settings->add(new admin_setting_configpasswordunmask(
             'paygw_mercadopago/' . application::config_key($type, 'webhooksecret'),
-            $nomear('webhooksecret'),
+            $makename('webhooksecret'),
             get_string('webhooksecret_desc', 'paygw_mercadopago'),
             ''
         ));
@@ -186,11 +186,11 @@ if ($ADMIN->fulltree) {
     // cartao, Pix e boleto juntos. Uma empresa so diverge deste padrao
     // escolhendo isso na conta dela, em gateway.php - desmarcar aqui muda o
     // padrao para quem nao escolheu, e nao desliga de ninguem que escolheu.
-    foreach (\paygw_mercadopago\payment_methods::METHODS as $metododopadrao) {
+    foreach (\paygw_mercadopago\payment_methods::METHODS as $defaultmethod) {
         $settings->add(new admin_setting_configcheckbox(
-            'paygw_mercadopago/method' . $metododopadrao,
-            get_string('method' . $metododopadrao, 'paygw_mercadopago'),
-            get_string('method' . $metododopadrao . '_desc', 'paygw_mercadopago'),
+            'paygw_mercadopago/method' . $defaultmethod,
+            get_string('method' . $defaultmethod, 'paygw_mercadopago'),
+            get_string('method' . $defaultmethod . '_desc', 'paygw_mercadopago'),
             1
         ));
     }

@@ -377,10 +377,10 @@ final class mp_client_test extends \advanced_testcase {
         fake_mp_client::$nextresponse = ['results' => [['id' => 9, 'status' => 'approved']]];
 
         $client = new fake_mp_client('token');
-        $encontrados = $client->search_by_reference('mdl-1-2-a b');
+        $found = $client->search_by_reference('mdl-1-2-a b');
 
-        $this->assertCount(1, $encontrados);
-        $this->assertSame(9, $encontrados[0]['id']);
+        $this->assertCount(1, $found);
+        $this->assertSame(9, $found[0]['id']);
         $this->assertSame(
             [['GET', 'https://api.mercadopago.com/v1/payments/search?external_reference=mdl-1-2-a%20b']],
             fake_mp_client::$calls
@@ -425,9 +425,9 @@ final class mp_client_test extends \advanced_testcase {
     public function test_a_assinatura_e_criada_no_endpoint_de_preapproval(): void {
         fake_mp_client::$nextresponse = ['id' => 'abc123', 'status' => 'pending'];
 
-        $resposta = (new fake_mp_client('token'))->create_preapproval(['reason' => 'Curso']);
+        $response = (new fake_mp_client('token'))->create_preapproval(['reason' => 'Curso']);
 
-        $this->assertSame('abc123', $resposta['id']);
+        $this->assertSame('abc123', $response['id']);
         $this->assertSame('POST', fake_mp_client::$calls[0][0]);
         $this->assertStringEndsWith('/preapproval', fake_mp_client::$calls[0][1]);
         $this->assertSame('Curso', fake_mp_client::$lastbody['reason']);
@@ -654,12 +654,12 @@ final class mp_client_test extends \advanced_testcase {
             ],
         ];
 
-        $metodo = fake_mp_client::guess_payment_method('publickey', '453998');
+        $method = fake_mp_client::guess_payment_method('publickey', '453998');
 
-        $this->assertSame('visa', $metodo['id']);
+        $this->assertSame('visa', $method['id']);
         // NAO 25 (o generico da primeira chamada) - 12749, o que o endpoint
         // dedicado devolveu.
-        $this->assertSame('12749', $metodo['issuerid']);
+        $this->assertSame('12749', $method['issuerid']);
 
         $this->assertCount(2, fake_mp_client::$calls);
         $this->assertStringContainsString('/payment_methods/search', fake_mp_client::$calls[0][1]);
@@ -682,9 +682,9 @@ final class mp_client_test extends \advanced_testcase {
             ],
         ];
 
-        $metodo = fake_mp_client::guess_payment_method('publickey', '453998');
+        $method = fake_mp_client::guess_payment_method('publickey', '453998');
 
-        $this->assertSame([], $metodo);
+        $this->assertSame([], $method);
         $this->assertCount(1, fake_mp_client::$calls);
     }
 }

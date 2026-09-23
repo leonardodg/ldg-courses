@@ -68,10 +68,10 @@ if ($record->status === 'rejected' || $record->status === 'cancelled') {
     // A fatura por Pix ou boleto NAO foi paga ainda - e diferente do Checkout
     // Pro, onde o aluno ja viu o QR code la no Mercado Pago antes de voltar.
     // Aqui a pagina e nossa, entao o QR/boleto so existe se mostrarmos.
-    $fatura = \paygw_mercadopago\payment_processor::invoice_details($record);
+    $invoice = \paygw_mercadopago\payment_processor::invoice_details($record);
 
-    if ($fatura) {
-        echo $OUTPUT->render_from_template('paygw_mercadopago/pay_invoice', $fatura + [
+    if ($invoice) {
+        echo $OUTPUT->render_from_template('paygw_mercadopago/pay_invoice', $invoice + [
             'waitingmessage' => get_string('subscribeinvoicewaiting', 'paygw_mercadopago'),
         ]);
     } else {

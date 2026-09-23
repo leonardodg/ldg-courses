@@ -34,17 +34,17 @@ final class switch_to_card_template_test extends \advanced_testcase {
     /**
      * Contexto minimo, num modo de cada vez.
      *
-     * @param string $modo
+     * @param string $mode
      * @return array
      */
-    protected function contexto(string $modo): array {
+    protected function context(string $mode): array {
         return [
             'formaction' => 'https://exemplo.test/payment/gateway/mercadopago/switch_to_card.php?ref=mdlsub-1-2-abc',
             'sesskey' => 'abc123',
             'cancelurl' => 'https://exemplo.test/local/marketplace/mysubscriptions.php',
-            'brick' => $modo === card_capture::MODE_BRICK,
-            'direct' => $modo === card_capture::MODE_DIRECT,
-            'native' => $modo === card_capture::MODE_NATIVE,
+            'brick' => $mode === card_capture::MODE_BRICK,
+            'direct' => $mode === card_capture::MODE_DIRECT,
+            'native' => $mode === card_capture::MODE_NATIVE,
         ];
     }
 
@@ -61,10 +61,10 @@ final class switch_to_card_template_test extends \advanced_testcase {
 
         $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
 
-        foreach (card_capture::MODES as $modo) {
-            $html = $output->render_from_template('paygw_mercadopago/switch_to_card', $this->contexto($modo));
+        foreach (card_capture::MODES as $mode) {
+            $html = $output->render_from_template('paygw_mercadopago/switch_to_card', $this->context($mode));
 
-            $this->assertStringContainsString('name="cardtoken"', $html, "modo $modo");
+            $this->assertStringContainsString('name="cardtoken"', $html, "modo $mode");
         }
     }
 
@@ -82,7 +82,7 @@ final class switch_to_card_template_test extends \advanced_testcase {
         $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
         $html = $output->render_from_template(
             'paygw_mercadopago/switch_to_card',
-            $this->contexto(card_capture::MODE_BRICK)
+            $this->context(card_capture::MODE_BRICK)
         );
 
         $this->assertStringContainsString(
@@ -104,7 +104,7 @@ final class switch_to_card_template_test extends \advanced_testcase {
         $output = $PAGE->get_renderer('core', null, RENDERER_TARGET_GENERAL);
         $html = $output->render_from_template(
             'paygw_mercadopago/switch_to_card',
-            $this->contexto(card_capture::MODE_BRICK)
+            $this->context(card_capture::MODE_BRICK)
         );
 
         $this->assertStringNotContainsString('@template', $html);

@@ -69,7 +69,7 @@ $PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('switchtocard', 'local_marketplace'));
 $PAGE->set_heading(get_string('switchtocard', 'local_marketplace'));
 
-$modo = card_capture::current((int) $record->accountid);
+$mode = card_capture::current((int) $record->accountid);
 $apptype = (string) $record->apptype;
 $publickey = application::public_key($apptype, (int) $record->accountid);
 
@@ -87,7 +87,7 @@ if (data_submitted() && confirm_sesskey()) {
     $paymentmethod = optional_param('paymentmethod', '', PARAM_ALPHANUMEXT);
     $issuerid = optional_param('issuerid', '', PARAM_ALPHANUMEXT);
 
-    if ($modo === card_capture::MODE_NATIVE) {
+    if ($mode === card_capture::MODE_NATIVE) {
         [$cardtoken, $paymentmethod, $issuerid] = paygw_mercadopago_switch_tokenize_native($publickey);
     }
 
@@ -120,15 +120,15 @@ echo $OUTPUT->render_from_template('paygw_mercadopago/switch_to_card', [
     'formaction' => $url->out(false),
     'sesskey' => sesskey(),
     'cancelurl' => $mysubscriptions->out(false),
-    'brick' => $modo === card_capture::MODE_BRICK,
-    'direct' => $modo === card_capture::MODE_DIRECT,
-    'native' => $modo === card_capture::MODE_NATIVE,
+    'brick' => $mode === card_capture::MODE_BRICK,
+    'direct' => $mode === card_capture::MODE_DIRECT,
+    'native' => $mode === card_capture::MODE_NATIVE,
 ]);
 
-if ($modo !== card_capture::MODE_NATIVE) {
+if ($mode !== card_capture::MODE_NATIVE) {
     $PAGE->requires->js_call_amd('paygw_mercadopago/card_form', 'init', [[
         'publickey' => $publickey,
-        'mode' => $modo,
+        'mode' => $mode,
         // So usado pelo Brick para exibir o valor - nao ha cobranca aqui, e
         // 0 nao quebra a montagem do componente.
         'amount' => 0.0,
@@ -157,7 +157,7 @@ function paygw_mercadopago_switch_tokenize_native(string $publickey): array {
     $holdername = optional_param('holdername', '', PARAM_TEXT);
     $holderdoc = optional_param('holderdoc', '', PARAM_ALPHANUM);
 
-    $corpo = [
+    $body = [
         'card_number' => $cardnumber,
         'expiration_month' => $expirationmonth,
         'expiration_year' => $expirationyear,
@@ -168,16 +168,16 @@ function paygw_mercadopago_switch_tokenize_native(string $publickey): array {
         ],
     ];
 
-    $resposta = \paygw_mercadopago\mp_client::tokenize_card($publickey, $corpo);
+    $response = \paygw_mercadopago\mp_client::tokenize_card($publickey, $body);
 
-    $metodo = \paygw_mercadopago\mp_client::guess_payment_method(
+    $method = \paygw_mercadopago\mp_client::guess_payment_method(
         $publickey,
         substr($cardnumber, 0, 8)
     );
 
     return [
-        (string) ($resposta['id'] ?? ''),
-        (string) ($metodo['id'] ?? ''),
-        (string) ($metodo['issuerid'] ?? ''),
+        (string) ($response['id'] ?? ''),
+        (string) ($method['id'] ?? ''),
+        (string) ($method['issuerid'] ?? ''),
     ];
 }

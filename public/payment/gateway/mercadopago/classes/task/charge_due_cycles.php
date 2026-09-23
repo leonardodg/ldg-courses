@@ -68,61 +68,61 @@ class charge_due_cycles extends scheduled_task {
      * @return void
      */
     public function execute() {
-        $agora = time();
-        $cobrados = $falhas = 0;
+        $now = time();
+        $charged = $failures = 0;
 
-        foreach (payment_processor::latest_cycles() as $linha) {
+        foreach (payment_processor::latest_cycles() as $record) {
             // O intervalo e o teto sao regra do MARKETPLACE, e nao do gateway:
             // ele nao tem como saber o que e uma oferta recorrente. Sem o
             // marketplace instalado, recurrence_for() devolve null e nada aqui
             // cobra - que e o comportamento certo, porque nao havia assinatura
             // para comecar.
-            $recorrencia = class_exists('\local_marketplace\api')
-                ? \local_marketplace\api::recurrence_for($linha->component, (int) $linha->itemid, (string) $linha->paymentarea)
+            $recurrence = class_exists('\local_marketplace\api')
+                ? \local_marketplace\api::recurrence_for($record->component, (int) $record->itemid, (string) $record->paymentarea)
                 : null;
 
-            if (!$recorrencia) {
+            if (!$recurrence) {
                 continue;
             }
 
             // Cartao NAO cobra sozinho nesta conta (ver o docblock da classe) -
             // cria o ciclo e pede o CVV de novo, em vez de tentar uma cobranca
             // que sabidamente falha. Ver payment_processor::issue_card_cycle().
-            if (payment_processor::is_due($linha, (int) $recorrencia->days, (int) $recorrencia->maxcycles, $agora)) {
+            if (payment_processor::is_due($record, (int) $recurrence->days, (int) $recurrence->maxcycles, $now)) {
                 try {
-                    payment_processor::issue_card_cycle($linha);
-                    $cobrados++;
-                    mtrace("Assinatura {$linha->subscriptionid}: ciclo "
-                        . ((int) $linha->cycles + 1) . " emitido, aguardando confirmacao do CVV.");
+                    payment_processor::issue_card_cycle($record);
+                    $charged++;
+                    mtrace("Assinatura {$record->subscriptionid}: ciclo "
+                        . ((int) $record->cycles + 1) . " emitido, aguardando confirmacao do CVV.");
                 } catch (\Throwable $e) {
                     // Uma falha nao pode interromper as outras assinaturas. Um
                     // problema numa nao pode impedir o aviso das demais - e a
                     // linha do ciclo ja nasceu, entao a falha fica visivel no
                     // relatorio em vez de sumir.
-                    $falhas++;
-                    mtrace("Assinatura {$linha->subscriptionid}: FALHA ao emitir o ciclo - " . $e->getMessage());
+                    $failures++;
+                    mtrace("Assinatura {$record->subscriptionid}: FALHA ao emitir o ciclo - " . $e->getMessage());
                 }
                 continue;
             }
 
             // Pix e boleto nunca cobraram sozinhos: emite uma fatura NOVA e
             // avisa o aluno. Ver payment_processor::issue_invoice_cycle().
-            if (payment_processor::is_due_for_invoice($linha, (int) $recorrencia->days, (int) $recorrencia->maxcycles, $agora)) {
+            if (payment_processor::is_due_for_invoice($record, (int) $recurrence->days, (int) $recurrence->maxcycles, $now)) {
                 try {
-                    payment_processor::issue_invoice_cycle($linha);
-                    $cobrados++;
-                    mtrace("Assinatura {$linha->subscriptionid}: fatura do ciclo "
-                        . ((int) $linha->cycles + 1) . " emitida.");
+                    payment_processor::issue_invoice_cycle($record);
+                    $charged++;
+                    mtrace("Assinatura {$record->subscriptionid}: fatura do ciclo "
+                        . ((int) $record->cycles + 1) . " emitida.");
                 } catch (\Throwable $e) {
-                    $falhas++;
-                    mtrace("Assinatura {$linha->subscriptionid}: FALHA ao emitir fatura - " . $e->getMessage());
+                    $failures++;
+                    mtrace("Assinatura {$record->subscriptionid}: FALHA ao emitir fatura - " . $e->getMessage());
                 }
             }
         }
 
-        mtrace("Ciclos emitidos: $cobrados. Falhas: $falhas.");
+        mtrace("Ciclos emitidos: $charged. Falhas: $failures.");
 
-        if ($falhas > 0) {
+        if ($failures > 0) {
             mtrace('ATENCAO: assinaturas com falha precisam de atencao manual.');
         }
     }

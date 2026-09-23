@@ -72,12 +72,12 @@ class webhook_signature {
             return false;
         }
 
-        $manifesto = 'id:' . $dataid . ';request-id:' . $requestid . ';ts:' . $ts . ';';
+        $manifest = 'id:' . $dataid . ';request-id:' . $requestid . ';ts:' . $ts . ';';
 
         // Comparacao com hash_equals, e nao com ===: igualdade de string sai no
         // primeiro byte diferente, e o tempo de resposta entrega quantos bytes
         // o atacante acertou.
-        return hash_equals(hash_hmac('sha256', $manifesto, $secret), $v1);
+        return hash_equals(hash_hmac('sha256', $manifest, $secret), $v1);
     }
 
     /**
@@ -92,19 +92,19 @@ class webhook_signature {
     protected static function parse(string $header): array {
         $ts = $v1 = '';
 
-        foreach (explode(',', $header) as $parte) {
-            $pedacos = explode('=', trim($parte), 2);
-            if (count($pedacos) !== 2) {
+        foreach (explode(',', $header) as $part) {
+            $pieces = explode('=', trim($part), 2);
+            if (count($pieces) !== 2) {
                 continue;
             }
 
-            [$chave, $valor] = $pedacos;
-            $valor = trim($valor);
+            [$key, $value] = $pieces;
+            $value = trim($value);
 
-            if (trim($chave) === 'ts') {
-                $ts = $valor;
-            } else if (trim($chave) === 'v1') {
-                $v1 = $valor;
+            if (trim($key) === 'ts') {
+                $ts = $value;
+            } else if (trim($key) === 'v1') {
+                $v1 = $value;
             }
         }
 

@@ -69,31 +69,31 @@ $accountid = (int) $record->accountid;
 // escolhe em gateway.php, nao o aluno. Vazio e erro de configuracao do admin,
 // nao caminho para adivinhar: melhor a tela dizer isto do que oferecer um
 // formulario que ninguem consegue submeter.
-$habilitados = payment_methods::enabled_methods($accountid);
-if (!$habilitados) {
+$enabled = payment_methods::enabled_methods($accountid);
+if (!$enabled) {
     throw new moodle_exception('errornopaymentmethod', 'paygw_mercadopago');
 }
 
 // Cartao, Pix ou boleto - so o cartao usa os tres modos de captura abaixo.
 // Pix e boleto nao tem SDK nem token: e so um formulario nosso, sem relacao
 // com card_capture (que decide SO como o CARTAO e digitado).
-$metodo = optional_param('method', reset($habilitados), PARAM_ALPHA);
-if (!in_array($metodo, ['card', 'pix', 'boleto'], true) || !in_array($metodo, $habilitados, true)) {
-    $metodo = reset($habilitados);
+$method = optional_param('method', reset($enabled), PARAM_ALPHA);
+if (!in_array($method, ['card', 'pix', 'boleto'], true) || !in_array($method, $enabled, true)) {
+    $method = reset($enabled);
 }
 
-$url = new moodle_url('/payment/gateway/mercadopago/subscribe.php', ['ref' => $reference, 'method' => $metodo]);
+$url = new moodle_url('/payment/gateway/mercadopago/subscribe.php', ['ref' => $reference, 'method' => $method]);
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url($url);
 $PAGE->set_pagelayout('standard');
 $PAGE->set_title(get_string('subscribetitle', 'paygw_mercadopago'));
 $PAGE->set_heading(get_string('subscribetitle', 'paygw_mercadopago'));
 
-$modo = card_capture::current($accountid);
+$mode = card_capture::current($accountid);
 $apptype = (string) $record->apptype;
 $publickey = application::public_key($apptype, (int) $record->accountid);
 
-if ($metodo === 'card' && $publickey === '') {
+if ($method === 'card' && $publickey === '') {
     // Sem a chave publica nao ha como montar campo de cartao em modo nenhum.
     // Dizer isso aqui e melhor do que renderizar um formulario que nunca vai
     // tokenizar, e cuja falha aparece como "o botao nao faz nada".
@@ -106,11 +106,11 @@ if ($metodo === 'card' && $publickey === '') {
 }
 
 if (data_submitted() && confirm_sesskey()) {
-    $metodoenviado = optional_param('selectedmethod', 'card', PARAM_ALPHA);
+    $submittedmethod = optional_param('selectedmethod', 'card', PARAM_ALPHA);
 
     // Defesa contra POST forjado: o formulario so oferece os meios
     // habilitados, mas o campo chega por fora dele tambem.
-    if (!in_array($metodoenviado, $habilitados, true)) {
+    if (!in_array($submittedmethod, $enabled, true)) {
         redirect(
             $url,
             get_string('errornopaymentmethod', 'paygw_mercadopago'),
@@ -119,8 +119,8 @@ if (data_submitted() && confirm_sesskey()) {
         );
     }
 
-    if ($metodoenviado === 'pix' || $metodoenviado === 'boleto') {
-        $paymentmethod = $metodoenviado === 'pix' ? 'pix' : 'bolbradesco';
+    if ($submittedmethod === 'pix' || $submittedmethod === 'boleto') {
+        $paymentmethod = $submittedmethod === 'pix' ? 'pix' : 'bolbradesco';
 
         $payerinfo = [
             'cpf' => optional_param('payerdoc', '', PARAM_ALPHANUM),
@@ -154,7 +154,7 @@ if (data_submitted() && confirm_sesskey()) {
     $paymentmethod = optional_param('paymentmethod', '', PARAM_ALPHANUMEXT);
     $issuerid = optional_param('issuerid', '', PARAM_ALPHANUMEXT);
 
-    if ($modo === card_capture::MODE_NATIVE) {
+    if ($mode === card_capture::MODE_NATIVE) {
         // AQUI, e so aqui, o numero do cartao passa pelo nosso servidor.
         //
         // Ele nao e gravado em lugar nenhum: nao vai para o banco, nao vai para
@@ -186,16 +186,16 @@ echo $OUTPUT->header();
 // O aluno precisa saber o que esta assinando ANTES de digitar o cartao: de
 // quanto em quanto tempo sera cobrado, e quantas vezes. Uma tela que so diz o
 // valor esconde justamente o que diferencia assinatura de compra avulsa.
-$recorrencia = class_exists('\local_marketplace\api')
+$recurrence = class_exists('\local_marketplace\api')
     ? \local_marketplace\api::recurrence_for($record->component, (int) $record->itemid, (string) $record->paymentarea)
     : null;
 
-$periodo = '';
-$ciclos = '';
-if ($recorrencia) {
-    $periodo = get_string('subscribeevery', 'paygw_mercadopago', (int) $recorrencia->days);
-    $ciclos = (int) $recorrencia->maxcycles > 0
-        ? get_string('subscribecycles', 'paygw_mercadopago', (int) $recorrencia->maxcycles)
+$period = '';
+$cycles = '';
+if ($recurrence) {
+    $period = get_string('subscribeevery', 'paygw_mercadopago', (int) $recurrence->days);
+    $cycles = (int) $recurrence->maxcycles > 0
+        ? get_string('subscribecycles', 'paygw_mercadopago', (int) $recurrence->maxcycles)
         : get_string('subscribeuntilcancelled', 'paygw_mercadopago');
 }
 
@@ -206,30 +206,30 @@ echo $OUTPUT->render_from_template('paygw_mercadopago/subscribe', [
         (float) $record->amount,
         (string) $record->currency
     ),
-    'periodo' => $periodo,
-    'ciclos' => $ciclos,
+    'periodo' => $period,
+    'ciclos' => $cycles,
     'cancelurl' => (new moodle_url('/local/marketplace/mysubscriptions.php'))->out(false),
-    'methodcard' => $metodo === 'card',
-    'methodpix' => $metodo === 'pix',
-    'methodboleto' => $metodo === 'boleto',
-    'showcard' => in_array('card', $habilitados, true),
-    'showpix' => in_array('pix', $habilitados, true),
-    'showboleto' => in_array('boleto', $habilitados, true),
+    'methodcard' => $method === 'card',
+    'methodpix' => $method === 'pix',
+    'methodboleto' => $method === 'boleto',
+    'showcard' => in_array('card', $enabled, true),
+    'showpix' => in_array('pix', $enabled, true),
+    'showboleto' => in_array('boleto', $enabled, true),
     'cardurl' => (new moodle_url($url, ['method' => 'card']))->out(false),
     'pixurl' => (new moodle_url($url, ['method' => 'pix']))->out(false),
     'boletourl' => (new moodle_url($url, ['method' => 'boleto']))->out(false),
-    'brick' => $modo === card_capture::MODE_BRICK,
-    'direct' => $modo === card_capture::MODE_DIRECT,
-    'native' => $modo === card_capture::MODE_NATIVE,
+    'brick' => $mode === card_capture::MODE_BRICK,
+    'direct' => $mode === card_capture::MODE_DIRECT,
+    'native' => $mode === card_capture::MODE_NATIVE,
 ]);
 
 // O modo nativo nao carrega SDK nenhum: o formulario e HTML puro e quem
 // tokeniza e o servidor. Os outros dois precisam do SDK do Mercado Pago. Pix
 // e boleto nao precisam de SDK nenhum - e so um formulario nosso.
-if ($metodo === 'card' && $modo !== card_capture::MODE_NATIVE) {
+if ($method === 'card' && $mode !== card_capture::MODE_NATIVE) {
     $PAGE->requires->js_call_amd('paygw_mercadopago/card_form', 'init', [[
         'publickey' => $publickey,
-        'mode' => $modo,
+        'mode' => $mode,
         'amount' => (float) $record->amount,
     ]]);
 }
@@ -258,7 +258,7 @@ function paygw_mercadopago_tokenize_native(string $publickey): array {
     $holdername = optional_param('holdername', '', PARAM_TEXT);
     $holderdoc = optional_param('holderdoc', '', PARAM_ALPHANUM);
 
-    $corpo = [
+    $body = [
         'card_number' => $cardnumber,
         'expiration_month' => $expirationmonth,
         'expiration_year' => $expirationyear,
@@ -269,19 +269,19 @@ function paygw_mercadopago_tokenize_native(string $publickey): array {
         ],
     ];
 
-    $resposta = \paygw_mercadopago\mp_client::tokenize_card($publickey, $corpo);
+    $response = \paygw_mercadopago\mp_client::tokenize_card($publickey, $body);
 
     // O /v1/card_tokens NAO devolve bandeira nem emissor - so o token. Quem
     // tem o numero do cartao aqui (SO no modo nativo) pode descobrir os dois
     // pelo BIN, sem depender do navegador.
-    $metodo = \paygw_mercadopago\mp_client::guess_payment_method(
+    $method = \paygw_mercadopago\mp_client::guess_payment_method(
         $publickey,
         substr($cardnumber, 0, 8)
     );
 
     return [
-        (string) ($resposta['id'] ?? ''),
-        (string) ($metodo['id'] ?? ''),
-        (string) ($metodo['issuerid'] ?? ''),
+        (string) ($response['id'] ?? ''),
+        (string) ($method['id'] ?? ''),
+        (string) ($method['issuerid'] ?? ''),
     ];
 }

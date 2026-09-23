@@ -43,16 +43,16 @@ final class webhook_signature_test extends \advanced_testcase {
     public function test_assinatura_valida_e_aceita(): void {
         $this->resetAfterTest();
 
-        $segredo = 'segredo-do-painel';
+        $secret = 'segredo-do-painel';
         $ts = '1789000000';
-        $manifesto = 'id:123;request-id:req-1;ts:' . $ts . ';';
-        $v1 = hash_hmac('sha256', $manifesto, $segredo);
+        $manifest = 'id:123;request-id:req-1;ts:' . $ts . ';';
+        $v1 = hash_hmac('sha256', $manifest, $secret);
 
         $this->assertTrue(webhook_signature::is_valid(
             "ts=$ts,v1=$v1",
             'req-1',
             '123',
-            $segredo
+            $secret
         ));
     }
 
@@ -81,11 +81,11 @@ final class webhook_signature_test extends \advanced_testcase {
     public function test_trocar_o_id_invalida_a_assinatura(): void {
         $this->resetAfterTest();
 
-        $segredo = 'segredo-do-painel';
+        $secret = 'segredo-do-painel';
         $ts = '1789000000';
-        $v1 = hash_hmac('sha256', 'id:123;request-id:req-1;ts:' . $ts . ';', $segredo);
+        $v1 = hash_hmac('sha256', 'id:123;request-id:req-1;ts:' . $ts . ';', $secret);
 
-        $this->assertFalse(webhook_signature::is_valid("ts=$ts,v1=$v1", 'req-1', '999', $segredo));
+        $this->assertFalse(webhook_signature::is_valid("ts=$ts,v1=$v1", 'req-1', '999', $secret));
     }
 
     /**
@@ -96,10 +96,10 @@ final class webhook_signature_test extends \advanced_testcase {
     public function test_cabecalho_malformado_nao_passa(): void {
         $this->resetAfterTest();
 
-        foreach (['', 'lixo', 'ts=1', 'v1=abc', 'ts=,v1='] as $cabecalho) {
+        foreach (['', 'lixo', 'ts=1', 'v1=abc', 'ts=,v1='] as $header) {
             $this->assertFalse(
-                webhook_signature::is_valid($cabecalho, 'req-1', '123', 'segredo'),
-                "cabecalho: '$cabecalho'"
+                webhook_signature::is_valid($header, 'req-1', '123', 'segredo'),
+                "cabecalho: '$header'"
             );
         }
     }
@@ -131,19 +131,19 @@ final class webhook_signature_test extends \advanced_testcase {
      * @return void
      */
     public function test_a_comparacao_do_hmac_usa_hash_equals(): void {
-        $fonte = file_get_contents(__DIR__ . '/../classes/webhook_signature.php');
-        $linhas = array_filter(
-            explode("\n", $fonte),
-            static fn(string $linha): bool => str_contains($linha, 'hash_hmac')
-                && !str_contains(trim($linha), '*')
+        $source = file_get_contents(__DIR__ . '/../classes/webhook_signature.php');
+        $lines = array_filter(
+            explode("\n", $source),
+            static fn(string $line): bool => str_contains($line, 'hash_hmac')
+                && !str_contains(trim($line), '*')
         );
 
-        $this->assertNotEmpty($linhas, 'a classe precisa calcular o HMAC');
+        $this->assertNotEmpty($lines, 'a classe precisa calcular o HMAC');
 
-        foreach ($linhas as $linha) {
+        foreach ($lines as $line) {
             $this->assertStringContainsString(
                 'hash_equals',
-                $linha,
+                $line,
                 'o HMAC calculado tem que ser comparado com hash_equals, na mesma expressao'
             );
         }

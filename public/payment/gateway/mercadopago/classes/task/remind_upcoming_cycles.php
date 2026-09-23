@@ -52,36 +52,36 @@ class remind_upcoming_cycles extends scheduled_task {
      * @return void
      */
     public function execute() {
-        $agora = time();
+        $now = time();
         $reminderdays = (int) get_config('paygw_mercadopago', 'reminderdays');
-        $avisados = 0;
+        $reminded = 0;
 
-        foreach (payment_processor::latest_cycles() as $linha) {
-            $recorrencia = class_exists('\local_marketplace\api')
-                ? \local_marketplace\api::recurrence_for($linha->component, (int) $linha->itemid, (string) $linha->paymentarea)
+        foreach (payment_processor::latest_cycles() as $record) {
+            $recurrence = class_exists('\local_marketplace\api')
+                ? \local_marketplace\api::recurrence_for($record->component, (int) $record->itemid, (string) $record->paymentarea)
                 : null;
 
-            if (!$recorrencia) {
+            if (!$recurrence) {
                 continue;
             }
 
-            $precisalembrar = payment_processor::needs_reminder(
-                $linha,
-                (int) $recorrencia->days,
+            $needsreminder = payment_processor::needs_reminder(
+                $record,
+                (int) $recurrence->days,
                 $reminderdays,
-                (int) $recorrencia->maxcycles,
-                $agora
+                (int) $recurrence->maxcycles,
+                $now
             );
 
-            if (!$precisalembrar) {
+            if (!$needsreminder) {
                 continue;
             }
 
-            payment_processor::send_reminder($linha);
-            $avisados++;
-            mtrace("Assinatura {$linha->subscriptionid}: lembrete de vencimento mandado.");
+            payment_processor::send_reminder($record);
+            $reminded++;
+            mtrace("Assinatura {$record->subscriptionid}: lembrete de vencimento mandado.");
         }
 
-        mtrace("Lembretes mandados: $avisados.");
+        mtrace("Lembretes mandados: $reminded.");
     }
 }

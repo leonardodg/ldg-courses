@@ -202,13 +202,13 @@ class application {
     public static function public_key(string $type, ?int $accountid = null): string {
         self::guard($type);
 
-        $campo = self::test_mode($type, $accountid) ? 'publickeytest' : 'publickey';
+        $field = self::test_mode($type, $accountid) ? 'publickeytest' : 'publickey';
 
         // Em modo de teste NAO se cai na chave de producao, e a ausencia da
         // queda e a regra. Cair misturaria ambientes, e a recusa chegaria
         // disfarcada de problema com o cartao; vazio faz o subscribe.php dizer
         // que falta configurar, que e a verdade.
-        return trim((string) get_config('paygw_mercadopago', self::config_key($type, $campo)));
+        return trim((string) get_config('paygw_mercadopago', self::config_key($type, $field)));
     }
 
     /**
@@ -236,9 +236,9 @@ class application {
             ]);
             if ($gateway) {
                 $config = $gateway->get_configuration();
-                $marcado = $config[self::token_field($type, 'testmode')] ?? null;
-                if ($marcado !== null && $marcado !== '') {
-                    return (bool) $marcado;
+                $stored = $config[self::token_field($type, 'testmode')] ?? null;
+                if ($stored !== null && $stored !== '') {
+                    return (bool) $stored;
                 }
             }
         }
