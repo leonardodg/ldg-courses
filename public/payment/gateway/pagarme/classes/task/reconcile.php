@@ -78,21 +78,21 @@ class reconcile extends \core\task\scheduled_task {
         // vez de carregar tudo e descartar em PHP. Ver
         // payment_processor::sweep_window_for(): o Pagar.me nunca diz que a
         // cobranca venceu, entao o limite tem que sair daqui.
-        $janelas = [];
-        $prazos = [];
-        foreach (['pix', 'boleto', 'credit_card'] as $i => $metodo) {
-            $janelas[] = "(paymentmethod = :m$i AND timecreated > :t$i)";
-            $prazos["m$i"] = $metodo;
-            $prazos["t$i"] = $now - payment_processor::sweep_window_for($metodo);
+        $windows = [];
+        $deadlines = [];
+        foreach (['pix', 'boleto', 'credit_card'] as $i => $method) {
+            $windows[] = "(paymentmethod = :m$i AND timecreated > :t$i)";
+            $deadlines["m$i"] = $method;
+            $deadlines["t$i"] = $now - payment_processor::sweep_window_for($method);
         }
-        $dentrodajanela = '(' . implode(' OR ', $janelas) . ')';
+        $withinwindow = '(' . implode(' OR ', $windows) . ')';
 
         $records = $DB->get_records_select(
             payment_processor::TABLE,
             "status $insql AND paymentid IS NULL
              AND chargeid <> '' AND chargeid IS NOT NULL
-             AND timecreated < :young AND $dentrodajanela",
-            $inparams + $prazos + ['young' => $now - self::MIN_AGE],
+             AND timecreated < :young AND $withinwindow",
+            $inparams + $deadlines + ['young' => $now - self::MIN_AGE],
             'timecreated ASC',
             'id, chargeid, subscriptionid',
             0,
@@ -118,13 +118,13 @@ class reconcile extends \core\task\scheduled_task {
             }
         }
 
-        $corrigidas = $this->fix_missing_commission();
+        $fixed = $this->fix_missing_commission();
 
         mtrace(sprintf(
             'paygw_pagarme: %d cobrancas conferidas, %d entregues agora, %d comissoes corrigidas.',
             $checked,
             $delivered,
-            $corrigidas
+            $fixed
         ));
     }
 
@@ -148,15 +148,15 @@ class reconcile extends \core\task\scheduled_task {
             payment_processor::TABLE,
             "paymentid IS NOT NULL AND feeamount <= 0 AND feepercent > 0
              AND chargeid <> '' AND chargeid IS NOT NULL
-             AND timemodified > :desde",
-            ['desde' => time() - self::MAX_AGE],
+             AND timemodified > :since",
+            ['since' => time() - self::MAX_AGE],
             'timemodified ASC',
             '*',
             0,
             self::BATCH
         );
 
-        $corrigidas = 0;
+        $fixed = 0;
 
         foreach ($records as $record) {
             try {
@@ -172,25 +172,25 @@ class reconcile extends \core\task\scheduled_task {
                     (int) $record->accountid,
                     $record->environment
                 );
-                $comissao = (new \paygw_pagarme\pagarme_client($apikey))
+                $commission = (new \paygw_pagarme\pagarme_client($apikey))
                     ->commission_for_charge((string) $record->chargeid, $recipient);
 
-                if ($comissao <= 0) {
+                if ($commission <= 0) {
                     continue;
                 }
 
-                $record->feeamount = $comissao;
+                $record->feeamount = $commission;
                 $record->timemodified = time();
                 $DB->update_record(payment_processor::TABLE, $record);
-                $corrigidas++;
+                $fixed++;
 
                 // A venda no marketplace tambem guarda o valor, e ela e a que
                 // o relatorio le.
                 if (class_exists('\local_marketplace\sale')) {
-                    $venda = \local_marketplace\sale::get_record(['paymentid' => (int) $record->paymentid]);
-                    if ($venda) {
-                        $venda->set('feeamount', $comissao);
-                        $venda->update();
+                    $sale = \local_marketplace\sale::get_record(['paymentid' => (int) $record->paymentid]);
+                    if ($sale) {
+                        $sale->set('feeamount', $commission);
+                        $sale->update();
                     }
                 }
             } catch (\Throwable $e) {
@@ -198,6 +198,6 @@ class reconcile extends \core\task\scheduled_task {
             }
         }
 
-        return $corrigidas;
+        return $fixed;
     }
 }

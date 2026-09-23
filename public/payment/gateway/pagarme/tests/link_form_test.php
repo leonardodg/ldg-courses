@@ -38,7 +38,7 @@ final class link_form_test extends \advanced_testcase {
      * @param string $environment
      * @return link_form
      */
-    protected function formulario(string $environment): link_form {
+    protected function form(string $environment): link_form {
         global $CFG;
 
         require_once($CFG->libdir . '/formslib.php');
@@ -56,37 +56,37 @@ final class link_form_test extends \advanced_testcase {
         // ha host diferente para tropecar antes. Sem esta recusa, uma chave de
         // producao vincularia como se fosse de teste e a primeira compra seria
         // dinheiro real.
-        $erros = $this->formulario(pagarme_client::ENV_SANDBOX)->validation([
+        $errors = $this->form(pagarme_client::ENV_SANDBOX)->validation([
             'environment' => pagarme_client::ENV_SANDBOX,
             'apikey' => 'sk_de_producao',
             'platformrecipient' => 'rp_1',
         ], []);
 
-        $this->assertArrayHasKey('apikey', $erros);
+        $this->assertArrayHasKey('apikey', $errors);
     }
 
     public function test_chave_de_homologacao_e_recusada_em_producao(): void {
         $this->resetAfterTest();
 
-        $erros = $this->formulario(pagarme_client::ENV_PRODUCTION)->validation([
+        $errors = $this->form(pagarme_client::ENV_PRODUCTION)->validation([
             'environment' => pagarme_client::ENV_PRODUCTION,
             'apikey' => 'sk_test_de_homologacao',
             'platformrecipient' => 'rp_1',
         ], []);
 
-        $this->assertArrayHasKey('apikey', $erros);
+        $this->assertArrayHasKey('apikey', $errors);
     }
 
     public function test_chave_do_ambiente_certo_passa(): void {
         $this->resetAfterTest();
 
-        $erros = $this->formulario(pagarme_client::ENV_SANDBOX)->validation([
+        $errors = $this->form(pagarme_client::ENV_SANDBOX)->validation([
             'environment' => pagarme_client::ENV_SANDBOX,
             'apikey' => 'sk_test_certa',
             'platformrecipient' => 'rp_1',
         ], []);
 
-        $this->assertArrayNotHasKey('apikey', $erros);
+        $this->assertArrayNotHasKey('apikey', $errors);
     }
 
     public function test_chave_vazia_nao_reclama_de_ambiente(): void {
@@ -94,12 +94,12 @@ final class link_form_test extends \advanced_testcase {
 
         // Campo vazio ja e pego pela regra de obrigatorio. Acusar ambiente
         // errado aqui daria duas mensagens para o mesmo problema.
-        $erros = $this->formulario(pagarme_client::ENV_SANDBOX)->validation([
+        $errors = $this->form(pagarme_client::ENV_SANDBOX)->validation([
             'environment' => pagarme_client::ENV_SANDBOX,
             'apikey' => '',
             'platformrecipient' => 'rp_1',
         ], []);
 
-        $this->assertArrayNotHasKey('apikey', $erros);
+        $this->assertArrayNotHasKey('apikey', $errors);
     }
 }
