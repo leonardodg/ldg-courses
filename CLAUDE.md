@@ -181,10 +181,11 @@ docker exec -u 1000:33 -e COMPOSER_HOME=/tmp/composer ldg-courses-moodle-1 \
 docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 \
   php vendor/bin/phpunit --testsuite local_marketplace_testsuite
 
-# phpcs — LEIA O TOTAL, não corte a saída. O CI roda com --max-warnings 0,
-# então aviso também reprova. Saída vazia = limpo; use -p para ver o que ele varreu.
-docker exec -u 1000:33 ldg-courses-moodle-1 \
-  phpcs --standard=moodle -p --report=summary <caminho>
+# phpcs — LEIA O TOTAL, não corte a saída. O CI roda moodle-extra com
+# --max-warnings 0, então aviso também reprova. Saída vazia = limpo;
+# use -p para ver o que ele varreu. Na raiz, .phpcs.xml já aponta o extra.
+docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 \
+  phpcs --standard=moodle-extra -p --report=summary <caminho>
 
 # behat com navegador (cenários @javascript, e os que MEDEM a tela)
 moodev up --full

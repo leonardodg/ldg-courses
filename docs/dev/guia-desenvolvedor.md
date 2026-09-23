@@ -279,8 +279,10 @@ docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 \
 docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 \
   php vendor/bin/phpunit --testsuite paygw_mercadopago_testsuite
 
-# phpcs (instalado em /tmp/cs no container)
-./vendor/bin/phpcs --standard=moodle /var/www/html/public/local/marketplace
+# phpcs — standard do projeto: moodle-extra (CI: --max-warnings 0)
+# Na raiz da worktree, .phpcs.xml ja aponta o extra + os excludes do Moodle.
+docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 \
+  phpcs --standard=moodle-extra -p --report=summary public/local/marketplace
 ```
 
 Estado em 2026-08-25: **33 testes passando, zero violações de phpcs**.

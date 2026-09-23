@@ -54,7 +54,7 @@ use stdClass;
  */
 class lessonviewer implements named_templatable, renderable {
     /** @var string Parametro que pede ao tema o modo embutido. */
-    const EMBED_PARAM = 'ldgembed';
+    public const EMBED_PARAM = 'ldgembed';
 
     /** @var course_format */
     protected course_format $format;

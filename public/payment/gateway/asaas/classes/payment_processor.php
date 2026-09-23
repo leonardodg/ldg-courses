@@ -43,10 +43,10 @@ class payment_processor {
      * gateway compartilhado neste projeto onde morar uma vez so. Mudar o
      * padrao de fabrica da plataforma exige editar os tres.
      */
-    const DEFAULT_COMMISSION_PERCENT = 25.0;
+    public const DEFAULT_COMMISSION_PERCENT = 25.0;
 
     /** @var string Tabela de transacoes do plugin. */
-    const TABLE = 'paygw_asaas';
+    public const TABLE = 'paygw_asaas';
 
     /**
      * Cria a cobranca e devolve para onde mandar o aluno.
@@ -446,7 +446,7 @@ class payment_processor {
      *
      * @var string[]
      */
-    const REFUNDABLE_TYPES = ['CREDIT_CARD', 'PIX'];
+    public const REFUNDABLE_TYPES = ['CREDIT_CARD', 'PIX'];
 
     /**
      * Esta venda pode ser estornada, e por que nao.
@@ -650,7 +650,7 @@ class payment_processor {
      *
      * @var array<string,int>
      */
-    const CYCLES = [
+    public const CYCLES = [
         'WEEKLY' => 7,
         'BIWEEKLY' => 14,
         'MONTHLY' => 30,

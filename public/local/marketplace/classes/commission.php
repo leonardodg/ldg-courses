@@ -34,22 +34,22 @@ namespace local_marketplace;
  */
 class commission {
     /** @var string Sobre o valor cheio da venda. */
-    const BASE_GROSS = 'gross';
+    public const BASE_GROSS = 'gross';
 
     /** @var string Sobre o que sobra depois de o gateway descontar a taxa dele. */
-    const BASE_NET = 'net';
+    public const BASE_NET = 'net';
 
     /** @var string Veio da politica de um curso especifico. */
-    const SOURCE_POLICY = 'policy';
+    public const SOURCE_POLICY = 'policy';
 
     /** @var string Negociada com a empresa. */
-    const SOURCE_COMPANY = 'company';
+    public const SOURCE_COMPANY = 'company';
 
     /** @var string Veio do plano contratado. */
-    const SOURCE_PLAN = 'plan';
+    public const SOURCE_PLAN = 'plan';
 
     /** @var string Padrao do site. */
-    const SOURCE_SITE = 'site';
+    public const SOURCE_SITE = 'site';
 
     /** @var float Percentual, de 0 a 100. */
     public readonly float $percent;

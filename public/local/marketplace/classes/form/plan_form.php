@@ -38,7 +38,7 @@ require_once($GLOBALS['CFG']->libdir . '/formslib.php');
  */
 class plan_form extends \moodleform {
     /** @var int Quantas faixas de resolucao o formulario oferece. */
-    const TIER_SLOTS = 4;
+    public const TIER_SLOTS = 4;
 
     /**
      * Campos.

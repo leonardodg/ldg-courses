@@ -39,7 +39,7 @@ use lang_string;
  */
 class company_account extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_account';
+    public const TABLE = 'local_marketplace_account';
 
     /**
      * Define as propriedades.

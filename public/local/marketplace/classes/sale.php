@@ -37,7 +37,7 @@ use core\persistent;
  */
 class sale extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_sale';
+    public const TABLE = 'local_marketplace_sale';
 
     /**
      * Define as propriedades.

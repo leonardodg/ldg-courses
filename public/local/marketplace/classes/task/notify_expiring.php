@@ -42,7 +42,7 @@ class notify_expiring extends \core\task\scheduled_task {
      *
      * @var int
      */
-    const NOTICE_DAYS = 5;
+    public const NOTICE_DAYS = 5;
 
     /**
      * Marcos de aviso, em dias antes do vencimento.
@@ -57,10 +57,10 @@ class notify_expiring extends \core\task\scheduled_task {
      *
      * @var int[]
      */
-    const NOTICE_MILESTONES = [5, 1];
+    public const NOTICE_MILESTONES = [5, 1];
 
     /** @var string Preferencia que guarda o ultimo aviso enviado. */
-    const PREF_PREFIX = 'local_marketplace_notified_';
+    public const PREF_PREFIX = 'local_marketplace_notified_';
 
     /**
      * Nome exibido na lista de tarefas.

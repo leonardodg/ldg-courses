@@ -33,7 +33,7 @@ use paygw_mercadopago\mp_client;
  */
 class refresh_tokens extends scheduled_task {
     /** @var int Antecedencia da renovacao, em dias. */
-    const RENEW_BEFORE_DAYS = 15;
+    public const RENEW_BEFORE_DAYS = 15;
 
     /**
      * Nome exibido no admin.

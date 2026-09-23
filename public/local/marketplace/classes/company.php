@@ -28,13 +28,13 @@ use lang_string;
  */
 class company extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_company';
+    public const TABLE = 'local_marketplace_company';
 
     /** @var string Empresa em operacao. */
-    const STATUS_ACTIVE = 'active';
+    public const STATUS_ACTIVE = 'active';
 
     /** @var string Empresa bloqueada pelo dono da plataforma. */
-    const STATUS_SUSPENDED = 'suspended';
+    public const STATUS_SUSPENDED = 'suspended';
 
     /**
      * Define as propriedades.

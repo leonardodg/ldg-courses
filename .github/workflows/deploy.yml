@@ -317,7 +317,9 @@ jobs:
             --db-host 127.0.0.1 \
             --moodle /tmp/moodle
           moodle-plugin-ci phplint
-          moodle-plugin-ci phpcs --max-warnings 0
+          # moodle-extra estende moodle; --max-warnings 0 faz aviso reprovar.
+          # Default do moodle-plugin-ci e 'moodle' — o standard do projeto e extra.
+          moodle-plugin-ci phpcs --standard moodle-extra --max-warnings 0
           moodle-plugin-ci phpunit
 
   # ===========================================================================

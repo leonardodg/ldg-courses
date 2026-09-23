@@ -36,10 +36,10 @@ use lang_string;
  */
 class plan_tier extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_plan_tier';
+    public const TABLE = 'local_marketplace_plan_tier';
 
     /** @var array Resolucoes aceitas, da menor para a maior. */
-    const RESOLUTIONS = ['720p', '1080p', '1440p', '4k'];
+    public const RESOLUTIONS = ['720p', '1080p', '1440p', '4k'];
 
     /**
      * Define as propriedades.

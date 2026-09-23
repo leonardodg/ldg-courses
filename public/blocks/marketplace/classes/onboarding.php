@@ -28,18 +28,18 @@ use local_marketplace\company;
  */
 class onboarding {
     /** @var string */
-    const STEP_GATEWAY = 'gateway';
+    public const STEP_GATEWAY = 'gateway';
     /** @var string */
-    const STEP_PLAN = 'plan';
+    public const STEP_PLAN = 'plan';
     /** @var string */
-    const STEP_DOCUMENT = 'document';
+    public const STEP_DOCUMENT = 'document';
 
     /** @var string */
-    const STATE_DONE = 'done';
+    public const STATE_DONE = 'done';
     /** @var string */
-    const STATE_PENDING = 'pending';
+    public const STATE_PENDING = 'pending';
     /** @var string */
-    const STATE_OPTIONAL = 'optional';
+    public const STATE_OPTIONAL = 'optional';
 
     /**
      * Estado de cada etapa, derivado dos campos existentes.

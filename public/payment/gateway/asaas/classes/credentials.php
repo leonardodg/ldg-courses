@@ -42,7 +42,7 @@ use moodle_exception;
  */
 class credentials {
     /** @var string Nome do gateway no core_payment. */
-    const GATEWAY = 'asaas';
+    public const GATEWAY = 'asaas';
 
     /**
      * Ambiente que a plataforma esta usando agora.

@@ -31,49 +31,49 @@ use core\persistent;
  */
 class offer extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_offer';
+    public const TABLE = 'local_marketplace_offer';
 
     /** @var string Um curso. */
-    const TYPE_SINGLE = 'single';
+    public const TYPE_SINGLE = 'single';
 
     /** @var string Combo de cursos escolhidos. */
-    const TYPE_BUNDLE = 'bundle';
+    public const TYPE_BUNDLE = 'bundle';
 
     /** @var string Todo o catalogo da empresa, inclusive cursos futuros. */
-    const TYPE_CATALOG = 'catalog';
+    public const TYPE_CATALOG = 'catalog';
 
     /** @var string Acesso sem prazo. */
-    const ACCESS_LIFETIME = 'lifetime';
+    public const ACCESS_LIFETIME = 'lifetime';
 
     /** @var string Acesso por accessdays dias. */
-    const ACCESS_DAYS = 'days';
+    public const ACCESS_DAYS = 'days';
 
     /** @var string Assinatura: renova enquanto o aluno pagar. */
-    const ACCESS_RECURRING = 'recurring';
+    public const ACCESS_RECURRING = 'recurring';
 
     /** @var string Em edicao, invisivel para o aluno. */
-    const STATUS_DRAFT = 'draft';
+    public const STATUS_DRAFT = 'draft';
 
     /** @var string A venda. */
-    const STATUS_PUBLISHED = 'published';
+    public const STATUS_PUBLISHED = 'published';
 
     /** @var string Fora de venda. NAO revoga quem ja comprou. */
-    const STATUS_ARCHIVED = 'archived';
+    public const STATUS_ARCHIVED = 'archived';
 
     /** @var string Ordem definida pelo vendedor. E o padrao. */
-    const SORT_MANUAL = 'manual';
+    public const SORT_MANUAL = 'manual';
 
     /** @var string Mais recentes primeiro. */
-    const SORT_NEWEST = 'newest';
+    public const SORT_NEWEST = 'newest';
 
     /** @var string Alfabetica. */
-    const SORT_NAME = 'name';
+    public const SORT_NAME = 'name';
 
     /** @var string Do mais barato ao mais caro. */
-    const SORT_PRICE = 'price';
+    public const SORT_PRICE = 'price';
 
     /** @var string Do mais caro ao mais barato. */
-    const SORT_PRICEDESC = 'pricedesc';
+    public const SORT_PRICEDESC = 'pricedesc';
 
     /**
      * Define as propriedades.

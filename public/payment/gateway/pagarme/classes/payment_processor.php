@@ -38,10 +38,10 @@ class payment_processor {
      * gateway compartilhado neste projeto onde morar uma vez so. Mudar o
      * padrao de fabrica da plataforma exige editar os tres.
      */
-    const DEFAULT_COMMISSION_PERCENT = 25.0;
+    public const DEFAULT_COMMISSION_PERCENT = 25.0;
 
     /** @var string Tabela do plugin. */
-    const TABLE = 'paygw_pagarme';
+    public const TABLE = 'paygw_pagarme';
 
     /**
      * Situacoes em que o dinheiro entrou.
@@ -52,7 +52,7 @@ class payment_processor {
      *
      * @var string[]
      */
-    const PAID_STATUSES = ['paid', 'overpaid'];
+    public const PAID_STATUSES = ['paid', 'overpaid'];
 
     /**
      * Meios que aceitam estorno.
@@ -70,10 +70,10 @@ class payment_processor {
      *
      * @var string[]
      */
-    const REFUNDABLE_METHODS = ['credit_card', 'pix'];
+    public const REFUNDABLE_METHODS = ['credit_card', 'pix'];
 
     /** @var array Intervalos aceitos pela API, do menor para o maior. */
-    const INTERVALS = [
+    public const INTERVALS = [
         'day' => 1,
         'week' => 7,
         'month' => 30,

@@ -137,5 +137,5 @@ docker exec -u 1000:33 -w /var/www/html <stack>-moodle-1 \
   php vendor/bin/phpunit --testsuite paygw_pagarme_testsuite
 
 docker exec -u 1000:33 <stack>-moodle-1 \
-  phpcs --standard=moodle -p --report=summary /var/www/html/public/payment/gateway/pagarme
+   phpcs --standard=moodle-extra -p --report=summary /var/www/html/public/payment/gateway/pagarme
 ```
