@@ -568,7 +568,7 @@ Escreve em português; os comentários também, sem acentos. **Identificador de
 código (variável, propriedade, método, classe) é em inglês** — regra
 esclarecida em 23/09/2026 depois de uma rodada de code review reverter por
 engano um arquivo já em inglês para português. Ver
-`docs/coding-standards/README.md`. Grande parte da base já existente segue em
-português nos identificadores; converter tudo é decisão separada, ainda não
-tomada — não renomeie em massa por conta própria. As strings de idioma cobrem
-`en`, `pt_br` e `es`.
+`docs/coding-standards/README.md`. A base inteira foi convertida no mesmo
+dia, um PR por plugin (#113 a #122, `docs/dev/identificadores-em-ingles.md`)
+— não há mais identificador em português conhecido nos 11 plugins
+customizados. As strings de idioma cobrem `en`, `pt_br` e `es`.

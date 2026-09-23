@@ -14,13 +14,12 @@ oposto do que deveria ter feito. A regra foi reescrita para não deixar essa
 ambiguidade de novo, e este documento guarda o levantamento de tamanho feito
 na hora, para quando alguém decidir converter a base existente.
 
-## O que NÃO foi decidido
+## Status
 
-Converter os identificadores já em português da base existente para inglês.
-Isso é trabalho separado, arriscado (base em produção, mais de 60 mil linhas)
-e não tem prioridade definida. Até essa decisão existir, **não renomeie em
-massa por conta própria** — só código novo, ou arquivo que um code review já
-está tocando por outro motivo, nasce com identificador em inglês.
+**Decisão tomada e executada em 23/09/2026**: convertida a base inteira,
+plugin por plugin (ver Progresso abaixo). Não há mais identificador em
+português conhecido na base — qualquer um que apareça daqui pra frente é
+regressão, não decisão pendente.
 
 ## Progresso
 
@@ -111,7 +110,15 @@ está tocando por outro motivo, nasce com identificador em inglês.
   repetido em quatro testes independentes). `phpcs` (8 arquivos) e
   `phpunit` (12 testes, 21 asserções) verdes. Sem AMD/YUI tocado neste
   plugin.
-- Falta só `blocks_marketplace` (já estimado em 0 arquivos flagrados).
+- **`blocks_marketplace`: conferido em 23/09/2026, já limpo.** Varredura
+  completa (10 arquivos) não achou nenhum identificador em português —
+  confirma a estimativa original de 0. Nenhum PR foi necessário.
+
+**Conversão completa em 23/09/2026: os 11 plugins customizados do projeto
+foram varridos e convertidos, um PR por plugin (#113 a #122), todos com
+phpcs e phpunit verdes antes do merge.** Código novo continua sob a regra
+em `docs/coding-standards/README.md` — identificador em inglês, comentário
+em português.
 
 ## Tamanho estimado, por plugin
 
@@ -127,7 +134,7 @@ número real de arquivos e de identificadores é maior.
 |---|---|---|---|
 | `local/marketplace` | 76 | 16.932 | ~~7~~ 0 (convertido) |
 | `local/partners` | 39 | 8.843 | ~~6~~ 0 (convertido) |
-| `blocks/marketplace` | 10 | 1.226 | 0 |
+| `blocks/marketplace` | 10 | 1.226 | 0 (conferido, já limpo) |
 | `paygw_mercadopago` | 42 | 10.692 | ~~11~~ 0 (convertido) |
 | `paygw_asaas` | 25 | 5.177 | ~~2~~ 0 (convertido) |
 | `paygw_pagarme` | 31 | 6.525 | ~~3~~ 0 (convertido) |
@@ -136,7 +143,7 @@ número real de arquivos e de identificadores é maior.
 | `format_ldg` | 38 | 5.694 | ~~17~~ 0 (convertido) |
 | `theme_ldg` | 22 | 3.289 | ~~6~~ 0 (convertido) |
 | `mod_ldgvideo` | 31 | 3.400 | ~~8~~ 0 (convertido) |
-| **Total** | **333** | **63.695** | **17 restantes** (0 apenas em `blocks_marketplace`, já limpo na estimativa original) |
+| **Total** | **333** | **63.695** | **0 restantes — conversão completa** |
 
 `format_ldg` e `paygw_mercadopago` concentram a maior densidade — ambos
 plugins antigos, com bastante lógica de negócio nomeada em português desde o
