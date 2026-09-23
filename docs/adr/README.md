@@ -41,7 +41,7 @@ Pago, já foi superada pelos ADRs abaixo.
 | [0002](0002-conta-de-pagamento-por-pais.md) | País ISO na oferta, e uma conta de pagamento por país | Aceita |
 | [0003](0003-quem-cria-a-cobranca-emite-a-nota.md) | Quem cria a cobrança é o vendedor, porque é ele quem emite a nota | Aceita |
 | [0004](0004-cohort-por-empresa-adiado.md) | Cohort por empresa: adiado, e derivado quando vier | Aceita |
-| [0005](0005-trava-de-resolucao-por-ticket.md) | A trava de resolução por ticket, e onde ela precisa ser aplicada | Proposta |
+| [0005](0005-trava-de-resolucao-por-ticket.md) | A trava de resolução por ticket, e onde ela precisa ser aplicada | Superada por ADR-0014 |
 | [0006](0006-aprovacao-automatica-de-parceiro.md) | Aprovação automática de parceiro, e por que ela ainda não pode existir | Proposta |
 | [0007](0007-comissao-sobre-o-bruto.md) | Base de cálculo da comissão: configurável, e fotografada na venda | Aceita |
 | [0008](0008-embed-multiplataforma-pelo-core.md) | O embed multiplataforma é do core, e a fronteira é "menos o próprio site" | Aceita |
@@ -50,3 +50,4 @@ Pago, já foi superada pelos ADRs abaixo.
 | [0011](0011-o-extrato-e-a-fonte-da-comissao.md) | O extrato é a fonte da comissão, não a cobrança | Aceita |
 | [0012](0012-duas-assinaturas-e-so-uma-tem-split.md) | Duas assinaturas, e só uma tem split | Aceita |
 | [0013](0013-uma-aplicacao-por-tipo-de-integracao.md) | Uma aplicação do Mercado Pago por tipo de integração | Aceita |
+| [0014](0014-trava-de-resolucao-por-mensalidade-do-vendedor.md) | A trava de resolução por mensalidade do vendedor, e onde ela precisa ser aplicada | Proposta |

@@ -12,6 +12,7 @@ split de pagamento. Gateways: Mercado Pago, Asaas e Pagar.me.
 | **saber como uma feature se faz aqui** | [`dev/padrao-de-implementacao.md`](dev/padrao-de-implementacao.md) |
 | mandar a mudança para produção | [`dev/fluxo-de-contribuicao.md`](dev/fluxo-de-contribuicao.md) |
 | entender **por que** o sistema é assim | [`architecture/decisoes-marketplace.md`](architecture/decisoes-marketplace.md) |
+| **produto: o que vemos, a quem e com que sucesso** | [`produto/`](produto/) |
 | saber o que existe e o que falta | [`architecture/estado-e-proximas-fases.md`](architecture/estado-e-proximas-fases.md) |
 | mexer nas tabelas | [`data-model/marketplace.md`](data-model/marketplace.md) |
 | testar o que está no ar | [`data-validation/painel-de-testes.md`](data-validation/painel-de-testes.md) |
@@ -52,6 +53,7 @@ configurado e as armadilhas dele:
 | [`data-validation/`](data-validation/) | como se verifica que funciona: painel de testes, cenários, dados de teste |
 | [`dev/`](dev/) | guias de quem desenvolve: ambiente, ferramentas, fluxo de trabalho |
 | [`operacao/`](operacao/) | colocar e manter no ar: configuração inicial, ordem das coisas |
+| [`produto/`](produto/) | hub de produto: PRD, TRD, fluxos, briefing UI/UX, intenção de schema, plano de implementação |
 | [`legal/`](legal/) | privacidade, termos de uso e o mapa do que é coletado |
 | [`ai-plans/`](ai-plans/) | **registro de todo plano executado por agente de IA** |
 | [`history/`](history/) | de onde o projeto veio: ideia inicial, conversas fundadoras |
