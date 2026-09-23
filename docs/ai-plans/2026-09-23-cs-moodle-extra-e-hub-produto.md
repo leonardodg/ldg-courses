@@ -5,18 +5,18 @@
 > Varredura: `moodle` = 0 violações; `moodle-extra` = 0 erros / 134 warnings,
 > todas `ConstantVisibility` em 38 arquivos. Usuário escolheu **opção A**.
 >
-> **Etapa 0 — local verde; PR [#124](https://github.com/leonardodg/ldg-courses/pull/124) aberto:**
+> **Etapa 0 — local verde; PR [#124](https://github.com/leonardodg/ldg-courses/pull/124) com CI verde; falta a revisão do usuário:**
 > `.phpcs.xml` versionado; 134 constantes → `public const` (38 arquivos); CI com
 > `moodle-plugin-ci phpcs --standard moodle-extra --max-warnings 0`;
 > `docs/coding-standards/README.md` reescrito com hierarquia Moodle →
 > moodle-cs → projeto (`moodle-extra`) → PSR-12 → PSR-1, PHP 8.3+, limites
 > 132/180. **Verificação local:** phpcs `moodle-extra` e via `.phpcs.xml` = 0
 > issues em 333 arquivos (`EXIT=0`); `moodle` continua limpo; **740 testes** nas
-> 11 suites customizadas, todas OK. Commits `d76603f54f0` + resume na branch
-> `feature/cs-moodle-extra`. PR **#124** para `dev` (o 1º `gh pr create` falhou
-> porque o push saiu antes do commit — corrigido). **Pendente:** CI verde +
-> revisão do usuário na doc de CS. **Etapa 1 (hub `docs/produto/`) só depois do
-> checkpoint.**
+> 11 suites customizadas, todas OK. **CI no PR #124: 13 jobs de validação
+> SUCCESS** (build/deploy skipped como esperado no PR). O 1º `gh pr create`
+> falhou porque o push saiu antes do commit — corrigido. **Pendente:** revisão
+> do usuário em `docs/coding-standards/README.md`. **Etapa 1 (hub
+> `docs/produto/`) só depois do checkpoint.**
 
 # CS com moodle-extra e hub de produto — Plano
 
@@ -88,7 +88,8 @@ de qualquer código da fase de vídeo.
 - [x] PR [#124](https://github.com/leonardodg/ldg-courses/pull/124) para `dev`
       (1º `gh pr create` falhou: push saiu antes do commit; remote ainda igual
       a `dev`; corrigido com push do commit real)
-- [ ] CI verde + revisão do usuário na doc de CS (checkpoint Etapa 0)
+- [x] CI verde no PR #124 (13 jobs de validação SUCCESS)
+- [ ] Revisão do usuário na doc de CS (checkpoint Etapa 0)
 
 ### Etapa 1 (depois do checkpoint)
 
@@ -134,12 +135,12 @@ de qualquer código da fase de vídeo.
 | phpunit `format_ldg` | … | **OK (70 tests, 182 assertions)** |
 | phpunit `mod_ldgvideo` | … | **OK (43 tests, 118 assertions)** |
 | **Total phpunit** | 11 suites customizadas | **740 tests, todas OK** (1 skipped em partners) |
-| CI | job `validate` do PR com `--standard moodle-extra` | **a medir no PR** |
+| CI | job `validate` do PR #124 com `--standard moodle-extra` | **13 jobs SUCCESS** |
 
 ## Em aberto
 
-- **Checkpoint Etapa 0:** commitar → push → PR → CI verde → revisão do usuário
-  em `docs/coding-standards/README.md`. Só então Etapa 1.
+- **Checkpoint Etapa 0:** CI verde (**feito**, PR #124); falta a revisão do
+  usuário em `docs/coding-standards/README.md` e o merge. Só então Etapa 1.
 - Etapa 1 (hub) **não começou**.
 - Números de planos/comissão: **a confirmar** no PRD.
 - Custo de banda vs mensalidade: gate no PRD antes de liberar degrau pago.
