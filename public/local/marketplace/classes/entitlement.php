@@ -31,16 +31,16 @@ use core\persistent;
  */
 class entitlement extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_entitlement';
+    public const TABLE = 'local_marketplace_entitlement';
 
     /** @var string Vigente. */
-    const STATUS_ACTIVE = 'active';
+    public const STATUS_ACTIVE = 'active';
 
     /** @var string Passou de timeend. */
-    const STATUS_EXPIRED = 'expired';
+    public const STATUS_EXPIRED = 'expired';
 
     /** @var string Cancelado pelo aluno ou pela plataforma. */
-    const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_CANCELLED = 'cancelled';
 
     /**
      * Define as propriedades.

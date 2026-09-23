@@ -37,10 +37,10 @@ use moodle_exception;
  */
 class credentials {
     /** @var string Nome do gateway no core_payment. */
-    const GATEWAY = 'pagarme';
+    public const GATEWAY = 'pagarme';
 
     /** @var string[] Campos guardados por ambiente. */
-    const FIELDS = [
+    public const FIELDS = [
         'apikey_',
         'platformrecipient_',
         'sellerrecipient_',

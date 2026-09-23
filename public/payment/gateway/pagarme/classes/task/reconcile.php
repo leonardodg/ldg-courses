@@ -30,7 +30,7 @@ use paygw_pagarme\payment_processor;
  */
 class reconcile extends \core\task\scheduled_task {
     /** @var int Mais novo que isto, o aluno ainda esta na tela de pagamento. */
-    const MIN_AGE = 5 * MINSECS;
+    public const MIN_AGE = 5 * MINSECS;
 
     /**
      * Ate quando vale corrigir a comissao de uma venda ja entregue.
@@ -42,10 +42,10 @@ class reconcile extends \core\task\scheduled_task {
      *
      * @var int
      */
-    const MAX_AGE = 30 * DAYSECS;
+    public const MAX_AGE = 30 * DAYSECS;
 
     /** @var int Teto por rodada. */
-    const BATCH = 200;
+    public const BATCH = 200;
 
     /**
      * Nome na tela de tarefas.

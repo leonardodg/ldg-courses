@@ -366,9 +366,10 @@ meses depois.
 docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 \
   php vendor/bin/phpunit --testsuite <componente>_testsuite
 
-# phpcs - LEIA O TOTAL. O CI roda com --max-warnings 0: aviso tambem reprova.
+# phpcs - LEIA O TOTAL. O CI roda com moodle-extra + --max-warnings 0:
+# aviso tambem reprova. Na raiz, .phpcs.xml ja soma o extra aos excludes.
 docker exec -u 1000:33 ldg-courses-moodle-1 \
-  phpcs --standard=moodle -p --report=summary public/<caminho>
+  phpcs --standard=moodle-extra -p --report=summary public/<caminho>
 
 # mustache-lint, eslint e stylelint
 docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 npx grunt

@@ -46,7 +46,7 @@ class country {
      *
      * @var array<string, string>
      */
-    const CURRENCIES = [
+    public const CURRENCIES = [
         'AR' => 'ARS',
         'BR' => 'BRL',
         'CL' => 'CLP',
@@ -57,7 +57,7 @@ class country {
     ];
 
     /** @var string Usado quando ninguem escolheu, e no provisionamento da primeira conta. */
-    const DEFAULT_COUNTRY = 'BR';
+    public const DEFAULT_COUNTRY = 'BR';
 
     /**
      * Moeda em que se vende neste pais.

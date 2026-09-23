@@ -40,7 +40,7 @@ use core\persistent;
  */
 class lesson extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'format_ldg_lesson';
+    public const TABLE = 'format_ldg_lesson';
 
     /**
      * Propriedades.

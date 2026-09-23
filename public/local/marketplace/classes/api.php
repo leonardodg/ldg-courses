@@ -36,7 +36,7 @@ class api {
      * venceria em outro. Antes eram dois literais 30 mantidos em sincronia
      * so por comentario.
      */
-    const PLAN_CYCLE_DAYS = 30;
+    public const PLAN_CYCLE_DAYS = 30;
 
     /**
      * Cria a empresa e provisiona tudo que ela precisa para operar.

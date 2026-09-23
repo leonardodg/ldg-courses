@@ -1,20 +1,61 @@
 # Padrão de código
 
-O que o CI cobra, e as convenções que não dá para automatizar.
+Hierarquia do que vale, de cima para baixo: **Moodle (template) → `moodle-cs` →
+este projeto → PSR-12 → PSR-1**. Quando duas camadas conflitam, a de cima vence.
 
-## O que já está em outro lugar
+O que o CI cobra está em
+[`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml)
+(`moodle-plugin-ci phpcs --standard moodle-extra --max-warnings 0`). O que não
+dá para automatizar está aqui.
 
-O padrão de código do Moodle e como rodar o `phpcs` estão na seção
-"Testes e padrão de código" de [`../dev/guia-desenvolvedor.md`](../dev/guia-desenvolvedor.md).
+## O standard
 
-## Regras que já custaram tempo
+| Camada | Onde | O que impõe |
+|---|---|---|
+| Moodle | `docs/dev/padrao-de-implementacao.md`, guia oficial | estrutura de plugin, `classes/`, naming de componente |
+| `moodle-cs` (`moodle`) | `phpcs.xml.dist` | o phpcs do Moodle |
+| **`moodle-extra` (este projeto)** | `.phpcs.xml` + CI | `moodle` **mais** visibilidade de constante, `dataProvider` e afins |
+| PSR-12 / PSR-1 | regras embutidas no `moodle-cs` | layout de arquivo, `namespace`/`use` |
+
+**PHP:** `>= 8.3.0` (declado em `version.php` e no `testVersion` do
+`phpcs.xml.dist`). Constantes de classe **sempre** com visibilidade
+(`public const` / `private const` / `protected const`) — o
+`moodle-extra` reprova sem.
+
+**Limites de linha:** 132 (erro) e 180 (erro absoluto), do `moodle-cs`. Não
+"invente" limite próprio.
+
+**Classes** ficam em `classes/`, um namespace por componente, PSR-4.
+
+### Rodar
+
+```bash
+# na raiz da worktree — usa .phpcs.xml (moodle + moodle-extra + excludes)
+docker exec -u 1000:33 -w /var/www/html ldg-courses-moodle-1 \
+  phpcs -p --report=summary public/<caminho>
+
+# ou o standard explícito, como o CI
+docker exec -u 1000:33 ldg-courses-moodle-1 \
+  phpcs --standard=moodle-extra -p --report=summary public/<caminho>
+```
 
 **Leia o total do `phpcs`.** `tail -3` na saída esconde o relatório: já se
 reportou "zero violações" com 16 erros presentes, e o CI reprovou.
 
 ```bash
-… phpcs --standard=moodle --report=summary <caminho> | grep -E "A TOTAL OF"
+… phpcs --standard=moodle-extra --report=summary <caminho> | grep -E "A TOTAL OF"
 ```
+
+Saída vazia com `-p` = limpo; confirme com o `A TOTAL OF` (ou ausência dele).
+
+`phpcs.xml` na raiz é **gerado** pelo `npx grunt ignorefiles` a partir de
+`phpcs.xml.dist` e está no `.gitignore`. A escolha versionada do projeto é
+`.phpcs.xml`, que **estende** o `.dist` com `moodle-extra`. Não versione
+`phpcs.xml`.
+
+**Nunca rode `phpcbf` global.** Corrija por arquivo e linha exatos.
+
+## O que já custaram tempo
 
 **Strings de idioma têm ordem alfabética obrigatória.** Inserir por âncora quebra
 o `phpcs`; reordene o arquivo inteiro depois de acrescentar. Os idiomas cobertos

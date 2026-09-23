@@ -37,7 +37,7 @@ use moodle_exception;
  */
 class mp_client {
     /** @var string Base da API. */
-    const API_BASE = 'https://api.mercadopago.com';
+    public const API_BASE = 'https://api.mercadopago.com';
 
     /**
      * Dominio de autorizacao de cada site.
@@ -48,7 +48,7 @@ class mp_client {
      *
      * @var array<string,string>
      */
-    const SITE_AUTH_DOMAIN = [
+    public const SITE_AUTH_DOMAIN = [
         'MLA' => 'auth.mercadopago.com.ar',
         'MLB' => 'auth.mercadopago.com.br',
         'MLC' => 'auth.mercadopago.cl',
@@ -59,7 +59,7 @@ class mp_client {
     ];
 
     /** @var int Timeout em segundos. Pagamento nao pode pendurar a requisicao. */
-    const TIMEOUT = 20;
+    public const TIMEOUT = 20;
 
     /** @var string Token usado nas chamadas. */
     protected string $accesstoken;
@@ -212,7 +212,7 @@ class mp_client {
      *
      * @var array<string,string>
      */
-    const SITE_CURRENCY = [
+    public const SITE_CURRENCY = [
         'MLA' => 'ARS', // Argentina.
         'MLB' => 'BRL', // Brasil.
         'MLC' => 'CLP', // Chile.

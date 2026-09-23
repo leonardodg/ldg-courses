@@ -38,10 +38,10 @@ use moodle_exception;
  */
 class asaas_client {
     /** @var string Ambiente de homologacao. Chaves comecam com aact_hmlg_. */
-    const ENV_SANDBOX = 'sandbox';
+    public const ENV_SANDBOX = 'sandbox';
 
     /** @var string Ambiente real. */
-    const ENV_PRODUCTION = 'production';
+    public const ENV_PRODUCTION = 'production';
 
     /**
      * Base da API por ambiente.
@@ -53,16 +53,16 @@ class asaas_client {
      *
      * @var array<string, string>
      */
-    const BASE_URL = [
+    public const BASE_URL = [
         self::ENV_SANDBOX => 'https://api-sandbox.asaas.com/v3',
         self::ENV_PRODUCTION => 'https://api.asaas.com/v3',
     ];
 
     /** @var int Segundos de espera por resposta. */
-    const TIMEOUT = 20;
+    public const TIMEOUT = 20;
 
     /** @var int Segundos de espera pela conexao. */
-    const CONNECT_TIMEOUT = 10;
+    public const CONNECT_TIMEOUT = 10;
 
     /** @var string Chave de API da conta que fala com a API. */
     protected string $apikey;

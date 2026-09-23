@@ -32,7 +32,7 @@ use moodle_url;
  */
 class api {
     /** @var int Quantas candidaturas o mesmo IP pode enviar por hora, por padrao. */
-    const DEFAULT_MAX_PER_HOUR = 3;
+    public const DEFAULT_MAX_PER_HOUR = 3;
 
     /**
      * Registra uma candidatura vinda do formulario publico.

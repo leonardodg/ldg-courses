@@ -39,16 +39,16 @@ namespace paygw_mercadopago;
  */
 class payment_methods {
     /** @var string Cartao de credito, com o card_capture escolhido. */
-    const METHOD_CARD = 'card';
+    public const METHOD_CARD = 'card';
 
     /** @var string Pix - fatura por ciclo, sem cartao guardado. */
-    const METHOD_PIX = 'pix';
+    public const METHOD_PIX = 'pix';
 
     /** @var string Boleto (bolbradesco) - fatura por ciclo, sem cartao guardado. */
-    const METHOD_BOLETO = 'boleto';
+    public const METHOD_BOLETO = 'boleto';
 
     /** @var string[] Os tres meios, na ordem em que a tela oferece. */
-    const METHODS = [self::METHOD_CARD, self::METHOD_PIX, self::METHOD_BOLETO];
+    public const METHODS = [self::METHOD_CARD, self::METHOD_PIX, self::METHOD_BOLETO];
 
     /**
      * Este meio esta habilitado para esta conta?

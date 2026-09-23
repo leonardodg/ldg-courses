@@ -49,13 +49,13 @@ use stdClass;
  */
 class application {
     /** @var string Checkout Pro pela API de Preferencias. O marketplace_fee vai na preferencia. */
-    const TYPE_PREFERENCES = 'preferences';
+    public const TYPE_PREFERENCES = 'preferences';
 
     /** @var string Assinaturas (preapproval). NAO leva comissao - ver type_for_recurring(). */
-    const TYPE_SUBSCRIPTIONS = 'subscriptions';
+    public const TYPE_SUBSCRIPTIONS = 'subscriptions';
 
     /** @var string Checkout Bricks sobre a Checkout API. O application_fee vai no pagamento. */
-    const TYPE_BRICKS = 'bricks';
+    public const TYPE_BRICKS = 'bricks';
 
     /**
      * Os tipos, na ordem em que aparecem na tela.
@@ -64,7 +64,7 @@ class application {
      *
      * @var string[]
      */
-    const TYPES = [
+    public const TYPES = [
         self::TYPE_PREFERENCES,
         self::TYPE_SUBSCRIPTIONS,
         self::TYPE_BRICKS,
@@ -80,7 +80,7 @@ class application {
      *
      * @var string[]
      */
-    const ACCOUNT_FIELDS = [
+    public const ACCOUNT_FIELDS = [
         'mpuserid',
         'accesstoken',
         'refreshtoken',

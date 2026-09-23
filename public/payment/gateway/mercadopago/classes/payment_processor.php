@@ -37,10 +37,10 @@ class payment_processor {
      * compartilhado neste projeto onde morar uma vez so. Mudar o padrao de
      * fabrica da plataforma exige editar os tres.
      */
-    const DEFAULT_COMMISSION_PERCENT = 25.0;
+    public const DEFAULT_COMMISSION_PERCENT = 25.0;
 
     /** @var string Tabela do gateway. */
-    const TABLE = 'paygw_mercadopago';
+    public const TABLE = 'paygw_mercadopago';
 
     /**
      * Meios sem cobranca automatica - Pix e boleto nao deixam instrumento
@@ -50,7 +50,7 @@ class payment_processor {
      *
      * @var string[]
      */
-    const INVOICE_METHODS = ['pix', 'bolbradesco'];
+    public const INVOICE_METHODS = ['pix', 'bolbradesco'];
 
     /**
      * Abre a cobranca e devolve para onde mandar o aluno.

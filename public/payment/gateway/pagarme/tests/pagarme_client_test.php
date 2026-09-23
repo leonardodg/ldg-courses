@@ -33,10 +33,10 @@ require_once(__DIR__ . '/fixtures/documented_responses.php');
 #[CoversClass(pagarme_client::class)]
 final class pagarme_client_test extends \advanced_testcase {
     /** @var string Recebedor do vendedor, nos testes. */
-    const SELLER = 'rp_vendedor00000001';
+    public const SELLER = 'rp_vendedor00000001';
 
     /** @var string Recebedor da plataforma, nos testes. */
-    const PLATFORM = 'rp_plataforma000001';
+    public const PLATFORM = 'rp_plataforma000001';
 
     // --------------------------------------------------------------------
 

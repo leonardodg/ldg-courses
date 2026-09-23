@@ -55,16 +55,16 @@ namespace paygw_mercadopago;
  */
 class card_capture {
     /** @var string Campos do Mercado Pago na nossa pagina. O PAN nao nos toca. */
-    const MODE_BRICK = 'brick';
+    public const MODE_BRICK = 'brick';
 
     /** @var string Formulario nosso; o JS manda direto ao MP, sem passar pelo backend. */
-    const MODE_DIRECT = 'direct';
+    public const MODE_DIRECT = 'direct';
 
     /** @var string Formulario nosso; o PAN transita pelo nosso backend. */
-    const MODE_NATIVE = 'native';
+    public const MODE_NATIVE = 'native';
 
     /** @var string[] Os modos, em ordem de exposicao crescente. */
-    const MODES = [self::MODE_BRICK, self::MODE_DIRECT, self::MODE_NATIVE];
+    public const MODES = [self::MODE_BRICK, self::MODE_DIRECT, self::MODE_NATIVE];
 
     /**
      * Em que enquadramento do PCI DSS cada modo coloca o projeto.
@@ -75,7 +75,7 @@ class card_capture {
      *
      * @var array<string,string>
      */
-    const SCOPES = [
+    public const SCOPES = [
         self::MODE_BRICK => 'A',
         self::MODE_DIRECT => 'A-EP',
         self::MODE_NATIVE => 'D',

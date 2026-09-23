@@ -37,7 +37,7 @@ use moodle_url;
  */
 class service_provider implements \core_payment\local\callback\service_provider {
     /** @var string Venda de curso - o aluno paga a empresa, com split. */
-    const PAYMENT_AREA = 'offer';
+    public const PAYMENT_AREA = 'offer';
 
     /**
      * Assinatura SaaS - a empresa paga a PLATAFORMA, sem split nenhum.
@@ -49,7 +49,7 @@ class service_provider implements \core_payment\local\callback\service_provider 
      *
      * @var string
      */
-    const PAYMENT_AREA_PLAN = 'plan';
+    public const PAYMENT_AREA_PLAN = 'plan';
 
     /**
      * Valor, moeda e conta que recebe.

@@ -33,13 +33,13 @@ use core\persistent;
  */
 class member extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_member';
+    public const TABLE = 'local_marketplace_member';
 
     /** @var string Administra a empresa e a conta de pagamento. */
-    const ROLE_OWNER = 'owner';
+    public const ROLE_OWNER = 'owner';
 
     /** @var string Publica cursos pela empresa. */
-    const ROLE_SELLER = 'seller';
+    public const ROLE_SELLER = 'seller';
 
     /**
      * Define as propriedades.

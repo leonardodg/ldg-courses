@@ -37,7 +37,7 @@ use local_partners\application;
  */
 class purge_unconfirmed extends scheduled_task {
     /** @var int Prazo padrao, em dias, antes de a nao confirmada ser apagada. */
-    const DEFAULT_DAYS = 7;
+    public const DEFAULT_DAYS = 7;
 
     /**
      * Nome exibido na tela de tarefas.

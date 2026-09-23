@@ -57,19 +57,19 @@ use core_privacy\local\request\writer;
  */
 class provider implements metadata_provider, user_preference_provider {
     /** @var string Menu lateral recolhido. */
-    const NAVMENU = 'theme_ldg-navmenu-collapsed';
+    public const NAVMENU = 'theme_ldg-navmenu-collapsed';
 
     /** @var string Modo escuro ligado. */
-    const DARKMODE = 'dark-mode-on';
+    public const DARKMODE = 'dark-mode-on';
 
     /** @var string Barra de acessibilidade visivel. */
-    const ACCESSIBILITYBAR = 'theme_ldg-accessibilitybar';
+    public const ACCESSIBILITYBAR = 'theme_ldg-accessibilitybar';
 
     /** @var string Tamanho de fonte da barra de acessibilidade. */
-    const FONTSIZE = 'accessibilitystyles_fontsizeclass';
+    public const FONTSIZE = 'accessibilitystyles_fontsizeclass';
 
     /** @var string Contraste da barra de acessibilidade. */
-    const SITECOLOR = 'accessibilitystyles_sitecolorclass';
+    public const SITECOLOR = 'accessibilitystyles_sitecolorclass';
 
     /**
      * Preferencias que o tema guarda, e a string que explica cada uma.

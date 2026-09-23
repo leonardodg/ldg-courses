@@ -34,10 +34,10 @@ use moodle_exception;
  */
 class pagarme_client {
     /** @var string Ambiente de homologacao. */
-    const ENV_SANDBOX = 'sandbox';
+    public const ENV_SANDBOX = 'sandbox';
 
     /** @var string Ambiente de producao. */
-    const ENV_PRODUCTION = 'production';
+    public const ENV_PRODUCTION = 'production';
 
     /**
      * Endereco unico, para os dois ambientes.
@@ -49,16 +49,16 @@ class pagarme_client {
      *
      * @var string
      */
-    const BASE_URL = 'https://api.pagar.me/core/v5';
+    public const BASE_URL = 'https://api.pagar.me/core/v5';
 
     /** @var string Prefixo das chaves de homologacao. */
-    const TEST_KEY_PREFIX = 'sk_test_';
+    public const TEST_KEY_PREFIX = 'sk_test_';
 
     /** @var int Segundos ate desistir da resposta. */
-    const TIMEOUT = 20;
+    public const TIMEOUT = 20;
 
     /** @var int Segundos ate desistir da conexao. */
-    const CONNECT_TIMEOUT = 10;
+    public const CONNECT_TIMEOUT = 10;
 
     /** @var string Chave secreta do vendedor. */
     protected string $apikey;

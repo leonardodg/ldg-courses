@@ -34,31 +34,31 @@ use local_marketplace\plan;
  */
 class application extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_partners_application';
+    public const TABLE = 'local_partners_application';
 
     /** @var string E-mail ainda nao confirmado; NAO entra na fila. */
-    const STATUS_UNCONFIRMED = 'unconfirmed';
+    public const STATUS_UNCONFIRMED = 'unconfirmed';
 
     /** @var string Na fila, esperando decisao. */
-    const STATUS_PENDING = 'pending';
+    public const STATUS_PENDING = 'pending';
 
     /** @var string Aprovada; a empresa foi provisionada. */
-    const STATUS_APPROVED = 'approved';
+    public const STATUS_APPROVED = 'approved';
 
     /** @var string Recusada. */
-    const STATUS_REJECTED = 'rejected';
+    public const STATUS_REJECTED = 'rejected';
 
     /** @var string Faixa declarada: ate 100 alunos ativos por mes. */
-    const BAND_UPTO_100 = 'upto100';
+    public const BAND_UPTO_100 = 'upto100';
 
     /** @var string Faixa declarada: de 100 a 1.000. */
-    const BAND_100_TO_1000 = '100to1000';
+    public const BAND_100_TO_1000 = '100to1000';
 
     /** @var string Faixa declarada: de 1.000 a 5.000. */
-    const BAND_1000_TO_5000 = '1000to5000';
+    public const BAND_1000_TO_5000 = '1000to5000';
 
     /** @var string Faixa declarada: mais de 5.000. */
-    const BAND_OVER_5000 = 'over5000';
+    public const BAND_OVER_5000 = 'over5000';
 
     /**
      * As faixas, na ordem em que aparecem no formulario.
@@ -69,7 +69,7 @@ class application extends persistent {
      *
      * @var string[]
      */
-    const LEARNER_BANDS = [
+    public const LEARNER_BANDS = [
         self::BAND_UPTO_100,
         self::BAND_100_TO_1000,
         self::BAND_1000_TO_5000,

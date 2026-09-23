@@ -35,16 +35,16 @@ use lang_string;
  */
 class course_policy extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_course';
+    public const TABLE = 'local_marketplace_course';
 
     /** @var string Video fora da plataforma. */
-    const HOSTING_EXTERNAL = 'external';
+    public const HOSTING_EXTERNAL = 'external';
 
     /** @var string Video no moodledata. Ainda nao disponivel. */
-    const HOSTING_PLATFORM = 'platform';
+    public const HOSTING_PLATFORM = 'platform';
 
     /** @var float Comissao para conteudo hospedado fora. */
-    const DEFAULT_COMMISSION = 25.00;
+    public const DEFAULT_COMMISSION = 25.00;
 
     /**
      * Define as propriedades.

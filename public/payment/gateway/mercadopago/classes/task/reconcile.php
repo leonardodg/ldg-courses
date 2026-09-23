@@ -42,13 +42,13 @@ use paygw_mercadopago\payment_processor;
  */
 class reconcile extends \core\task\scheduled_task {
     /** @var int Idade minima da transacao para valer a pena conferir. */
-    const MIN_AGE = 5 * MINSECS;
+    public const MIN_AGE = 5 * MINSECS;
 
     /** @var int Depois disto a preferencia ja expirou e nao vale mais uma ida a rede. */
-    const MAX_AGE = 30 * DAYSECS;
+    public const MAX_AGE = 30 * DAYSECS;
 
     /** @var int Teto por execucao, para uma fila grande nao estourar o cron. */
-    const BATCH = 200;
+    public const BATCH = 200;
 
     /**
      * Nome na tela de tarefas.

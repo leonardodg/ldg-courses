@@ -36,19 +36,19 @@ use lang_string;
  */
 class plan extends persistent {
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_plan';
+    public const TABLE = 'local_marketplace_plan';
 
     /** @var string Plano em uso. */
-    const STATUS_ACTIVE = 'active';
+    public const STATUS_ACTIVE = 'active';
 
     /** @var string Plano fora de venda, mas preservado por causa do historico. */
-    const STATUS_ARCHIVED = 'archived';
+    public const STATUS_ARCHIVED = 'archived';
 
     /** @var string A plataforma hospeda o video e paga a banda. */
-    const HOSTING_NATIVE = 'native';
+    public const HOSTING_NATIVE = 'native';
 
     /** @var string O produtor conecta a chave da propria conta de streaming. */
-    const HOSTING_BYOS = 'byos';
+    public const HOSTING_BYOS = 'byos';
 
     /**
      * Define as propriedades.
