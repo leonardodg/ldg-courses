@@ -1,11 +1,15 @@
 > **Situação:** em andamento · **Início:** 2026-09-23 · **Última sessão:** 2026-09-23
 >
-> **Resumo da sessão:** worktree `cs-moodle-extra` via `moodev new` (branch
-> `feature/cs-moodle-extra`, base `origin/dev`, upstream a 0 commits).
-> Varredura: `moodle` = 0 violações; `moodle-extra` = 0 erros / 134 warnings,
-> todas `ConstantVisibility` em 38 arquivos. Usuário escolheu **opção A**.
+> **Resumo da sessão:** Etapa 0 **merged** no `dev` pelo PR
+> [#124](https://github.com/leonardodg/ldg-courses/pull/124) (merge
+> `2570521ddad`); a revisão do usuário na doc de CS seguiu o checkpoint. Etapa
+> 1 (hub) executada na worktree `produto-hub` (branch `feature/produto-hub`,
+> base `origin/dev` = `2570521ddad`): sete documentos em `docs/produto/`,
+> linha em `docs/README.md`, ADR-0014 supersede do ADR-0005, e a lista gate de
+> contradições (`gate-contradicoes.md`) antes de qualquer código de fase de
+> vídeo. PR desta branch aberto para `dev`.
 >
-> **Etapa 0 — local verde; PR [#124](https://github.com/leonardodg/ldg-courses/pull/124) com CI verde; falta a revisão do usuário:**
+> **Etapa 0 — merged no `dev` (PR #124, merge `2570521ddad`):**
 > `.phpcs.xml` versionado; 134 constantes → `public const` (38 arquivos); CI com
 > `moodle-plugin-ci phpcs --standard moodle-extra --max-warnings 0`;
 > `docs/coding-standards/README.md` reescrito com hierarquia Moodle →
@@ -14,9 +18,8 @@
 > issues em 333 arquivos (`EXIT=0`); `moodle` continua limpo; **740 testes** nas
 > 11 suites customizadas, todas OK. **CI no PR #124: 13 jobs de validação
 > SUCCESS** (build/deploy skipped como esperado no PR). O 1º `gh pr create`
-> falhou porque o push saiu antes do commit — corrigido. **Pendente:** revisão
-> do usuário em `docs/coding-standards/README.md`. **Etapa 1 (hub
-> `docs/produto/`) só depois do checkpoint.**
+> falhou porque o push saiu antes do commit — corrigido. Revisão do usuário na
+> doc de CS: **aceita** (checkpoint fechado; merge em `2570521ddad`).
 
 # CS com moodle-extra e hub de produto — Plano
 
@@ -89,15 +92,19 @@ de qualquer código da fase de vídeo.
       (1º `gh pr create` falhou: push saiu antes do commit; remote ainda igual
       a `dev`; corrigido com push do commit real)
 - [x] CI verde no PR #124 (13 jobs de validação SUCCESS)
-- [ ] Revisão do usuário na doc de CS (checkpoint Etapa 0)
+- [x] Revisão do usuário na doc de CS (checkpoint Etapa 0) — aceita; merge
+      `2570521ddad`
 
-### Etapa 1 (depois do checkpoint)
+### Etapa 1 (executada em `feature/produto-hub`; PR em aberto)
 
-- [ ] `docs/produto/`: `README.md`, `prd.md`, `trd.md`, `fluxo-do-app.md`,
+- [x] `docs/produto/`: `README.md`, `prd.md`, `trd.md`, `fluxo-do-app.md`,
       `briefing-ui-ux.md`, `schema-backend.md`, `plano-implementacao.md`
-- [ ] Linha em `docs/README.md`
-- [ ] ADR que supersede ADR-0005 (trava por mensalidade do vendedor + player)
-- [ ] Lista de contradições/faltas/abertos para o usuário
+- [x] Linha em `docs/README.md` (ponto de entrada + seção do índice)
+- [x] ADR que supersede ADR-0005 —
+      [`adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md`](../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md)
+      (trava por mensalidade do vendedor + player); 0005 marcado *Superada*
+- [x] Lista de contradições/faltas/abertos —
+      [`docs/produto/gate-contradicoes.md`](../produto/gate-contradicoes.md)
 
 ## Descobertas
 
@@ -139,11 +146,16 @@ de qualquer código da fase de vídeo.
 
 ## Em aberto
 
-- **Checkpoint Etapa 0:** CI verde (**feito**, PR #124); falta a revisão do
-  usuário em `docs/coding-standards/README.md` e o merge. Só então Etapa 1.
-- Etapa 1 (hub) **não começou**.
-- Números de planos/comissão: **a confirmar** no PRD.
+- **Gate de release:** o usuário precisa **aceitar** os itens de
+  `docs/produto/gate-contradicoes.md` (C1–C3…, A1…) antes de qualquer código
+  de fase de vídeo. Nada abaixo se resolve sem evidência no repo e aceite.
+- Números de planos/comissão: **a confirmar** no PRD (e reconciliar com os
+  `start_*`/`pro` já no banco — ver C2 do gate).
 - Custo de banda vs mensalidade: gate no PRD antes de liberar degrau pago.
 - Prova com dinheiro real da assinatura SaaS Start/PRO (plano anterior, ainda
   `inacabado`).
-- Lista final de contradições/faltas **só depois** dos 6 docs da Etapa 1.
+- **Fase de vídeo não começou:** Bunny multi-tenant + trava no player ficam
+  depois do aceite do gate; ADR-0014 ainda em *Proposta* (promover a *Aceita*
+  antes de código — ver A3 do gate).
+- Correções editoriais apontadas no gate (hub citando ADR-0005 como vigente)
+  aguardam o mesmo aceite — não foram corrigidas em silêncio nesta Etapa 1.
