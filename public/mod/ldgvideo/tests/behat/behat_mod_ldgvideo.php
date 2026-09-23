@@ -60,26 +60,26 @@ class behat_mod_ldgvideo extends behat_base {
     public function the_video_frame_should_keep_the_ratio(string $ratio): void {
         $this->require_javascript();
 
-        [$largura, $altura] = array_map('intval', explode(':', $ratio));
+        [$width, $height] = array_map('intval', explode(':', $ratio));
 
-        if (!$largura || !$altura) {
+        if (!$width || !$height) {
             throw new PendingException("Proporcao '{$ratio}' nao entendida; use o formato 16:9.");
         }
 
-        $medida = $this->medir_quadro();
-        $nominal = $largura / $altura;
-        $obtida = $medida['width'] / $medida['height'];
+        $measured = $this->measure_frame();
+        $nominal = $width / $height;
+        $obtained = $measured['width'] / $measured['height'];
 
         // A folga cobre o arredondamento de subpixel do navegador, e nada mais:
         // um quadro que virou 560x315 fixo numa coluna de 900px erra por muito
         // mais do que isto.
-        if (abs($obtida - $nominal) / $nominal > 0.02) {
+        if (abs($obtained - $nominal) / $nominal > 0.02) {
             throw new ExpectationException(
                 sprintf(
                     'O quadro mede %dx%d, proporcao %.3f, e deveria ser %s (%.3f).',
-                    $medida['width'],
-                    $medida['height'],
-                    $obtida,
+                    $measured['width'],
+                    $measured['height'],
+                    $obtained,
                     $ratio,
                     $nominal
                 ),
@@ -98,16 +98,16 @@ class behat_mod_ldgvideo extends behat_base {
     public function the_video_frame_should_fill_its_column(): void {
         $this->require_javascript();
 
-        $medida = $this->medir_quadro();
+        $measured = $this->measure_frame();
 
         // Um quadro que caiu no 560 do atributo do core, ou perto disso, dentro
         // de uma coluna bem mais larga, e exatamente o defeito que se persegue.
-        if ($medida['width'] < $medida['parent'] - 2) {
+        if ($measured['width'] < $measured['parent'] - 2) {
             throw new ExpectationException(
                 sprintf(
                     'O quadro mede %dpx numa coluna de %dpx - ele deveria acompanhar a coluna.',
-                    $medida['width'],
-                    $medida['parent']
+                    $measured['width'],
+                    $measured['parent']
                 ),
                 $this->getSession()
             );
@@ -119,34 +119,34 @@ class behat_mod_ldgvideo extends behat_base {
      *
      * @return array{width: float, height: float, parent: float}
      */
-    protected function medir_quadro(): array {
+    protected function measure_frame(): array {
         // ENVOLVIDO NUMA FUNCAO de proposito: o evaluate_script do Moodle avalia
         // uma EXPRESSAO, e nao um bloco - declarar const ou usar return solto ali
         // devolve "Unexpected token 'const'" vindo do Chrome, longe da causa.
-        $medida = $this->evaluate_script(
+        $measured = $this->evaluate_script(
             '(function() {'
             . 'var el = document.querySelector(".ldgvideo__frame");'
             . 'if (!el) { return null; }'
             . 'var r = el.getBoundingClientRect();'
-            . 'var pai = el.parentElement;'
-            . 'var s = window.getComputedStyle(pai);'
+            . 'var parent = el.parentElement;'
+            . 'var s = window.getComputedStyle(parent);'
             // A largura da CAIXA DE CONTEUDO do pai, e nao a de borda: um
             // width:100% preenche o conteudo, e o padding do pai fica de fora.
             // Comparar com a caixa de borda acusaria falha por 30px de padding
             // com o CSS perfeitamente correto - foi o que aconteceu aqui.
-            . 'var disponivel = pai.clientWidth'
+            . 'var available = parent.clientWidth'
             . ' - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);'
-            . 'return {width: r.width, height: r.height, parent: disponivel};'
+            . 'return {width: r.width, height: r.height, parent: available};'
             . '})()'
         );
 
-        if (!$medida) {
+        if (!$measured) {
             throw new ExpectationException(
                 'Nao ha nenhum .ldgvideo__frame nesta pagina.',
                 $this->getSession()
             );
         }
 
-        return $medida;
+        return $measured;
     }
 }

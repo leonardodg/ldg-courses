@@ -46,9 +46,9 @@ final class backup_restore_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $curso = $this->getDataGenerator()->create_course();
+        $course = $this->getDataGenerator()->create_course();
         $original = $this->getDataGenerator()->create_module('ldgvideo', [
-            'course' => $curso->id,
+            'course' => $course->id,
             'name' => 'Aula vertical',
             'videourl' => 'https://vimeo.com/226053498',
             'aspectratio' => url::RATIO_PORTRAIT,
@@ -57,12 +57,12 @@ final class backup_restore_test extends \advanced_testcase {
         // Usa cmactions::duplicate, e nao duplicate_module(): a funcao solta esta
         // depreciada desde o 5.2 (MDL-86858), e um debugging() no meio da suite
         // faz o PHPUnit reprovar.
-        $copia = (new \core_courseformat\local\cmactions($curso))->duplicate($original->cmid);
+        $copy = (new \core_courseformat\local\cmactions($course))->duplicate($original->cmid);
 
-        $linha = $DB->get_record('ldgvideo', ['id' => $copia->instance], '*', MUST_EXIST);
+        $record = $DB->get_record('ldgvideo', ['id' => $copy->instance], '*', MUST_EXIST);
 
-        $this->assertSame('https://vimeo.com/226053498', $linha->videourl);
-        $this->assertSame(url::RATIO_PORTRAIT, $linha->aspectratio);
-        $this->assertNotEquals($original->id, $linha->id);
+        $this->assertSame('https://vimeo.com/226053498', $record->videourl);
+        $this->assertSame(url::RATIO_PORTRAIT, $record->aspectratio);
+        $this->assertNotEquals($original->id, $record->id);
     }
 }

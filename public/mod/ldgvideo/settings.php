@@ -52,9 +52,9 @@ if ($ADMIN->fulltree) {
         1
     ));
 
-    $proporcoes = [];
-    foreach (\mod_ldgvideo\url::ratios() as $valor => $chave) {
-        $proporcoes[$valor] = get_string($chave, 'ldgvideo');
+    $ratios = [];
+    foreach (\mod_ldgvideo\url::ratios() as $value => $key) {
+        $ratios[$value] = get_string($key, 'ldgvideo');
     }
 
     $settings->add(new admin_setting_configselect(
@@ -62,6 +62,6 @@ if ($ADMIN->fulltree) {
         get_string('aspectratio', 'ldgvideo'),
         get_string('configaspectratio', 'ldgvideo'),
         \mod_ldgvideo\url::RATIO_LANDSCAPE,
-        $proporcoes
+        $ratios
     ));
 }

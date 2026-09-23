@@ -197,31 +197,31 @@ final class mod_form_test extends \advanced_testcase {
         $vertical = '<iframe width="315" height="560" '
             . 'src="https://www.youtube.com/embed/d2bq9QW7fZg"></iframe>';
 
-        $lida = url::normalize($vertical)['ratio'];
-        $this->assertSame(url::RATIO_PORTRAIT, $lida);
+        $detected = url::normalize($vertical)['ratio'];
+        $this->assertSame(url::RATIO_PORTRAIT, $detected);
 
-        $padrao = url::RATIO_LANDSCAPE;
+        $default = url::RATIO_LANDSCAPE;
 
         // O professor nao mexeu no campo: a leitura entra.
         $this->assertSame(
             url::RATIO_PORTRAIT,
-            url::choose_ratio($lida, $padrao, $padrao)
+            url::choose_ratio($detected, $default, $default)
         );
 
         // O professor escolheu 4:3: a escolha dele vence.
         $this->assertSame(
             url::RATIO_CLASSIC,
-            url::choose_ratio($lida, url::RATIO_CLASSIC, $padrao)
+            url::choose_ratio($detected, url::RATIO_CLASSIC, $default)
         );
 
         // Nao houve leitura: o campo manda, seja o padrao ou nao.
         $this->assertSame(
             url::RATIO_LANDSCAPE,
-            url::choose_ratio(null, $padrao, $padrao)
+            url::choose_ratio(null, $default, $default)
         );
         $this->assertSame(
             url::RATIO_PORTRAIT,
-            url::choose_ratio(null, url::RATIO_PORTRAIT, $padrao)
+            url::choose_ratio(null, url::RATIO_PORTRAIT, $default)
         );
     }
 }

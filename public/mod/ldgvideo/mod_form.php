@@ -78,12 +78,12 @@ class mod_ldgvideo_mod_form extends moodleform_mod {
         $mform->addRule('videourl', get_string('required'), 'required', null, 'client');
         $mform->addHelpButton('videourl', 'videourl', 'ldgvideo');
 
-        $proporcoes = [];
-        foreach (\mod_ldgvideo\url::ratios() as $valor => $chave) {
-            $proporcoes[$valor] = get_string($chave, 'ldgvideo');
+        $ratios = [];
+        foreach (\mod_ldgvideo\url::ratios() as $value => $key) {
+            $ratios[$value] = get_string($key, 'ldgvideo');
         }
 
-        $mform->addElement('select', 'aspectratio', get_string('aspectratio', 'ldgvideo'), $proporcoes);
+        $mform->addElement('select', 'aspectratio', get_string('aspectratio', 'ldgvideo'), $ratios);
         $mform->setDefault('aspectratio', $config->aspectratio ?? \mod_ldgvideo\url::RATIO_LANDSCAPE);
         $mform->addHelpButton('aspectratio', 'aspectratio', 'ldgvideo');
 
@@ -104,8 +104,8 @@ class mod_ldgvideo_mod_form extends moodleform_mod {
      */
     public function data_preprocessing(&$defaultvalues) {
         if (!empty($defaultvalues['displayoptions'])) {
-            $opcoes = (array) unserialize_array($defaultvalues['displayoptions']);
-            $defaultvalues['printintro'] = $opcoes['printintro'] ?? 1;
+            $options = (array) unserialize_array($defaultvalues['displayoptions']);
+            $defaultvalues['printintro'] = $options['printintro'] ?? 1;
         }
     }
 
@@ -129,10 +129,10 @@ class mod_ldgvideo_mod_form extends moodleform_mod {
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
 
-        $problema = \mod_ldgvideo\url::problem((string) ($data['videourl'] ?? ''));
+        $problem = \mod_ldgvideo\url::problem((string) ($data['videourl'] ?? ''));
 
-        if ($problema !== null) {
-            $errors['videourl'] = get_string($problema, 'ldgvideo');
+        if ($problem !== null) {
+            $errors['videourl'] = get_string($problem, 'ldgvideo');
         }
 
         return $errors;
@@ -161,12 +161,12 @@ class mod_ldgvideo_mod_form extends moodleform_mod {
 
         $data->videourl = $video['url']->out(false);
 
-        $padrao = get_config('ldgvideo', 'aspectratio') ?: \mod_ldgvideo\url::RATIO_LANDSCAPE;
+        $default = get_config('ldgvideo', 'aspectratio') ?: \mod_ldgvideo\url::RATIO_LANDSCAPE;
 
         $data->aspectratio = \mod_ldgvideo\url::choose_ratio(
             $video['ratio'],
-            (string) ($data->aspectratio ?? $padrao),
-            $padrao
+            (string) ($data->aspectratio ?? $default),
+            $default
         );
 
         return $data;

@@ -122,21 +122,21 @@ class mod_ldgvideo_external extends external_api {
      */
     public static function get_ldgvideos_by_courses($courseids = []) {
         $warnings = [];
-        $devolvidos = [];
+        $returned = [];
 
         $params = self::validate_parameters(
             self::get_ldgvideos_by_courses_parameters(),
             ['courseids' => $courseids]
         );
 
-        $meuscursos = [];
+        $mycourses = [];
         if (empty($params['courseids'])) {
-            $meuscursos = enrol_get_my_courses();
-            $params['courseids'] = array_keys($meuscursos);
+            $mycourses = enrol_get_my_courses();
+            $params['courseids'] = array_keys($mycourses);
         }
 
         if (!empty($params['courseids'])) {
-            [$courses, $warnings] = util::validate_courses($params['courseids'], $meuscursos);
+            [$courses, $warnings] = util::validate_courses($params['courseids'], $mycourses);
 
             $videos = get_all_instances_in_courses('ldgvideo', $courses);
 
@@ -159,12 +159,12 @@ class mod_ldgvideo_external extends external_api {
                 }
 
                 helper_for_get_mods_by_courses::format_name_and_intro($video, 'mod_ldgvideo');
-                $devolvidos[] = $video;
+                $returned[] = $video;
             }
         }
 
         return [
-            'ldgvideos' => $devolvidos,
+            'ldgvideos' => $returned,
             'warnings' => $warnings,
         ];
     }
