@@ -410,23 +410,23 @@ final class sync_user_test extends \advanced_testcase {
      * @return void
      */
     public function test_renovar_estende_o_prazo_sem_contar_reativacao(): void {
-        $primeiro = time() + (30 * DAYSECS);
+        $first = time() + (30 * DAYSECS);
         [$offer, $courseids] = $this->make_offer();
-        $direito = $this->grant($offer, $primeiro);
+        $entitlement = $this->grant($offer, $first);
 
         $this->plugin->sync_user((int) $this->user->id);
-        $this->assertSame($primeiro, $this->timeend_in($courseids[0]));
+        $this->assertSame($first, $this->timeend_in($courseids[0]));
 
-        $segundo = $primeiro + (30 * DAYSECS);
-        $direito->set('timeend', $segundo);
-        $direito->update();
+        $second = $first + (30 * DAYSECS);
+        $entitlement->set('timeend', $second);
+        $entitlement->update();
 
-        [$matriculadas, $suspensas, $reativadas] = $this->plugin->sync_user((int) $this->user->id);
+        [$enrolled, $suspended, $reactivated] = $this->plugin->sync_user((int) $this->user->id);
 
-        $this->assertSame($segundo, $this->timeend_in($courseids[0]));
-        $this->assertSame(0, $reativadas, 'estender prazo nao e reativar');
-        $this->assertSame(0, $matriculadas);
-        $this->assertSame(0, $suspensas);
+        $this->assertSame($second, $this->timeend_in($courseids[0]));
+        $this->assertSame(0, $reactivated, 'estender prazo nao e reativar');
+        $this->assertSame(0, $enrolled);
+        $this->assertSame(0, $suspended);
     }
 
     /**
