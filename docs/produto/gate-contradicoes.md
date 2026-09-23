@@ -22,7 +22,7 @@ O ADR-0014 existe e o índice de ADRs já o marca:
 - [`../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md`](../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md) — **Situação: Proposta** (2026-09-23), supera o 0005.
 - [`../adr/README.md`](../adr/README.md) — linha 0005 = "Superada por ADR-0014"; linha 0014 = "Proposta".
 
-Os docs do hub **não citam o 0014 em lugar nenhum** (`grep 0014 docs/produto/` = 0) e ainda descrevem a escrita como futura:
+Fora deste gate, **nenhum doc do hub cita o 0014** (`grep -rn 0014 docs/produto/ --exclude=gate-contradicoes.md` = 0; os 16 hits do grep sem exclude são todos deste arquivo). `prd.md`, `trd.md`, `plano-implementacao.md` e `schema-backend.md` ainda citam o 0005 / "novo ADR" sem apontar para o 0014 e descrevem a escrita como futura:
 
 | Arquivo | O quê |
 |---|---|
@@ -95,8 +95,8 @@ O hub está **dividido**: [`schema-backend.md`](schema-backend.md) (l. 34) e [`.
 
 ### C6. Editorial: "6 documentos" × 7 arquivos
 
-- [`../ai-plans/2026-09-23-cs-moodle-extra-e-hub-produto.md`](../ai-plans/2026-09-23-cs-moodle-extra-e-hub-produto.md) l. 35: "preencher **6 documentos**"; checklist l. 96–97 lista **7 caminhos** (`README.md` + os 6).
-- [`README.md`](README.md) do hub indexa **6** documentos na tabela + ele mesmo.
+- [`../ai-plans/2026-09-23-cs-moodle-extra-e-hub-produto.md`](../ai-plans/2026-09-23-cs-moodle-extra-e-hub-produto.md) l. 38: "preencher **6 documentos**"; checklist l. 100–101 lista **7 caminhos** (`README.md` + os 6).
+- [`README.md`](README.md) do hub indexa **7** documentos na tabela + ele mesmo (inclui este gate).
 
 Editorial (README + 6 ≠ "6 documentos" sem qualificar). Sem impacto de produto; marcar se o ai-plan for atualizado.
 
@@ -150,7 +150,7 @@ Decisões e confirmações que **só o usuário** fecha. Nada aqui foi presumido
 
 Comissões ~10% / ~5%, mensalidades ~R$ 50–100 / ~R$ 300, e o valor exato de `pro.monthlyfee` — em [`prd.md`](prd.md) l. 64–71, 128–129; [`README.md`](README.md) do hub l. 36–39; [`plano-implementacao.md`](plano-implementacao.md) pré-condição 2. Enquanto abertos: **nenhum código assume percentual/faixa** (TRD). Inclui a reconciliação C2 (rótulos e tier→resolução).
 
-### A2. Cloudflare fora da v1 — **fechado** (restate, não é aberto)
+### A2. Cloudflare fora da v1 — **fechado** (reafirmação, não é aberto)
 
 Decidido e repetido sem ambiguidade em [`prd.md`](prd.md) não-objetivos, [`trd.md`](trd.md) Frente B + riscos, [`README.md`](README.md) do hub, [`schema-backend.md`](schema-backend.md), [`plano-implementacao.md`](plano-implementacao.md) § 3, ADR-0014. **Não reabrir por esta lista.**
 

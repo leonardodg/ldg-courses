@@ -14,6 +14,7 @@ aponta para eles, sem copiar conteúdo deles.
 | [`briefing-ui-ux.md`](briefing-ui-ux.md) | Briefing de UI/UX; o sistema visual é [`../brand/DESIGN.md`](../brand/DESIGN.md), sem repetir tokens aqui |
 | [`schema-backend.md`](schema-backend.md) | Visão de schema do backend; a fonte das tabelas é [`../data-model/marketplace.md`](../data-model/marketplace.md) — aqui fica só a intenção de nível de produto |
 | [`plano-implementacao.md`](plano-implementacao.md) | Plano de implementação da frente de vídeo: Bunny multi-tenant + trava de resolução por mensalidade do vendedor, depois BYOS |
+| [`gate-contradicoes.md`](gate-contradicoes.md) | Gate de release pré-vídeo: contradições, faltas e pontos em aberto antes de qualquer código da fase de vídeo |
 
 ## O que NÃO vive aqui
 

@@ -5,7 +5,7 @@
 > completa de colunas aqui, nem um segundo dicionário de dados. Este documento
 > responde outra pergunta: **que conceitos de produto o modelo precisa
 > expressar**, e onde cada um vive hoje. Nomes de tabela conferidos no
-> data-model; lacunas marcadas como proposta.
+> data-model; lacunas marcadas como **proposto (não implementado)**.
 
 ## Conceitos de produto → estruturas existentes
 
