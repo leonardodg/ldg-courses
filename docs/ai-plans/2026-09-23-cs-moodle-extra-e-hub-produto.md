@@ -5,16 +5,18 @@
 > Varredura: `moodle` = 0 violações; `moodle-extra` = 0 erros / 134 warnings,
 > todas `ConstantVisibility` em 38 arquivos. Usuário escolheu **opção A**.
 >
-> **Etapa 0 — local verde; commit/PR abertos:** `.phpcs.xml` versionado; 134
-> constantes → `public const` (38 arquivos); CI com
+> **Etapa 0 — local verde; commit + push feitos; PR pendente de reabertura:**
+> `.phpcs.xml` versionado; 134 constantes → `public const` (38 arquivos); CI com
 > `moodle-plugin-ci phpcs --standard moodle-extra --max-warnings 0`;
 > `docs/coding-standards/README.md` reescrito com hierarquia Moodle →
 > moodle-cs → projeto (`moodle-extra`) → PSR-12 → PSR-1, PHP 8.3+, limites
 > 132/180. **Verificação local:** phpcs `moodle-extra` e via `.phpcs.xml` = 0
 > issues em 333 arquivos (`EXIT=0`); `moodle` continua limpo; **740 testes** nas
-> 11 suites customizadas, todas OK. PR aberto para `dev`. **Pendente:** CI
-> verde + revisão do usuário na doc de CS. **Etapa 1 (hub `docs/produto/`) só
-> depois do checkpoint.**
+> 11 suites customizadas, todas OK. Commit `d76603f54f0` na branch
+> `feature/cs-moodle-extra` (push OK). **Pendente:** reabrir PR para `dev`
+> (`gh pr create` falhou com "No commits between…"), CI verde, revisão do
+> usuário na doc de CS. **Etapa 1 (hub `docs/produto/`) só depois do
+> checkpoint.**
 
 # CS com moodle-extra e hub de produto — Plano
 
@@ -82,7 +84,8 @@ de qualquer código da fase de vídeo.
 - [x] Docs de comando atualizados: `padrao-de-implementacao.md`,
       `guia-desenvolvedor.md`, `CLAUDE.md`, README do `paygw_pagarme`
 - [x] Verificação local: phpcs total + 11 suites phpunit
-- [x] Commit + push + PR para `dev`
+- [x] Commit + push da branch `feature/cs-moodle-extra`
+- [ ] PR para `dev` (primeiro `gh pr create` falhou: "No commits between…")
 - [ ] CI verde + revisão do usuário na doc de CS (checkpoint Etapa 0)
 
 ### Etapa 1 (depois do checkpoint)
