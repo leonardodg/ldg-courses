@@ -1,6 +1,6 @@
 # ADR-0005 — A trava de resolução por ticket, e onde ela precisa ser aplicada
 
-**Situação:** Proposta · **Data:** 2026-08-31
+**Situação:** Superada por ADR-0014 · **Data:** 2026-08-31
 
 ## Contexto
 
