@@ -189,7 +189,7 @@ final class sale_test extends \advanced_testcase {
 
         // O "companyid" usado aqui e de proposito o MESMO id da oferta de
         // teste - e o cenario de colisao que a guarda existe para cobrir.
-        $resultado = api::record_sale(
+        $result = api::record_sale(
             'local_marketplace',
             $paymentid,
             (int) $this->offer->get('id'),
@@ -199,7 +199,7 @@ final class sale_test extends \advanced_testcase {
             payment\service_provider::PAYMENT_AREA_PLAN
         );
 
-        $this->assertNull($resultado);
+        $this->assertNull($result);
         $this->assertCount(0, sale::get_for_company((int) $this->company->get('id')));
     }
 
@@ -319,16 +319,16 @@ final class sale_test extends \advanced_testcase {
             (int) $this->buyer->id
         );
 
-        $antes = entitlement::get_active_for_user((int) $this->buyer->id);
-        $this->assertCount(1, $antes, 'a venda precisa ter gerado direito');
+        $before = entitlement::get_active_for_user((int) $this->buyer->id);
+        $this->assertCount(1, $before, 'a venda precisa ter gerado direito');
 
-        $revogou = api::record_refund($paymentid);
+        $revoked = api::record_refund($paymentid);
 
-        $this->assertTrue($revogou);
+        $this->assertTrue($revoked);
         $this->assertSame([], entitlement::get_active_for_user((int) $this->buyer->id));
 
-        $todos = entitlement::get_records(['userid' => (int) $this->buyer->id]);
-        $this->assertSame(entitlement::STATUS_CANCELLED, reset($todos)->get('status'));
+        $all = entitlement::get_records(['userid' => (int) $this->buyer->id]);
+        $this->assertSame(entitlement::STATUS_CANCELLED, reset($all)->get('status'));
 
         // A venda FICA no historico: apagar esconderia o dinheiro que entrou e
         // saiu, e o relatorio precisa dos dois lados.

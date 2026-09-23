@@ -135,18 +135,18 @@ foreach ($ents as $ent) {
     // assinatura o gateway ja gerou a cobranca do ciclo, e com boleto ela ja tem
     // linha digitavel. Mandar para a vitrine e pedir que o aluno compre de novo
     // algo que ja esta cobrado.
-    $fatura = api::pending_invoice_for('local_marketplace', (int) $offer->get('id'), (int) $USER->id);
+    $invoice = api::pending_invoice_for('local_marketplace', (int) $offer->get('id'), (int) $USER->id);
 
-    if ($fatura) {
+    if ($invoice) {
         $actions = html_writer::link(
-            $fatura['url'],
+            $invoice['url'],
             get_string('payinvoice', 'local_marketplace'),
             ['class' => 'btn btn-sm btn-primary', 'target' => '_blank', 'rel' => 'noopener']
         );
-        if ($fatura['line'] !== '') {
+        if ($invoice['line'] !== '') {
             $actions .= html_writer::tag(
                 'div',
-                html_writer::tag('code', s($fatura['line'])),
+                html_writer::tag('code', s($invoice['line'])),
                 ['class' => 'small text-muted mt-1']
             );
         }
@@ -185,12 +185,12 @@ foreach ($ents as $ent) {
 
     // So informativo: o aluno nao escolhe a forma de renovacao aqui, so ve
     // qual esta valendo. Quem quer mudar usa o botao de troca, quando existe.
-    $metodo = api::payment_method_for('local_marketplace', (int) $offer->get('id'), (int) $USER->id);
+    $method = api::payment_method_for('local_marketplace', (int) $offer->get('id'), (int) $USER->id);
 
     $table->data[] = [
         format_string($offer->get('name')),
         format_string($c->get('name')),
-        $metodo ?? '-',
+        $method ?? '-',
         (int) $ent->get('cycles'),
         $end > 0 ? userdate($end, get_string('strftimedaydate')) : '-',
         $badge,

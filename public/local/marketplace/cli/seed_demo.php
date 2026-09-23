@@ -150,15 +150,15 @@ $company = api::create_company((object) [
 ], (int) $seller->id);
 
 $accounts = $company->get_payment_accounts();
-$contas = [];
+$accountpairs = [];
 foreach ($accounts as $countrycode => $account) {
-    $contas[] = $countrycode . ':' . $account->get('id');
+    $accountpairs[] = $countrycode . ':' . $account->get('id');
 }
 cli_writeln(sprintf(
     "Empresa criada: id %d | categoria %d | contas por pais %s",
     $company->get('id'),
     $company->get('categoryid'),
-    $contas ? implode(', ', $contas) : 'nenhuma'
+    $accountpairs ? implode(', ', $accountpairs) : 'nenhuma'
 ));
 
 // Cursos.
@@ -212,18 +212,18 @@ function seed_offer(
 }
 
 // Uma oferta de cada formato, para exercitar todos os caminhos.
-$ofertas = [
+$offers = [
     seed_offer($company, 'Curso 1 - avulso', 'single', 'lifetime', 0, 49.90, [$courseids[0]]),
     seed_offer($company, 'Curso 1 - 30 dias', 'single', 'days', 30, 19.90, [$courseids[0]]),
     seed_offer($company, 'Combo completo', 'bundle', 'lifetime', 0, 99.90, $courseids),
     seed_offer($company, 'Gratuito', 'single', 'lifetime', 0, 0.00, [$courseids[count($courseids) - 1]]),
 ];
 // Assinatura do catalogo: nao lista cursos, segue a categoria.
-$ofertas[] = seed_offer($company, 'Assinatura mensal', 'catalog', 'recurring', 30, 29.90, []);
+$offers[] = seed_offer($company, 'Assinatura mensal', 'catalog', 'recurring', 30, 29.90, []);
 
 cli_writeln('');
 cli_heading('Ofertas publicadas');
-foreach ($ofertas as $o) {
+foreach ($offers as $o) {
     cli_writeln(sprintf(
         '  %-24s %-8s %-9s %8.2f  libera %d curso(s)',
         $o->get('name'),

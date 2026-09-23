@@ -225,21 +225,21 @@ class roles {
         // isto, assign_capability() aborta com "Capability ... was not found".
         update_capabilities('local_marketplace');
 
-        $nomes = [
+        $names = [
             self::MANAGER => ['managerrole', 'managerroledesc'],
             self::SELLER => ['sellerrole', 'sellerroledesc'],
         ];
 
         $ids = [];
 
-        foreach ($nomes as $shortname => [$nome, $descricao]) {
+        foreach ($names as $shortname => [$name, $description]) {
             $roleid = $DB->get_field('role', 'id', ['shortname' => $shortname]);
 
             if (!$roleid) {
                 $roleid = create_role(
-                    get_string($nome, 'local_marketplace'),
+                    get_string($name, 'local_marketplace'),
                     $shortname,
-                    get_string($descricao, 'local_marketplace')
+                    get_string($description, 'local_marketplace')
                 );
             }
 
@@ -284,10 +284,10 @@ class roles {
 
         $syscontext = \context_system::instance();
 
-        $esperadas = [];
+        $expected = [];
 
         foreach (self::allow_for($shortname) as $capability) {
-            $esperadas[$capability] = CAP_ALLOW;
+            $expected[$capability] = CAP_ALLOW;
         }
 
         foreach (self::PROHIBIT as $capability) {
@@ -300,22 +300,22 @@ class roles {
 
             // Depois do ALLOW de proposito: se uma capability caisse nas duas
             // listas, a proibicao tem que vencer.
-            $esperadas[$capability] = CAP_PROHIBIT;
+            $expected[$capability] = CAP_PROHIBIT;
         }
 
-        $atuais = $DB->get_records('role_capabilities', [
+        $current = $DB->get_records('role_capabilities', [
             'roleid' => $roleid,
             'contextid' => $syscontext->id,
         ]);
 
-        foreach ($atuais as $atual) {
-            if (!isset($esperadas[$atual->capability])) {
-                unassign_capability($atual->capability, $roleid, $syscontext->id);
+        foreach ($current as $existing) {
+            if (!isset($expected[$existing->capability])) {
+                unassign_capability($existing->capability, $roleid, $syscontext->id);
             }
         }
 
-        foreach ($esperadas as $capability => $permissao) {
-            assign_capability($capability, $permissao, $roleid, $syscontext->id, true);
+        foreach ($expected as $capability => $permission) {
+            assign_capability($capability, $permission, $roleid, $syscontext->id, true);
         }
     }
 
@@ -338,14 +338,14 @@ class roles {
         $managerid = self::get_id(self::MANAGER);
         $sellerid = self::get_id(self::SELLER);
 
-        $migrados = 0;
+        $migrated = 0;
 
         foreach (company::get_records() as $company) {
             if (!$company->get('categoryid')) {
                 continue;
             }
 
-            $contexto = $company->get_context();
+            $context = $company->get_context();
 
             foreach (member::get_records(['companyid' => $company->get('id')]) as $member) {
                 if (!$member->is_owner()) {
@@ -354,24 +354,24 @@ class roles {
 
                 $userid = (int) $member->get('userid');
 
-                $ja = $DB->record_exists('role_assignments', [
+                $already = $DB->record_exists('role_assignments', [
                     'roleid' => $managerid,
                     'userid' => $userid,
-                    'contextid' => $contexto->id,
+                    'contextid' => $context->id,
                 ]);
 
-                if (!$ja) {
-                    role_assign($managerid, $userid, $contexto->id);
-                    $migrados++;
+                if (!$already) {
+                    role_assign($managerid, $userid, $context->id);
+                    $migrated++;
                 }
 
                 // O papel antigo sai depois de o novo entrar. Na ordem
                 // inversa, um erro no meio deixaria o dono sem papel nenhum.
-                role_unassign($sellerid, $userid, $contexto->id);
+                role_unassign($sellerid, $userid, $context->id);
             }
         }
 
-        return $migrados;
+        return $migrated;
     }
 
     /**
@@ -386,23 +386,23 @@ class roles {
     public static function open_repositories(): array {
         global $DB;
 
-        $proibidos = array_flip(self::PROHIBIT);
-        $abertos = [];
+        $prohibited = array_flip(self::PROHIBIT);
+        $open = [];
 
-        $habilitados = $DB->get_fieldset_select('repository', 'type', 'visible = 1');
+        $enabled = $DB->get_fieldset_select('repository', 'type', 'visible = 1');
 
-        foreach ($habilitados as $tipo) {
-            if (in_array($tipo, self::REPOSITORIES_ALLOWED, true)) {
+        foreach ($enabled as $type) {
+            if (in_array($type, self::REPOSITORIES_ALLOWED, true)) {
                 continue;
             }
 
-            if (!isset($proibidos["repository/{$tipo}:view"])) {
-                $abertos[] = $tipo;
+            if (!isset($prohibited["repository/{$type}:view"])) {
+                $open[] = $type;
             }
         }
 
-        sort($abertos);
+        sort($open);
 
-        return $abertos;
+        return $open;
     }
 }

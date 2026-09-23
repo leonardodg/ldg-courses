@@ -66,7 +66,7 @@ final class db_schema_test extends \advanced_testcase {
      *
      * @var string[]
      */
-    private const REMOVIDAS = [
+    private const REMOVED = [
         // Guardava o token do Mercado Pago, e criava uma segunda fonte de
         // verdade para credencial financeira. Removida em 2026082404; a
         // credencial vive no account_gateway.config do core_payment.
@@ -87,7 +87,7 @@ final class db_schema_test extends \advanced_testcase {
      *
      * @var array<string,string> nome errado => passo que corrigiu
      */
-    private const ERRADAS_JA_CORRIGIDAS = [
+    private const WRONG_NAMES_FIXED = [
         // Saiu da classe (`course_policy`) e nao da constante TABLE dela, que e
         // `local_marketplace_course`. O table_exists() devolveu falso, a coluna
         // `commissionbase` nunca foi criada, e o upgrade terminou com sucesso.
@@ -103,7 +103,7 @@ final class db_schema_test extends \advanced_testcase {
      *
      * @var array<string,string> passo com a guarda => passo que corrigiu
      */
-    private const GUARDAS_JA_CORRIGIDAS = [
+    private const GUARDS_FIXED = [
         // Guardava tres add_field, e um deles nomeava tabela inexistente. A
         // guarda engoliu o engano; sem ela o upgrade teria estourado no dia.
         '2026090110' => '2026091110',
@@ -122,7 +122,7 @@ final class db_schema_test extends \advanced_testcase {
      *
      * @var array<string,string> caminho sob dirroot => prefixo das tabelas
      */
-    private const PLUGINS_DO_PROJETO = [
+    private const PROJECT_PLUGINS = [
         'local/marketplace' => 'local_marketplace',
         'local/partners' => 'local_partners',
         'theme/ldg' => 'theme_ldg',
@@ -138,13 +138,13 @@ final class db_schema_test extends \advanced_testcase {
     /**
      * O caminho dos arquivos de banco do plugin.
      *
-     * @param string $arquivo
+     * @param string $file
      * @return string
      */
-    private function caminho(string $arquivo): string {
+    private function path(string $file): string {
         global $CFG;
 
-        return $CFG->dirroot . '/local/marketplace/db/' . $arquivo;
+        return $CFG->dirroot . '/local/marketplace/db/' . $file;
     }
 
     /**
@@ -152,11 +152,11 @@ final class db_schema_test extends \advanced_testcase {
      *
      * @return string[]
      */
-    private function tabelas_declaradas(): array {
-        $xml = file_get_contents($this->caminho('install.xml'));
-        preg_match_all('/<TABLE NAME="([a-z_]+)"/', $xml, $achados);
+    private function declared_tables(): array {
+        $xml = file_get_contents($this->path('install.xml'));
+        preg_match_all('/<TABLE NAME="([a-z_]+)"/', $xml, $matches);
 
-        return $achados[1];
+        return $matches[1];
     }
 
     /**
@@ -170,43 +170,43 @@ final class db_schema_test extends \advanced_testcase {
      * @return void
      */
     public function test_o_upgrade_so_cita_tabela_que_existe(): void {
-        $php = file_get_contents($this->caminho('upgrade.php'));
-        preg_match_all('/[\'"](local_marketplace_[a-z_]+)[\'"]/', $php, $achados);
+        $php = file_get_contents($this->path('upgrade.php'));
+        preg_match_all('/[\'"](local_marketplace_[a-z_]+)[\'"]/', $php, $matches);
 
-        $citadas = array_unique($achados[1]);
-        $conhecidas = array_merge(
-            $this->tabelas_declaradas(),
-            self::REMOVIDAS,
-            array_keys(self::ERRADAS_JA_CORRIGIDAS)
+        $cited = array_unique($matches[1]);
+        $known = array_merge(
+            $this->declared_tables(),
+            self::REMOVED,
+            array_keys(self::WRONG_NAMES_FIXED)
         );
 
-        $orfas = array_values(array_diff($citadas, $conhecidas));
+        $orphans = array_values(array_diff($cited, $known));
 
-        $this->assertSame([], $orfas, implode("\n", [
-            'O upgrade.php cita tabela que nao existe no install.xml: ' . implode(', ', $orfas) . '.',
+        $this->assertSame([], $orphans, implode("\n", [
+            'O upgrade.php cita tabela que nao existe no install.xml: ' . implode(', ', $orphans) . '.',
             'Confira a constante TABLE da classe - o nome da classe nao e o nome da tabela.',
-            'Se a tabela foi removida de proposito, acrescente-a a db_schema_test::REMOVIDAS.',
-            'Se o passo ja rodou errado e outro passo ja corrigiu, use ERRADAS_JA_CORRIGIDAS.',
+            'Se a tabela foi removida de proposito, acrescente-a a db_schema_test::REMOVED.',
+            'Se o passo ja rodou errado e outro passo ja corrigiu, use WRONG_NAMES_FIXED.',
         ]));
     }
 
     /**
      * Todo nome errado do historico tem o passo corretivo no arquivo.
      *
-     * Sem isto, `ERRADAS_JA_CORRIGIDAS` viraria um lugar para calar o teste. A
+     * Sem isto, `WRONG_NAMES_FIXED` viraria um lugar para calar o teste. A
      * entrada so se sustenta enquanto o passo que consertou existir de verdade -
      * apagar o passo derruba este teste, e nao o outro.
      *
      * @return void
      */
     public function test_todo_engano_do_historico_tem_passo_corretivo(): void {
-        $php = file_get_contents($this->caminho('upgrade.php'));
+        $php = file_get_contents($this->path('upgrade.php'));
 
-        foreach (self::ERRADAS_JA_CORRIGIDAS as $errada => $passo) {
+        foreach (self::WRONG_NAMES_FIXED as $wrong => $step) {
             $this->assertStringContainsString(
-                "oldversion < {$passo}",
+                "oldversion < {$step}",
                 $php,
-                "'{$errada}' esta listada como corrigida pelo passo {$passo}, e esse passo nao existe"
+                "'{$wrong}' esta listada como corrigida pelo passo {$step}, e esse passo nao existe"
             );
         }
     }
@@ -235,31 +235,31 @@ final class db_schema_test extends \advanced_testcase {
     public function test_nenhum_passo_novo_esconde_operacao_atras_de_guarda(): void {
         global $CFG;
 
-        foreach (self::PLUGINS_DO_PROJETO as $caminho => $prefixo) {
-            $arquivo = $CFG->dirroot . '/' . $caminho . '/db/upgrade.php';
+        foreach (self::PROJECT_PLUGINS as $path => $prefix) {
+            $file = $CFG->dirroot . '/' . $path . '/db/upgrade.php';
 
-            if (!file_exists($arquivo)) {
+            if (!file_exists($file)) {
                 continue;
             }
 
-            $php = file_get_contents($arquivo);
+            $php = file_get_contents($file);
 
             // A forma exata: table_exists(...) seguido de && na mesma condicao.
-            preg_match_all('/table_exists\([^)]*\)\s*&&/', $php, $achados, PREG_OFFSET_CAPTURE);
+            preg_match_all('/table_exists\([^)]*\)\s*&&/', $php, $matches, PREG_OFFSET_CAPTURE);
 
-            foreach ($achados[0] as [$trecho, $posicao]) {
-                $passo = $this->passo_em($php, $posicao);
+            foreach ($matches[0] as [$snippet, $position]) {
+                $step = $this->step_at($php, $position);
 
                 $this->assertArrayHasKey(
-                    $passo,
-                    self::GUARDAS_JA_CORRIGIDAS,
+                    $step,
+                    self::GUARDS_FIXED,
                     implode("
 ", [
-                        "{$caminho}/db/upgrade.php, passo {$passo}: '{$trecho}' esconde a operacao.",
+                        "{$path}/db/upgrade.php, passo {$step}: '{$snippet}' esconde a operacao.",
                         'Tabela do proprio plugin sempre existe - a guarda so faz nome errado passar calado.',
                         'Tire o table_exists() e deixe o erro estourar, com o nome da tabela na mensagem.',
                         'Se a tabela e de plugin de TERCEIRO, que pode nao estar instalado, a guarda esta certa',
-                        'e o passo entra em db_schema_test::GUARDAS_JA_CORRIGIDAS com a justificativa.',
+                        'e o passo entra em db_schema_test::GUARDS_FIXED com a justificativa.',
                     ])
                 );
             }
@@ -270,13 +270,13 @@ final class db_schema_test extends \advanced_testcase {
      * Em qual passo de upgrade cai uma posicao do arquivo.
      *
      * @param string $php
-     * @param int $posicao
+     * @param int $position
      * @return string
      */
-    private function passo_em(string $php, int $posicao): string {
-        preg_match_all('/oldversion\s*<\s*(\d+)/', substr($php, 0, $posicao), $achados);
+    private function step_at(string $php, int $position): string {
+        preg_match_all('/oldversion\s*<\s*(\d+)/', substr($php, 0, $position), $matches);
 
-        return empty($achados[1]) ? 'fora de passo' : end($achados[1]);
+        return empty($matches[1]) ? 'fora de passo' : end($matches[1]);
     }
 
     /**
@@ -291,36 +291,36 @@ final class db_schema_test extends \advanced_testcase {
     public function test_nenhum_plugin_do_projeto_cita_tabela_ausente(): void {
         global $CFG;
 
-        $varridos = 0;
+        $scanned = 0;
 
-        foreach (self::PLUGINS_DO_PROJETO as $caminho => $prefixo) {
-            $base = $CFG->dirroot . '/' . $caminho . '/db/';
+        foreach (self::PROJECT_PLUGINS as $path => $prefix) {
+            $base = $CFG->dirroot . '/' . $path . '/db/';
 
             if (!file_exists($base . 'upgrade.php')) {
                 continue;
             }
 
-            $varridos++;
+            $scanned++;
 
-            $declaradas = [];
+            $declared = [];
             if (file_exists($base . 'install.xml')) {
-                preg_match_all('/<TABLE NAME="([a-z_0-9]+)"/', file_get_contents($base . 'install.xml'), $achados);
-                $declaradas = $achados[1];
+                preg_match_all('/<TABLE NAME="([a-z_0-9]+)"/', file_get_contents($base . 'install.xml'), $matches);
+                $declared = $matches[1];
             }
 
             preg_match_all(
-                '/[\'"](' . preg_quote($prefixo, '/') . '_[a-z_0-9]+)[\'"]/',
+                '/[\'"](' . preg_quote($prefix, '/') . '_[a-z_0-9]+)[\'"]/',
                 file_get_contents($base . 'upgrade.php'),
-                $achados
+                $matches
             );
 
-            $conhecidas = array_merge($declaradas, self::REMOVIDAS, array_keys(self::ERRADAS_JA_CORRIGIDAS));
-            $orfas = array_values(array_diff(array_unique($achados[1]), $conhecidas));
+            $known = array_merge($declared, self::REMOVED, array_keys(self::WRONG_NAMES_FIXED));
+            $orphans = array_values(array_diff(array_unique($matches[1]), $known));
 
             $this->assertSame(
                 [],
-                $orfas,
-                "{$caminho}/db/upgrade.php cita tabela que nao existe: " . implode(', ', $orfas)
+                $orphans,
+                "{$path}/db/upgrade.php cita tabela que nao existe: " . implode(', ', $orphans)
             );
         }
 
@@ -331,8 +331,8 @@ final class db_schema_test extends \advanced_testcase {
         // varredura e real la. Se um dia deixar de levar, esta linha avisa - em
         // vez de o teste encolher para um plugin so, continuar verde, e ninguem
         // notar que a promessa de "os dez plugins" virou um.
-        $this->assertGreaterThanOrEqual(2, $varridos, implode("\n", [
-            "Só {$varridos} plugin(s) do projeto estavam na arvore, e este teste existe para varrer varios.",
+        $this->assertGreaterThanOrEqual(2, $scanned, implode("\n", [
+            "Só {$scanned} plugin(s) do projeto estavam na arvore, e este teste existe para varrer varios.",
             'Verde aqui nao significa mais nada: confira se o CI ainda instala os outros em --extra-plugins.',
         ]));
     }
@@ -360,17 +360,17 @@ final class db_schema_test extends \advanced_testcase {
             \local_marketplace\sale::class,
         ];
 
-        foreach ($classes as $classe) {
-            $tabela = $classe::TABLE;
-            $colunas = array_keys($DB->get_columns($tabela));
+        foreach ($classes as $class) {
+            $table = $class::TABLE;
+            $columns = array_keys($DB->get_columns($table));
 
-            $this->assertNotEmpty($colunas, "a tabela {$tabela} da classe {$classe} nao existe");
+            $this->assertNotEmpty($columns, "a tabela {$table} da classe {$class} nao existe");
 
-            foreach (array_keys($classe::properties_definition()) as $propriedade) {
+            foreach (array_keys($class::properties_definition()) as $property) {
                 $this->assertContains(
-                    $propriedade,
-                    $colunas,
-                    "{$classe} declara '{$propriedade}', e {$tabela} nao tem essa coluna"
+                    $property,
+                    $columns,
+                    "{$class} declara '{$property}', e {$table} nao tem essa coluna"
                 );
             }
         }
@@ -389,20 +389,20 @@ final class db_schema_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $curso = $this->getDataGenerator()->create_course();
+        $course = $this->getDataGenerator()->create_course();
 
-        $politica = new course_policy(0, (object) [
-            'courseid' => (int) $curso->id,
+        $policy = new course_policy(0, (object) [
+            'courseid' => (int) $course->id,
             'companyid' => 1,
             'hostingtype' => course_policy::HOSTING_EXTERNAL,
             'commissionpct' => 7.5,
             'commissionbase' => commission::BASE_NET,
         ]);
-        $politica->create();
+        $policy->create();
 
-        $lida = new course_policy($politica->get('id'));
+        $read = new course_policy($policy->get('id'));
 
-        $this->assertSame(commission::BASE_NET, $lida->get('commissionbase'));
+        $this->assertSame(commission::BASE_NET, $read->get('commissionbase'));
     }
 
     /**
@@ -418,18 +418,18 @@ final class db_schema_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $curso = $this->getDataGenerator()->create_course();
+        $course = $this->getDataGenerator()->create_course();
 
-        $politica = new course_policy(0, (object) [
-            'courseid' => (int) $curso->id,
+        $policy = new course_policy(0, (object) [
+            'courseid' => (int) $course->id,
             'companyid' => 1,
             'hostingtype' => course_policy::HOSTING_EXTERNAL,
             'commissionpct' => 7.5,
         ]);
-        $politica->create();
+        $policy->create();
 
-        $lida = new course_policy($politica->get('id'));
+        $read = new course_policy($policy->get('id'));
 
-        $this->assertNull($lida->get('commissionbase'));
+        $this->assertNull($read->get('commissionbase'));
     }
 }

@@ -69,13 +69,13 @@ final class roles_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $primeira = roles::ensure();
-        $antes = $DB->count_records('role');
+        $first = roles::ensure();
+        $before = $DB->count_records('role');
 
-        $segunda = roles::ensure();
+        $second = roles::ensure();
 
-        $this->assertSame($primeira, $segunda);
-        $this->assertSame($antes, $DB->count_records('role'));
+        $this->assertSame($first, $second);
+        $this->assertSame($before, $DB->count_records('role'));
     }
 
     /**
@@ -97,16 +97,16 @@ final class roles_test extends \advanced_testcase {
 
         foreach ($ids as $shortname => $roleid) {
             foreach (roles::PROHIBIT as $capability) {
-                $registro = $DB->get_record('role_capabilities', [
+                $record = $DB->get_record('role_capabilities', [
                     'roleid' => $roleid,
                     'contextid' => $syscontext->id,
                     'capability' => $capability,
                 ]);
 
-                $this->assertNotFalse($registro, "{$capability} nao esta definida em {$shortname}");
+                $this->assertNotFalse($record, "{$capability} nao esta definida em {$shortname}");
                 $this->assertEquals(
                     CAP_PROHIBIT,
-                    $registro->permission,
+                    $record->permission,
                     "{$capability} tem que ser PROHIBIT em {$shortname}, e nao PREVENT"
                 );
             }
@@ -148,17 +148,17 @@ final class roles_test extends \advanced_testcase {
 
         roles::ensure();
 
-        $categoria = $this->getDataGenerator()->create_category();
-        $contexto = \context_coursecat::instance($categoria->id);
+        $category = $this->getDataGenerator()->create_category();
+        $context = \context_coursecat::instance($category->id);
         $editor = $this->getDataGenerator()->create_user();
-        role_assign($sellerid, $editor->id, $contexto->id);
+        role_assign($sellerid, $editor->id, $context->id);
 
-        $this->assertFalse(has_capability('local/marketplace:managepayment', $contexto, $editor));
-        $this->assertFalse(has_capability('moodle/role:assign', $contexto, $editor));
-        $this->assertFalse(has_capability('repository/dropbox:view', $contexto, $editor));
+        $this->assertFalse(has_capability('local/marketplace:managepayment', $context, $editor));
+        $this->assertFalse(has_capability('moodle/role:assign', $context, $editor));
+        $this->assertFalse(has_capability('repository/dropbox:view', $context, $editor));
 
         // E o que deve ficar continua la.
-        $this->assertTrue(has_capability('moodle/course:manageactivities', $contexto, $editor));
+        $this->assertTrue(has_capability('moodle/course:manageactivities', $context, $editor));
     }
 
     /**
@@ -178,21 +178,21 @@ final class roles_test extends \advanced_testcase {
 
         roles::ensure();
 
-        $categoria = $this->getDataGenerator()->create_category();
-        $contexto = \context_coursecat::instance($categoria->id);
+        $category = $this->getDataGenerator()->create_category();
+        $context = \context_coursecat::instance($category->id);
 
-        $qualquer = $this->getDataGenerator()->create_user();
-        $vendedor = $this->getDataGenerator()->create_user();
+        $anyone = $this->getDataGenerator()->create_user();
+        $seller = $this->getDataGenerator()->create_user();
 
-        role_assign(roles::get_id(roles::SELLER), $vendedor->id, $contexto->id);
+        role_assign(roles::get_id(roles::SELLER), $seller->id, $context->id);
 
         // O controle: sem o papel, o usuario logado PODE subir arquivo. Sem
         // esta assercao o teste passaria mesmo que a capability nao existisse.
-        $this->assertTrue(has_capability('repository/upload:view', $contexto, $qualquer));
+        $this->assertTrue(has_capability('repository/upload:view', $context, $anyone));
 
-        $this->assertFalse(has_capability('repository/upload:view', $contexto, $vendedor));
-        $this->assertFalse(has_capability('repository/user:view', $contexto, $vendedor));
-        $this->assertFalse(has_capability('moodle/restore:uploadfile', $contexto, $vendedor));
+        $this->assertFalse(has_capability('repository/upload:view', $context, $seller));
+        $this->assertFalse(has_capability('repository/user:view', $context, $seller));
+        $this->assertFalse(has_capability('moodle/restore:uploadfile', $context, $seller));
     }
 
     /**
@@ -224,18 +224,18 @@ final class roles_test extends \advanced_testcase {
 
         roles::ensure();
 
-        $dono = $this->getDataGenerator()->create_user();
-        $empresa = $this->criar_empresa($dono->id);
+        $owner = $this->getDataGenerator()->create_user();
+        $company = $this->create_company($owner->id);
 
-        $categoria = $empresa->get_context();
-        $pessoal = \context_user::instance($dono->id);
+        $category = $company->get_context();
+        $personal = \context_user::instance($owner->id);
 
         // Onde o curso e montado: trancado.
-        $this->assertFalse(has_capability('repository/upload:view', $categoria, $dono));
-        $this->assertFalse(has_capability('moodle/user:manageownfiles', $categoria, $dono));
+        $this->assertFalse(has_capability('repository/upload:view', $category, $owner));
+        $this->assertFalse(has_capability('moodle/user:manageownfiles', $category, $owner));
 
         // No proprio perfil: aberto, e de proposito - o papel nao esta la.
-        $this->assertTrue(has_capability('repository/upload:view', $pessoal, $dono));
+        $this->assertTrue(has_capability('repository/upload:view', $personal, $owner));
     }
 
     /**
@@ -248,31 +248,31 @@ final class roles_test extends \advanced_testcase {
 
         roles::ensure();
 
-        $categoria = $this->getDataGenerator()->create_category();
-        $contexto = \context_coursecat::instance($categoria->id);
+        $category = $this->getDataGenerator()->create_category();
+        $context = \context_coursecat::instance($category->id);
 
         $editor = $this->getDataGenerator()->create_user();
-        $gerente = $this->getDataGenerator()->create_user();
+        $manager = $this->getDataGenerator()->create_user();
 
-        role_assign(roles::get_id(roles::SELLER), $editor->id, $contexto->id);
-        role_assign(roles::get_id(roles::MANAGER), $gerente->id, $contexto->id);
+        role_assign(roles::get_id(roles::SELLER), $editor->id, $context->id);
+        role_assign(roles::get_id(roles::MANAGER), $manager->id, $context->id);
 
         // O que os dois compartilham: montar curso.
-        $this->assertTrue(has_capability('moodle/course:manageactivities', $contexto, $editor));
-        $this->assertTrue(has_capability('moodle/course:manageactivities', $contexto, $gerente));
+        $this->assertTrue(has_capability('moodle/course:manageactivities', $context, $editor));
+        $this->assertTrue(has_capability('moodle/course:manageactivities', $context, $manager));
 
         // O que so o gerente tem.
-        $this->assertFalse(has_capability('local/marketplace:managepayment', $contexto, $editor));
-        $this->assertTrue(has_capability('local/marketplace:managepayment', $contexto, $gerente));
+        $this->assertFalse(has_capability('local/marketplace:managepayment', $context, $editor));
+        $this->assertTrue(has_capability('local/marketplace:managepayment', $context, $manager));
 
-        $this->assertFalse(has_capability('local/marketplace:managecompany', $contexto, $editor));
-        $this->assertTrue(has_capability('local/marketplace:managecompany', $contexto, $gerente));
+        $this->assertFalse(has_capability('local/marketplace:managecompany', $context, $editor));
+        $this->assertTrue(has_capability('local/marketplace:managecompany', $context, $manager));
 
         // Quem pode atribuir papel pode tentar se dar um que permita upload.
         // Nao funciona - o PROHIBIT nao e sobreponivel -, mas a capability nao
         // tem por que estar nas maos de quem so monta curso.
-        $this->assertFalse(has_capability('moodle/role:assign', $contexto, $editor));
-        $this->assertTrue(has_capability('moodle/role:assign', $contexto, $gerente));
+        $this->assertFalse(has_capability('moodle/role:assign', $context, $editor));
+        $this->assertTrue(has_capability('moodle/role:assign', $context, $manager));
     }
 
     /**
@@ -301,30 +301,30 @@ final class roles_test extends \advanced_testcase {
 
         roles::ensure();
 
-        $dono = $this->getDataGenerator()->create_user();
-        $outro = $this->getDataGenerator()->create_user();
-        $empresa = $this->criar_empresa($dono->id);
-        api::add_member($empresa, $outro->id);
+        $owner = $this->getDataGenerator()->create_user();
+        $other = $this->getDataGenerator()->create_user();
+        $company = $this->create_company($owner->id);
+        api::add_member($company, $other->id);
 
-        $contexto = $empresa->get_context();
+        $context = $company->get_context();
 
         // O estado ANTES da correcao: os dois no papel de editor, que e o que a
         // base em producao tem hoje.
-        role_unassign(roles::get_id(roles::MANAGER), $dono->id, $contexto->id);
-        role_assign(roles::get_id(roles::SELLER), $dono->id, $contexto->id);
+        role_unassign(roles::get_id(roles::MANAGER), $owner->id, $context->id);
+        role_assign(roles::get_id(roles::SELLER), $owner->id, $context->id);
 
         $this->assertSame(1, roles::migrate_owners());
 
-        $this->assertTrue($this->tem_papel(roles::MANAGER, $dono->id, $contexto->id));
-        $this->assertFalse($this->tem_papel(roles::SELLER, $dono->id, $contexto->id));
+        $this->assertTrue($this->has_role(roles::MANAGER, $owner->id, $context->id));
+        $this->assertFalse($this->has_role(roles::SELLER, $owner->id, $context->id));
 
         // Quem nao e dono nao foi tocado.
-        $this->assertTrue($this->tem_papel(roles::SELLER, $outro->id, $contexto->id));
-        $this->assertFalse($this->tem_papel(roles::MANAGER, $outro->id, $contexto->id));
+        $this->assertTrue($this->has_role(roles::SELLER, $other->id, $context->id));
+        $this->assertFalse($this->has_role(roles::MANAGER, $other->id, $context->id));
 
         // A segunda passada nao acha nada para migrar.
         $this->assertSame(0, roles::migrate_owners());
-        $this->assertTrue($this->tem_papel(roles::MANAGER, $dono->id, $contexto->id));
+        $this->assertTrue($this->has_role(roles::MANAGER, $owner->id, $context->id));
     }
 
     /**
@@ -341,18 +341,18 @@ final class roles_test extends \advanced_testcase {
 
         roles::ensure();
 
-        $dono = $this->getDataGenerator()->create_user();
-        $empresa = $this->criar_empresa($dono->id);
-        $contexto = $empresa->get_context();
+        $owner = $this->getDataGenerator()->create_user();
+        $company = $this->create_company($owner->id);
+        $context = $company->get_context();
 
         // O pior caso: alguem com os dois papeis, que e o que uma troca de
         // memberrole mal feita produzia.
-        role_assign(roles::get_id(roles::SELLER), $dono->id, $contexto->id);
+        role_assign(roles::get_id(roles::SELLER), $owner->id, $context->id);
 
-        api::remove_member($empresa, $dono->id);
+        api::remove_member($company, $owner->id);
 
-        $this->assertFalse($this->tem_papel(roles::MANAGER, $dono->id, $contexto->id));
-        $this->assertFalse($this->tem_papel(roles::SELLER, $dono->id, $contexto->id));
+        $this->assertFalse($this->has_role(roles::MANAGER, $owner->id, $context->id));
+        $this->assertFalse($this->has_role(roles::SELLER, $owner->id, $context->id));
     }
 
     /**
@@ -370,23 +370,23 @@ final class roles_test extends \advanced_testcase {
 
         roles::ensure();
 
-        $dono = $this->getDataGenerator()->create_user();
-        $outro = $this->getDataGenerator()->create_user();
-        $empresa = $this->criar_empresa($dono->id);
-        api::add_member($empresa, $outro->id);
+        $owner = $this->getDataGenerator()->create_user();
+        $other = $this->getDataGenerator()->create_user();
+        $company = $this->create_company($owner->id);
+        api::add_member($company, $other->id);
 
-        $contexto = $empresa->get_context();
+        $context = $company->get_context();
 
-        api::set_member_role($empresa, $outro->id, member::ROLE_OWNER);
+        api::set_member_role($company, $other->id, member::ROLE_OWNER);
 
-        $this->assertTrue($this->tem_papel(roles::MANAGER, $outro->id, $contexto->id));
-        $this->assertFalse($this->tem_papel(roles::SELLER, $outro->id, $contexto->id));
+        $this->assertTrue($this->has_role(roles::MANAGER, $other->id, $context->id));
+        $this->assertFalse($this->has_role(roles::SELLER, $other->id, $context->id));
 
         // E o caminho de volta.
-        api::set_member_role($empresa, $outro->id, member::ROLE_SELLER);
+        api::set_member_role($company, $other->id, member::ROLE_SELLER);
 
-        $this->assertFalse($this->tem_papel(roles::MANAGER, $outro->id, $contexto->id));
-        $this->assertTrue($this->tem_papel(roles::SELLER, $outro->id, $contexto->id));
+        $this->assertFalse($this->has_role(roles::MANAGER, $other->id, $context->id));
+        $this->assertTrue($this->has_role(roles::SELLER, $other->id, $context->id));
     }
 
     /**
@@ -410,7 +410,7 @@ final class roles_test extends \advanced_testcase {
      * @param int $ownerid
      * @return company
      */
-    private function criar_empresa(int $ownerid): company {
+    private function create_company(int $ownerid): company {
         return $this->getDataGenerator()
             ->get_plugin_generator('local_marketplace')
             ->create_company(['ownerid' => $ownerid]);
@@ -424,7 +424,7 @@ final class roles_test extends \advanced_testcase {
      * @param int $contextid
      * @return bool
      */
-    private function tem_papel(string $shortname, int $userid, int $contextid): bool {
+    private function has_role(string $shortname, int $userid, int $contextid): bool {
         global $DB;
 
         return $DB->record_exists('role_assignments', [
@@ -474,9 +474,9 @@ final class roles_test extends \advanced_testcase {
      * @return void
      */
     public function test_as_capabilities_novas_estao_declaradas(): void {
-        $todas = array_keys(get_all_capabilities());
+        $all = array_keys(get_all_capabilities());
 
-        $this->assertContains('local/marketplace:managesales', $todas);
-        $this->assertContains('local/marketplace:refundsale', $todas);
+        $this->assertContains('local/marketplace:managesales', $all);
+        $this->assertContains('local/marketplace:refundsale', $all);
     }
 }

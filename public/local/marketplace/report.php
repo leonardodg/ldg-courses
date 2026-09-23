@@ -478,12 +478,12 @@ if ($view === 'subscriptions') {
             );
         }
 
-        $metodo = \local_marketplace\api::payment_method_for('local_marketplace', (int) $e->offerid, (int) $e->userid);
+        $method = \local_marketplace\api::payment_method_for('local_marketplace', (int) $e->offerid, (int) $e->userid);
 
         $table->data[] = [
             $u ? fullname($u) : '?',
             $o ? format_string($o->get('name')) : '#' . (int) $e->offerid,
-            $metodo ?? '-',
+            $method ?? '-',
             $paid[$key]['n'] ?? 0,
             !empty($paid[$key]['last'])
                 ? userdate($paid[$key]['last'], get_string('strftimedateshort'))

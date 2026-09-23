@@ -44,7 +44,7 @@ final class plan_billing_rules_test extends \advanced_testcase {
     public function test_recurrence_for_plan_com_mensalidade(): void {
         $this->resetAfterTest();
 
-        $company = $this->criar_empresa_com_plano(50.0);
+        $company = $this->create_company_with_plan(50.0);
 
         $recorrencia = api::recurrence_for(
             'local_marketplace',
@@ -66,7 +66,7 @@ final class plan_billing_rules_test extends \advanced_testcase {
     public function test_recurrence_for_plan_sem_mensalidade_e_nulo(): void {
         $this->resetAfterTest();
 
-        $company = $this->criar_empresa_com_plano(0.0);
+        $company = $this->create_company_with_plan(0.0);
 
         $recorrencia = api::recurrence_for(
             'local_marketplace',
@@ -112,15 +112,15 @@ final class plan_billing_rules_test extends \advanced_testcase {
 
         set_config('defaultfeepercent', 25.0, 'local_marketplace');
 
-        $company = $this->criar_empresa_com_plano(50.0);
+        $company = $this->create_company_with_plan(50.0);
 
-        $termos = api::commission_terms_for(
+        $terms = api::commission_terms_for(
             'local_marketplace',
             (int) $company->get('id'),
             payment\service_provider::PAYMENT_AREA_PLAN
         );
 
-        $this->assertSame(0.0, $termos->percent);
+        $this->assertSame(0.0, $terms->percent);
     }
 
     /**
@@ -129,7 +129,7 @@ final class plan_billing_rules_test extends \advanced_testcase {
      * @param float $monthlyfee
      * @return company
      */
-    protected function criar_empresa_com_plano(float $monthlyfee): company {
+    protected function create_company_with_plan(float $monthlyfee): company {
         $this->setAdminUser();
 
         $plan = new plan(0, (object) [
