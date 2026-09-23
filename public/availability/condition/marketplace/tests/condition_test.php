@@ -274,12 +274,12 @@ final class condition_test extends \advanced_testcase {
         // Aluno de verdade, e nao o $this->user: aquele CRIOU a empresa, entao
         // e dono da categoria e pode gerenciar atividades - leria a descricao
         // como professor.
-        $aluno = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
-        $this->setUser($aluno);
-        $texto = $cond->get_description(true, false, $this->info());
+        $student = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+        $this->setUser($student);
+        $text = $cond->get_description(true, false, $this->info());
 
-        $this->assertStringContainsString('/local/marketplace/offers.php', $texto);
-        $this->assertStringContainsString('highlight=' . $offer->get('id'), $texto);
+        $this->assertStringContainsString('/local/marketplace/offers.php', $text);
+        $this->assertStringContainsString('highlight=' . $offer->get('id'), $text);
     }
 
     /**
@@ -289,14 +289,14 @@ final class condition_test extends \advanced_testcase {
      */
     public function test_quem_ja_comprou_nao_ve_o_botao(): void {
         $offer = $this->make_offer();
-        $aluno = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
-        $this->grant($offer, 0, (int) $aluno->id);
+        $student = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+        $this->grant($offer, 0, (int) $student->id);
         $cond = new condition(condition::get_json((int) $offer->get('id')));
 
-        $this->setUser($aluno);
-        $texto = $cond->get_description(true, false, $this->info());
+        $this->setUser($student);
+        $text = $cond->get_description(true, false, $this->info());
 
-        $this->assertStringNotContainsString('/local/marketplace/offers.php', $texto);
+        $this->assertStringNotContainsString('/local/marketplace/offers.php', $text);
     }
 
     /**
@@ -313,9 +313,9 @@ final class condition_test extends \advanced_testcase {
 
         $professor = $this->getDataGenerator()->create_and_enrol($this->course, 'editingteacher');
         $this->setUser($professor);
-        $texto = $cond->get_description(true, false, $this->info());
+        $text = $cond->get_description(true, false, $this->info());
 
-        $this->assertStringNotContainsString('/local/marketplace/offers.php', $texto);
+        $this->assertStringNotContainsString('/local/marketplace/offers.php', $text);
     }
 
     /**
@@ -335,10 +335,10 @@ final class condition_test extends \advanced_testcase {
         $offer = $this->make_offer();
         $cond = new condition(condition::get_json((int) $offer->get('id')));
 
-        $aluno = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
-        $this->setUser($aluno);
-        $texto = $cond->get_description(true, true, $this->info());
+        $student = $this->getDataGenerator()->create_and_enrol($this->course, 'student');
+        $this->setUser($student);
+        $text = $cond->get_description(true, true, $this->info());
 
-        $this->assertStringNotContainsString('/local/marketplace/offers.php', $texto);
+        $this->assertStringNotContainsString('/local/marketplace/offers.php', $text);
     }
 }
