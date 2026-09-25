@@ -1,6 +1,6 @@
 # ADR-0014 — A trava de resolução por mensalidade do vendedor, e onde ela precisa ser aplicada
 
-**Situação:** Proposta · **Data:** 2026-09-23
+**Situação:** Aceita · **Data:** 2026-09-23 · **Aceite:** 2026-09-25
 
 ## Contexto
 

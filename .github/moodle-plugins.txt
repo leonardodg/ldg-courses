@@ -39,6 +39,13 @@ public/course/format/ldg
 # embute como embute qualquer outra. Roda sozinho no CI.
 public/mod/ldgvideo
 
+# Video Bunny Stream multi-tenant: a peca dos planos pagos (Frente B+C).
+# Depende do local_marketplace de verdade - resolve a library pela empresa
+# dona do curso (company::for_course() -> library_account::get_for()), e
+# a trava de resolucao le plan::max_resolution(). O --extra-plugins ja leva
+# o local_marketplace junto por estar antes nesta lista.
+public/mod/bunnystream
+
 # --- Plugins de terceiros -----------------------------------------------------
 # INSTALADOS em 2026-08-24, da release oficial 5.2 do marketplace, com MD5
 # conferido. NAO passam pelo moodle-plugin-ci: sao codigo de upstream, e um

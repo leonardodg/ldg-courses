@@ -233,4 +233,27 @@ class plan extends persistent {
 
         return $unlimited;
     }
+
+    /**
+     * Teto de resolucao do PLANO (mensalidade do vendedor), sem olhar preco
+     * de curso nenhum - e o que a Frente C trava (ADR-0014).
+     *
+     * So a faixa "sem teto de preco" (maxprice nulo) conta: e ela que
+     * representa o degrau contratado pela empresa. Faixas com maxprice
+     * preenchido sao o modelo antigo, por ticket (ADR-0005) - ainda podem
+     * existir no banco por historico, mas nao valem para a trava por
+     * mensalidade.
+     *
+     * @return string|null Resolucao, ou nulo quando o plano nao trava nada
+     *                      (ex.: BYOS, que nao consome banda da plataforma).
+     */
+    public function max_resolution(): ?string {
+        foreach ($this->get_tiers() as $tier) {
+            if ($tier->get('maxprice') === null) {
+                return $tier->get('maxresolution');
+            }
+        }
+
+        return null;
+    }
 }

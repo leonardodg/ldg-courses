@@ -13,7 +13,7 @@ aceitos pelo usuário**. São portões, não tarefas paralelas:
 
 | # | Pré-condição | O que é |
 |---|---|---|
-| 1 | **Lista de contradições, faltas e pontos em aberto** — entregue e aceita pelo usuário | Documentada em [`gate-contradicoes.md`](gate-contradicoes.md): varredura do que PRD, TRD, ADR-0005 e o desenho Start/PRO implementado dizem **ao mesmo tempo** e não batem (rótulos de degrau, tier→resolução, mensalidade do degrau BYOS vs `pro`, ADR novo ainda não escrito, `hostingmodel` sem storage de chave). Aceite formal antes de abrir branch de vídeo. |
+| 1 | **Lista de contradições, faltas e pontos em aberto** — entregue e aceita pelo usuário | **FECHADA em 2026-09-25.** Documentada em [`gate-contradicoes.md`](gate-contradicoes.md), com aceite item a item: ADR-0014 promovido a Aceita, provisionamento automático da `library` no `create_company`, Free com os dois modos (YouTube ou Bunny limitado), correções editoriais (C1/C3/C4/C5/F6) aplicadas. Rótulos de degrau/mensalidade (C2) e números comerciais (A1) seguem a confirmar, sem bloquear código — código lê o banco, nunca hardcoda. |
 | 2 | **Números de degraus comerciais: a confirmar** | Comissões (~10% / ~5%) e mensalidades (~R$ 50–100 / ~R$ 300) do [`prd.md`](prd.md) permanecem **a confirmar**. Nenhum código assume percentual ou faixa fechada — o que se lê é o banco (`commissionpct` / `monthlyfee` / tiers), nunca hardcode. |
 | 3 | **Cálculo de custo de banda vs mensalidade** | Antes de **qualquer degrau pago ser liberado**: banda Bunny (GB transferido; 4K custa várias vezes 720p) contra a mensalidade cobrada. É o gate de custo do PRD; sem o número na mão, degrau pago não abre. |
 
@@ -34,27 +34,44 @@ resolução por mensalidade do vendedor aplicada no player** no mesmo movimento
 
 Sub-passes, nesta ordem:
 
-1. **Mapear `company` ↔ `library`** — onde o vínculo viverá e quem
-   provisiona; é fronteira da B e pré-condição da C e de qualquer medição de
-   custo por empresa.
-2. **Integrar a base `amirtds/moodle-mod_bunnystream`** — fork + camada
-   multi-tenant sobre o mapeamento do passo 1 (requisito no
-   [`trd.md`](trd.md), § Frente B).
-3. **Hook no `core_media_manager`** — consumir o teto de resolução do
-   plano/tier da empresa (`plan::max_resolution_for()`), que **já existe no
-   banco**; o seletor de qualidade não oferece trilha acima do plano.
-4. **Consumir o teto de resolução na origem** — URL assinada com teto
-   (ou controle equivalente) no Bunny: player sozinho é contornável e não
-   protege a fatura quando o provedor cobra por volume.
-5. **Testes** — unitário para a regra; **behat onde mede a tela** (o seletor
-   de qualidade e a proporção do player), conforme o critério de teste do
-   [`../dev/padrao-de-implementacao.md`](../dev/padrao-de-implementacao.md).
+1. **Mapear `company` ↔ `library` — feito em 25/09/2026.** Vínculo em
+   `local_marketplace_library` (padrão de `local_marketplace_account`), com a
+   `library` provisionada **por API, automaticamente no `create_company`**,
+   numa **conta Bunny única da plataforma** (não é a conta do vendedor — essa
+   é a Frente A). Provado ao vivo contra a conta Bunny real: cria e apaga
+   library de verdade, com rollback da empresa quando a chamada falha. Achado
+   que mudou o desenho original: a Bunny só devolve `Id`/`ApiKey` na criação —
+   `securitykey` e `cdnhostname` nascem nulos, e ficam para o sub-passo 2/3.
+   Detalhe, achados e testes:
+   [`../ai-plans/2026-09-25-bunny-multi-tenant-trava-resolucao.md`](../ai-plans/2026-09-25-bunny-multi-tenant-trava-resolucao.md).
+2. **Integrar a base `amirtds/moodle-mod_bunnystream` — feito em 25/09/2026.**
+   Fork completo (`mod_bunnystream`), sem o singleton de credencial do
+   original: cada endpoint resolve a library pela empresa dona do **curso**
+   (`config::for_course()`). Webhook por library (segredo próprio, gerado na
+   criação), não por instalação. 19 testes novos, phpcs limpo, build AMD sem
+   erro. Detalhe no ai-plan de hoje (link acima).
+3+4. **Trava de resolução no player e na origem — feito em 25/09/2026, num só
+   mecanismo.** Achado que mudou o desenho: o player do `mod_bunnystream` é o
+   iframe hospedado da própria Bunny — o seletor de qualidade é dela,
+   client-side, a partir do manifesto HLS. Travar a origem (o
+   `EnabledResolutions` da `library`) **é** travar o player: o aluno nunca
+   vê a opção acima do teto, não é "oferece e recusa". Implementado:
+   `plan::max_resolution()` (teto pela mensalidade, não por ticket),
+   `bunny_platform_client::enabled_resolutions_for_cap()`/
+   `update_library_resolutions()`, e `api::sync_video_library_resolution()`
+   chamado em todo lugar onde `company.planid` muda de verdade. Provado ao
+   vivo: empresa com plano 1080p nasce com `EnabledResolutions` até 1080p;
+   upgrade para 4k atualiza a Bunny na hora. Detalhe no ai-plan de hoje.
+5. **Testes** — 10 testes novos (unitário + integração com cliente Bunny
+   mockado), todos verdes. Behat que mede a tela do seletor de qualidade
+   fica para quando houver UI própria de autoria a medir — hoje o player é
+   o iframe da Bunny, fora do DOM que o Behat deste projeto mede.
 
 #### Critérios de pronto da frente B+C
 
 | # | Critério | Tipo |
 |---|---|---|
-| 1 | **Gate de release:** trava aplicada no player — `core_media_manager` respeita o teto e o aluno não alcança a trilha acima do plano | técnico |
+| 1 | **Gate de release:** trava aplicada no player — **fechado em 25/09/2026**. O player do `mod_bunnystream` não é o `core_media_manager` (é o iframe hospedado da Bunny — decisão registrada no ai-plan de hoje); a trava é o `EnabledResolutions` da `library`, sincronizado com `plan::max_resolution()`. Provado ao vivo, o aluno não alcança trilha acima do plano | técnico |
 | 2 | **1 venda real em cada degrau** (Free, intermediário, BYOS) — dinheiro de verdade, não sandbox | comercial |
 | 3 | **Sem regressão nos 740 testes existentes** (baseline dos 11 testsuites customizados) | regressão |
 
@@ -110,5 +127,5 @@ executa segue os donos:
 | Requisitos técnicos por frente, pré-condições, riscos | [`trd.md`](trd.md) |
 | Estado atual e fases do marketplace | [`../architecture/estado-e-proximas-fases.md`](../architecture/estado-e-proximas-fases.md) |
 | Mecânica da assinatura SaaS (paymentarea `'plan'`) | [`../ai-plans/2026-09-17-assinatura-saas-planos-start-e-pro.md`](../ai-plans/2026-09-17-assinatura-saas-planos-start-e-pro.md) |
-| Trava de resolução (será superada pelo novo ADR) | [`../adr/0005-trava-de-resolucao-por-ticket.md`](../adr/0005-trava-de-resolucao-por-ticket.md) |
+| Trava de resolução (vigente: ADR-0014, Aceita) | [`../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md`](../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md) · [`../adr/0005-trava-de-resolucao-por-ticket.md`](../adr/0005-trava-de-resolucao-por-ticket.md) (superado) |
 | Hub de produto | [`README.md`](README.md) |

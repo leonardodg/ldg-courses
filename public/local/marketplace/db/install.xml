@@ -106,6 +106,30 @@
       </INDEXES>
     </TABLE>
 
+    <TABLE NAME="local_marketplace_library" COMMENT="Library da Bunny de cada empresa, dentro da conta UNICA da plataforma. Uma empresa, uma library - o vendedor nunca ve a Bunny nem gera chave propria (isso e a Frente A, BYOS). Provisionada automaticamente na criacao da empresa. ADR-0014.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="companyid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="bunnylibraryid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Id da library devolvido pela Bunny na criacao."/>
+        <FIELD NAME="apikey" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Chave da LIBRARY (nao a chave de conta da plataforma), cifrada com core\encryption. E o unico campo que a Bunny devolve na criacao - verificado ao vivo em 25/09/2026."/>
+        <FIELD NAME="securitykey" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Chave de autenticacao por token do player, cifrada. NULO ate o proximo sub-passo habilitar PlayerTokenAuthenticationEnabled na library - a Bunny nao devolve isto na criacao (verificado ao vivo em 25/09/2026: o campo nem existe na resposta)."/>
+        <FIELD NAME="cdnhostname" TYPE="char" LENGTH="191" NOTNULL="false" SEQUENCE="false" COMMENT="Ex.: vz-xxxxxxxx-xxx.b-cdn.net. NULO ate o proximo sub-passo resolver a pull zone (PullZoneId) - a Bunny nao devolve hostname na criacao da library, so o id numerico da pull zone associada."/>
+        <FIELD NAME="maxresolution" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Cache do ultimo teto aplicado no perfil de encoding da library (720p|1080p|1440p|4k). NULO = nunca aplicado. So existe para evitar rechamar a API da Bunny sem necessidade - a fonte da verdade continua plan::max_resolution_for()."/>
+        <FIELD NAME="webhooksecret" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="Segredo do webhook desta library, gerado na criacao. E como mod_bunnystream identifica de qual empresa veio um POST em /mod/bunnystream/webhook.php - nao ha vinculo por dominio ou IP."/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="companyid" TYPE="foreign-unique" FIELDS="companyid" REFTABLE="local_marketplace_company" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="webhooksecret" UNIQUE="true" FIELDS="webhooksecret"/>
+        <INDEX NAME="bunnylibraryid" UNIQUE="true" FIELDS="bunnylibraryid"/>
+      </INDEXES>
+    </TABLE>
+
     <TABLE NAME="local_marketplace_offer_course" COMMENT="Cursos que a oferta libera. N:N porque um combo libera varios cursos e um curso aparece em varias ofertas. offertype=catalog nao usa esta tabela: a oferta segue a categoria da empresa e cursos novos entram sozinhos.">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>

@@ -50,6 +50,10 @@ class api {
      * mas sem papel atribuido, seria pior que nenhuma empresa - apareceria na
      * lista e nao funcionaria.
      *
+     * A library da Bunny (Frente B, ADR-0014) entra no mesmo passo, mas so
+     * quando a conta Bunny da plataforma ja esta configurada - ver
+     * create_video_library().
+     *
      * @param object $data name, shortname, cnpj, themename, hostname
      * @param int $ownerid Usuario que passa a ser dono.
      * @return company
@@ -87,6 +91,7 @@ class api {
             self::assign_member_role($company, $ownerid, member::ROLE_OWNER);
             self::apply_theme($company);
             self::create_payment_account($company, $data->country ?? self::default_country());
+            self::create_video_library($company);
 
             $transaction->allow_commit();
         } catch (\Throwable $e) {
@@ -558,6 +563,10 @@ class api {
             $transaction->rollback($e);
         }
 
+        // Fora da transacao: e best-effort (ver sync_video_library_resolution()),
+        // e nao pode fazer a edicao da empresa esperar a Bunny responder.
+        self::sync_video_library_resolution($company);
+
         // Regenera quando o dominio ENTROU, SAIU ou mudou. Comparar com o
         // valor anterior evita reescrever o arquivo a cada troca de nome ou
         // de tema, que nao afetam o mapa. Suspender tambem nao afeta: o mapa
@@ -697,6 +706,161 @@ class api {
         $link->create();
 
         return $account;
+    }
+
+    /** @var bunny_platform_client|null Cliente falso, so para teste - ver override_bunny_client(). */
+    protected static ?bunny_platform_client $bunnyclientoverride = null;
+
+    /**
+     * Troca o cliente da Bunny por um falso, so para teste.
+     *
+     * Mesma ideia do make_curl() do asaas_client, um nivel acima: aqui quem
+     * precisa ser substituido nao e so o transporte, e o cliente inteiro,
+     * porque create_video_library() o resolve sozinho a partir da config.
+     *
+     * @param bunny_platform_client|null $client Nulo restaura o comportamento normal.
+     * @return void
+     */
+    public static function override_bunny_client(?bunny_platform_client $client): void {
+        self::$bunnyclientoverride = $client;
+    }
+
+    /**
+     * Cria a library da Bunny da empresa, dentro da conta UNICA da
+     * plataforma (Frente B, ADR-0014).
+     *
+     * Sem a chave de conta configurada (local_marketplace/bunnyaccountapikey)
+     * o provisionamento fica em espera, e devolve nulo: e o estado de hoje,
+     * antes de a conta Bunny existir num ambiente. A empresa nasce
+     * normalmente mesmo assim - falta so a library, que um comando futuro de
+     * backfill provisiona assim que a chave existir.
+     *
+     * Com a chave configurada, falha na chamada da Bunny propaga e desfaz a
+     * criacao da empresa inteira (create_company() esta numa transacao):
+     * library e provisionamento automatico, e uma empresa sem library, criada
+     * num ambiente que JA tem conta Bunny, e um estado que ninguem saberia
+     * destravar depois - ela pareceria pronta e o vendedor nao conseguiria
+     * hospedar video nenhum.
+     *
+     * @param company $company
+     * @return library_account|null Nulo quando a conta Bunny ainda nao esta configurada.
+     */
+    public static function create_video_library(company $company): ?library_account {
+        $existing = library_account::get_for((int) $company->get('id'));
+        if ($existing) {
+            return $existing;
+        }
+
+        $client = self::$bunnyclientoverride;
+        if (!$client) {
+            $accountkey = self::bunny_account_api_key();
+            if ($accountkey === '') {
+                return null;
+            }
+            $client = new bunny_platform_client($accountkey);
+        }
+
+        $cap = self::resolution_cap_for($company);
+        $created = $client->create_library(
+            $company->get('name') . ' (' . $company->get('shortname') . ')',
+            bunny_platform_client::enabled_resolutions_for_cap($cap)
+        );
+
+        $library = new library_account();
+        $library->set('companyid', (int) $company->get('id'));
+        $library->set('bunnylibraryid', $created['bunnylibraryid']);
+        $library->set('apikey', library_account::encrypt($created['apikey']));
+        $library->set('maxresolution', $cap);
+        $library->create();
+
+        return $library;
+    }
+
+    /**
+     * Atualiza o teto de resolucao da library conforme o plano ATUAL da
+     * empresa (Frente C, ADR-0014) - chamado sempre que `company.planid`
+     * muda depois da library ja existir.
+     *
+     * Best-effort, ao contrario de create_video_library(): a Bunny estar
+     * fora do ar nao pode impedir a troca de plano em si, que e a acao de
+     * negocio - so atrasa a atualizacao do teto de encoding, e fica
+     * registrado em debugging() para alguem notar. Idempotente: nao chama a
+     * API se o teto ja bate com o cache em `library.maxresolution`.
+     *
+     * @param company $company
+     * @return void
+     */
+    public static function sync_video_library_resolution(company $company): void {
+        $library = library_account::get_for((int) $company->get('id'));
+        if (!$library) {
+            // Sem library ainda (conta Bunny nao configurada quando a
+            // empresa nasceu) - nada a sincronizar aqui.
+            return;
+        }
+
+        $cap = self::resolution_cap_for($company);
+        if ($library->get('maxresolution') === $cap) {
+            return;
+        }
+
+        $client = self::$bunnyclientoverride;
+        if (!$client) {
+            $accountkey = self::bunny_account_api_key();
+            if ($accountkey === '') {
+                return;
+            }
+            $client = new bunny_platform_client($accountkey);
+        }
+
+        try {
+            $client->update_library_resolutions(
+                (int) $library->get('bunnylibraryid'),
+                bunny_platform_client::enabled_resolutions_for_cap($cap)
+            );
+            $library->set('maxresolution', $cap);
+            $library->update();
+        } catch (\Throwable $e) {
+            debugging(
+                'local_marketplace: nao foi possivel atualizar a resolucao da library - ' . $e->getMessage(),
+                DEBUG_DEVELOPER
+            );
+        }
+    }
+
+    /**
+     * Teto de resolucao para a empresa, a partir do plano dela.
+     *
+     * Sem plano, o teto e o mais conservador (a menor resolucao) - nunca
+     * "sem teto" por omissao, que gastaria banda da plataforma sem cobranca
+     * nenhuma por tras. E o mesmo raciocinio do ADR-0014 para o degrau mais
+     * baixo.
+     *
+     * @param company $company
+     * @return string|null
+     */
+    protected static function resolution_cap_for(company $company): ?string {
+        $plan = $company->get_plan();
+
+        return $plan ? $plan->max_resolution() : plan_tier::RESOLUTIONS[0];
+    }
+
+    /**
+     * Chave de conta da plataforma, em claro, para criar libraries novas.
+     *
+     * @return string Vazio quando nao configurada ou quando a cifra falhou.
+     */
+    protected static function bunny_account_api_key(): string {
+        $stored = trim((string) get_config('local_marketplace', 'bunnyaccountapikey'));
+        if ($stored === '') {
+            return '';
+        }
+
+        try {
+            return \core\encryption::decrypt($stored);
+        } catch (\Throwable $e) {
+            debugging('local_marketplace: nao foi possivel decifrar a chave da Bunny - ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return '';
+        }
     }
 
     /**

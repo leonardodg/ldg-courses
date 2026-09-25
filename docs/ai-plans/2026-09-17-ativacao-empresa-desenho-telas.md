@@ -2,6 +2,13 @@
 
 Situação: `pendente` · Início: 2026-09-17
 
+> **Nota de atualização (2026-09-25):** este documento cita um setting
+> `approvalmode = manual|auto` (linha "Aprovação" da tabela de decisões) que
+> **não existe no código** (`grep approvalmode public/` = 0). Registro
+> histórico mantido como estava; a aprovação de empresa em produção é manual
+> por fluxo em `local_partners`, sem esse setting. Ver
+> [`../produto/gate-contradicoes.md`](../produto/gate-contradicoes.md) F6.
+
 ## Contexto
 
 O `block_marketplace` hoje mostra só as assinaturas do aluno no Dashboard. O

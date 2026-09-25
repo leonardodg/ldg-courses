@@ -39,9 +39,11 @@ definido.
 
 ---
 
-## 3. Dois portões estruturais, sem aprovação manual
+## 3. Dois portões estruturais, com aprovação manual na criação de empresa
 
-Qualquer um se cadastra e cria empresa. O que limita não é burocracia:
+Qualquer um se cadastra, mas **criar empresa passa por aprovação manual**
+(ADR-0006, hoje `Proposta` para a automação futura — o padrão em produção é
+manual). O que limita a venda em si não é essa aprovação, e sim:
 
 | Portão | Mecanismo |
 |---|---|

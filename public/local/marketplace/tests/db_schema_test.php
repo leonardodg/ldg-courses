@@ -358,6 +358,7 @@ final class db_schema_test extends \advanced_testcase {
             \local_marketplace\plan::class,
             \local_marketplace\entitlement::class,
             \local_marketplace\sale::class,
+            \local_marketplace\library_account::class,
         ];
 
         foreach ($classes as $class) {

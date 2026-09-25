@@ -158,6 +158,66 @@ final class plan_test extends \advanced_testcase {
     }
 
     /**
+     * max_resolution() e a trava por MENSALIDADE (ADR-0014): so a faixa sem
+     * teto de preco conta, porque e ela que representa o degrau contratado.
+     *
+     * @return void
+     */
+    public function test_max_resolution_ignora_teto_de_preco(): void {
+        $this->resetAfterTest();
+
+        $plan = $this->make_plan();
+        $planid = (int) $plan->get('id');
+
+        foreach (
+            [
+            ['maxprice' => 49.90, 'maxresolution' => '720p', 'sortorder' => 10],
+            ['maxprice' => null, 'maxresolution' => '1080p', 'sortorder' => 20],
+            ] as $tier
+        ) {
+            $tier['planid'] = $planid;
+            (new plan_tier(0, (object) $tier))->create();
+        }
+
+        // Nao e por preco de curso nenhum - so a faixa sem teto vale.
+        $this->assertSame('1080p', $plan->max_resolution());
+    }
+
+    /**
+     * Plano so com faixas por ticket (modelo antigo, ADR-0005), sem faixa
+     * sem teto, nao trava nada pela mensalidade - nao ha degrau contratado
+     * para ler.
+     *
+     * @return void
+     */
+    public function test_max_resolution_sem_faixa_sem_teto_e_nulo(): void {
+        $this->resetAfterTest();
+
+        $plan = $this->make_plan();
+        (new plan_tier(0, (object) [
+            'planid' => (int) $plan->get('id'),
+            'maxprice' => 49.90,
+            'maxresolution' => '720p',
+        ]))->create();
+
+        $this->assertNull($plan->max_resolution());
+    }
+
+    /**
+     * Plano sem faixa nenhuma (BYOS) nao trava - mesmo caso de
+     * max_resolution_for().
+     *
+     * @return void
+     */
+    public function test_max_resolution_sem_faixas_e_nulo(): void {
+        $this->resetAfterTest();
+
+        $plan = $this->make_plan(['hostingmodel' => plan::HOSTING_BYOS]);
+
+        $this->assertNull($plan->max_resolution());
+    }
+
+    /**
      * A vitrine so lista plano ativo e publico.
      *
      * @return void

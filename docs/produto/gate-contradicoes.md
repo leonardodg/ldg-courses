@@ -154,23 +154,41 @@ Comissões ~10% / ~5%, mensalidades ~R$ 50–100 / ~R$ 300, e o valor exato de `
 
 Decidido e repetido sem ambiguidade em [`prd.md`](prd.md) não-objetivos, [`trd.md`](trd.md) Frente B + riscos, [`README.md`](README.md) do hub, [`schema-backend.md`](schema-backend.md), [`plano-implementacao.md`](plano-implementacao.md) § 3, ADR-0014. **Não reabrir por esta lista.**
 
-### A3. Situação do ADR-0014: Promover de `Proposta` para `Aceita` antes do código?
+### A3. Situação do ADR-0014 — **FECHADO em 2026-09-25**
 
-O 0014 está **Proposta** ([`../adr/README.md`](../adr/README.md)). O gate exige "registro formal" (TRD pré-condição 6 — que já aponta para um ADR que existe, mas não está Aceita). Depender de um ADR Proposta para abrir branch de vídeo é ambíguo: **aceitar o 0014 (ou recusar) é decisão do usuário.**
+**Decisão do usuário: promovido para `Aceita`.** O ADR-0014 e o índice
+([`../adr/README.md`](../adr/README.md)) já refletem o novo status. TRD
+pré-condição 6 fechada.
 
-### A4. Ordem de refinamento residual
+### A4. Provisionamento da `library` por empresa — **FECHADO em 2026-09-25**
 
-Ordem **B+C → A** está aprovada e coerente no hub. Resíduos que podem mudar o miolo da sequência:
+Esclarecido antes de decidir: a Frente B usa **uma conta Bunny só, da
+plataforma** — a `library` de cada empresa é criada **por chamada de API**
+dentro dessa conta única, sem nenhum passo manual no painel do Bunny. O
+vendedor nunca vê Bunny. (A conta própria do vendedor só existe na Frente A —
+BYOS —, que é depois.)
 
-- Quem **provisiona** a `library` por empresa (admin? upgrade? automático no `create_company`?) — TRD/plano deixam "onde viverá e quem provisiona" em aberto (sub-passo 1).
-- Assinatura de `max_resolution_for` ainda `float $price` — se o player passar a chamar pelo **plano da empresa**, a assinatura provavelmente muda (parâmetro/planid). Não decidido; afeta o sub-passo 3 do plano.
-- Origem assinada no Bunny: TRD marca como **obrigatória em Bunny**; ADR-0014 rebaixa a "consequência do modelo de cobrança". Compatível, mas a ordem interna da frente C (player primeiro ou os dois juntos) não está fechada além do outline do plano.
+**Decisão do usuário:** a library é provisionada **automaticamente no
+`create_company`** — toda empresa aprovada já nasce com library própria,
+mesmo que comece no plano Free. Isso simplifica o fluxo (sem passo condicional
+de "criar library no upgrade"), ao custo de gerar uma library na Bunny mesmo
+para empresas que nunca saem do Free — aceito, dado que criar uma library
+vazia não gera custo de banda por si só (custo é por GB transferido).
+
+Resíduos que seguem em aberto e não bloqueiam o início do código:
+
+- Assinatura de `max_resolution_for` ainda `float $price` — se o player passar
+  a chamar pelo **plano da empresa**, a assinatura provavelmente muda
+  (parâmetro/planid). Decide-se no sub-passo 3 do plano, na hora de implementar.
+- Origem assinada no Bunny: TRD marca como **obrigatória em Bunny**; ADR-0014
+  rebaixa a "consequência do modelo de cobrança". Compatível — ordem interna
+  (player e origem no mesmo sub-passo 4) já está no outline do plano.
 
 ### A5. Pressupostos que PRD/TRD deixaram como hipóteses abertas (listar para aceite explícito)
 
 | Pressuposto | Onde | O que falta |
 |---|---|---|
-| Free = YouTube **ou** Bunny limitado (dois modos no mesmo degrau) | PRD tabela de degraus | Qual dos dois (ou ambos) no dia do gate; `mod_ldgvideo` cobre só o YouTube embed |
+| Free = YouTube **ou** Bunny limitado (dois modos no mesmo degrau) | PRD tabela de degraus | **FECHADO em 2026-09-25 — decisão do usuário: os dois modos ficam disponíveis** no Free (YouTube via `mod_ldgvideo`, ou Bunny com teto de resolução bem baixo). A empresa Free consome banda se optar por Bunny; sem cota por empresa nesta versão (fora da v1, PRD) |
 | "1 venda real em cada degrau" inclui venda **B2B de plano** e não só venda de curso | PRD critério 2 / plano critério 2 | Confirmar que a prova SaaS (F5) é exigência do mesmo gate |
 | Pagar.me nunca cobra plano (recorrência recusada) | TRD billing | Confirmar que o gate de venda real aceita só MP e/ou Asaas para o degrau |
 | Degrau intermediário "remove o limite" = 1080p (seed `start_50`) | seed `install.php` × PRD que não nomeia a resolução | Confirmar o mapeamento publicamente vs só no banco |
@@ -181,9 +199,9 @@ Ordem **B+C → A** está aprovada e coerente no hub. Resíduos que podem mudar 
 ## Como usar este gate
 
 1. O usuário lê as três seções e responde item a item (aceitar / corrigir em task própria / recusar).
-2. Correções de doc (C1 links→0014, C3 nome de tabela, C4 `decisoes-marketplace`, C5 termos) são **tasks de doc separadas** — este gate **não** as faz.
-3. Só com **C1–C6 tratadas ou aceitas como estão**, **F1–F5 com dono e data** e **A1/A3/A5 decididos**, a pré-condição 1 do [`plano-implementacao.md`](plano-implementacao.md) se fecha e a frente B+C pode nascer.
-4. A pré-condição 3 (cálculo de banda — F4) e a venda real por degrau (F5 + critério 2) **não** são desfeitas por este documento: continuam gates antes de liberar degrau pago.
+2. Correções de doc (C1 links→0014, C3 nome de tabela, C4 `decisoes-marketplace`, C5 termos, F6 `approvalmode`) — **feitas em 2026-09-25** nos documentos vivos do hub (ver commits desta data); os `ai-plans` datados ganharam nota de atualização em vez de reescrita, por serem registro histórico.
+3. **PRÉ-CONDIÇÃO 1 FECHADA em 2026-09-25.** C1–C6 corrigidas ou aceitas como estão; F1–F3 seguem como gap de schema/código a construir na própria frente B+C (não bloqueiam o início, são o trabalho); F4/F5 seguem como gate de **liberação de degrau pago**, não de início de código (ver item 4); A1 segue a confirmar sem bloquear (código lê o banco, nunca hardcoda); A2 fechado (Cloudflare fora); A3 fechado (ADR-0014 Aceita); A4 fechado (provisionamento automático no `create_company`); A5 fechado (Free = YouTube ou Bunny limitado, os dois modos). **A frente B+C está liberada para começar o código.**
+4. A pré-condição 3 (cálculo de banda — F4) e a venda real por degrau (F5 + critério 2) **não** são desfeitas por este documento: continuam gates antes de liberar degrau pago, não antes de escrever código.
 
 ---
 

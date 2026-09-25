@@ -85,6 +85,17 @@ if ($hassiteconfig) {
         $countries
     ));
 
+    // Chave de CONTA da Bunny, da plataforma - so serve para criar libraries
+    // novas (Frente B, ADR-0014). Nao e a chave de nenhuma library: aquela
+    // fica cifrada em local_marketplace_library, uma por empresa. Vazia,
+    // create_video_library() fica em espera e a empresa nasce sem library -
+    // e o estado de hoje, antes de a conta Bunny existir.
+    $settings->add(new admin_setting_encryptedpassword(
+        'local_marketplace/bunnyaccountapikey',
+        get_string('bunnyaccountapikey', 'local_marketplace'),
+        get_string('bunnyaccountapikey_desc', 'local_marketplace')
+    ));
+
     $ADMIN->add('local_marketplace_cat', $settings);
 
     // Os planos vem antes das empresas na lista de propositio: e neles que se

@@ -4,6 +4,13 @@
 > `docs/ai-plans/2026-09-17-assinatura-saas-implementacao-fases-a-e.md`), mas
 > falta a prova com dinheiro real. As pendências de negócio listadas abaixo
 > ("O que sobra") continuam abertas — nenhuma bloqueia o que já funciona.
+>
+> **Nota de atualização (2026-09-25):** duas correções de registro, sem mudar
+> a decisão histórica: (1) o nome da tabela é `local_marketplace_account`, não
+> `local_marketplace_company_account` (linha 46 abaixo); (2) o setting
+> `approvalmode` citado na linha 48 **não existe no código** — a aprovação
+> manual acontece via fluxo em `local_partners`, sem setting dedicado. Ver
+> [`../produto/gate-contradicoes.md`](../produto/gate-contradicoes.md) C3/F6.
 
 # Assinatura SaaS: planos Start e PRO
 
