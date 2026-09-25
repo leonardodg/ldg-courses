@@ -91,6 +91,9 @@ if (data_submitted() && confirm_sesskey() && optional_param('changeplan', 0, PAR
     if ($novoplano) {
         $company->set('planid', $novoplanoid);
         $company->update();
+        // Best-effort - a troca de plano ja aconteceu; ver
+        // api::sync_video_library_resolution().
+        \local_marketplace\api::sync_video_library_resolution($company);
     }
 
     redirect($url);

@@ -55,12 +55,10 @@ Verificado no código desta worktree:
 | Origem (URL assinada com teto de resolução) | Restringir trilhas na origem quando o provedor **cobra por volume** (Bunny) | **Sim, em Bunny** — player-side sozinho é contornável (`devtools` → `.m3u8` → trilha 4K) e a trava deixa de proteger o custo |
 
 O ADR-0005 ([`../adr/0005-trava-de-resolucao-por-ticket.md`](../adr/0005-trava-de-resolucao-por-ticket.md))
-ainda descreve o gatilho antigo (ticket do curso) e a dualidade player+origem.
-O PRD registra que um **novo ADR** vai superá-lo na direção "trava por
-mensalidade do vendedor + player" — a escrita desse ADR **não é escopo
-deste documento**; a direção está no PRD e o registro fica em
-[`../adr/`](../adr/). Até lá, a matemática de custo/margem do 0005 segue
-vale como referência.
+descrevia o gatilho antigo (ticket do curso) e a dualidade player+origem.
+Ele foi **superado pelo [ADR-0014](../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md)**
+("trava por mensalidade do vendedor + player"), **Aceito em 2026-09-25**. A
+matemática de custo/margem do 0005 segue valendo como referência histórica.
 
 ### Frente A — BYOS
 
@@ -96,7 +94,7 @@ dinheiro real:
 |---|---|
 | Paymentarea | **`'plan'`** em `local_marketplace\payment\service_provider` (`PAYMENT_AREA_PLAN`), ao lado de `'offer'` |
 | `itemid` | **`companyid`** — nunca `offerid`; cada callback confere a paymentarea antes de interpretar o id |
-| Recebedor | Conta **`core_payment\account` da plataforma**, no **contexto do site**, sem linha em `local_marketplace_company_account` (`api::get_or_create_platform_account()` / `api::is_platform_account()`) |
+| Recebedor | Conta **`core_payment\account` da plataforma**, no **contexto do site**, sem linha em `local_marketplace_account` (`api::get_or_create_platform_account()` / `api::is_platform_account()`) |
 | Split | **Não existe em `'plan'`.** A plataforma fica com 100%. `record_sale()` não grava venda para esta paymentarea |
 | O que a empresa entrega ao pagar | Não é `local_marketplace_entitlement` (tabela de venda de curso). O acesso/degrau fica em `company.planid` + estado da assinatura do plano — ver desenho Start/PRO |
 
@@ -149,7 +147,7 @@ começar a implementar as frentes B/C/A:
 | 3 | Hook/decisão no player (`core_media_manager`) consumindo `max_resolution_for` (ou equivalente do tier da empresa) | Sem isso a trava não existe no UX, mesmo com tiers no banco |
 | 4 | Ferramenta de cálculo de custo de banda vs mensalidade | **Gate de release do PRD**: nenhum degrau pago liberado sem custo calculado |
 | 5 | (BYOS) Definição de **onde** guarda a chave do produtor e quem a injeta no stream | Sem isso a frente A não tem peça técnica |
-| 6 | Novo ADR que supera o 0005 em "onde aplica a trava" | O PRD já aponta a direção; o registro formal é pré-condição de implementação alinhada |
+| 6 | ~~Novo ADR que supera o 0005~~ — **fechado**: [ADR-0014](../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md), Aceito em 2026-09-25 | Registro formal da trava por mensalidade + player |
 
 ## Riscos e limites técnicos
 

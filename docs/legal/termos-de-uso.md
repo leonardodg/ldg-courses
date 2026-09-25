@@ -63,7 +63,8 @@ contratado ou o que for negociado.
 
 **"Sobre o valor bruto" quer dizer sobre o preço cheio pago pelo aluno**, e não
 sobre o que sobra depois da taxa do meio de pagamento. Num curso de R$ 100,00 com
-comissão de 9,9%, retemos R$ 9,90.
+comissão de 10% (percentual do plano vigente à data desta revisão — **a
+confirmar**, ver [`docs/produto/prd.md`](../produto/prd.md)), retemos R$ 10,00.
 
 **A taxa cobrada pelo meio de pagamento é do produtor**, e sai da parte dele. Ela
 varia conforme a forma de pagamento e não é definida por nós.

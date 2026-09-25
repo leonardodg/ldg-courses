@@ -16,6 +16,7 @@ erDiagram
     company ||--o{ offer : publica
     company ||--o{ entitlement : vendeu
     company ||--o{ course_policy : define
+    company ||--o| library : "1 library Bunny"
     offer ||--o{ offer_course : libera
     offer ||--o{ entitlement : origina
     company {
@@ -67,6 +68,16 @@ erDiagram
         int companyid FK
         string hostingtype
         number commissionpct
+    }
+    library {
+        int id PK
+        int companyid UK
+        int bunnylibraryid
+        text apikey
+        text securitykey
+        string cdnhostname
+        string maxresolution
+        string webhooksecret
     }
 ```
 
@@ -143,6 +154,32 @@ Argentina passava a receber em ordem de id.
 | `accountid` | `payment_accounts.id` do core. A conta em si continua sendo dele — aqui mora só o vínculo. |
 
 Ver [ADR-0002](../adr/0002-conta-de-pagamento-por-pais.md).
+
+### `local_marketplace_library`
+
+**Nova em 25/09/2026 (Frente B, ADR-0014).** Library da Bunny de cada empresa,
+dentro da conta **única** da plataforma — o mesmo padrão de
+`local_marketplace_account` (empresa x recurso externo), mas 1:1: sem dimensão
+de país, porque não há "uma library por país" nesta frente. Provisionada
+automaticamente em `api::create_company()`; sem chave de conta da plataforma
+configurada, a empresa nasce do mesmo jeito e a library fica em espera (linha
+ausente, não erro).
+
+| Campo | Para que serve |
+|---|---|
+| `companyid` | Único: uma library por empresa. |
+| `bunnylibraryid` | Id da library na Bunny. |
+| `apikey` | Chave **da library** (não a de conta da plataforma), cifrada com `\core\encryption`. É o único campo que a API da Bunny devolve na criação — verificado ao vivo em 25/09/2026 contra a conta real. |
+| `securitykey` | Chave de autenticação por token do player, cifrada. **Nula até o próximo sub-passo**: a Bunny não devolve isto na criação, só depois de habilitar `PlayerTokenAuthenticationEnabled` na library. |
+| `cdnhostname` | Hostname da pull zone de entrega. **Nulo até o próximo sub-passo**: a criação devolve só o `PullZoneId` numérico, e o hostname exige uma chamada separada a `/pullzone/{id}`. |
+| `maxresolution` | Cache do último teto aplicado no `EnabledResolutions` da library (campo real confirmado ao vivo: `"240p,360p,480p,720p,1080p"`). Fonte da verdade continua `plan::max_resolution_for()`. |
+| `webhooksecret` | Gerado sozinho na criação (`before_create()`), único por library. É como o `mod_bunnystream` identifica de qual empresa veio um `POST` em `/mod/bunnystream/webhook.php` — nunca um segredo único compartilhado (diferença do plugin de referência, que usa singleton). |
+
+A chave de **conta** da plataforma (usada só para criar libraries novas) não
+mora nesta tabela — é uma só, fica em admin setting cifrado
+(`local_marketplace/bunnyaccountapikey`).
+
+Ver [ADR-0014](../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md).
 
 ### `local_marketplace_sale`
 

@@ -41,10 +41,8 @@ pela empresa), e é aplicada **no player** (`core_media_manager`) — não apena
 por URLs de origem assinadas como controle único. O aluno vê um seletor de
 qualidade que não oferece o que o plano dele não inclui.
 
-O ADR-0005 (player + origem) está sendo **superado por um novo ADR** na direção
-"trava por mensalidade do vendedor + player". A escrita desse ADR não é escopo
-deste documento — a direção está registrada aqui e o registro em si fica em
-[`../adr/`](../adr/).
+O ADR-0005 (player + origem) foi **superado pelo [ADR-0014](../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md)**
+("trava por mensalidade do vendedor + player"), **Aceito em 2026-09-25**.
 
 ### 3. Frente A — BYOS
 
@@ -123,7 +121,7 @@ Comissão, base de cálculo, regras de split e particularidades de cada gateway
 | Duas assinaturas (B2B sem split, B2C com split) | [`../adr/0012-duas-assinaturas-e-so-uma-tem-split.md`](../adr/0012-duas-assinaturas-e-so-uma-tem-split.md) |
 | Por que o sistema de pagamento é assim | [`../architecture/decisoes-marketplace.md`](../architecture/decisoes-marketplace.md) |
 | Estado atual e próximas fases | [`../architecture/estado-e-proximas-fases.md`](../architecture/estado-e-proximas-fases.md) |
-| Trava de resolução (será superada pelo novo ADR) | [`../adr/0005-trava-de-resolucao-por-ticket.md`](../adr/0005-trava-de-resolucao-por-ticket.md) |
+| Trava de resolução (vigente: ADR-0014, Aceita) | [`../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md`](../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md) · [`../adr/0005-trava-de-resolucao-por-ticket.md`](../adr/0005-trava-de-resolucao-por-ticket.md) (superado) |
 
 Todos os percentuais e valores "quase" deste documento (comissões ~10% / ~5%,
 degraus ~R$ 50–100 / ~R$ 300) permanecem **a confirmar** até fechamento

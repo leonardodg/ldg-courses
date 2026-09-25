@@ -186,7 +186,7 @@ sequenceDiagram
 - O que a empresa "entrega ao pagar" é `company.planid` + estado da assinatura
   do plano — **não** `local_marketplace_entitlement`.
 - Conta receptora: `core_payment\account` da plataforma, no contexto do site,
-  sem linha em `local_marketplace_company_account`.
+  sem linha em `local_marketplace_account`.
 - Prova e comandos:
   [`../data-validation/assinatura-saas-plano-empresa.md`](../data-validation/assinatura-saas-plano-empresa.md).
 

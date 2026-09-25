@@ -451,6 +451,32 @@ function xmldb_local_marketplace_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026091706, 'local', 'marketplace');
     }
 
+    if ($oldversion < 2026092500) {
+        // Library da Bunny por empresa (Frente B, ADR-0014). Tabela nova, sem
+        // dado a migrar - guarda so em field_exists/index_exists, nunca em
+        // table_exists() para tabela do proprio plugin.
+        //
+        // securitykey e cdnhostname nascem NULOS de proposito: verificado ao
+        // vivo em 25/09/2026 contra a API real da Bunny que a criacao de
+        // library so devolve Id e ApiKey. O token de autenticacao do player e
+        // o hostname da pull zone exigem um passo a mais (habilitar
+        // PlayerTokenAuthenticationEnabled e resolver o PullZoneId), que fica
+        // para o proximo sub-passo.
+        //
+        // webhooksecret e bunnylibraryid unico: e como o mod_bunnystream
+        // identifica de qual empresa veio um POST no webhook, sem depender de
+        // dominio ou IP - cada library tem o proprio segredo, gerado na
+        // criacao (nunca um singleton como no plugin de referencia).
+        $dbman = $DB->get_manager();
+
+        $table = new xmldb_table('local_marketplace_library');
+        if (!$dbman->table_exists($table)) {
+            $dbman->install_one_table_from_xmldb_file(__DIR__ . '/install.xml', 'local_marketplace_library');
+        }
+
+        upgrade_plugin_savepoint(true, 2026092500, 'local', 'marketplace');
+    }
+
     return true;
 }
 
