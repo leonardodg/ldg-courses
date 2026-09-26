@@ -64,9 +64,9 @@
     <p class="eyebrow">Database schema · plugins LeoDG</p>
     <h1>Subsistema comercial: empresa, plano e conta de recebimento</h1>
 
-    <svg viewBox="0 0 1440 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="02-er-comercial-title 02-er-comercial-desc">
+    <svg viewBox="0 0 1440 820" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="02-er-comercial-title 02-er-comercial-desc">
       <title id="02-er-comercial-title">Subsistema comercial: empresa, plano e conta de recebimento</title>
-      <desc id="02-er-comercial-desc">Esquema fisico das cinco tabelas que definem uma empresa vendedora no marketplace, o plano que ela contrata, as faixas de resolucao do plano, a conta de pagamento por pais e os vendedores ligados a ela.</desc>
+      <desc id="02-er-comercial-desc">Esquema fisico das seis tabelas que definem uma empresa vendedora no marketplace, o plano que ela contrata, as faixas de resolucao do plano, a conta de pagamento por pais, os vendedores ligados a ela e a library de video (Bunny) que a atende.</desc>
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#b0b3b8"/></marker>
         <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#3394ff"/></marker>
@@ -87,6 +87,8 @@
       <path d="M 1160 144 L 1240 144" fill="none" stroke="#3394ff" stroke-width="1" marker-end="url(#arrow-accent)"/>
 
       <path d="M 1160 472 L 1240 472" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <path d="M 440 524 L 408 524 Q 400 524 400 516 L 400 188 Q 400 180 408 180 L 440 180" fill="none" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
 
       <rect x="1164" y="122" width="72" height="12" rx="2" fill="#121212"/><text x="1200" y="131" fill="#3394ff" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">PURGA LGPD</text>
 
@@ -294,6 +296,51 @@
       <text x="872" y="522" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">INDEXES</text>
       <text x="872" y="538" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">companyid-country (unique)</text>
 
+      <rect x="440" y="460" width="320" height="244" rx="6" fill="#121212"/>
+      <rect x="440" y="460" width="320" height="244" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="440" y="460" width="320" height="28" rx="6" fill="rgba(255,255,255,0.04)"/>
+      <rect x="440" y="480" width="320" height="8" fill="rgba(255,255,255,0.04)"/>
+      <line x1="440" y1="488" x2="760" y2="488" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>
+      <text x="452" y="478" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">local_marketplace_library</text>
+      <rect x="706" y="468" width="42" height="12" rx="2" fill="none" stroke="rgba(255,255,255,0.40)" stroke-width="0.8"/>
+      <text x="727.0" y="477" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">TABLE</text>
+      <rect x="440" y="488" width="320" height="24" fill="rgba(255,255,255,0.02)"/>
+      <text x="452" y="504" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">id</text>
+      <rect x="572" y="494" width="20" height="12" rx="2" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+      <text x="582" y="503" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">PK</text>
+      <text x="748" y="504" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="452" y="528" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">companyid</text>
+      <rect x="572" y="518" width="20" height="12" rx="2" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+      <text x="582" y="527" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">FK</text>
+      <rect x="596" y="518" width="20" height="12" rx="2" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+      <text x="606" y="527" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">UQ</text>
+      <rect x="620" y="518" width="20" height="12" rx="2" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+      <text x="630" y="527" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="528" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <rect x="440" y="536" width="320" height="24" fill="rgba(255,255,255,0.02)"/>
+      <text x="452" y="552" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">bunnylibraryid</text>
+      <rect x="572" y="542" width="20" height="12" rx="2" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+      <text x="582" y="551" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">UQ</text>
+      <rect x="596" y="542" width="20" height="12" rx="2" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+      <text x="606" y="551" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="552" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">int(10)</text>
+      <text x="452" y="576" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">apikey</text>
+      <rect x="572" y="566" width="20" height="12" rx="2" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+      <text x="582" y="575" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="576" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">text</text>
+      <rect x="440" y="584" width="320" height="24" fill="rgba(255,255,255,0.02)"/>
+      <text x="452" y="600" fill="#ffffff" font-size="12" font-family="'Inter', system-ui, sans-serif">origin</text>
+      <rect x="572" y="590" width="20" height="12" rx="2" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+      <text x="582" y="599" fill="#ffffff" opacity="0.75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">NN</text>
+      <text x="748" y="600" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end">char(20)</text>
+      <text x="452" y="624" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">+ 7 outras colunas</text>
+      <line x1="440" y1="632" x2="760" y2="632" stroke="rgba(255,255,255,0.12)" stroke-width="0.8"/>
+      <text x="452" y="646" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">INDEXES</text>
+      <text x="452" y="662" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">bunnylibraryid (unique)</text>
+      <text x="452" y="678" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">webhooksecret (unique)</text>
+      <line x1="440" y1="684" x2="760" y2="684" stroke="rgba(255,255,255,0.12)" stroke-width="0.8"/>
+      <text x="452" y="698" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace">origin decide autoridade: platform ou byos</text>
+
       <rect x="1240" y="124.0" width="160" height="40" rx="6" fill="#121212"/>
       <rect x="1240" y="124.0" width="160" height="40" rx="6" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.30)" stroke-width="1"/>
       <text x="1320" y="140" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">{user}</text>
@@ -304,18 +351,18 @@
       <text x="1320" y="468" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif" text-anchor="middle">{payment_accounts}</text>
       <text x="1320" y="482" fill="#b0b3b8" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">core</text>
 
-      <line x1="40" y1="668" x2="1400" y2="668" stroke="rgba(255,255,255,0.12)" stroke-width="0.8"/>
-      <text x="40" y="688" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
-      <line x1="112" y1="684" x2="132" y2="684" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
-      <text x="140" y="688" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">FK DECLARADA NO INSTALL.XML</text>
-      <line x1="442" y1="684" x2="462" y2="684" stroke="#3394ff" stroke-width="1" marker-end="url(#arrow-accent)"/>
-      <text x="470" y="688" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">EXCLUSAO EM CASCATA (PRIVACY)</text>
-      <rect x="772" y="678" width="20" height="12" rx="2" fill="rgba(51,148,255,0.12)" stroke="#3394ff" stroke-width="1"/>
-      <text x="800" y="688" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">TABELA QUE A CASCATA APAGA</text>
-      <rect x="1102" y="678" width="20" height="12" rx="2" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.30)" stroke-width="1"/>
-      <text x="1130" y="688" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">TABELA DO CORE DO MOODLE</text>
+      <line x1="40" y1="744" x2="1400" y2="744" stroke="rgba(255,255,255,0.12)" stroke-width="0.8"/>
+      <text x="40" y="764" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+      <line x1="112" y1="760" x2="132" y2="760" stroke="#b0b3b8" stroke-width="1" marker-end="url(#arrow)"/>
+      <text x="140" y="764" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">FK DECLARADA NO INSTALL.XML</text>
+      <line x1="442" y1="760" x2="462" y2="760" stroke="#3394ff" stroke-width="1" marker-end="url(#arrow-accent)"/>
+      <text x="470" y="764" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">EXCLUSAO EM CASCATA (PRIVACY)</text>
+      <rect x="772" y="754" width="20" height="12" rx="2" fill="rgba(51,148,255,0.12)" stroke="#3394ff" stroke-width="1"/>
+      <text x="800" y="764" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">TABELA QUE A CASCATA APAGA</text>
+      <rect x="1102" y="754" width="20" height="12" rx="2" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.30)" stroke-width="1"/>
+      <text x="1130" y="764" fill="#b0b3b8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">TABELA DO CORE DO MOODLE</text>
     </svg>
-    <p class="colophon">Fonte: public/local/marketplace/db/install.xml. O Moodle nao declara ON DELETE no XMLDB - a integridade e de aplicacao. A unica exclusao em cascata do subsistema esta no privacy provider: apagar um usuario apaga member e entitlement, e nao apaga sale.</p>
+    <p class="colophon">Fonte: public/local/marketplace/db/install.xml. O Moodle nao declara ON DELETE no XMLDB - a integridade e de aplicacao. A unica exclusao em cascata do subsistema esta no privacy provider: apagar um usuario apaga member e entitlement, e nao apaga sale. Em local_marketplace_library, origin (platform|byos) decide quem tem autoridade para mexer na library - nativa (provisionada pela plataforma) ou BYOS (conectada pelo produtor); nao basta olhar o plano ATUAL da empresa, porque o plano pode ter mudado depois da conexao (ver ADR-0014 e docs/ai-plans/2026-09-25-bunny-multi-tenant-trava-resolucao.md).</p>
   </div>
 </body>
 </html>

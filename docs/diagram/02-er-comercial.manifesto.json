@@ -7,6 +7,10 @@
    "shortname (unique)",
    "hostname (unique)"
   ],
+  "local_marketplace_library": [
+   "bunnylibraryid (unique)",
+   "webhooksecret (unique)"
+  ],
   "local_marketplace_member": [
    "companyid-userid (unique)"
   ],
@@ -33,6 +37,13 @@
    "commissionpct",
    "commissionbase",
    "planid"
+  ],
+  "local_marketplace_library": [
+   "id",
+   "companyid",
+   "bunnylibraryid",
+   "apikey",
+   "origin"
   ],
   "local_marketplace_member": [
    "id",

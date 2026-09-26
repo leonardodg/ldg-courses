@@ -1,8 +1,10 @@
 # Diagramas dos plugins LeoDG
 
-Nove diagramas do desenho de dados e da arquitetura dos onze plugins
+Nove diagramas do desenho de dados e da arquitetura dos doze plugins
 desenvolvidos para a plataforma. Gerados a partir do **schema real** — todo
-campo, tipo e índice sai dos `db/install.xml`, lidos em **14/09/2026**.
+campo, tipo e índice sai dos `db/install.xml`, lidos em **14/09/2026**
+(`02-er-comercial` e `06-arquitetura` atualizados em **26/09/2026** para
+cobrir `local_marketplace_library` e o `mod_bunnystream`).
 
 Cada diagrama vem em três arquivos: `.html` (a fonte, que reabre para edição),
 `.svg` (para embutir em documento e escalar) e `.png` @2 (para colar em
