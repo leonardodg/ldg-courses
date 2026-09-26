@@ -111,6 +111,7 @@ $string['erroraccounttaken'] = 'Esta cuenta de pago ya está vinculada a otra em
 $string['erroralreadymember'] = 'Esta persona ya es vendedora de esta empresa.';
 $string['errorbillingdays'] = 'Ingresá el intervalo de cobro en días.';
 $string['errorbunnyapi'] = 'La API de Bunny devolvió un error: {$a}';
+$string['errorbunnylibraryidtaken'] = 'Esta library de Bunny ya está conectada a otra empresa.';
 $string['errorcannotremoveowner'] = 'El responsable no se puede quitar. Promové a otra persona primero — una empresa sin responsable queda sin nadie a cargo de su cuenta de pago.';
 $string['errorcannotsell'] = 'Esta empresa todavía no puede vender: configurá primero un medio de pago.';
 $string['errorcnpjinvalid'] = 'Este CNPJ no es válido.';

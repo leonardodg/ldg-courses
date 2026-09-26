@@ -111,6 +111,7 @@ $string['erroraccounttaken'] = 'This payment account is already linked to anothe
 $string['erroralreadymember'] = 'This person is already a seller of this company.';
 $string['errorbillingdays'] = 'Enter the billing interval in days.';
 $string['errorbunnyapi'] = 'The Bunny API returned an error: {$a}';
+$string['errorbunnylibraryidtaken'] = 'This Bunny library is already connected to another company.';
 $string['errorcannotremoveowner'] = 'The owner cannot be removed. Make someone else the owner first — a company without an owner has nobody responsible for its payment account.';
 $string['errorcannotsell'] = 'This company cannot sell yet: configure a payment method first.';
 $string['errorcnpjinvalid'] = 'This is not a valid company tax ID.';

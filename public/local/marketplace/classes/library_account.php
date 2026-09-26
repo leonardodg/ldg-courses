@@ -38,6 +38,12 @@ class library_account extends persistent {
     /** @var string Tabela. */
     public const TABLE = 'local_marketplace_library';
 
+    /** @var string Library provisionada pela plataforma, na conta dela (Frente B). */
+    public const ORIGIN_PLATFORM = 'platform';
+
+    /** @var string Library da PROPRIA conta do produtor (Frente A, BYOS). */
+    public const ORIGIN_BYOS = 'byos';
+
     /**
      * Define as propriedades.
      *
@@ -64,6 +70,11 @@ class library_account extends persistent {
                 'null' => NULL_ALLOWED,
             ],
             'webhooksecret' => ['type' => PARAM_ALPHANUM, 'default' => ''],
+            'origin' => [
+                'type' => PARAM_ALPHA,
+                'default' => self::ORIGIN_PLATFORM,
+                'choices' => [self::ORIGIN_PLATFORM, self::ORIGIN_BYOS],
+            ],
         ];
     }
 
@@ -113,6 +124,26 @@ class library_account extends persistent {
         $existing = self::get_record(['companyid' => (int) $value]);
         if ($existing && $existing->get('id') != $this->get('id')) {
             return new lang_string('errorlibrarytaken', 'local_marketplace');
+        }
+
+        return true;
+    }
+
+    /**
+     * Nao pode haver duas linhas para o mesmo id de library da Bunny.
+     *
+     * O indice unico da tabela ja garante isso no banco - sem esta
+     * checagem, conectar (Frente A, BYOS) um bunnylibraryid ja usado por
+     * outra empresa estoura dml_write_exception em vez da mensagem que a
+     * pessoa consegue corrigir.
+     *
+     * @param int $value
+     * @return true|lang_string
+     */
+    protected function validate_bunnylibraryid($value) {
+        $existing = self::get_by_bunnylibraryid((int) $value);
+        if ($existing && $existing->get('id') != $this->get('id')) {
+            return new lang_string('errorbunnylibraryidtaken', 'local_marketplace');
         }
 
         return true;

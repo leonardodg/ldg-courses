@@ -132,6 +132,73 @@ final class byos_test extends \advanced_testcase {
     }
 
     /**
+     * Duas empresas nao podem conectar o mesmo bunnylibraryid - o indice
+     * unico da tabela ja recusaria, mas sem validate_bunnylibraryid() o erro
+     * sairia como dml_write_exception em vez de mensagem legivel. Achado do
+     * code review de 25/09/2026.
+     *
+     * @return void
+     */
+    public function test_connecting_a_library_id_already_taken_is_rejected(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        if (!\core\encryption::key_exists()) {
+            \core\encryption::create_key();
+        }
+
+        $plan = $this->make_byos_plan();
+        $primeira = $this->make_byos_company($plan);
+        $segunda = $this->make_byos_company($plan);
+
+        api::connect_byos_library($primeira, 555444, 'chave-da-primeira');
+
+        $this->expectException(\core\invalid_persistent_exception::class);
+        api::connect_byos_library($segunda, 555444, 'chave-da-segunda');
+    }
+
+    /**
+     * Empresa conecta a propria library (BYOS) e depois volta pro plano
+     * nativo - sync_video_library_resolution() continua sem mexer na
+     * library, porque a linha ainda pertence a conta do produtor
+     * (origin = byos), mesmo com o plano atual dizendo nativo. Achado do
+     * code review de 25/09/2026: sem o campo `origin`, esta chamada batia
+     * na conta do produtor com a chave da PLATAFORMA.
+     *
+     * @return void
+     */
+    public function test_reverting_to_native_plan_still_protects_the_byos_library(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        if (!\core\encryption::key_exists()) {
+            \core\encryption::create_key();
+        }
+
+        $byosplan = $this->make_byos_plan();
+        $company = $this->make_byos_company($byosplan);
+        api::connect_byos_library($company, 1, 'chave-do-produtor');
+
+        $nativeplan = new plan(0, (object) [
+            'shortname' => 'nativo' . random_int(1000, 9999),
+            'name' => 'Plano nativo de teste',
+            'hostingmodel' => plan::HOSTING_NATIVE,
+        ]);
+        $nativeplan->create();
+        $company->set('planid', (int) $nativeplan->get('id'));
+        $company->update();
+
+        $fake = new fake_bunny_platform_client();
+        api::override_bunny_client($fake);
+
+        api::sync_video_library_resolution($company);
+
+        $this->assertCount(0, $fake->calls);
+        $this->assertSame(
+            library_account::ORIGIN_BYOS,
+            library_account::get_for((int) $company->get('id'))->get('origin')
+        );
+    }
+
+    /**
      * Conectar de novo ATUALIZA a mesma linha, e nao cria uma segunda
      * library para a mesma empresa.
      *

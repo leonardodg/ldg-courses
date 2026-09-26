@@ -778,6 +778,7 @@ class api {
         $library->set('bunnylibraryid', $created['bunnylibraryid']);
         $library->set('apikey', library_account::encrypt($created['apikey']));
         $library->set('maxresolution', $cap);
+        $library->set('origin', library_account::ORIGIN_PLATFORM);
         $library->create();
 
         return $library;
@@ -810,6 +811,18 @@ class api {
         if (!$library) {
             // Sem library ainda (conta Bunny nao configurada quando a
             // empresa nasceu) - nada a sincronizar aqui.
+            return;
+        }
+
+        if ($library->get('origin') !== library_account::ORIGIN_PLATFORM) {
+            // O plano ATUAL diz nativo, mas esta linha ainda e a que o
+            // produtor conectou antes de trocar de volta - a chave da
+            // plataforma nao tem autoridade sobre ela. Achado do code
+            // review de 25/09/2026: sem esta checagem, a chamada seguinte
+            // batia numa library de OUTRA conta com a chave errada. Ficar
+            // sem library nativa ate alguem reconectar e o mesmo gap ja
+            // documentado em connect_byos_library() - so na direcao
+            // contraria.
             return;
         }
 
@@ -895,7 +908,10 @@ class api {
      * o vinculo com a chave do produtor - a library antiga fica orfa na
      * conta da plataforma, sem ninguem apagando ou avisando. Limpar isso e
      * decisao de negocio (a empresa pode ter video la que ainda quer manter)
-     * e fica fora desta frente.
+     * e fica fora desta frente. O campo `origin` grava ORIGIN_BYOS aqui, e
+     * e o que impede o caminho INVERSO (empresa volta a nativo): a chave da
+     * plataforma nunca mais tenta mexer nesta linha so por causa do plano
+     * atual - ver a checagem em sync_video_library_resolution().
      *
      * @param company $company
      * @param int $bunnylibraryid Id da library na conta do PRODUTOR.
@@ -924,6 +940,7 @@ class api {
         // BYOS nao tem teto de resolucao da plataforma - o produtor paga e
         // controla a propria banda.
         $library->set('maxresolution', null);
+        $library->set('origin', library_account::ORIGIN_BYOS);
 
         if ($library->get('id')) {
             $library->update();
