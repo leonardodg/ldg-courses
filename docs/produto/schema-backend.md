@@ -47,7 +47,7 @@ hoje; as linhas abaixo são intenção de produto, não schema em produção.
 
 | Gap | Situação verificada | Por quê importa ao produto |
 |---|---|---|
-| Armazenamento da chave de API BYOS por empresa | `local_marketplace_plan.hostingmodel` (`native` \| `byos`) é **rótulo**: não há coluna nem tabela onde gravar a chave, nem código que troque destino de upload | Sem peça técnica, vender o degrau BYOS é vender o que não se entrega (ver [`trd.md`](trd.md), Frente A) |
+| ~~Armazenamento da chave de API BYOS por empresa~~ | **Fechado em 25/09/2026**: reaproveita `local_marketplace_library` (mesma tabela da Frente B) — `api::connect_byos_library()` grava a chave do produtor, cifrada. `mod_bunnystream\config::for_course()` já lê essa tabela sem saber `hostingmodel`, então o roteamento de upload não precisou de código novo | Ver [`trd.md`](trd.md), Frente A |
 | Mapeamento empresa ↔ `library` do Bunny | **Não modelado** — nenhuma tabela no data-model liga empresa a biblioteca de vídeo | Pré-condição da frente B e da trava: sem origem identificada por empresa, não há o que travar nem de onde medir custo |
 | Player consumindo o teto de resolução | **Dados existem** (`local_marketplace_plan_tier`, `plan::max_resolution_for()`), **consumidor pendente**: nada no `core_media_manager` lê o teto ainda | Enquanto o player não consumir, a trava é promessa no banco — ver [ADR-0014](../adr/0014-trava-de-resolucao-por-mensalidade-do-vendedor.md) (Aceita) e [`trd.md`](trd.md) |
 

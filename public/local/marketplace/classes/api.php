@@ -751,6 +751,13 @@ class api {
             return $existing;
         }
 
+        if (self::is_byos($company)) {
+            // Frente A: a library e da CONTA DO PRODUTOR, nao da plataforma.
+            // Provisionar aqui criaria uma library na conta ERRADA - quem
+            // conecta a propria e o produtor, por connect_byos_library().
+            return null;
+        }
+
         $client = self::$bunnyclientoverride;
         if (!$client) {
             $accountkey = self::bunny_account_api_key();
@@ -791,6 +798,14 @@ class api {
      * @return void
      */
     public static function sync_video_library_resolution(company $company): void {
+        if (self::is_byos($company)) {
+            // A library e da conta do PRODUTOR - a plataforma nao tem chave
+            // de conta para mexer nela, e nao e dela que travar: o produtor
+            // paga a propria banda, plan::max_resolution() ja devolve nulo
+            // para plano sem faixas (BYOS nao tem faixa nenhuma).
+            return;
+        }
+
         $library = library_account::get_for((int) $company->get('id'));
         if (!$library) {
             // Sem library ainda (conta Bunny nao configurada quando a
@@ -842,6 +857,81 @@ class api {
         $plan = $company->get_plan();
 
         return $plan ? $plan->max_resolution() : plan_tier::RESOLUTIONS[0];
+    }
+
+    /**
+     * A empresa esta num plano BYOS (Frente A)?
+     *
+     * Sem plano ainda conta como NATIVO - e o degrau que nao exige nada do
+     * vendedor, e e o unico que faz sentido provisionar sozinho antes de
+     * a empresa escolher qualquer coisa.
+     *
+     * @param company $company
+     * @return bool
+     */
+    protected static function is_byos(company $company): bool {
+        $plan = $company->get_plan();
+
+        return $plan && $plan->get('hostingmodel') === plan::HOSTING_BYOS;
+    }
+
+    /**
+     * Conecta a library da PROPRIA conta Bunny do produtor (Frente A, BYOS).
+     *
+     * Ao contrario de create_video_library(), nao fala com a Bunny nenhuma
+     * vez: a library ja existe, na conta do produtor, e ele mesmo trouxe o
+     * id e a chave. A plataforma so guarda o vinculo, cifrado - o mesmo
+     * schema de local_marketplace_library serve para os dois casos (nativo e
+     * BYOS), porque o que muda e QUEM criou a library, nao o formato do
+     * vinculo.
+     *
+     * Recusa se a empresa nao esta num plano BYOS: guardar a chave do
+     * produtor como se fosse a library nativa faria o
+     * sync_video_library_resolution() tentar mexer numa conta que a
+     * plataforma nao tem autoridade nenhuma sobre.
+     *
+     * GAP CONHECIDO: se a empresa ja tinha library NATIVA (provisionada na
+     * conta da plataforma) antes de mudar para BYOS, este metodo SOBRESCREVE
+     * o vinculo com a chave do produtor - a library antiga fica orfa na
+     * conta da plataforma, sem ninguem apagando ou avisando. Limpar isso e
+     * decisao de negocio (a empresa pode ter video la que ainda quer manter)
+     * e fica fora desta frente.
+     *
+     * @param company $company
+     * @param int $bunnylibraryid Id da library na conta do PRODUTOR.
+     * @param string $apikey Chave da library, em claro.
+     * @param string|null $securitykey Chave de autenticacao por token, em claro.
+     * @param string|null $cdnhostname
+     * @return library_account
+     */
+    public static function connect_byos_library(
+        company $company,
+        int $bunnylibraryid,
+        string $apikey,
+        ?string $securitykey = null,
+        ?string $cdnhostname = null
+    ): library_account {
+        if (!self::is_byos($company)) {
+            throw new moodle_exception('errornotbyos', 'local_marketplace');
+        }
+
+        $library = library_account::get_for((int) $company->get('id')) ?: new library_account();
+        $library->set('companyid', (int) $company->get('id'));
+        $library->set('bunnylibraryid', $bunnylibraryid);
+        $library->set('apikey', library_account::encrypt($apikey));
+        $library->set('securitykey', $securitykey ? library_account::encrypt($securitykey) : null);
+        $library->set('cdnhostname', $cdnhostname ?: null);
+        // BYOS nao tem teto de resolucao da plataforma - o produtor paga e
+        // controla a propria banda.
+        $library->set('maxresolution', null);
+
+        if ($library->get('id')) {
+            $library->update();
+        } else {
+            $library->create();
+        }
+
+        return $library;
     }
 
     /**
