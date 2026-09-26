@@ -49,6 +49,7 @@ Precisa de **pelo menos um gateway** instalado para vender: `paygw_asaas` ou
 | `defaultfeepercent` | `25` | Comissão do site, último degrau da cadeia |
 | `commissionbase` | `gross` | Base de cálculo: sobre o bruto ou sobre o líquido |
 | `defaultcountry` | — | País da primeira conta de uma empresa nova |
+| `bunnyaccountapikey` | vazio | Chave de CONTA da Bunny da plataforma — só cria a library nativa de cada empresa (ver seção "Vídeo" abaixo). Vazio = empresa nasce sem library, provisiona depois |
 
 ### A cadeia da comissão
 
@@ -218,7 +219,7 @@ O `cli/status.php` relata quando um repositório habilitado escapa da lista.
 | `/local/marketplace/admin/companies.php` | empresas, com a comissão efetiva e de onde ela veio |
 | `/local/marketplace/admin/plans.php` | planos comerciais e as faixas de resolução |
 | `/local/marketplace/report.php?company=<shortname>` | vendas, cursos, alunos e assinaturas |
-| `/local/marketplace/company.php?company=<shortname>` | painel do gerente: meio de pagamento, **plano e assinatura**, ofertas |
+| `/local/marketplace/company.php?company=<shortname>` | painel do gerente: meio de pagamento, **plano e assinatura**, conexão BYOS de vídeo (plano BYOS), ofertas |
 
 O relatório é filtrado por `company` **shortname**, não por id.
 
@@ -267,6 +268,42 @@ conferir a guarda, não para cobrar.
 Roteiro de prova com dinheiro real, incluindo o CLI e as consultas de
 conferência no banco:
 [`docs/data-validation/assinatura-saas-plano-empresa.md`](../../../docs/data-validation/assinatura-saas-plano-empresa.md).
+
+## Vídeo: Bunny nativo ou BYOS
+
+Hospedagem de vídeo é o `mod_bunnystream` (plugin separado); este plugin só
+guarda **qual library da Bunny atende cada empresa**, em
+`local_marketplace_library` (`library_account`) — uma linha por empresa, com
+um campo `origin` (`platform` ou `byos`) que decide quem tem autoridade para
+mexer nela.
+
+**Nativo (`hostingmodel = native`, Frente B) — automático.** `create_video_library()`
+provisiona a library **na conta da plataforma** (a chave em
+`bunnyaccountapikey`, acima) assim que a empresa nasce, e
+`sync_video_library_resolution()` reaplica o teto de resolução toda vez que
+`company.planid` muda de verdade — o teto vem de `plan::max_resolution()`, não
+de ticket. Sem a chave de conta configurada, a empresa nasce sem library e
+fica assim até alguém provisionar manualmente.
+
+**BYOS (`hostingmodel = byos`, Frente A) — o gerente conecta a própria conta.**
+Em `/local/marketplace/company.php?company=<shortname>`, aparece uma seção só
+para empresas nesse plano: o gerente cola o id da library, a chave de API (e,
+opcional, a chave de token e o hostname do CDN) da **própria** conta Bunny.
+`api::connect_byos_library()` grava tudo cifrado — nenhuma chamada à API da
+Bunny, porque a library já existe do lado do produtor. A plataforma nunca
+provisiona nem sincroniza resolução para essa empresa: `create_video_library()`
+e `sync_video_library_resolution()` recusam agir quando `origin = byos`.
+
+**Trocar de nativo para BYOS sobrescreve a linha na hora** (a UI avisa antes),
+e vídeo já publicado na library nativa para de tocar sem migração automática —
+decisão de produto registrada no [TRD](../../../docs/produto/trd.md), não bug.
+Trocar de volta para nativo não reprovisiona sozinho: a empresa fica sem
+library nenhuma até reconectar ou até alguém rodar `create_video_library()` de
+novo à mão.
+
+Detalhe completo, achados ao vivo contra a API real da Bunny e histórico dos
+testes:
+[`docs/ai-plans/2026-09-25-bunny-multi-tenant-trava-resolucao.md`](../../../docs/ai-plans/2026-09-25-bunny-multi-tenant-trava-resolucao.md).
 
 ## Armadilhas
 
