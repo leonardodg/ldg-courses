@@ -48,7 +48,7 @@ painel(564, 490, 372, 'Tarefas agendadas', [
 
 # ===== COLUNA C - o banco ===============================================
 painel(1000, 224, 400, 'Banco', [
-    'local_marketplace_*        10 tabelas', 'paygw_mercadopago|asaas|pagarme',
+    'local_marketplace_*        11 tabelas', 'paygw_mercadopago|asaas|pagarme',
     'local_partners_application', 'format_ldg_lesson · ldgvideo',
     'core: payments · payment_accounts', 'core: enrol · user_enrolments',
     'core: course_categories · course', '---- o direito manda no acesso ----'],
@@ -61,7 +61,8 @@ painel(1520, 224, 440, 'APIs externas', [
 painel(1520, 350, 440, 'Apresentacao e acesso', [
     'theme_ldg          o tema',
     'format_ldg         portal do aluno',
-    'mod_ldgvideo       aula em video',
+    'mod_ldgvideo       aula em video (embed)',
+    'mod_bunnystream    aula em video (Bunny, nativo|BYOS)',
     'enrol_marketplace  matricula por diferenca',
     'availability_marketplace  libera secao',
     'block_marketplace  avisos do aluno'], 'PLUGINS')
@@ -94,14 +95,16 @@ write_doc(
     OUT,
     'Architecture · plugins LeoDG',
     'Arquitetura: paginas, admin, banco e o que sai do site',
-    'Arquitetura dos onze plugins: as paginas agrupadas pela permissao que cada '
+    'Arquitetura dos doze plugins: as paginas agrupadas pela permissao que cada '
     'uma exige, os endpoints que os gateways chamam, as tarefas agendadas, o '
     'banco no centro e as APIs externas.',
     VW, VH, corpo, minw=1300,
-    footer='Caminhos relativos a public/local/, public/payment/gateway/<nome>/ e public/blocks/. A '
-           'coluna da esquerda e uma escala de permissao, nao de importancia: partners/index.php e '
-           'apply.php sao publicas de proposito - o visitante que elas querem atingir e justamente '
-           'quem ainda nao tem conta. O banco esta no centro porque e o unico lugar onde os onze '
-           'plugins se encontram: nenhum deles chama o outro por PHP. E o direito de acesso, dentro '
-           'dele, e a fonte unica da verdade - a matricula e a liberacao de secao leem de la, nunca '
-           'da venda. As configuracoes de cada plugin estao no diagrama 09.')
+    footer='Caminhos relativos a public/local/, public/payment/gateway/<nome>/, public/blocks/ e '
+           'public/mod/. A coluna da esquerda e uma escala de permissao, nao de importancia: '
+           'partners/index.php e apply.php sao publicas de proposito - o visitante que elas querem '
+           'atingir e justamente quem ainda nao tem conta. O banco esta no centro porque e o unico '
+           'lugar onde os doze plugins se encontram: nenhum deles chama o outro por PHP. E o '
+           'direito de acesso, dentro dele, e a fonte unica da verdade - a matricula e a liberacao '
+           'de secao leem de la, nunca da venda. O mod_bunnystream e o unico que fala com uma API '
+           'externa direto (Bunny Stream), fora do webhook/checkout dos gateways de pagamento. As '
+           'configuracoes de cada plugin estao no diagrama 09.')

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg viewBox="0 0 2000 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="06-arquitetura-title 06-arquitetura-desc">
       <title id="06-arquitetura-title">Arquitetura: paginas, admin, banco e o que sai do site</title>
-      <desc id="06-arquitetura-desc">Arquitetura dos onze plugins: as paginas agrupadas pela permissao que cada uma exige, os endpoints que os gateways chamam, as tarefas agendadas, o banco no centro e as APIs externas.</desc>
+      <desc id="06-arquitetura-desc">Arquitetura dos doze plugins: as paginas agrupadas pela permissao que cada uma exige, os endpoints que os gateways chamam, as tarefas agendadas, o banco no centro e as APIs externas.</desc>
       <defs>
         <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap');</style>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#b0b3b8"/></marker>
@@ -139,7 +139,7 @@
       <text x="1012" y="242" fill="#ffffff" font-size="12" font-weight="600" font-family="'Inter', system-ui, sans-serif">Banco</text>
       <rect x="1346" y="232" width="42" height="12" rx="2" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="0.8"/>
       <text x="1367.0" y="241" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">MYSQL</text>
-      <text x="1012" y="270" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">local_marketplace_*        10 tabelas</text>
+      <text x="1012" y="270" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">local_marketplace_*        11 tabelas</text>
       <text x="1012" y="284" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">paygw_mercadopago|asaas|pagarme</text>
       <text x="1012" y="298" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">local_partners_application</text>
       <text x="1012" y="312" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">format_ldg_lesson · ldgvideo</text>
@@ -160,8 +160,8 @@
       <text x="1532" y="284" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">Asaas          Pix|boleto|cartao + assinatura</text>
       <text x="1532" y="298" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">Pagar.me       Pix|boleto|cartao + assinatura</text>
 
-      <rect x="1520" y="350" width="440" height="128" rx="6" fill="#121212"/>
-      <rect x="1520" y="350" width="440" height="128" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
+      <rect x="1520" y="350" width="440" height="142" rx="6" fill="#121212"/>
+      <rect x="1520" y="350" width="440" height="142" rx="6" fill="#1e1e1e" stroke="#ffffff" stroke-width="1"/>
       <rect x="1520" y="350" width="440" height="28" rx="6" fill="#ffffff" fill-opacity="0.04"/>
       <rect x="1520" y="370" width="440" height="8" fill="#ffffff" fill-opacity="0.04"/>
       <line x1="1520" y1="378" x2="1960" y2="378" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
@@ -170,10 +170,11 @@
       <text x="1921.0" y="367" fill="#ffffff" opacity="0.8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">PLUGINS</text>
       <text x="1532" y="396" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">theme_ldg          o tema</text>
       <text x="1532" y="410" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">format_ldg         portal do aluno</text>
-      <text x="1532" y="424" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">mod_ldgvideo       aula em video</text>
-      <text x="1532" y="438" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">enrol_marketplace  matricula por diferenca</text>
-      <text x="1532" y="452" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">availability_marketplace  libera secao</text>
-      <text x="1532" y="466" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">block_marketplace  avisos do aluno</text>
+      <text x="1532" y="424" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">mod_ldgvideo       aula em video (embed)</text>
+      <text x="1532" y="438" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">mod_bunnystream    aula em video (Bunny, nativo|BYOS)</text>
+      <text x="1532" y="452" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">enrol_marketplace  matricula por diferenca</text>
+      <text x="1532" y="466" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">availability_marketplace  libera secao</text>
+      <text x="1532" y="480" fill="#ffffff" opacity="1" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">block_marketplace  avisos do aluno</text>
 
       <line x1="40" y1="720" x2="1960" y2="720" stroke="#ffffff" stroke-opacity="0.12" stroke-width="0.8"/>
       <text x="40" y="740" fill="#8a8d91" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
