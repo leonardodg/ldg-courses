@@ -147,13 +147,13 @@ final class byos_test extends \advanced_testcase {
         }
 
         $plan = $this->make_byos_plan();
-        $primeira = $this->make_byos_company($plan);
-        $segunda = $this->make_byos_company($plan);
+        $first = $this->make_byos_company($plan);
+        $second = $this->make_byos_company($plan);
 
-        api::connect_byos_library($primeira, 555444, 'chave-da-primeira');
+        api::connect_byos_library($first, 555444, 'chave-da-primeira');
 
         $this->expectException(\core\invalid_persistent_exception::class);
-        api::connect_byos_library($segunda, 555444, 'chave-da-segunda');
+        api::connect_byos_library($second, 555444, 'chave-da-segunda');
     }
 
     /**

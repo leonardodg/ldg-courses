@@ -46,6 +46,7 @@ $string['byosconnected'] = 'Conectada a tu library #{$a} de Bunny.';
 $string['byosintro'] = 'Este plan hospeda video en tu propia cuenta de Bunny.net Stream — la plataforma nunca ve ni paga tu banda. Creá una library en tu panel de Bunny primero, después pegá los datos abajo.';
 $string['byoslibraryid'] = 'ID de la library';
 $string['byosnotconnected'] = 'Todavía no hay ninguna library de Bunny conectada — la subida de video no va a funcionar hasta que conectes una.';
+$string['byosoverwritewarning'] = 'Esta empresa hoy hospeda video en la library propia de la plataforma. Conectar la tuya abajo cambia al instante: cualquier video ya publicado en un curso deja de reproducirse, sin migración automática.';
 $string['byossection'] = 'Video (tu propia cuenta Bunny)';
 $string['byossecuritykey'] = 'Clave de autenticación por token (opcional)';
 $string['cancelconfirm'] = '¿Cancelar <strong>{$a->offer}</strong>? Conservás el acceso hasta {$a->date} — pagaste por ese período y no se te quita. Después el acceso simplemente termina, y dejamos de recordarte que renueves.';

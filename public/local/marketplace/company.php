@@ -275,6 +275,14 @@ if ($planoatual && $planoatual->get('hostingmodel') === plan::HOSTING_BYOS) {
     echo html_writer::div(get_string('byosintro', 'local_marketplace'), 'text-muted small mb-2');
 
     $library = \local_marketplace\library_account::get_for((int) $company->get('id'));
+    if ($library && $library->get('origin') === \local_marketplace\library_account::ORIGIN_PLATFORM) {
+        // Ainda e a library NATIVA (Frente B) - conectar abaixo pela primeira
+        // vez SOBRESCREVE esta linha com os dados do produtor. Qualquer
+        // curso ja publicado com video nesta library para de tocar na hora,
+        // porque mod_bunnystream resolve a chave por esta mesma linha a
+        // cada exibicao - nao ha aviso automatico depois, so este, antes.
+        echo $OUTPUT->notification(get_string('byosoverwritewarning', 'local_marketplace'), 'warning');
+    }
     if ($library) {
         echo $OUTPUT->notification(
             get_string('byosconnected', 'local_marketplace', $library->get('bunnylibraryid')),
