@@ -99,6 +99,28 @@ if (data_submitted() && confirm_sesskey() && optional_param('changeplan', 0, PAR
     redirect($url);
 }
 
+// Conectar a library da PROPRIA conta Bunny do produtor (Frente A, BYOS).
+// So aparece pro plano certo - o formulario abaixo nem mostra o campo fora
+// disso, mas o servidor confere de novo aqui, porque URL se forja.
+if (data_submitted() && confirm_sesskey() && optional_param('connectbyos', 0, PARAM_BOOL)) {
+    $bunnylibraryid = required_param('bunnylibraryid', PARAM_INT);
+    $apikey = required_param('apikey', PARAM_RAW_TRIMMED);
+    $securitykey = optional_param('securitykey', '', PARAM_RAW_TRIMMED);
+    $cdnhostname = optional_param('cdnhostname', '', PARAM_HOST);
+
+    if ($bunnylibraryid > 0 && $apikey !== '') {
+        \local_marketplace\api::connect_byos_library(
+            $company,
+            $bunnylibraryid,
+            $apikey,
+            $securitykey !== '' ? $securitykey : null,
+            $cdnhostname !== '' ? $cdnhostname : null
+        );
+    }
+
+    redirect($url);
+}
+
 echo $OUTPUT->header();
 
 // Meio de pagamento.
@@ -241,6 +263,81 @@ if ($opcoesplano) {
         'button',
         get_string('selectplan', 'local_marketplace'),
         ['type' => 'submit', 'class' => 'btn btn-outline-primary']
+    );
+    echo html_writer::end_tag('form');
+}
+
+// Video BYOS (Frente A) - so aparece no plano que exige o produtor trazer a
+// propria conta Bunny. Nos outros planos a library e provisionada sozinha
+// (Frente B), e nao ha nada aqui para o vendedor fazer.
+if ($planoatual && $planoatual->get('hostingmodel') === plan::HOSTING_BYOS) {
+    echo $OUTPUT->heading(get_string('byossection', 'local_marketplace'), 3);
+    echo html_writer::div(get_string('byosintro', 'local_marketplace'), 'text-muted small mb-2');
+
+    $library = \local_marketplace\library_account::get_for((int) $company->get('id'));
+    if ($library && $library->get('origin') === \local_marketplace\library_account::ORIGIN_PLATFORM) {
+        // Ainda e a library NATIVA (Frente B) - conectar abaixo pela primeira
+        // vez SOBRESCREVE esta linha com os dados do produtor. Qualquer
+        // curso ja publicado com video nesta library para de tocar na hora,
+        // porque mod_bunnystream resolve a chave por esta mesma linha a
+        // cada exibicao - nao ha aviso automatico depois, so este, antes.
+        echo $OUTPUT->notification(get_string('byosoverwritewarning', 'local_marketplace'), 'warning');
+    }
+    if ($library) {
+        echo $OUTPUT->notification(
+            get_string('byosconnected', 'local_marketplace', $library->get('bunnylibraryid')),
+            'success'
+        );
+    } else {
+        echo $OUTPUT->notification(get_string('byosnotconnected', 'local_marketplace'), 'warning');
+    }
+
+    echo html_writer::start_tag('form', [
+        'method' => 'post',
+        'action' => $url->out(false),
+        'class' => 'mb-4',
+    ]);
+    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'connectbyos', 'value' => '1']);
+
+    echo html_writer::start_div('mb-2');
+    echo html_writer::label(get_string('byoslibraryid', 'local_marketplace'), 'id_bunnylibraryid');
+    echo html_writer::empty_tag('input', [
+        'type' => 'number', 'min' => '1', 'name' => 'bunnylibraryid', 'id' => 'id_bunnylibraryid',
+        'value' => $library ? $library->get('bunnylibraryid') : '',
+        'class' => 'form-control', 'required' => 'required',
+    ]);
+    echo html_writer::end_div();
+
+    echo html_writer::start_div('mb-2');
+    echo html_writer::label(get_string('byosapikey', 'local_marketplace'), 'id_apikey');
+    echo html_writer::div(get_string('byosapikey_help', 'local_marketplace'), 'form-text text-muted');
+    echo html_writer::empty_tag('input', [
+        'type' => 'password', 'name' => 'apikey', 'id' => 'id_apikey',
+        'class' => 'form-control', 'required' => 'required',
+    ]);
+    echo html_writer::end_div();
+
+    echo html_writer::start_div('mb-2');
+    echo html_writer::label(get_string('byossecuritykey', 'local_marketplace'), 'id_securitykey');
+    echo html_writer::empty_tag('input', [
+        'type' => 'password', 'name' => 'securitykey', 'id' => 'id_securitykey', 'class' => 'form-control',
+    ]);
+    echo html_writer::end_div();
+
+    echo html_writer::start_div('mb-2');
+    echo html_writer::label(get_string('byoscdnhostname', 'local_marketplace'), 'id_cdnhostname');
+    echo html_writer::empty_tag('input', [
+        'type' => 'text', 'name' => 'cdnhostname', 'id' => 'id_cdnhostname',
+        'value' => $library ? $library->get('cdnhostname') : '',
+        'class' => 'form-control',
+    ]);
+    echo html_writer::end_div();
+
+    echo html_writer::tag(
+        'button',
+        get_string('byosconnect', 'local_marketplace'),
+        ['type' => 'submit', 'class' => 'btn btn-primary']
     );
     echo html_writer::end_tag('form');
 }

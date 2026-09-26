@@ -78,17 +78,25 @@ Sub-passes, nesta ordem:
 O gate de custo (pré-condição 3) também precisa estar **calculado** antes de o
 degrau pago abrir — ver [`prd.md`](prd.md), critérios de sucesso.
 
-### 2. Frente A — BYOS
+### 2. Frente A — BYOS — **feito em 25/09/2026**
 
 O produtor conecta a **chave de API da própria conta** de streaming e hospeda
-fora da plataforma. Só entra depois do fechamento da B+C:
+fora da plataforma.
 
-1. **Storage de chave** — definir **onde** grava a chave por empresa (hoje
-   `plan.hostingmodel` é rótulo: `native` \| `byos`, sem storage — gap
-   documentado no [`trd.md`](trd.md)).
-2. **Roteamento de upload/origem conforme o plano** — quem aplica a chave no
-   upload/stream e troca o destino conforme `hostingmodel` + plano
-   contratado.
+1. **Storage de chave — feito.** Reaproveita `local_marketplace_library` (a
+   mesma tabela da Frente B) em vez de tabela nova: o grão é "qual library
+   atende esta empresa", não "quem a provisionou". `api::connect_byos_library()`
+   grava id, chave e chave de token do produtor, cifrados — sem chamar a API
+   da Bunny, porque a library já existe na conta dele.
+2. **Roteamento de upload/origem conforme o plano — já vinha de graça.**
+   `mod_bunnystream\config::for_course()` só lê `library_account::get_for()`,
+   nativa ou BYOS — não precisou de código novo. As guardas novas
+   (`create_video_library()` e `sync_video_library_resolution()` recusam agir
+   sobre empresa BYOS) impedem a plataforma de tentar mandar na conta do
+   produtor.
+3. Formulário de conexão em `local/marketplace/company.php`, visível só no
+   plano BYOS. 5 testes novos, `phpcs` limpo, provado ponta a ponta (conectar
+   → tela mostra "conectado" → campo pré-preenchido).
 
 Sem as duas peças, **BYOS é promessa comercial sem peça técnica** e não pode
 ser vendida como entregue (mesma leitura do TRD sobre `hostingmodel`).

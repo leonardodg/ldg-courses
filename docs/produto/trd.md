@@ -65,13 +65,31 @@ matemática de custo/margem do 0005 segue valendo como referência histórica.
 | Requisito | Detalhe |
 |---|---|
 | Chave de API da conta de streaming do produtor | O produtor **guarda a própria chave**; a plataforma não hospeda nem paga a banda neste degrau |
-| `plan.hostingmodel` | Coluna `native` \| `byos` em `local_marketplace_plan` — **é rótulo**: não há armazenamento de chave e não há código que troque destino de upload conforme o plano |
+| `plan.hostingmodel` | Coluna `native` \| `byos` em `local_marketplace_plan` — **fechado em 25/09/2026**: `api::connect_byos_library()` grava a chave do produtor, e todo o roteamento de upload/origem já lê pela mesma `local_marketplace_library` (Frente B), sem precisar saber `hostingmodel` — ver abaixo |
 
-**Lacuna documentada (gap):** enquanto não existir (a) onde gravar a chave
-por empresa e (b) quem aplica a chave no upload/stream, **BYOS é promessa
-comercial sem peça técnica** — mesmo raciocínio do ADR-0005 sobre
-`hostingmodel`. Vender o degrau BYOS antes disso é vender o que não se
-entrega.
+**Gap fechado em 25/09/2026.** As duas peças que faltavam:
+
+- **(a) Onde gravar a chave por empresa** — reaproveita `local_marketplace_library`
+  (mesma tabela da Frente B): o grão da tabela é "qual library atende esta
+  empresa", não "quem provisionou". `api::connect_byos_library()` grava id,
+  chave e chave de token do produtor, cifrados, sem chamar a API da Bunny
+  (a library já existe, na conta dele).
+- **(b) Quem aplica a chave e troca o destino** — `mod_bunnystream\config::for_course()`
+  **já fazia isso de graça**: ele só lê `library_account::get_for($companyid)`,
+  seja a library nativa (Frente B) ou a do produtor (Frente A). O roteamento
+  não precisou de código novo — a arquitetura da Frente B já era
+  provider-agnóstica no ponto de consumo.
+- **Guardas adicionadas**: `api::create_video_library()` e
+  `api::sync_video_library_resolution()` agora recusam agir sobre empresa
+  BYOS — a plataforma não tem (e não deve ter) autoridade de conta sobre uma
+  library que não é dela. `plan::max_resolution()` já devolvia nulo para
+  plano sem faixas (todo plano BYOS), então a ausência de trava de banda
+  para este degrau já era consequência do desenho, não um buraco novo.
+- **Gap que continua**: se uma empresa tinha library **nativa** antes de
+  mudar para BYOS, conectar a chave do produtor sobrescreve o vínculo — a
+  library antiga fica órfã na conta da plataforma, sem limpeza automática.
+  Decisão de negócio (a empresa pode ter vídeo lá que ainda quer manter),
+  fora desta frente.
 
 ### O que **não** muda na v1
 

@@ -206,6 +206,7 @@ isento voltaria a pagar na primeira vez que alguém mudasse o padrão do site.
 | `enrol_marketplace` | Matrícula por diferença: compara os cursos que os direitos vigentes liberam com as matrículas existentes e ajusta. Não é chamado pelo pagamento — lê os direitos. |
 | `availability_marketplace` | Libera seção mediante compra. É o que faz "curso com tópicos grátis e tópicos pagos" funcionar. Aponte sempre a **oferta específica** nesse modelo — "qualquer oferta" incluiria a gratuita e destravaria tudo. |
 | `block_marketplace` | Assinaturas do aluno no Dashboard, e o checklist de ativação para quem administra empresa incompleta (desde 18/09/2026) — derivado de `local_marketplace`, sem tabela nova. Mostra só o que exige ação; sem débito automático, o aluno precisa agir para continuar assinando, o e-mail chega uma vez, o bloco fica. |
+| `mod_bunnystream` | Atividade de vídeo, fork de `amirtds/moodle-mod_bunnystream` (desde 25/09/2026). Resolve a library da empresa dona do curso via `local_marketplace\library_account` — nativa (Frente B) ou BYOS (Frente A), sem saber a diferença. Sem singleton de credencial do plugin original: cada webhook é autenticado pelo segredo da PRÓPRIA library. |
 
 ## Configuração
 
@@ -246,6 +247,27 @@ habilita o gateway.
 
 Painel da empresa → *Nova oferta*. Planos em níveis são ofertas `recurring` do
 tipo `bundle` com conjuntos diferentes de cursos; o completo pode ser `catalog`.
+
+### 5. Vídeo (Bunny, opcional)
+
+Nível site, uma vez, só se a empresa vai hospedar vídeo pelo `mod_bunnystream`:
+`/admin/settings.php?section=local_marketplace_settings` → `bunnyaccountapikey`
+(chave de **conta** da Bunny da plataforma). Sem ela, empresa nasce sem
+library e o vídeo fica pendente até alguém provisionar.
+
+O resto depende do `hostingmodel` do **plano** contratado pela empresa
+(*Administração do site → Marketplace → Planos*):
+
+- **`native`** — automático. A library nasce sozinha na conta da plataforma
+  quando a empresa é criada, com o teto de resolução do plano; muda de plano,
+  o teto sincroniza sozinho.
+- **`byos`** — o gerente traz a própria conta. Painel da empresa → seção
+  **Vídeo** → cola id da library, chave de API e (opcional) chave de token e
+  hostname do CDN, todos da conta Bunny **dele**, não da plataforma.
+
+Detalhe campo a campo, achados ao vivo contra a API real da Bunny e a
+diferença entre os dois modos:
+[`public/local/marketplace/README.md`](../../public/local/marketplace/README.md#vídeo-bunny-nativo-ou-byos).
 
 ## Linha de comando
 
