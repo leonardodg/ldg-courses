@@ -152,8 +152,8 @@ Aceita `mobile`, `tablet`, `small`, `medium`, `large` ou `<largura>x<altura>`.
 sem pista. `npx grunt amd` gera, e os arquivos vão versionados, como no
 `theme_ldg`.
 
-**O `grunt` não roda dentro do container.** O node de lá é v20 e o Moodle 5.2
-exige v22. Rode no **host**, de dentro do diretório do componente — o grunt
+**O `grunt` não roda em imagem anterior a 02/11/2026.** O node dela é v20 e o
+Moodle 5.2 exige v22. Atualize a imagem ou rode no **host**, de dentro do diretório do componente — o grunt
 detecta o componente pelo diretório e lint só o que interessa.
 
 **`evaluate_script` avalia uma expressão, não um bloco.** Envolva numa IIFE:

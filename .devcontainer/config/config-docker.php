@@ -39,6 +39,12 @@ $CFG->admin     = getenv('MOODLE_ADMIN') ?: 'admin';
 $CFG->directorypermissions = 0777;
 $CFG->sslproxy  = true;
 
+// 1 = GETREMOTEADDR_SKIP_HTTP_CLIENT_IP, que ainda nao existe aqui. Le o
+// X-Forwarded-For, onde o core usa o ULTIMO valor: o que o nginx acrescentou, e
+// nao o que o cliente mandou. Sem isto, todo acesso aparece com o IP do gateway
+// do Docker, e log de login e bloqueio por IP perdem o sentido.
+$CFG->getremoteaddrconf = 1;
+
 // -----------------------------------------------------------------------------
 // Dominio por vendedor.
 //

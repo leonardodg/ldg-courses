@@ -45,6 +45,18 @@ server {
     # Mesmos limites do dominio principal: o vendedor sobe curso e restaura
     # backup pelo dominio dele tambem.
     client_max_body_size 128M;
+
+    server_tokens off;
+    add_header Strict-Transport-Security "max-age=86400" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # O Moodle publica upgrade.txt e readme em public/, e eles revelam a versao.
+    # Exige um diretorio simples antes do arquivo: robots.txt e llms.txt, na
+    # raiz, passam, e pluginfile.php/.../x.txt tem ponto no caminho e tambem.
+    location ~* ^/[a-z0-9_]+/(?:[^.]*/)?[^/]+\.(?:txt|md)$ {
+        return 404;
+    }
     proxy_connect_timeout 60s;
     proxy_send_timeout    300s;
     proxy_read_timeout    300s;

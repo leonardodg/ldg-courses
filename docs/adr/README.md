@@ -51,3 +51,4 @@ Pago, já foi superada pelos ADRs abaixo.
 | [0012](0012-duas-assinaturas-e-so-uma-tem-split.md) | Duas assinaturas, e só uma tem split | Aceita |
 | [0013](0013-uma-aplicacao-por-tipo-de-integracao.md) | Uma aplicação do Mercado Pago por tipo de integração | Aceita |
 | [0014](0014-trava-de-resolucao-por-mensalidade-do-vendedor.md) | A trava de resolução por mensalidade do vendedor, e onde ela precisa ser aplicada | Aceita |
+| [0015](0015-perfil-de-desenvolvimento-fora-da-vps.md) | O compose compartilhado não fixa perfil de desenvolvimento | Aceita |

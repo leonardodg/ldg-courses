@@ -257,7 +257,9 @@ antes de qualquer push adicional confirme que ele ainda está aberto:
 | Docblock do mustache aparecendo na tela | Comentário `{{! }}` termina no **primeiro** `}}`. Não cite tag dentro dele |
 | Grade declarada por cima de `.d-flex` é ignorada | Utilitário do Bootstrap é `!important`. Trabalhe com o flex, ou use `flex-basis` |
 | Módulo AMD novo não roda, e sem erro | Com `cachejs` ligado o Moodle serve `amd/build/`. Rode `npx grunt amd` |
-| `npx grunt` recusa dentro do container | O node de lá é v20 e o Moodle 5.2 exige v22. Rode no **host** |
+| `npx grunt` recusa dentro do container | Imagem antiga, com node v20. Desde 02/11/2026 a imagem traz v22: atualize a imagem, ou rode no **host** |
+| `MOODLE_DEBUG` do `dev.env` sem efeito | `environment:` vence `env_file`. Não fixe valor por ambiente no `dev.yml`: ele também sobe na VPS |
+| Último acesso aparece com o IP do gateway do Docker | `config.php` antigo, sem `getremoteaddrconf`. Rode `moodev config` |
 | Cenário behat de celular passa dizendo o que não é | O Moodle **escala** o viewport. Use `without runtime scaling` |
 | `'choices'` do persistent reprova campo anulável | A lista é conferida antes da validação customizada, e `in_array(null, [...])` é falso. Use `validate_<campo>()` |
 | `Could not open input file` num script de CLI | CLI do **core** fica na raiz (`admin/cli/`); de **plugin**, sob `public/` |
