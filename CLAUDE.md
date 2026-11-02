@@ -271,15 +271,16 @@ antes de qualquer push adicional confirme que ele ainda está aberto:
 | Passo de upgrade "roda" e nao cria a coluna | Nome de tabela errado mais a guarda `table_exists()` da silencio. O nome sai da constante `TABLE` da classe, **nao** do nome da classe |
 | `table_exists(...) &&` antes de `add_field` | **Proibido** em tabela do proprio plugin: ela existe, e a guarda so faz nome errado passar calado. Sem ela o engano estoura. O `db_schema_test` cobra isso nos dez plugins |
 | Campo gravado somindo sem erro | `insert_record` do Moodle **descarta** campo que a tabela nao tem. E perda silenciosa, nao excecao |
+| `file_get_contents(.../scss/editor.scss)` derruba o `moodle-plugin-ci` | Tema declara `editor_scss` sem ter o arquivo. Desde o MDL-90110 o behat compila o CSS do editor. Nao declare: herda do Boost. O `theme_ldg\editor_scss_test` varre todos os temas |
 | `admin/cli/upgrade.php` diz "no upgrade needed" com passo pendente | Cache `allversionshash`. `unset_config('allversionshash')` e rode de novo |
 
 ## Estado atual
 
 **Funciona em produção:** compra completa validada — preferência, checkout,
-webhook, matrícula. **740 testes** em 11 testsuites de plugins customizados
+webhook, matrícula. **742 testes** em 11 testsuites de plugins customizados
 (165 no `local_marketplace`, 127 no MP, 119 no Pagar.me, 86 no
 `local_partners`, 69 no Asaas, 70 no `format_ldg`, 43 no `mod_ldgvideo`, 21 no
-`block_marketplace`, 15 no `theme_ldg`, 13 no `enrol_marketplace`, 12 no
+`block_marketplace`, 17 no `theme_ldg`, 13 no `enrol_marketplace`, 12 no
 `availability_marketplace`). phpcs limpo, e o CI valida **um job por plugin,
 em paralelo**.
 

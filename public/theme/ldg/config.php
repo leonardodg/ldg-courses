@@ -41,7 +41,9 @@ $THEME->parents = ['boost'];
 
 $THEME->sheets = [];
 $THEME->editor_sheets = [];
-$THEME->editor_scss = ['editor'];
+// Sem editor_scss de proposito: sem ele o core sobe a hierarquia e usa
+// o scss/editor.scss do Boost. Este tema nao tem esse arquivo, e declarar reprova
+// a inicializacao do behat desde o MDL-90110 (ver tests/editor_scss_test.php).
 $THEME->usefallback = true;
 $THEME->enable_dock = false;
 $THEME->yuicssmodules = [];
