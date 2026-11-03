@@ -18,7 +18,6 @@ services:
       MARIADB_USER_FILE:          /run/secrets/db_user
       MARIADB_PASSWORD_FILE:      /run/secrets/db_password
       MARIADB_DATABASE:      ${MOODLE_DBNAME:-moodle}
-      MARIADB_ROOT_HOST:     "%"  # opcional: allow connection from any host
     volumes:
       # Bind mount em pasta conhecida do host (nao volume nomeado), para o dado
       # do banco ficar num caminho previsivel na VPS e o backup ser um tar da pasta.

@@ -27,6 +27,8 @@
 
 services:
   moodle:
+    ports:
+      - "${BIND_ADDR:-0.0.0.0}:${XDEBUG_PORT:-9003}:9003" # Xdebug
     volumes:
       # Por worktree de proposito: cada feature roda o PHPUnit com o proprio
       # dataroot de teste, sem disputar arquivo com as outras.

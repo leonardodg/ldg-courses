@@ -66,7 +66,7 @@ jobs:
     outputs:
       list: ${{ steps.ler.outputs.list }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: plugins-src
 
@@ -147,7 +147,7 @@ jobs:
           fi
           echo "nenhum identificador do nome antigo no repositorio"
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           coverage: none
@@ -248,11 +248,11 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: plugins-src
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           extensions: mbstring, mysqli, gd, zip, intl, soap, xmlrpc
@@ -352,11 +352,11 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: plugins-src
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           extensions: mbstring, mysqli, gd, zip, intl, soap, xmlrpc
@@ -446,18 +446,18 @@ jobs:
       # Sem tag: o push-by-digest publica no repositorio, nao numa tag.
       REPO: ${{ vars.DOCKER_USERNAME }}/ldg-courses
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build e push por digest
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: .devcontainer/build/moodle.Dockerfile
@@ -495,7 +495,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
         shell: bash
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           # Um artefato por arquitetura: o upload-artifact@v4 recusa nomes
           # repetidos entre jobs da mesma matriz.
@@ -514,15 +514,15 @@ jobs:
     env:
       REPO: ${{ vars.DOCKER_USERNAME }}/ldg-courses
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: /tmp/digests
           pattern: digest-*
           merge-multiple: true
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
@@ -575,12 +575,12 @@ jobs:
     env:
       IMAGE: ${{ vars.DOCKER_USERNAME }}/ldg-courses:development
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # O dev.yml monta o repo do host em /var/www/html, entao o codigo precisa
       # estar no filesystem da VPS - nao basta a imagem.
       - name: Enviar o codigo
-        uses: easingthemes/ssh-deploy@main
+        uses: easingthemes/ssh-deploy@2cc5b27bf3029d0455dd5e09fe02633904031447 # v6.0.3
         with:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_HOST: ${{ secrets.VPS_HOST }}
@@ -598,7 +598,7 @@ jobs:
           EXCLUDE: ".git/, .github/, node_modules/, .devcontainer/secrets/, .devcontainer/certs/, /.env, /config.php, /config-local.php"
 
       - name: Configurar e subir
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -636,7 +636,7 @@ jobs:
             MOODLE_DBPFX=mdl_
             MOODLE_DBCOLLATION=utf8mb4_bin
             MOODLE_URL=${{ vars.MOODLE_URL }}
-            MOODLE_DEBUG=DEVELOPER
+            MOODLE_DEBUG=NONE
             # Independente do debug. Desligar faz o Moodle servir cada modulo
             # AMD numa requisicao, e o botao de comprar passa a exigir dois
             # cliques enquanto o modal de pagamento termina de carregar.
@@ -660,11 +660,9 @@ jobs:
             # Sem MOODLE_HTTPS_PORT: a 443 do container so e publicada por
             # local-tls.yml, que nao entra no COMPOSE_FILE da VPS.
             DB_PORT=3307
-            XDEBUG_PORT=9004
-            # Interface do Apache (8095) e do Xdebug (9004). FIXO em 127.0.0.1:
-            # o nginx da VPS e quem fala com o container, e publicar a porta
-            # alta em outra interface contorna o proxy e o TLS. O Xdebug entao
-            # e execucao remota de codigo para quem alcancar a porta.
+            # Interface do Apache (8095). FIXO em 127.0.0.1: o nginx da VPS e quem
+            # fala com o container, e publicar a porta alta em outra interface
+            # contorna o proxy e o TLS.
             BIND_ADDR=127.0.0.1
             # Interface do banco. Variavel separada de proposito - ver o
             # comentario em .devcontainer/compose/db.yml.
@@ -675,7 +673,7 @@ jobs:
             # no IP publico, sem depender de firewall de borda.
             #
             # 0.0.0.0 aqui publica o MariaDB em todas as interfaces, a publica
-            # inclusive, e o db.yml define MARIADB_ROOT_HOST="%".
+            # inclusive.
             DB_BIND_ADDR=${{ vars.DB_BIND_ADDR != '' && vars.DB_BIND_ADDR || '127.0.0.1' }}
             MOODLE_DBNAME=${{ vars.MOODLE_DBNAME }}
             EOF
@@ -778,6 +776,28 @@ jobs:
                  -e "SELECT 1 FROM \`${{ vars.MOODLE_DBNAME }}\`.mdl_config LIMIT 1" \
                  </dev/null >/dev/null 2>&1; then
               echo ">> Moodle ja instalado - rodando upgrade"
+
+              # Backup so quando ha upgrade a fazer, e FORA do repo: o rsync com
+              # --delete apagaria uma copia la dentro. O --is-pending sai com 2
+              # quando ha pendencia; qualquer outro codigo diferente de 0 e erro.
+              PENDING=0
+              docker compose exec -T moodle php admin/cli/upgrade.php --is-pending </dev/null || PENDING=$?
+              if [ "$PENDING" -eq 2 ]; then
+                BACKUPS="${{ vars.VPS_PATH }}/backups"
+                mkdir -p "$BACKUPS"
+                DUMP="$BACKUPS/pre-upgrade-$(date +%Y%m%d-%H%M%S).sql.gz"
+                ( umask 077
+                  docker compose exec -T db sh -c \
+                    'mariadb-dump -uroot -p"$(cat /run/secrets/db_root_password)" --single-transaction --all-databases' \
+                    </dev/null | gzip > "$DUMP" )
+                ls -la "$DUMP"
+                # Guarda os cinco mais recentes.
+                ls -1t "$BACKUPS"/pre-upgrade-*.sql.gz | tail -n +6 | xargs -r rm -f
+              elif [ "$PENDING" -ne 0 ]; then
+                echo "::error::upgrade.php --is-pending saiu com $PENDING"
+                exit 1
+              fi
+
               docker compose exec -T moodle php admin/cli/upgrade.php --non-interactive </dev/null
             else
               echo ">> Banco vazio - primeira instalacao"
@@ -791,6 +811,17 @@ jobs:
             fi
 
             docker compose exec -T moodle php admin/cli/purge_caches.php </dev/null
+
+            # Leitura de volta: job verde nao prova o que esta rodando. Em
+            # 02/11/2026 o container seguiu em versao vulneravel por um build que
+            # nao aconteceu, e so a medicao la dentro mostrava isso.
+            MIN_PHP=$(cat .devcontainer/build/min-php-version)
+            docker compose exec -T moodle php -r \
+              'exit(version_compare(PHP_VERSION, $argv[1], ">=") ? 0 : 1);' "$MIN_PHP" </dev/null \
+              || { echo "::error::PHP do container abaixo de $MIN_PHP"; exit 1; }
+            docker compose exec -T moodle php -r \
+              'exit(ini_get("session.upload_progress.enabled") ? 1 : 0);' </dev/null \
+              || { echo "::error::session.upload_progress ligado no container"; exit 1; }
 
             # --- nginx -------------------------------------------------------
             # Instala a config do site e o snippet de IP real da Cloudflare.
@@ -835,8 +866,13 @@ jobs:
           for i in $(seq 1 10); do
             CODE=$(curl -sS -o /dev/null -w '%{http_code}' -L "${{ vars.MOODLE_URL }}/login/index.php" || echo 000)
             echo "tentativa $i: HTTP $CODE"
-            [ "$CODE" = "200" ] && exit 0
+            [ "$CODE" = "200" ] && break
             sleep 10
           done
-          echo "::error::Site nao respondeu 200 em ${{ vars.MOODLE_URL }}"
-          exit 1
+          [ "$CODE" = "200" ] || { echo "::error::Site nao respondeu 200 em ${{ vars.MOODLE_URL }}"; exit 1; }
+
+          # Debug ligado aqui mostra caminho e pilha para qualquer visitante.
+          if curl -sS "${{ vars.MOODLE_URL }}/login/index.php" | grep -q '"developerdebug":true'; then
+            echo "::error::developerdebug ligado em producao"
+            exit 1
+          fi

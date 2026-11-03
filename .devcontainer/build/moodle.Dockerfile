@@ -81,6 +81,13 @@ ENV MOODLE_DBTYPE=mariadb \
 
 WORKDIR /var/www/html
 
+# A tag da base e movel, e nada garante que a publicacao dela trouxe a correcao.
+# O build falha em vez de publicar imagem abaixo do minimo de seguranca. O mesmo
+# arquivo e conferido de novo no deploy, ja no container que subiu.
+COPY .devcontainer/build/min-php-version /etc/ldg-min-php-version
+RUN php -r 'exit(version_compare(PHP_VERSION, trim(file_get_contents("/etc/ldg-min-php-version")), ">=") ? 0 : 1);' \
+    || { echo "PHP $(php -r 'echo PHP_VERSION;') abaixo do minimo $(cat /etc/ldg-min-php-version)"; exit 1; }
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        gettext-base  \
@@ -93,7 +100,6 @@ RUN apt-get update \
        apache2 \
        apache2-bin \
        apache2-data \
-       libapache2-mod-php8.2 \
        libpam-runtime \
        libpam0g \
        gnutls-bin \
@@ -196,9 +202,9 @@ RUN apt-get update \
        gnupg2 \
        gpg \
     # Node.js LTS oficial (requerido pelo Grunt, que e o bundler JS do Moodle):
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    # Xdebug ja embutido na imagem moodlehq/moodle-php-apache:8.2:
+    # Xdebug ja embutido na imagem moodlehq/moodle-php-apache:
     && docker-php-ext-enable xdebug \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

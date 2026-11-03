@@ -16,8 +16,9 @@ services:
       - ENVIRONMENT=development
       # 1 = opcache reconfere os arquivos, senao as edicoes nao tem efeito sem restart.
       - PHP_OPCACHE_VALIDATE_TIMESTAMPS=1
-      - MOODLE_DEBUG=DEVELOPER
-      - MOODLE_DEBUG_DISPLAY=1
+      # MOODLE_DEBUG e MOODLE_DEBUG_DISPLAY NAO entram aqui: environment vence o
+      # env_file, e este arquivo tambem sobe na VPS. Cada ambiente define o seu
+      # no dev.env.
       - MOODLE_DATA=${MOODLE_DOCKER_DATA:-/var/www/moodledata}
       - APACHE_DOCUMENT_ROOT=${APACHE_DOCUMENT_ROOT:-/var/www/html/public}
       - APACHE_LOG_DIR=/var/log/apache2
@@ -42,7 +43,7 @@ services:
       - "${BIND_ADDR:-0.0.0.0}:${MOODLE_HTTP_PORT:-80}:80"
       # A 443 do container e publicada so em local-tls.yml: na VPS o nginx
       # atende a 443 do host e fala HTTP com o container.
-      - "${BIND_ADDR:-0.0.0.0}:${XDEBUG_PORT:-9003}:9003" # Xdebug
+      # A porta do Xdebug esta em local-dev.yml: na VPS ela nao e publicada.
     volumes:
       - "${MOODLE_HOST_WWWROOT:-../../}:${MOODLE_DOCKER_WWWROOT:-/var/www/html}"
       - "${MOODLE_HOST_DATA:-../../../moodledata}:${MOODLE_DOCKER_DATA:-/var/www/moodledata}"
