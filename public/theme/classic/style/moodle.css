@@ -35368,6 +35368,7 @@ input#id_externalurl {
   display: inline-block;
 }
 
+.groupselector,
 .singleselect {
   max-width: 100%;
 }
