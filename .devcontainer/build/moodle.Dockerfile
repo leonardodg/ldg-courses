@@ -93,21 +93,27 @@ RUN apt-get update \
        gettext-base  \
        cron \
        libpng-dev \
-    && apt-get install -y --no-install-recommends --only-upgrade \
-       openssl \
-       libssl-dev \
-       libssl3 \
-       apache2 \
-       apache2-bin \
-       apache2-data \
-       libpam-runtime \
-       libpam0g \
-       gnutls-bin \
-       libgnutls30 \
-       libxml2 \
-       libtiff6 \
+    # A base da moodlehq demora a ser republicada, e o bookworm-security anda
+    # antes dela: em 20/11/2026 ela trazia 21 pacotes atrasados, entre eles o
+    # Apache 2.4.68 (CVE-2026-119618) e a libbrotli1 1.0.9-2+b6
+    # (CVE-2026-111497, HTTP2Shell, no KEV). Lista fixa de --only-upgrade
+    # deixava a libbrotli1 de fora; o upgrade inteiro nao deixa nada. O PHP
+    # vem compilado em /usr/local e nao e tocado pelo apt.
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Mesmo raciocinio do PHP: o build falha em vez de publicar pacote vulneravel.
+# - apache2-bin >= 2.4.71-1~deb12u1: CVE-2026-119618 (mod_http2, RCE)
+# - libbrotli1 >= 1.0.9-2+deb12u1: CVE-2026-111497. O curl do PHP decodifica
+#   brotli, e o Moodle busca URL de terceiro (RSS, repositorio por URL, oEmbed)
+# - mod_http2 desligado: o TLS e o HTTP/2 terminam no nginx da VPS, e o
+#   Apache so fala HTTP/1.1 com ele. Modulo carregado e superficie sem uso.
+RUN dpkg --compare-versions "$(dpkg-query -W -f='${Version}' apache2-bin)" ge '2.4.71-1~deb12u1' \
+    || { echo "apache2-bin $(dpkg-query -W -f='${Version}' apache2-bin) vulneravel a CVE-2026-119618"; exit 1; } \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge '1.0.9-2+deb12u1' \
+    || { echo "libbrotli1 $(dpkg-query -W -f='${Version}' libbrotli1) vulneravel a CVE-2026-111497"; exit 1; } \
+    && if a2query -q -m http2; then a2dismod -q http2; fi
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
@@ -120,6 +126,7 @@ RUN mkdir -p /etc/ssl/certs \
 COPY --from=composer-base /usr/bin/composer /usr/bin/composer
 COPY .devcontainer/php/opcache.ini \
      .devcontainer/php/uploads.ini \
+     .devcontainer/php/zz-security.ini \
      /usr/local/etc/php/conf.d/
 
 # Apache: módulos e configuração via template (URL vem em runtime)
@@ -162,6 +169,12 @@ RUN apt-get remove --purge -y \
 
 COPY .devcontainer/php/php.ini-production /usr/local/etc/php/php.ini
 COPY .devcontainer/php/opcache-prod.ini /usr/local/etc/php/conf.d/moodle-opcache.ini
+
+# O php.ini-production deixa session.upload_progress comentado, e no PHP 8.4.27
+# o padrao e ligado (CVE-2026-115560). Quem desliga e o zz-security.ini da base;
+# esta linha prova que nenhum ini deste target o religou.
+RUN php -r 'exit(ini_get("session.upload_progress.enabled") ? 1 : 0);' \
+    || { echo "session.upload_progress ligado no target production"; exit 1; }
 
 # Copia vendor otimizado do stage composer
 COPY --from=composer-prod --chown=www-data:www-data /app/vendor/ /var/www/html/vendor/
