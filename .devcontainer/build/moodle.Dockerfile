@@ -126,7 +126,7 @@ RUN mkdir -p /etc/ssl/certs \
 COPY --from=composer-base /usr/bin/composer /usr/bin/composer
 COPY .devcontainer/php/opcache.ini \
      .devcontainer/php/uploads.ini \
-     .devcontainer/php/zz-security.ini \
+     .devcontainer/php/zzzz-security.ini \
      /usr/local/etc/php/conf.d/
 
 # Apache: módulos e configuração via template (URL vem em runtime)
@@ -171,7 +171,7 @@ COPY .devcontainer/php/php.ini-production /usr/local/etc/php/php.ini
 COPY .devcontainer/php/opcache-prod.ini /usr/local/etc/php/conf.d/moodle-opcache.ini
 
 # O php.ini-production deixa session.upload_progress comentado, e no PHP 8.4.27
-# o padrao e ligado (CVE-2026-115560). Quem desliga e o zz-security.ini da base;
+# o padrao e ligado (CVE-2026-115560). Quem desliga e o zzzz-security.ini da base;
 # esta linha prova que nenhum ini deste target o religou.
 RUN php -r 'exit(ini_get("session.upload_progress.enabled") ? 1 : 0);' \
     || { echo "session.upload_progress ligado no target production"; exit 1; }
