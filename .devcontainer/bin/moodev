@@ -242,6 +242,34 @@ registry_next_offset() {
 # =============================================================================
 port_http()   { echo $((BASE_HTTP   + $1 * 10)); }
 port_https()  { echo $((BASE_HTTPS  + $1 * 10)); }
+
+# Host do stack PRINCIPAL (offset 0). Vem de .moodev/host, estado desta maquina
+# e fora do git: o nome e escolha de quem usa o ambiente, nao do projeto.
+# Sem o arquivo, localhost - o comportamento de sempre.
+#
+# So o offset 0 usa o nome. Stack secundario e efemero e continua em localhost,
+# que o certificado sempre cobre.
+#
+# Um nome *.localhost dispensa /etc/hosts: navegador e curl resolvem qualquer
+# subdominio de localhost para 127.0.0.1.
+main_host() {
+    local h=""
+    [ -f "$MOODEV_STATE/host" ] && h="$(tr -d '[:space:]' < "$MOODEV_STATE/host")"
+    # O valor vai para um sed "s#...#...#" e para o MOODLE_URL: so nome de host.
+    # Qualquer outra coisa morre aqui, antes de corromper o dev.env.
+    if [ -n "$h" ] && ! [[ "$h" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]]; then
+        die "$MOODEV_STATE/host tem '$h', que nao e nome de host (so a-z, 0-9, ponto e hifen)"
+    fi
+    echo "${h:-localhost}"
+}
+
+# URL de acesso de um offset. E ela que vira o MOODLE_URL, entao tem que bater
+# exatamente com o endereco digitado, senao o login entra em laco.
+url_of() {
+    local off="$1" host=localhost
+    [ "$off" = "0" ] && host="$(main_host)"
+    echo "https://$host:$(port_https "$off")"
+}
 port_db()     { echo $((BASE_DB     + $1 * 10)); }
 port_xdebug() { echo $((BASE_XDEBUG + $1 * 10)); }
 
@@ -362,7 +390,7 @@ cmd_ls() {
             elif [ "$n_up" -ge 1 ]; then status="${C_YEL}parcial${C_OFF}"
             else status="${C_DIM}down${C_OFF}"; fi
             branch="$(git -C "$wt_path" branch --show-current 2>/dev/null || echo '?')"
-            url="https://localhost:$(port_https "$off")"
+            url="$(url_of "$off")"
         fi
 
         printf '%-22s %-6s %-26s %-16s %s\n' "$name" "$off" "$stack" "$status" "$url"
@@ -434,7 +462,7 @@ cmd_up() {
         ok "selenium no ar (cenarios @javascript do behat)"
     fi
 
-    ok "$name no ar em https://localhost:$(port_https "$(registry_get "$name" 2)")"
+    ok "$name no ar em $(url_of "$(registry_get "$name" 2)")"
 }
 
 cmd_down() {
@@ -570,7 +598,16 @@ cmd_use() {
     dbd="$(registry_get "$atual" 6)"
 
     if [ "$atual" = "$alvo" ]; then
-        ok "o stack '$stack' ja serve '$alvo'"
+        # Mesmo sem trocar de worktree, o MOODLE_URL acompanha o .moodev/host.
+        # Sem isto, gravar o nome novo so teria efeito na PROXIMA troca.
+        local devenv="$alvo_path/.devcontainer/env/dev.env" url
+        url="$(url_of 0)"
+        if [ -f "$devenv" ] && ! grep -qx "MOODLE_URL=$url" "$devenv"; then
+            sed -i "s#^MOODLE_URL=.*#MOODLE_URL=$url#" "$devenv"
+            info "MOODLE_URL agora e $url"
+            warn "rode 'moodev restart' para o container ler o dev.env novo"
+        fi
+        ok "o stack '$stack' ja serve '$alvo' em $url"
         return 0
     fi
 
@@ -635,7 +672,7 @@ EOF
 
     local devenv="$alvo_path/.devcontainer/env/dev.env"
     [ -f "$devenv" ] && sed -i \
-        -e "s#^MOODLE_URL=.*#MOODLE_URL=https://localhost:$https#" \
+        -e "s#^MOODLE_URL=.*#MOODLE_URL=$(url_of 0)#" \
         -e "s#^MOODLE_HOST_WWWROOT=.*#MOODLE_HOST_WWWROOT=$alvo_path#" \
         -e "s#^MOODLE_HOST_DATA=.*#MOODLE_HOST_DATA=$md#" \
         "$devenv"
@@ -671,7 +708,7 @@ EOF
         && dc "$alvo_path" exec -T moodle php "$cli" < /dev/null || true
 
     echo
-    ok "'$stack' agora serve '$alvo' em https://localhost:$https"
+    ok "'$stack' agora serve '$alvo' em $(url_of 0)"
 }
 
 cmd_new() {
@@ -1463,6 +1500,15 @@ cmd_doctor() {
             ok "valido ate $(openssl x509 -in "$cert" -enddate -noout | cut -d= -f2)"
         else
             note "vence em menos de 7 dias. Regenere com mkcert (ver compose/local-tls.yml)"
+        fi
+        # O host do principal precisa estar no SAN, senao o navegador recusa
+        # o certificado no nome novo e aceita so em localhost.
+        local host; host="$(main_host)"
+        if openssl x509 -in "$cert" -noout -ext subjectAltName 2>/dev/null \
+            | tr ',' '\n' | sed 's/^ *DNS://' | grep -qx "$host"; then
+            ok "cobre $host"
+        else
+            note "nao cobre $host. Regenere com mkcert incluindo o nome (ver .devcontainer/readme.md)"
         fi
     else
         note "certificado nao encontrado em $cert"

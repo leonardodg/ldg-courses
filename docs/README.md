@@ -10,6 +10,7 @@ split de pagamento. Gateways: Mercado Pago, Asaas e Pagar.me.
 | entender a estrutura de worktrees | [`dev/estrutura-worktrees.md`](dev/estrutura-worktrees.md) |
 | montar o ambiente e começar a codar | [`dev/moodev.md`](dev/moodev.md) e [`dev/guia-worktrees.md`](dev/guia-worktrees.md) |
 | **saber como uma feature se faz aqui** | [`dev/padrao-de-implementacao.md`](dev/padrao-de-implementacao.md) |
+| ambiente local espelho da produção (`courses.leodg.localhost`, túnel, MP de teste) | [`dev/ambiente-local.md`](dev/ambiente-local.md) |
 | mandar a mudança para produção | [`dev/fluxo-de-contribuicao.md`](dev/fluxo-de-contribuicao.md) |
 | entender **por que** o sistema é assim | [`architecture/decisoes-marketplace.md`](architecture/decisoes-marketplace.md) |
 | **produto: o que vemos, a quem e com que sucesso** | [`produto/`](produto/) |

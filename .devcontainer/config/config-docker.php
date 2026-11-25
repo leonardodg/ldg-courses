@@ -39,6 +39,28 @@ $CFG->admin     = getenv('MOODLE_ADMIN') ?: 'admin';
 $CFG->directorypermissions = 0777;
 $CFG->sslproxy  = true;
 
+// -----------------------------------------------------------------------------
+// Segundo endereco: o tunel publico do ambiente local.
+//
+// O Mercado Pago so alcanca endereco publico, e o notification_url sai do
+// wwwroot de cada preferencia. Sem isto o tunel responde 303 para o MOODLE_URL,
+// porque o Moodle redireciona todo Host que nao e o dele.
+//
+// Comparacao EXATA do host, nunca sufixo: aceitar *.leodg.dev deixaria qualquer
+// subdominio que alguem apontasse para ca virar wwwroot. Na VPS a variavel nao
+// existe e nada muda. CLI e cron ficam no MOODLE_URL, pelo mesmo motivo do
+// dominio por vendedor, logo abaixo.
+$tunnelurl = (string) getenv('MOODLE_TUNNEL_URL');
+if ($tunnelurl !== '' && PHP_SAPI !== 'cli' && !empty($_SERVER['HTTP_HOST'])) {
+    $tunnelhost = strtolower((string) parse_url($tunnelurl, PHP_URL_HOST));
+    if ($tunnelhost !== '' && strtolower($_SERVER['HTTP_HOST']) === $tunnelhost) {
+        $CFG->wwwroot = rtrim($tunnelurl, '/');
+    }
+    unset($tunnelhost);
+}
+unset($tunnelurl);
+// -----------------------------------------------------------------------------
+
 // 1 = GETREMOTEADDR_SKIP_HTTP_CLIENT_IP, que ainda nao existe aqui. Le o
 // X-Forwarded-For, onde o core usa o ULTIMO valor: o que o nginx acrescentou, e
 // nao o que o cliente mandou. Sem isto, todo acesso aparece com o IP do gateway

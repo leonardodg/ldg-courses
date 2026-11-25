@@ -338,6 +338,25 @@ no ar** — não por varredura de disco, que acertaria por acaso.
 > Não edite `.env` nem portas à mão: o `moodev` gera esses arquivos e o `moodev doctor`
 > reclama quando divergem do registro.
 
+### `.moodev/host` — o nome do stack principal
+
+Uma linha só, com o host do **offset 0**. Sem o arquivo, `localhost`.
+
+```bash
+echo courses.leodg.localhost > <raiz>/.moodev/host
+moodev use <worktree do offset 0>   # alinha o MOODLE_URL do dev.env
+moodev restart
+```
+
+`use`, `new`, `ls` e `up` passam a escrever e mostrar
+`https://courses.leodg.localhost:8443`. Stack secundário continua em
+`localhost`: é efêmero, e o certificado sempre cobre esse nome.
+
+Mora aqui, e não no `dev.env`, porque o `moodev` **reescreve** o `MOODLE_URL` a
+cada `use` — editado à mão, o nome sumia no próximo `moodev new`. O certificado
+precisa cobrir o nome, e o `moodev doctor` confere. Por que `*.localhost`, e o
+resto do ambiente: [`ambiente-local.md`](ambiente-local.md).
+
 ---
 
 ## 9. Instalação
