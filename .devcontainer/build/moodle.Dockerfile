@@ -99,6 +99,15 @@ RUN apt-get update \
     # (CVE-2026-111497, HTTP2Shell, no KEV). Lista fixa de --only-upgrade
     # deixava a libbrotli1 de fora; o upgrade inteiro nao deixa nada. O PHP
     # vem compilado em /usr/local e nao e tocado pelo apt.
+    #
+    # Excecao: o driver de SQL Server da Microsoft (msodbcsql*), que a base
+    # traz no amd64. Versao nova dele so instala com ACCEPT_EULA=Y, e em
+    # 25/11/2026 a 17.12.1.1 derrubou o build amd64 no meio do upgrade. O
+    # banco aqui e MariaDB, o driver nao e usado, e aceitar licenca da
+    # Microsoft dentro do build nao e decisao do Dockerfile: fica na versao
+    # da base. O dpkg-query pega so o que estiver instalado, entao no arm64
+    # (onde o pacote nao existe) o hold e vazio.
+    && dpkg-query -W -f='${Package}\n' 'msodbcsql*' 2>/dev/null | xargs -r apt-mark hold \
     && apt-get upgrade -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
