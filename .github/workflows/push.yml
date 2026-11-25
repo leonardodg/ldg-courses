@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checking out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configuring node & npm
         uses: actions/setup-node@v4
@@ -106,7 +106,7 @@ jobs:
           coverage: none
 
       - name: Checking out code from ${{ env.GITHUB_REF_SLUG }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setting up PHPUnit
         env:
