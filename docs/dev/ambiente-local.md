@@ -136,7 +136,9 @@ servida (o `ssh` usa o alias `automation-oracle`):
 ```bash
 F=.devcontainer/secrets/ambiente-local.env
 T=.devcontainer/secrets/prod.tmp
-ssh automation-oracle 'cd /home/ubuntu/courses-free/repo && U=$(cat .devcontainer/secrets/db_user) && P=$(cat .devcontainer/secrets/db_password) && docker exec -e MYSQL_PWD="$P" ldg-courses-db-1 mariadb -u"$U" moodle -N -B -e "SELECT CONCAT(\"SMTP_USER=\", value) FROM mdl_config WHERE name=\"smtpuser\" UNION ALL SELECT CONCAT(\"SMTP_PASS=\", value) FROM mdl_config WHERE name=\"smtppass\""' > $T
+# Caminho do projeto na VPS: vem da variable do deploy, que e a fonte da verdade.
+VPS=$(gh variable get VPS_PATH -e development -R leonardodg/ldg-courses)
+ssh automation-oracle "cd $VPS/repo && "'U=$(cat .devcontainer/secrets/db_user) && P=$(cat .devcontainer/secrets/db_password) && docker exec -e MYSQL_PWD="$P" ldg-courses-db-1 mariadb -u"$U" moodle -N -B -e "SELECT CONCAT(\"SMTP_USER=\", value) FROM mdl_config WHERE name=\"smtpuser\" UNION ALL SELECT CONCAT(\"SMTP_PASS=\", value) FROM mdl_config WHERE name=\"smtppass\""' > $T
 wc -l $T                       # tem que dizer 2
 while IFS='=' read -r k v; do sed -i "/^$k=/d" $F; printf '%s=%s\n' "$k" "$v" >> $F; done < $T
 rm $T; chmod 600 $F
