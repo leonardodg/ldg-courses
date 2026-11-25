@@ -118,8 +118,11 @@ desconhecido. Por isso o par vem do `mkcert`:
 ```bash
 cd .devcontainer/certs
 mkcert -cert-file develop-local.crt -key-file develop-local.key \
-       courses.leodg.dev localhost 127.0.0.1
+       courses.leodg.localhost localhost courses.leodg.dev 127.0.0.1
 ```
+
+`courses.leodg.localhost` é o nome do stack principal (`.moodev/host`, ver
+`docs/dev/ambiente-local.md`). Sem ele no certificado, o navegador recusa o nome.
 
 Na VPS esses arquivos não existem — `certs/` está no `EXCLUDE` do rsync. Se os
 secrets `ssl_cert`/`ssl_key` estivessem no `dev.yml`, o Docker falharia o bind
