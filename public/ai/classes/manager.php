@@ -427,25 +427,15 @@ class manager {
 
     /**
      * Check if an action is available.
-     * Action is available if it is enabled for at least one enabled provider.
+     * An action is available if at least one provider instance is enabled, configured and has the action enabled.
      *
      * @param string $actionclass The fully qualified action class name to be checked.
      * @return bool
      */
     public function is_action_available(string $actionclass): bool {
+        // Only enabled and configured provider instances that have the action enabled are returned.
         $providers = $this->get_providers_for_actions([$actionclass], true);
-        // Check if the requested action is enabled for at least one provider.
-        foreach ($providers as $provideractions) {
-            foreach ($provideractions as $provider) {
-                $classnamearray = explode('\\', $provider::class);
-                $pluginname = reset($classnamearray);
-                if ($this->is_action_enabled($pluginname, $actionclass)) {
-                    return true;
-                }
-            }
-        }
-        // There are no providers with this action enabled.
-        return false;
+        return !empty($providers[$actionclass]);
     }
 
     /**
@@ -593,6 +583,9 @@ class manager {
             $deleted = false;
         } else {
             $deleted = $this->db->delete_records('ai_providers', ['id' => $provider->id]);
+            if ($deleted) {
+                $this->update_provider_order($provider->id, aiproviderplugin::DISABLE);
+            }
         }
         return $deleted;
     }
@@ -710,12 +703,14 @@ class manager {
      * @throws dml_exception
      */
     public function update_provider_order(int $providerid, string|int $action): void {
-        $order = explode(',', get_config('core_ai', 'provider_order'));
+        $raworder = (string) get_config('core_ai', 'provider_order');
+        $order = array_filter(explode(',', $raworder), 'strlen');
+        $existingids = $this->db->get_fieldset('ai_providers', 'id');
+        $order = array_values(array_intersect($order, $existingids));
         $key = array_search($providerid, $order);
-
         switch ($action) {
             case aiproviderplugin::MOVE_UP:
-                if ($key >= 1) {
+                if ($key !== false && $key >= 1) {
                     $fsave = $order[$key];
                     $order[$key] = $order[$key - 1];
                     $order[$key - 1] = $fsave;
@@ -723,7 +718,7 @@ class manager {
                 break;
 
             case aiproviderplugin::MOVE_DOWN:
-                if ($key < (count($order) - 1)) {
+                if ($key !== false && $key < (count($order) - 1)) {
                     $fsave = $order[$key];
                     $order[$key] = $order[$key + 1];
                     $order[$key + 1] = $fsave;
@@ -731,13 +726,13 @@ class manager {
                 break;
 
             case aiproviderplugin::ENABLE:
-                if (!$key) {
+                if ($key === false) {
                     $order[] = $providerid;
                 }
                 break;
 
             case aiproviderplugin::DISABLE:
-                if ($key) {
+                if ($key !== false) {
                     unset($order[$key]);
                 }
                 break;
