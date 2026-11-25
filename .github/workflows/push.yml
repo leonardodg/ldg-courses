@@ -95,7 +95,7 @@ jobs:
               --collation-server=utf8mb4_bin
 
       - name: Configuring git vars
-        uses: rlespinasse/github-slug-action@v4
+        uses: rlespinasse/github-slug-action@v5
 
       - name: Setting up PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
