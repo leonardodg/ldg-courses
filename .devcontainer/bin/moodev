@@ -255,6 +255,11 @@ port_https()  { echo $((BASE_HTTPS  + $1 * 10)); }
 main_host() {
     local h=""
     [ -f "$MOODEV_STATE/host" ] && h="$(tr -d '[:space:]' < "$MOODEV_STATE/host")"
+    # O valor vai para um sed "s#...#...#" e para o MOODLE_URL: so nome de host.
+    # Qualquer outra coisa morre aqui, antes de corromper o dev.env.
+    if [ -n "$h" ] && ! [[ "$h" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]]; then
+        die "$MOODEV_STATE/host tem '$h', que nao e nome de host (so a-z, 0-9, ponto e hifen)"
+    fi
     echo "${h:-localhost}"
 }
 

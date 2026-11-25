@@ -42,6 +42,10 @@ guarda de isenção da conta da plataforma no split. Ver notas de cada plugin
 para o tratamento individual — a correção do padrão comum é discutida no
 arquivo do primeiro gateway corrigido (mercadopago) e replicada nos demais.
 
+Rodadas de infraestrutura depois do review dos plugins: `12` a `15`, um arquivo
+por rodada — a mais recente é
+[`15-ambiente-local-2026-11-25.md`](15-ambiente-local-2026-11-25.md).
+
 ## Legenda de status
 
 - `pendente` — ainda não corrigido.

@@ -19,7 +19,7 @@ Diferente, de proposito:
 | | Producao | Local |
 |---|---|---|
 | Endereco | `courses.leodg.dev` | `courses.leodg.localhost:8443` e `mp.leodg.dev` |
-| Mercado Pago | `testmode` desligado | `testmode` ligado, chave publica de teste |
+| Mercado Pago | aplicacao `7939…`, `testmode` desligado | aplicacao `2401225442871147` (conta CNPJ), `testmode` ligado, chave publica de teste |
 | Cursos | 3 demo | 3 demo + backups da Ivana Academy |
 | Debug | `NONE` | `DEVELOPER` (do `dev.env`) |
 
@@ -122,18 +122,22 @@ e o `--check` confere com `can_access_course()`, o mesmo caminho do painel.
 |---|---|
 | `ADMIN_PASSWORD`, `STUDENT_PASSWORD` | escolha local |
 | `SMTP_USER`, `SMTP_PASS` | `mdl_config` da producao (`smtpuser`, `smtppass`) |
-| `MP_CLIENTID`, `MP_CLIENTSECRET` | `paygw_mercadopago` da producao — a mesma aplicacao |
-| `MP_PUBLICKEYTEST` | painel do MP, aplicacao da plataforma, **Credenciais de teste** |
+| `MP_CLIENTID`, `MP_CLIENTSECRET`, `MP_PUBLICKEYTEST` | aplicacao `2401225442871147`: `docs/private/mercadopago.txt` (fora do git) ou o painel, em **Credenciais de teste** |
 | `MP_WEBHOOKSECRET` | painel do MP, Webhooks, **modo de teste** |
 
-Copiar da producao **sem o valor passar pela tela**, de dentro da worktree
+**A aplicacao do Mercado Pago NAO e a da producao**, por decisao de 25/11/2026: a
+`2401225442871147` tem client id, secret e chave publica de teste num lugar so.
+Juntar a chave publica de uma aplicacao com o client id de outra da
+`Invalid users involved` ou `Resource not found`. A producao usa a `7939…`.
+
+Copiar o SMTP da producao **sem o valor passar pela tela**, de dentro da worktree
 servida (o `ssh` usa o alias `automation-oracle`):
 
 ```bash
 F=.devcontainer/secrets/ambiente-local.env
 T=.devcontainer/secrets/prod.tmp
-ssh automation-oracle 'cd /home/ubuntu/courses-free/repo && U=$(cat .devcontainer/secrets/db_user) && P=$(cat .devcontainer/secrets/db_password) && docker exec -e MYSQL_PWD="$P" ldg-courses-db-1 mariadb -u"$U" moodle -N -B -e "SELECT CONCAT(\"SMTP_USER=\", value) FROM mdl_config WHERE name=\"smtpuser\" UNION ALL SELECT CONCAT(\"SMTP_PASS=\", value) FROM mdl_config WHERE name=\"smtppass\" UNION ALL SELECT CONCAT(\"MP_CLIENTID=\", value) FROM mdl_config_plugins WHERE plugin=\"paygw_mercadopago\" AND name=\"clientid\" UNION ALL SELECT CONCAT(\"MP_CLIENTSECRET=\", value) FROM mdl_config_plugins WHERE plugin=\"paygw_mercadopago\" AND name=\"clientsecret\""' > $T
-wc -l $T                       # tem que dizer 4
+ssh automation-oracle 'cd /home/ubuntu/courses-free/repo && U=$(cat .devcontainer/secrets/db_user) && P=$(cat .devcontainer/secrets/db_password) && docker exec -e MYSQL_PWD="$P" ldg-courses-db-1 mariadb -u"$U" moodle -N -B -e "SELECT CONCAT(\"SMTP_USER=\", value) FROM mdl_config WHERE name=\"smtpuser\" UNION ALL SELECT CONCAT(\"SMTP_PASS=\", value) FROM mdl_config WHERE name=\"smtppass\""' > $T
+wc -l $T                       # tem que dizer 2
 while IFS='=' read -r k v; do sed -i "/^$k=/d" $F; printf '%s=%s\n' "$k" "$v" >> $F; done < $T
 rm $T; chmod 600 $F
 ```

@@ -12,7 +12,7 @@ deliberadas, e so elas:
 | | Producao | Local | Por que difere |
 |---|---|---|---|
 | Endereco | `courses.leodg.dev` | `courses.leodg.localhost:8443` | `*.localhost` resolve para 127.0.0.1 em qualquer navegador, sem `/etc/hosts` |
-| Mercado Pago | `testmode=0`, chaves de producao | `testmode=1`, chaves de TESTE da mesma aplicacao | compra no localhost nao pode cobrar de verdade |
+| Mercado Pago | aplicacao `7939…`, `testmode=0` | aplicacao `2401225442871147`, `testmode=1`, chaves de TESTE | compra no localhost nao pode cobrar; a 2401 e a que tem as chaves de teste em maos (decisao do usuario, 25/11) |
 | Cursos | 3 cursos demo | cursos restaurados dos backups da Ivana Academy | dado de teste com cara de curso real |
 
 O resto vem lido da producao e escrito no local por script, e o mesmo script
@@ -25,7 +25,9 @@ espelho no primeiro `upgrade`.
   reinstalado do zero. O banco antigo e descartavel: sem cliente real.
 - **Tunel: `mp.leodg.dev`.** Ja existe no `cloudflared` da maquina e ja esta no
   painel do Mercado Pago como redirect URI. Trocar o nome obrigaria recadastrar.
-- **Mercado Pago: credenciais de teste, `testmode` ligado.**
+- **Mercado Pago: credenciais de teste, `testmode` ligado**, da aplicacao
+  `2401225442871147` — primeiro escolhida a da producao, trocada no mesmo dia por
+  ser a unica com chave publica de teste disponivel.
 - **SMTP: o mesmo Gmail da producao.** Alunos de teste com e-mail
   `@example.com`, para nada chegar em pessoa real.
 - **`main` e `dev` acompanhando o `MOODLE_502_STABLE` oficial.**

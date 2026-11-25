@@ -364,12 +364,35 @@ function restore_one(string $path, int $categoryid, string $idnumber): void {
     [$fullname, $shortname] = restore_dbops::calculate_course_names(0, 'restaurando', 'restaurando');
     $courseid = restore_dbops::create_new_course($fullname, $shortname, $categoryid);
 
+    // Curso pela metade nao pode ficar: sem idnumber, o proximo --apply nao o
+    // reconhece e restaura de novo, deixando uma copia quebrada para tras.
+    try {
+        restore_into($backupdir, $courseid, $admin->id, $path);
+    } catch (Throwable $e) {
+        delete_course($courseid, false);
+        throw $e;
+    }
+
+    $DB->set_field('course', 'idnumber', $idnumber, ['id' => $courseid]);
+    $course = get_course($courseid);
+    cli_writeln("  curso restaurado: {$course->fullname} (id {$courseid})");
+}
+
+/**
+ * Executa o restore ja sem usuarios.
+ *
+ * @param string $backupdir Pasta temporaria com o backup extraido
+ * @param int $courseid Curso de destino, recem-criado
+ * @param int $userid Quem restaura
+ * @param string $path Arquivo de origem, so para a mensagem de erro
+ */
+function restore_into(string $backupdir, int $courseid, int $userid, string $path): void {
     $rc = new restore_controller(
         $backupdir,
         $courseid,
         backup::INTERACTIVE_NO,
         backup::MODE_GENERAL,
-        $admin->id,
+        $userid,
         backup::TARGET_NEW_COURSE
     );
     $plan = $rc->get_plan();
@@ -385,10 +408,6 @@ function restore_one(string $path, int $categoryid, string $idnumber): void {
     $rc->execute_precheck();
     $rc->execute_plan();
     $rc->destroy();
-
-    $DB->set_field('course', 'idnumber', $idnumber, ['id' => $courseid]);
-    $course = get_course($courseid);
-    cli_writeln("  curso restaurado: {$course->fullname} (id {$courseid})");
 }
 
 /**
