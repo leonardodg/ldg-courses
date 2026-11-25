@@ -18,14 +18,14 @@
  * Matricula guiada pelos direitos de acesso do marketplace.
  *
  * @package    enrol_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'enrol_marketplace';
-$plugin->version   = 2026082400;
+$plugin->version   = 2026090820;
 $plugin->requires  = 2026042000; // Moodle 5.2.
 $plugin->maturity  = MATURITY_ALPHA;
 $plugin->release   = '0.1.0';

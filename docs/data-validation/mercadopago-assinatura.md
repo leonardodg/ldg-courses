@@ -1,0 +1,763 @@
+# Assinatura no Mercado Pago: o que a aplicação de Assinaturas faz com a comissão
+
+Roteiro repetível e registro da bateria de 15/09/2026. Irmão de
+[`mercadopago-split.md`](mercadopago-split.md) e de
+[`asaas-assinatura.md`](asaas-assinatura.md).
+
+**Por que existe.** O [ADR-0001](../adr/0001-gateways-alem-do-mercado-pago.md)
+afirma que `POST /preapproval` aceita `marketplace_fee` e **descarta em
+silêncio**. A medição de 08/09/2026 é real, mas foi feita com a aplicação de
+**Checkout Transparente** — e no Mercado Pago o modelo declarado da aplicação
+muda o comportamento sem avisar. Em 15/09/2026 passou a existir uma aplicação do
+tipo **Assinaturas**, e a pergunta voltou a ficar em aberto para o tipo certo.
+
+Script: [`scripts/provar-assinatura-mercadopago.py`](scripts/provar-assinatura-mercadopago.py).
+
+> **Duas assinaturas, e só uma precisa disto.** A mensalidade que a empresa paga
+> à plataforma (B2B) **não tem split** — a LDG é a vendedora e fica com 100%.
+> Quem precisa de split é a assinatura que a parceira vende ao aluno (B2C). Tudo
+> neste arquivo é sobre a segunda.
+
+---
+
+## As contas, e como conferir cada uma
+
+`GET /users/me` com cada token. Não se presume: em 08/09/2026 uma conta rotulada
+"empresa" no cadastro era pessoa física pela API
+([ADR-0010](../adr/0010-vendedor-pessoa-fisica-no-mercado-pago.md)).
+
+```bash
+python3 docs/data-validation/scripts/provar-assinatura-mercadopago.py contas
+```
+
+Resultado de 15/09/2026:
+
+| Token | `user_id` | Site | Documento | Tipo |
+|---|---|---|---|---|
+| Preferências (`2401225442871147`) | `3675841384` | MLB | CNPJ | business |
+| **Assinaturas** (`6990306155285574`) | `3675841384` | MLB | CNPJ | business |
+| **Bricks** (`4205369394622168`) | `3675841384` | MLB | CNPJ | business |
+| Bricks, credencial `TEST-` | `3675841384` | MLB | CNPJ | business |
+| "Assinaturas, credenciais de teste" | **`3672982509`** | MLB | **CPF** | **pessoa física** |
+
+**As três aplicações de produção pertencem à mesma conta CNPJ**, que é o arranjo
+correto: a comissão volta para o dono da **aplicação**, não para quem criou a
+cobrança.
+
+> **A aplicação de Bricks foi trocada em 16/09/2026.** A primeira
+> (`2598194068751669`) foi excluída no painel e substituída por
+> `4205369394622168`, na mesma conta. M1 e M7 foram **refeitos** com a nova e
+> deram o mesmo resultado. Medição feita sobre aplicação excluída não vale nada,
+> e refazer custou dois `curl` — é o tipo de conferência que se paga sozinha.
+
+> **A quinta linha é uma armadilha, e tem nome.** O que o painel entregou como
+> "credenciais de teste" da aplicação de Assinaturas **não são credenciais de
+> teste daquela aplicação** — são as credenciais próprias de um *usuário de
+> teste* (`TESTUSER3126658525769167337`, `test_user_3126658525769167337@testuser.com`),
+> dono da aplicação de teste `3559359816163002`. Usá-las é agir **como aquele
+> usuário**, não como a plataforma.
+>
+> São três partes no split — comprador, vendedor e a aplicação. Misturá-las
+> devolve "uma das partes é de teste" sem dizer qual. Por isso `contas` roda
+> antes de qualquer cobrança.
+
+Contas de teste criadas nesta rodada:
+
+| Papel | `user_id` | E-mail |
+|---|---|---|
+| comerciante | `3672982509` | `test_user_3126658525769167337@testuser.com` |
+| comprador | `3686169276` | `test_user_3028688276370264024@testuser.com` |
+
+---
+
+## M2 — o `preapproval` honra algum campo de split? **Não.**
+
+Cinco candidatos, um por vez, `POST` seguido de `GET`:
+
+```bash
+export MP_SELLER_TOKEN=<token do comerciante>
+export MP_PAYER_EMAIL=test_user_3028688276370264024@testuser.com
+python3 docs/data-validation/scripts/provar-assinatura-mercadopago.py preapproval
+```
+
+| Candidato | Resposta | Eco no `GET` |
+|---|---|---|
+| `marketplace_fee` na raiz | **201** `4d75b97ce6e346d190d4fa3e73071a4c` | nenhum |
+| `application_fee` na raiz | **201** `3b3b5a127af24f1a82669b386bf52843` | nenhum |
+| `marketplace` na raiz | **201** `374fd711f55746a4947cc83d2a039887` | nenhum |
+| `marketplace_fee` em `auto_recurring` | **201** `7e01e690f93747f0838774a7192b418f` | nenhum |
+| `application_fee` em `auto_recurring` | **201** `f4d0840da5854fe5b8b76035396dcefb` | nenhum |
+
+**Cinco aceites, zero ecos.** O `GET` completo de
+`4d75b97ce6e346d190d4fa3e73071a4c` devolve o recurso inteiro, e não há **nenhum**
+campo de taxa:
+
+```json
+{
+  "id": "4d75b97ce6e346d190d4fa3e73071a4c",
+  "payer_id": 3686169276,
+  "collector_id": 3672982509,
+  "application_id": 3559359816163002,
+  "status": "pending",
+  "auto_recurring": {
+    "frequency": 1, "frequency_type": "days",
+    "transaction_amount": 5.0, "currency_id": "BRL",
+    "start_date": "2026-09-15T10:05:34.000-04:00",
+    "has_billing_day": false, "free_trial": null
+  },
+  "summarized": { "quotas": null, "charged_amount": null, "…": null },
+  "next_payment_date": "2026-09-15T10:05:34.000-04:00",
+  "payment_method_id": null,
+  "payment_method_id_secondary": null,
+  "first_invoice_offset": null,
+  "subscription_id": "4d75b97ce6e346d190d4fa3e73071a4c",
+  "owner": null
+}
+```
+
+O SDK oficial concorda: `Resources/PreApproval.php` e
+`Resources/PreApproval/AutoRecurring.php` não declaram campo de taxa nenhum.
+(O `GET` traz três campos que o SDK **não** modela — `payment_method_id_secondary`,
+`subscription_id` e `owner` —, o que é a razão de medir em vez de só ler o SDK.)
+
+**Conclusão: o ADR-0001 estava certo, e a causa não era o tipo da aplicação.**
+O `preapproval` não tem onde guardar comissão. O sintoma continua sendo o pior
+possível — `201` em tudo, sem erro que segure o engano na porta.
+
+### O que esta medição ainda não fecha
+
+O comerciante aqui é a conta de teste com a **aplicação dela**
+(`application_id: 3559359816163002`), e não um vendedor que autorizou a
+aplicação de Assinaturas da plataforma por OAuth. Falta o `preapproval` criado
+com token de OAuth da aplicação `6990306155285574`. A evidência já é forte — o
+recurso não tem o campo —, mas a última palavra é do **pagamento do ciclo**, em
+`fee_details`, e não do `preapproval`.
+
+---
+
+## M7 — `/v1/advanced_payments`: existe, e está fechado para esta conta
+
+Achado no SDK oficial e em nenhuma busca:
+`Resources/AdvancedPayment.php` tem `disbursements[]`, e cada
+`AdvancedPayment/Disbursement` carrega `collector_id`, `amount`,
+`external_reference`, **`application_fee`**, `money_release_date` e `status`. É
+split **1:N**, com comissão por recebedor.
+
+`GET /v1/advanced_payments/search?limit=1`, leitura pura, com os três tokens:
+
+| Token | Resposta |
+|---|---|
+| Bricks `4205369394622168`, produção | **403** `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` |
+| Bricks `4205369394622168`, `TEST-` | **403** `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` |
+| Bricks `2598194068751669` (excluída), produção e teste | **403**, idem |
+| Preferências produção | **403** `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` |
+
+**Teste e produção, em quatro aplicações.** Não é limitação de credencial: é
+política de conta. O produto precisa ser liberado comercialmente pelo Mercado
+Pago — mesma forma do bloqueio do Pagar.me.
+
+> **Uma hipótese do suporte, já descartada aqui.** O suporte levantou que esse
+> 403 aparece quando o header `Authorization` não chega ao Mercado Pago — por
+> exemplo removido por proxy ou API gateway — e sugeriu repetir a chamada com
+> `curl` direto do terminal. **Foi assim que ela foi feita desde o começo**:
+> `curl` da máquina para `api.mercadopago.com`, sem proxy no caminho, com três
+> tokens diferentes e resposta idêntica. A hipótese está eliminada.
+
+Enquanto não for liberado, a questão fiscal do
+[ADR-0003](../adr/0003-quem-cria-a-cobranca-emite-a-nota.md) **não precisa ser
+respondida**: o caminho está fechado de qualquer jeito.
+
+---
+
+## M4 — cartão guardado no Mercado Pago
+
+O que ficou provado nesta rodada:
+
+**1. O cartão vive no gateway, e não no Moodle.** `POST /v1/customers` seguido de
+`POST /v1/customers/{id}/cards`:
+
+```
+cliente: 3692881472-YJCg1wR4YL8WDe
+cartao:  1789481274196  (final 3311)
+```
+
+**2. O Mercado Pago emite token de um cartão salvo SEM código de segurança.**
+É a pergunta que decide o débito automático:
+
+```bash
+# sem security_code
+POST /v1/card_tokens  {"card_id": "1789481274196"}
+-> 6b2c3a7e93f374ed6f7179fab36a6513   status: active
+
+# com security_code
+POST /v1/card_tokens  {"card_id": "1789481274196", "security_code": "123"}
+-> b7fa794c9556f384fc7264604f6991ce   status: active
+```
+
+Os dois funcionam. **A afirmação de que "o Transparente com cartão salvo exige
+CVV a cada cobrança" não se sustenta na tokenização** — ao menos não neste
+ponto do fluxo.
+
+**3. Token de cartão é de uso ÚNICO.** Salvar o cartão consome o token; cobrar
+com o mesmo token depois devolve `cc_rejected_other_reason` (pagamento
+`1328177450`). Cada cobrança precisa do seu token.
+
+### 16/09/2026 — com o token de OAuth de verdade
+
+O vendedor autorizou as três aplicações pelo Moodle, com `testmode` ligado. Saiu
+**um token `TEST-` por aplicação, para o mesmo vendedor** (`3672982509`), o que
+já responde M5: cada aplicação exige mesmo o seu OAuth, e a premissa do
+[ADR-0013](../adr/0013-uma-aplicacao-por-tipo-de-integracao.md) está medida.
+
+**4. Tokenizar cartão no servidor é proibido.** `POST /v1/card_tokens` com o
+token de acesso do vendedor devolve **403 `unexpected_processing`**; com a
+`public_key`, devolve token `active`.
+
+Não é obstáculo: é o desenho. O cartão é tokenizado **no navegador**, pelo Card
+Payment Brick, com a chave pública — e por isso o PAN nunca chega ao servidor do
+Moodle. A consequência para o código é direta: **o plugin não deve ter nenhuma
+linha que tokenize cartão**, e se alguém escrever uma, ela vai tomar 403.
+
+**5. O `/v1/payments` HONRA o `application_fee`.** É o contraste que sustenta
+todo o desenho, e agora está medido dos dois lados:
+
+```
+pagamento 1352076103   status: approved
+fee_details:
+  mercadopago_fee    0,15   (collector)
+  application_fee    1,25   (collector)
+```
+
+Enquanto o `preapproval` aceita cinco formatos de campo de taxa e **descarta
+todos**, o pagamento devolve a comissão calculada e atribuída. Um guarda valor, o
+outro não.
+
+> **Isto NÃO é prova de split, e a diferença importa.** O `collector_id` deste
+> pagamento é `3675841384` — o dono da aplicação. Vendedor e marketplace são a
+> mesma conta, exatamente a armadilha que fez o `marketplace_fee` "funcionar" da
+> primeira vez sem transferir centavo nenhum. A guarda do
+> `provar-split-mercadopago.py` recusaria este resultado como prova.
+>
+> O que ele prova é o **mecanismo**: o campo existe, é aceito e é honrado por
+> este endpoint. O que falta é vê-lo atravessar de uma conta para outra.
+
+**6. O sandbox não fecha a travessia entre contas.** Com o vendedor sendo um
+usuário de teste, a cobrança é recusada antes de nascer:
+
+| Token do cartão | Comerciante | Resultado |
+|---|---|---|
+| `public_key` da plataforma (`TEST-`) | vendedor, OAuth `TEST-` | **400** `Invalid users involved` |
+| idem, **sem** `application_fee` | vendedor, OAuth `TEST-` | **400** `Invalid users involved` |
+| `public_key` do vendedor (`APP_USR-`) | vendedor, OAuth `TEST-` | **404** `Card Token not found` |
+| `public_key` da plataforma (`TEST-`) | **a própria plataforma** | **201 approved**, com `application_fee` |
+
+A segunda linha é a que elimina a hipótese fácil: **sem a comissão dá o mesmo
+erro**, então não é o `application_fee` — é a mistura de partes. E a terceira
+mostra a outra ponta da mesma coisa: chave pública de produção não encontra
+token em ambiente de teste.
+
+É a mesma parede já registrada para o Checkout Pro em
+[`mercadopago-split.md`](mercadopago-split.md): **prova de split no Mercado Pago
+é com conta real**. A rodada de 08/09/2026 fez isso com dinheiro de verdade
+(pagamento `178004552586`), e é esse o caminho para fechar o que falta.
+
+### 16/09/2026 — a assinatura pode nascer JÁ com o cartão
+
+Pergunta levantada pelo usuário: e se a página de pagamento fosse nossa, com os
+dados do cartão indo daqui para o Mercado Pago, e a assinatura nascendo pronta
+para cobrar sozinha?
+
+**A parte que funciona.** `POST /preapproval` aceita `card_token_id`, e com ele o
+aluno não precisa ir à página do Mercado Pago. Mas há uma condição, e ela custou
+três tentativas para aparecer:
+
+| Public key do token | Token da chamada | Resultado |
+|---|---|---|
+| — (sem cartão) | Bricks | **201**, assinatura `pending` |
+| **Bricks** | Bricks | **400** `Resource not found` |
+| **Bricks** | Bricks, `status: authorized` | **400** `Resource not found` |
+| **Assinaturas** | Assinaturas | **400** `Unsupported_credit_card_for_recurring_payment` |
+
+A quarta linha é a que responde: **o erro mudou de natureza**. Deixou de ser
+"não encontrei o token" e passou a ser "este cartão não serve para recorrência"
+— ou seja, o token **foi encontrado**. É a mesma armadilha de sempre, numa
+roupa nova: **o token do cartão precisa nascer da `public_key` da MESMA
+aplicação** que vai criar a assinatura. Misturar aplicações devolve `Resource
+not found`, que parece defeito do token e é desencontro de escopo.
+
+(O `Unsupported_credit_card_for_recurring_payment` restante é esperado: cartão
+de teste com credencial de produção.)
+
+**A parte que NÃO muda, e é a que importa.** Esta mesma chamada levou
+`marketplace_fee` **e** `application_fee`. A assinatura continua sem campo de
+taxa: de onde vem o cartão não tem relação nenhuma com o split. São perguntas
+independentes, e confundi-las levaria a construir a página inteira para
+descobrir no fim que a comissão continua não saindo.
+
+### O que M4 ainda não fecha, e por quê
+
+A cobrança com o token sem CVV **não foi aprovada nesta rodada**, e o motivo é
+de ambiente, não do mecanismo: as tentativas alternaram `500 internal_error` e
+`404 Card Token not found`. A combinação usada — token `TEST-` da plataforma
+como comerciante, cliente criado como *productive customer* (o domínio
+`@testuser.com` foi recusado com `Invalid domain user email for productive
+customer`) — é justamente a mistura de ambientes que o Mercado Pago rejeita.
+
+**Fechar M4 exige o token de vendedor por OAuth**, que precisa de navegador e do
+túnel. Enquanto isso, o que está provado é o suficiente para não descartar o
+Plano B: o cartão fica no gateway, e a tokenização não pede CVV.
+
+---
+
+## O que falta, e o que cada coisa exige
+
+| Medição | Exige | Estado |
+|---|---|---|
+| M1 — dono de cada aplicação | nada | **fechada** |
+| M2 — `preapproval` honra split | nada | **fechada** (não honra) |
+| M7 — `advanced_payments` | nada | **fechada** (403 de política) |
+| M4 — cartão salvo | parte com navegador | **parcial** |
+| M3 — `fee_details` do ciclo | túnel + OAuth + navegador | pendente |
+| M5 — escopo do OAuth por aplicação | túnel + OAuth | pendente |
+| M6 — tópicos do webhook e `x-signature` | túnel | pendente |
+
+O túnel é `cloudflared` com hostname fixo `mp.leodg.dev`, apontando para a porta
+HTTP da worktree, com `$CFG->wwwroot` e `$CFG->sslproxy = 1` — o procedimento
+está em [`mercadopago-split.md`](mercadopago-split.md). `localhost` não serve nem
+para `redirect_uri` nem para `notification_url`.
+
+---
+
+## A consequência para o produto
+
+**Assinatura B2C com split não sai pelo `preapproval`**, e agora isso está
+medido para o tipo de aplicação certo. Restam dois caminhos, nesta ordem:
+
+1. **Recorrência própria com cartão guardado no MP** — o aluno paga o ciclo 1, o
+   Mercado Pago guarda o cartão, e cada ciclo seguinte é um `POST /v1/payments`
+   com `application_fee`. Os dois pilares já têm evidência: o cartão fica no
+   gateway, e a tokenização não pede CVV. Falta a cobrança aprovada.
+2. **`advanced_payments`** — fechado por política, e dependeria de uma decisão
+   fiscal ([ADR-0003](../adr/0003-quem-cria-a-cobranca-emite-a-nota.md)).
+
+**Assinatura B2B não depende de nada disso.** Sem terceiro, não há split: o
+`preapproval` serve à mensalidade da empresa hoje, com cobrança automática e
+cartão guardado no Mercado Pago.
+
+---
+
+## Pedido ao suporte do Mercado Pago
+
+Duas liberações, e **só a segunda é bloqueante**. A primeira é opcional — o
+Plano B não depende dela, e adotá-la exigiria rever o
+[ADR-0003](../adr/0003-quem-cria-a-cobranca-emite-a-nota.md).
+
+Texto para abrir o chamado, com a evidência junto:
+
+> **Conta:** `3675841384` (CNPJ) · **Aplicações:** `2401225442871147`
+> (API de Preferências), `6990306155285574` (Assinaturas), `2598194068751669`
+> (Checkout Bricks) — as três na mesma conta.
+>
+> Operamos um marketplace de cursos com split de pagamento. O split já funciona
+> em venda avulsa pela API de Preferências: pagamento `178004552586`, R$ 5,00
+> com `marketplace_fee` de R$ 1,25 creditado à conta da aplicação. Precisamos
+> agora de **assinatura recorrente com split**, e temos duas perguntas:
+>
+> **1. Habilitação de `/v1/advanced_payments` (opcional).** Qualquer chamada,
+> inclusive a leitura `GET /v1/advanced_payments/search?limit=1`, responde
+> `403` com `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` ("At least one policy
+> returned UNAUTHORIZED"). Testado com credencial de produção **e** de teste,
+> nas três aplicações acima. É liberação comercial? Quais os requisitos?
+>
+> **2. Cobrança recorrente com cartão salvo e `application_fee` (bloqueante).**
+> Nosso modelo é: o aluno paga o primeiro ciclo, o cartão fica salvo no Mercado
+> Pago (`/v1/customers/{id}/cards`), e cada ciclo seguinte é um
+> `POST /v1/payments` com `application_fee`, criado com o `access_token` do
+> vendedor obtido por OAuth da nossa aplicação. **A cobrança é iniciada por nós,
+> sem o portador presente e sem novo CVV.**
+>
+> Confirmamos que `POST /v1/card_tokens` com apenas `{"card_id": "..."}` — sem
+> `security_code` — devolve token com `status: active`. Perguntas:
+>
+> - essa cobrança sem CVV é suportada em **produção** para transações iniciadas
+>   pelo estabelecimento, ou exige habilitação prévia na conta/aplicação?
+> - o `application_fee` é honrado nesse formato, ou depende de a aplicação estar
+>   declarada com algum modelo de integração específico?
+> - há taxa de recusa/chargeback diferente para transação sem CVV?
+>
+> Não armazenamos dado de cartão: o PAN é tokenizado no Card Payment Brick, e
+> guardamos apenas os identificadores devolvidos pela API.
+
+**Por que a segunda pergunta é a que importa.** A tokenização sem CVV está
+medida e funciona; o que não foi possível exercitar aqui é a **cobrança
+aprovada** com esse token, porque a combinação de ambiente disponível
+(credencial `TEST-` da plataforma como comerciante, cliente "produtivo")
+é justamente a mistura que o Mercado Pago recusa. Se a resposta for "exige
+habilitação", o Plano B depende dela; se for "é suportado", a medição se fecha
+com o token de vendedor por OAuth.
+
+
+---
+
+## Rodada de prova real — 16/09/2026, inacabada
+
+Ambiente montado e **três defeitos corrigidos**, mas a compra ainda não passou.
+Registrado aqui para a sessão seguinte não repetir o caminho.
+
+### O que estava montado
+
+| | |
+|---|---|
+| Vendedor | `1233186727` (Ivana), **produção**, Preferências e Bricks na conta de pagamento **2** |
+| Plataforma | `3675841384` — contas distintas, a guarda aceita |
+| Empresa | Ivana Academy, comissão **80%** (origem `company`) |
+| Ofertas | Assinatura 3 cursos, Certificado e Curso avulso, todas **R$ 5,00** |
+| `testmode` | **desligado**, chaves de produção em vigor |
+| Captura | `direct` (SAQ A-EP) — o Brick foi descartado, ver abaixo |
+| Aluno | `aluno.prova.mp` / `Prova#MP2026` |
+
+### Os três defeitos corrigidos, todos só visíveis no navegador
+
+1. **Formulário aninhado.** O Card Payment Brick renderiza o próprio `<form>`;
+   dentro do nosso, o navegador descartava o interno e submetia o externo
+   **vazio**. Corrigido: o Brick vive fora do form, e há teste.
+2. **`onReady` é obrigatório no Brick.** Sem ele o componente fica no esqueleto
+   de carregamento **para sempre**, e o erro só existe no console
+   (`Callbacks onReady and/or onError are required`).
+3. **`payment_method_id` vazio derruba a cobrança.** Medido:
+
+   | enviado | resultado |
+   |---|---|
+   | ausente | **approved**, e o MP preenche `master` sozinho |
+   | `""` | **400** `Invalid payment_method_id` |
+
+   O token de cartão **não devolve a bandeira**. Corrigido: ausente ≠ vazio.
+
+### Onde parou, e o que já está descartado
+
+A tentativa morre **antes de gravar o cliente** (`mpcustomerid` nulo na linha),
+com `400: invalid parameter in payment method`. Como `ensure_customer()` só
+grava depois de `save_card()`, a falha está em uma das três primeiras chamadas.
+
+**Medido, e elimina duas hipóteses:**
+
+| Teste | Resultado |
+|---|---|
+| `POST /v1/customers` com o e-mail do aluno | `400 the customer already exist` — **esperado**, e tratado |
+| `GET /v1/customers/search` | **1 resultado** — o cliente existe e é encontrado |
+| `save_card` com token da **public key da plataforma** | **ok**, `card_id=9854896121` |
+| `save_card` com token da **public key do vendedor** | `invalid card owner` |
+
+Ou seja: **a chave pública correta é a da PLATAFORMA**, e o `save_card` funciona
+com um token criado por API. O que falha é o token vindo do **navegador**, pelos
+Secure Fields.
+
+### A próxima coisa a medir
+
+Comparar os dois tokens. O de API traz `first_six_digits` e `cardholder`; o do
+navegador pode estar saindo sem algum desses, ou associado a outro contexto.
+O caminho é registrar o token que o `subscribe.php` recebe e consultá-lo:
+
+```
+GET /v1/card_tokens/{id}   (com o token de acesso do vendedor)
+```
+
+Se o token do navegador vier incompleto, a causa está na chamada
+`mp.createCardToken()` do `card_form.js` — que hoje manda só `cardholderName`,
+`identificationType` e `identificationNumber`, deixando número, validade e CVV
+por conta dos Secure Fields montados.
+
+### A causa real, medida em 16/09/2026: o primeiro resultado não é cartão
+
+O `card_form.js` descobria a bandeira certo — o evento `binChange` funciona, o
+BIN chega — mas escolhia `metodos[0].id` sem olhar o tipo. Testado com curl,
+a própria chamada que o SDK faz:
+
+```
+GET /v1/payment_methods/search?bin=411111&public_key=<publickey_bricks>
+```
+
+Para um BIN de vários emissores a lista devolve **Pix, boleto, Mercado
+Crédito e várias bandeiras de cartão misturados**, nessa ordem — não é uma
+lista ordenada com cartão primeiro:
+
+| posição | `id` | `payment_type_id` |
+|---|---|---|
+| 0 | `consumer_credits` | `digital_currency` |
+| 1 | `consumer_credits` | `digital_currency` |
+| 2 | `pix` | `bank_transfer` |
+| 3 | `master` | `credit_card` |
+
+`metodos[0].id` valia `consumer_credits`, e o `/customers/{id}/cards`
+recusava com a mesma mensagem do caso "vazio": `400 invalid parameter in
+payment method` — só que agora com um valor preenchido, só que errado.
+
+**Corrigido**: filtrar por `payment_type_id === 'credit_card' ||
+'debit_card'` antes de pegar o primeiro item. O `save_card` exige cartão
+mesmo, então filtrar por tipo não é perda de generalidade.
+
+### O filtro não era a causa inteira — o erro continuou
+
+Depois do filtro por tipo, a mesma compra real devolveu o mesmo erro:
+`400 invalid parameter in payment method`, na mesma linha (`mpcustomerid`
+continua nulo). Medido de novo, com curl, direto contra a conta da Ivana:
+
+1. **`GET /v1/payment_methods/search?bin=X`, para BINs DIFERENTES, devolve a
+   MESMA lista.** Testado com `411111`, `453998`, `555566`, `400000` e
+   `379999` — resultado idêntico, byte a byte, nas cinco chamadas. A busca
+   por BIN **não filtra por BIN nenhum** com `public_key` como único
+   parâmetro de autenticação; devolve um catálogo genérico do site (MLB).
+   Ou seja, `cartoes[0].id` de hoje é sempre o primeiro `credit_card` desse
+   catálogo genérico (`master`), **não** a bandeira real do cartão.
+
+2. **E mesmo assim isso não quebra o `save_card`.** Testado direto:
+   criar um `card_token` de um cartão **Visa** de teste e salvá-lo com
+   `payment_method_id: "master"` (bandeira errada, de propósito) devolveu
+   **201**, e o Mercado Pago corrigiu sozinho — `payment_method.id` na
+   resposta veio `"visa"`, batendo com o cartão real. **O valor que se manda
+   não precisa ser exato: o Mercado Pago o ignora e deriva a bandeira do
+   próprio token.**
+
+3. **O que reproduz `400 invalid parameter in payment method` NÃO foi
+   encontrado ainda.** Testado e descartado, todos com token válido de
+   cartão de teste (Visa e Mastercard, `APRO`/`19119119100`):
+
+   | Tentativa | Resultado |
+   |---|---|
+   | `payment_method_id` ausente | `400 payment method response is empty` — mensagem DIFERENTE |
+   | `payment_method_id: ""` | `400 payment method response is empty` — idem |
+   | `payment_method_id: "zzz_invalid"` (lixo) | `400 payment method response is empty` — idem |
+   | `payment_method_id` errado mas válido (`"master"` num Visa) | **201**, corrigido sozinho |
+   | Cartão duplicado (já salvo nesse customer) | **201**, devolve o card_id existente |
+   | Token reaproveitado (já consumido antes) | **201** — não invalidou |
+   | Token sem `security_code` no `card_tokens` | `400 payment method response is empty` — idem |
+
+   Nenhum desses bate com a frase exata que o aluno viu. As duas hipóteses
+   que sobram, e que cartões de teste `APRO` não testam: **token expirado
+   pelo tempo de tela** (o `card_token` tem `date_due` de horas, e o aluno
+   pode ter ficado mais tempo no formulário do que um teste direto) e
+   **algo específico do cartão real do aluno** que um cartão de bandeira
+   testada por curl não reproduz.
+
+4. **Correção aplicada enquanto isso**: `mp_client::decode()` agora anexa o
+   `cause` da resposta do Mercado Pago à mensagem de erro — é o campo com o
+   `code` numérico, e ele DISTINGUE causas que o `message` sozinho não
+   distingue (visto acima: duas causas diferentes, mesma frase
+   `"payment method response is empty"`). A próxima falha real chega com o
+   `code` junto, sem precisar de outra rodada de curl para adivinhar.
+
+### O `cause` chegou, e apontou o campo que faltava
+
+A próxima tentativa real trouxe o diagnóstico direto, sem precisar de mais
+curl: `400 invalid parameter [127: invalid parameter. Cannot resolve the
+payment method of card, check the payment_method_id and issuer_id]`. O
+próprio Mercado Pago nomeou o campo que faltava.
+
+**Dois defeitos, um sobre o outro, os dois medidos:**
+
+1. **A documentação oficial do endpoint está errada.** A página do
+   `POST /v1/customers/{id}/cards` mostra um exemplo só com `token`, sem
+   `payment_method_id`. Testado direto, com um cartão de teste NUNCA salvo
+   antes nesse customer (Hipercard, `606282...`): `token` sozinho devolve
+   `400 payment method response is empty` (causa 128) — a doc não bate com
+   o comportamento real da conta.
+
+2. **A busca por BIN que o `card_form.js` chamava usava o parâmetro
+   ERRADO.** O `bin` (singular) que testei manualmente na rodada anterior
+   não é o que o SDK oficial usa — lido direto do bundle
+   (`sdk.mercadopago.com/js/v2`): o método real chama
+   `GET /v1/payment_methods/search` com **`bins`, no plural**, e o BIN
+   cortado em até 8 dígitos, mais `marketplace=NONE` e `status=active`.
+   Com o parâmetro certo, a busca FILTRA de verdade — testado com
+   `bins=45399800` (só `visa`) e `bins=55556600` (só `master`), um
+   resultado cada, não mais o catálogo genérico. Como o `card_form.js`
+   chama `mp.getPaymentMethods({bin: bin})` pelo MÉTODO do SDK (não por
+   HTTP cru), essa parte já traduzia certo por baixo — o erro do parâmetro
+   era só do meu teste manual anterior, não do código do plugin.
+
+3. **O emissor (`issuer_id`) é o campo que faltava de verdade**, e a
+   própria busca por BIN já o devolve, no mesmo resultado (`issuer.id`) —
+   visto no exemplo oficial da doc também (`"issuer": {"id": 25, "name":
+   "visa"}`). Cartões de teste `APRO` NÃO reproduzem a exigência — testado
+   trocando a bandeira deliberadamente errada (Amex declarado como
+   `visa`) e o Mercado Pago corrigiu sozinho, sem exigir `issuer_id`. Para
+   o cartão real do aluno, corrigiu não: exigiu.
+
+**Corrigido**: `payment_method_id` e `issuer_id` agora viajam juntos, do
+mesmo resultado da busca por BIN, nos três modos de captura —
+`card_form.js` (brick e direto) e `mp_client::guess_payment_method()`,
+novo, para o modo nativo (que tem o número do cartão no servidor e não
+precisa do navegador para descobrir nada).
+
+### `issuer_id` como texto quebra o corpo inteiro
+
+A tentativa seguinte trocou de erro: `400 [118: the body must be a Json
+Object]`. A mensagem não tem nada a ver com o defeito real - reproduzido com
+curl, contra a conta de verdade, isolando UM campo por vez:
+
+| Corpo | Resultado |
+|---|---|
+| `"issuer_id": "25"` (string) | **400** `[118: the body must be a Json Object]` |
+| `"issuer_id": 25` (número) | outro erro (token inválido - esperado, o token era falso) |
+| sem `issuer_id` | o mesmo outro erro |
+
+`payment_method_id` é string (`"visa"`), mas `issuer_id` é **número**, e o
+`(string) $issuerid` que `guess_payment_method()` devolve virava `"25"` no
+corpo sem ninguém convertê-lo de volta. **Corrigido**: `save_card()` agora
+faz `(int) $issuerid` na hora de montar o corpo. É o único campo aqui que o
+Mercado Pago exige tipado, e não como texto - o resto do payload inteiro
+aceita string sem reclamar.
+
+### O `issuer` da busca por BIN é um PALPITE, não o emissor do cartão
+
+Com tipo e presença corrigidos, a compra real voltou ao MESMO erro (127),
+com os valores agora visíveis no diagnóstico: `payment_method_id=visa,
+issuer_id=25`. Bandeira certa, emissor "certo" segundo a busca por BIN - e
+mesmo assim recusado.
+
+**Cartões de teste do Mercado Pago (`APRO`, ou qualquer número da lista
+oficial de teste) não servem para medir isto.** Provado isolando a
+variável: o MESMO cartão Visa de teste, com bandeira **e emissor ERRADOS
+de propósito** (`issuer_id` de um Mastercard, `12749`), foi aceito com
+**201** - o Mercado Pago simplesmente ignora o que se manda e resolve pelo
+próprio token quando o cartão é de teste. Confirmado também com
+`cardholder.name` diferente de `"APRO"`: sem efeito, ainda aceita
+qualquer coisa. **Todos os cartões de teste publicados pelo Mercado Pago
+pulam esta validação** - é o próprio mecanismo que existe para não travar
+quem está testando, e é exatamente por isso que nenhuma medição desta
+sessão, feita só com esses números, reproduziu o erro do aluno.
+
+**O que ficou provado, ainda assim:**
+
+- `GET /v1/payment_methods/search` devolve um campo `issuer` em cada
+  resultado, mas ele é um palpite do site inteiro (Brasil), não do BIN
+  específico - para BINs genéricos de teste ele mostra sempre o emissor
+  "default" (Visa=25, Mastercard=24), e é ESSE valor genérico que
+  `guess_payment_method()` vinha usando;
+- existe um endpoint DEDICADO para o emissor de verdade -
+  `GET /v1/payment_methods/card_issuers?payment_method_id=X&bin=Y` -, e o
+  SDK oficial o expõe como `mp.getIssuers()` (confirmado lendo o bundle);
+  para os BINs testados (Visa e Mastercard genéricos) ele devolveu os
+  MESMOS ids que a busca por BIN, então a mudança de fonte não pôde ser
+  comprovada como a causa raiz com os dados disponíveis;
+- um cartão de teste REAL salvo nesta sessão (`aluno.prova.mp@leodg.dev`,
+  card_id `9854896121`, BIN `548083`, Santander) tem emissor `12749` - um
+  banco de verdade, bem longe do genérico `24`/`25` - o que mostra que
+  BINs de bancos reais TÊM emissor específico, ao contrário dos BINs de
+  teste publicados.
+
+**Corrigido, mesmo sem confirmação end-to-end possível nesta sessão**:
+`guess_payment_method()` e `card_form.js` (modo direto) agora buscam o
+emissor pelo endpoint dedicado (`card_issuers` / `mp.getIssuers()`), não
+mais pelo campo `issuer` genérico da busca por BIN. É a fonte que a
+documentação e a comunidade do Mercado Pago apontam como correta para
+este caso exato (issue pública do SDK PHP, mesma mensagem "Cannot resolve
+the payment method of card"), mas **nenhum teste automatizado nem manual
+desta sessão conseguiu reproduzir o erro 127 para provar que ela
+resolve** - todos os cartões disponíveis para teste pulam a validação que
+está falhando. A confirmação só é possível com o cartão real do aluno.
+
+### A causa de verdade: o token dos Secure Fields não carrega BIN
+
+O usuário testou com um cartão real (temporário, gerado só para esta prova)
+e o erro se repetiu, **com os mesmos valores** (`visa`/`25`) - o que
+derrubou a hipótese do endpoint dedicado ter sido a causa. Isolado em três
+passos, com o cartão real:
+
+1. `GET /v1/payment_methods/search` e `GET /v1/payment_methods/card_issuers`
+   concordam: `visa`/`25` é o que os dois endpoints devolvem para este BIN
+   também. O palpite não era o problema.
+2. `save_card()` com este cartão real, via **curl puro** e via **o próprio
+   `mp_client` do plugin** (não uma simulação), contra o customer de
+   verdade do aluno: **201, aprovado**, os dois. O código e os valores
+   estão certos.
+3. O diagnóstico que consulta `GET /v1/card_tokens/{id}` (commit anterior)
+   revelou a diferença: para o token que o **navegador** criou pelos Secure
+   Fields (modo `direct`), a resposta veio com `status: active` mas **sem
+   `first_six_digits`** (`token bin=?`). Todo token criado com
+   `card_number` em texto puro - os de teste, os de curl, o modo nativo -
+   trazem esse campo. O do modo `direct` não.
+
+**Sem BIN no próprio token, o Mercado Pago não tem contra o que resolver
+NADA** - nem o que o navegador manda, nem um palpite nosso, porque não há
+dado de cartão para cruzar do lado do token. Não era bandeira errada, nem
+emissor errado: o modo `direct` (Secure Fields montados à mão, fora do
+Card Payment Brick) produz um token que o `/v1/customers/{id}/cards` não
+consegue usar para salvar cartão - só para cobrança avulsa, onde o próprio
+`/v1/payments` aceita o token sem exigir que ele carregue BIN (o
+`application_fee` já provado no início deste documento usava justamente
+esse tipo de token).
+
+**Corrigido**: `cardcapture` trocado de `direct` para `brick` (configuração
+de site, sem deploy de código) - o Card Payment Brick é o componente
+mantido pelo próprio Mercado Pago para exatamente este fluxo
+(salvar-e-cobrar-depois), e é o padrão de fábrica do plugin
+(`card_capture::current()` já caía em `MODE_BRICK`; só estava em `direct`
+por causa dos testes anteriores desta sessão). O modo `direct` continua no
+código - útil para SAQ A-EP quando não se guarda cartão para cobrança
+recorrente -, mas não é mais a captura da assinatura em produção.
+
+### X-Idempotency-Key: o erro seguinte, depois do savecard passar
+
+Com o `brick`, a compra avançou até o passo `payment` - a prova de que o
+`savecard` estava mesmo resolvido. Erro novo, bem mais simples: `400
+Header X-Idempotency-Key can't be null` (causa 4292). O `/v1/payments`
+exige este cabeçalho e nenhum outro endpoint do plugin exige - não estava
+sendo mandado.
+
+**Corrigido**: `create_payment()` manda `X-Idempotency-Key` com o valor da
+própria `external_reference` do corpo - ela já é única POR CICLO (uma
+linha por cobrança, ver `install.xml`), então reenviar a mesma requisição
+(um timeout que o cliente retenta, por exemplo) devolve o pagamento que já
+existe em vez de cobrar duas vezes. Gerar uma chave aleatória a cada
+chamada anularia essa proteção contra cobrança duplicada.
+
+### `security_code_id can't be null`: a premissa central da assinatura estava errada
+
+Depois do `X-Idempotency-Key`, novo erro no mesmo passo `payment`: `400
+security_code_id can't be null` (causa 3031). Este é o mais sério dos
+achados desta rodada - **derruba uma frase que este documento tratava como
+fato medido**: "o Mercado Pago emite token de cartão guardado sem CVV".
+
+**O que a medição de 16/09/2026 (manhã) provou de verdade**: que
+`POST /v1/card_tokens` com só `{"card_id": ...}` devolve `status: active`.
+**O que ela não provou**, e que esta rodada corrigiu: que esse token serve
+para COBRAR. `status: active` é sobre o token existir, não sobre o
+Mercado Pago aceitar cobrar com ele sem o código de segurança.
+
+Isolado com curl, contra a conta real, três cenários:
+
+| Tokenização do card_id | Cobrança com o token |
+|---|---|
+| sem `security_code` | **400** `security_code_id can't be null` |
+| com `security_code` (CVV real) | **in_process / pending_review_manual** - sem erro técnico |
+| card_id sem `security_code`, **depois** de uma cobrança aprovada no mesmo cartão | **400**, o MESMO erro - não muda com histórico |
+
+A terceira linha é a que fecha a questão: não é um "aquecimento" do
+cartão. É um recurso do Mercado Pago chamado **ESC** (visto no bundle do
+SDK - `has_esc`, `security_code_settings.mode === "mandatory"`) que
+precisa estar **habilitado na conta do vendedor**, e não se liga sozinho
+por comportamento. Sem ele, o Mercado Pago exige o CVV em TODA cobrança
+com cartão - inclusive as automáticas.
+
+**Corrigido para o ciclo 1**: `charge_first_cycle()` não re-tokeniza mais
+o cartão guardado. Cobra com o MESMO token que o navegador criou - esse
+token nasceu junto com o CVV que o aluno digitou, e ainda é válido para
+cobrar (não é consumido pelo `save_card()`, testado reutilizando o mesmo
+token nas duas chamadas). Resolve o ciclo 1, que tem o aluno na tela.
+
+**Não corrigido, e é uma decisão que falta tomar**: os ciclos 2 em diante
+(`charge_due_cycles()`) continuam re-tokenizando por `card_id` sem CVV,
+porque não há aluno na tela para digitar nada um mês depois - e essa
+chamada vai continuar devolvendo `security_code_id can't be null` até que
+uma das duas coisas aconteça:
+
+1. **Pedir ao suporte do Mercado Pago para habilitar ESC** nesta conta de
+   vendedor - se for possível, é a única forma de manter a cobrança
+   realmente automática, sem o aluno agir todo mês;
+2. **Redesenhar o ciclo 2+ para pedir uma ação do aluno** - mesmo modelo
+   já aceito para Pix/boleto (gerar uma cobrança nova por ciclo e
+   notificar), só que agora também para cartão, se o ESC não for viável.
+
+Sem uma das duas, a assinatura por cartão cobra o ciclo 1 e trava no
+ciclo 2 - o pior tipo de falha, porque não aparece no ato da compra.

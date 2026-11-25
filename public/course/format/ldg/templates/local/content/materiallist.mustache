@@ -1,0 +1,80 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    O material de apoio do curso.
+
+    Cada item diz o que vai acontecer ANTES do clique: baixar, abrir noutra
+    janela ou abrir aqui. Isso nao e enfeite - material com download forcado nao
+    pode entrar no quadro embutido, porque o download dispara e o quadro fica em
+    branco. Quem decide e o materiallist, pelo cm_info; aqui so se desenha.
+
+    ARMADILHA: nao escreva chaves duplas de mustache dentro deste comentario.
+
+    @template format_ldg/local/content/materiallist
+    @author    LeoDG <callme@leodg.dev>
+    @copyright 2026 LeoDG <callme@leodg.dev>
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+    Context variables required for this template:
+    * hasmaterials - Se ha algum material
+    * materials - Lista de materiais, com name, url, iconurl, section e os
+      sinais isdownload, opensnewwindow e inframe
+
+    Example context (json):
+    {
+        "hasmaterials": true,
+        "materials": [
+            {
+                "cmid": 1,
+                "name": "Apostila",
+                "modfullname": "Arquivo",
+                "iconurl": "#",
+                "url": "#",
+                "section": "Modulo 1",
+                "isdownload": true,
+                "opensnewwindow": false,
+                "inframe": false
+            }
+        ]
+    }
+}}
+<div class="ldg-materiallist">
+    {{#hasmaterials}}
+        <ul class="ldg-materiallist__items">
+            {{#materials}}
+                <li class="ldg-materiallist__item">
+                    <a class="ldg-materiallist__link" href="{{{url}}}"
+                       {{#opensnewwindow}}target="_blank" rel="noopener"{{/opensnewwindow}}
+                       {{#isdownload}}download{{/isdownload}}>
+                        <img class="ldg-materiallist__icon" src="{{{iconurl}}}" alt="{{modfullname}}">
+                        <span class="ldg-materiallist__name">{{name}}</span>
+                        <span class="ldg-materiallist__section">{{section}}</span>
+                        {{#isdownload}}
+                            <span class="ldg-materiallist__hint">{{#str}}downloadfile, format_ldg{{/str}}</span>
+                        {{/isdownload}}
+                        {{#opensnewwindow}}
+                            <span class="ldg-materiallist__hint">{{#str}}opensinnewwindow, format_ldg{{/str}}</span>
+                        {{/opensnewwindow}}
+                    </a>
+                </li>
+            {{/materials}}
+        </ul>
+    {{/hasmaterials}}
+    {{^hasmaterials}}
+        <p class="ldg-materiallist__empty">{{#str}}nomaterials, format_ldg{{/str}}</p>
+    {{/hasmaterials}}
+</div>

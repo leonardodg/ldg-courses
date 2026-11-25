@@ -22,7 +22,7 @@
  * consultando o pagamento de volta na API com o token do vendedor.
  *
  * @package    paygw_mercadopago
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -47,6 +47,50 @@ if ($type !== 'payment' || empty($paymentid)) {
     // que o Mercado Pago fique reenviando algo que nunca vamos processar.
     header('HTTP/1.1 200 OK');
     echo 'ignored';
+    exit;
+}
+
+// A assinatura e conferida ANTES de qualquer consulta a API.
+//
+// O status nunca veio do corpo - ele e consultado de volta com o token do
+// vendedor -, e isso ja impedia que alguem POSTasse "aprovado" e ganhasse
+// acesso. O que faltava era impedir que alguem faca o NOSSO servidor consultar
+// ids arbitrarios, um por requisicao. Por isso a conferencia vem antes: recusar
+// depois de consultar seria pagar o custo que se quer evitar.
+//
+// Sao TRES segredos, um por aplicacao, e nao se sabe de qual aplicacao a
+// notificacao veio antes de achar a linha. Entao a assinatura passa se bater
+// com QUALQUER um dos configurados - o que ainda exclui quem nao tem nenhum
+// deles, que e o ponto.
+$signature = $_SERVER['HTTP_X_SIGNATURE'] ?? '';
+$requestid = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
+$matches = false;
+
+foreach (\paygw_mercadopago\application::TYPES as $apptype) {
+    $secret = (string) get_config(
+        'paygw_mercadopago',
+        \paygw_mercadopago\application::config_key($apptype, 'webhooksecret')
+    );
+
+    $valid = \paygw_mercadopago\webhook_signature::is_valid(
+        (string) $signature,
+        (string) $requestid,
+        (string) $paymentid,
+        $secret
+    );
+
+    if ($valid) {
+        $matches = true;
+        break;
+    }
+}
+
+if (!$matches) {
+    // 401, e nao 200: o Mercado Pago precisa saber que a entrega falhou, e uma
+    // notificacao legitima recusada por segredo errado tem que aparecer no
+    // painel dele em vez de sumir como se tivesse sido processada.
+    header('HTTP/1.1 401 Unauthorized');
+    echo 'invalid signature';
     exit;
 }
 

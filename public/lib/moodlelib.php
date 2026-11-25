@@ -2740,11 +2740,14 @@ function require_logout() {
     // Clone of $USER object to be used by auth plugins.
     $user = fullclone($USER);
 
-    // Delete session record and drop $_SESSION content.
-    \core\session\manager::terminate_current();
-
-    // Trigger event AFTER action.
-    $event->trigger();
+    // Trigger before terminating so log writers can record login-as context.
+    // Always end the session, even if an event observer throws an Error.
+    try {
+        $event->trigger();
+    } finally {
+        // Delete session record and drop $_SESSION content.
+        \core\session\manager::terminate_current();
+    }
 
     // Hook to execute auth plugins redirection after event trigger.
     foreach ($authplugins as $authplugin) {
@@ -4150,15 +4153,17 @@ function complete_user_login($user, array $extrauserinfo = []) {
     // Allow plugins to callback as soon possible after user has completed login.
     di::get(\core\hook\manager::class)->dispatch(new \core_user\hook\after_login_completed());
 
-    // Check if the user is using a new browser or session (a new MoodleSession cookie is set in that case).
-    // If the user is accessing from the same IP, ignore everything (most of the time will be a new session in the same browser).
-    // Skip Web Service requests, CLI scripts, AJAX scripts, and request from the mobile app itself.
+    // Send a new login notification when the IP address has changed since the last login,
+    // unless the same user is logging in again (identified via the MOODLEID1_ cookie).
+    // Skip Web Service requests, CLI scripts, and environments that don't support cookies.
     $loginip = getremoteaddr();
     $isnewip = isset($SESSION->userpreviousip) && $SESSION->userpreviousip != $loginip;
     $isvalidenv = (!WS_SERVER && !CLI_SCRIPT && !NO_MOODLE_COOKIES) || PHPUNIT_TEST;
 
-    if (!empty($SESSION->isnewsessioncookie) && $isnewip && $isvalidenv && !\core_useragent::is_moodle_app()) {
+    $prevusername = get_moodle_cookie();
+    $issameuser = !empty($prevusername) && $prevusername == $USER->username;
 
+    if (!$issameuser && $isnewip && $isvalidenv) {
         $logintime = time();
         $ismoodleapp = false;
         $useragent = \core_useragent::get_user_agent_string();
@@ -4406,6 +4411,9 @@ function hash_internal_user_password(#[\SensitiveParameter] string $password, $f
  * record to use the current hashing algorithm.
  * It will remove Web Services user tokens too.
  *
+ * If the password itself has actually changed (not just a rehash to the current algorithm),
+ * any outstanding forgot-password tokens for the user are also invalidated.
+ *
  * @param stdClass $user User object (password property may be updated).
  * @param string|null $password Plain text password.
  * @param bool $fasthash If true, use a low cost factor when generating the hash
@@ -4468,6 +4476,13 @@ function update_internal_user_password(
         if (!empty($CFG->passwordchangetokendeletion)) {
             require_once($CFG->dirroot.'/webservice/lib.php');
             webservice::delete_user_ws_tokens($user->id);
+        }
+
+        if ($passwordchanged) {
+            // Invalidate any outstanding forgot-password tokens, as the password has now changed.
+            // Note: this deliberately excludes a rehash-only update ($algorithmchanged), which can
+            // happen during a normal login and does not mean the password itself has changed.
+            $DB->delete_records('user_password_resets', ['userid' => $user->id]);
         }
     }
 

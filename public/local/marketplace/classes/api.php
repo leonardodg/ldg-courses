@@ -23,10 +23,20 @@ use moodle_exception;
  * Operacoes do marketplace que envolvem mais de uma entidade.
  *
  * @package    local_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class api {
+    /**
+     * Dias fixos do ciclo da mensalidade do plano SaaS.
+     *
+     * Unica fonte: recurrence_for_plan() (o que o gateway cobra) e
+     * deliver_order_plan() em service_provider.php (o que o acesso estende)
+     * tem que concordar, senao o gateway cobraria num ritmo e o acesso
+     * venceria em outro. Antes eram dois literais 30 mantidos em sincronia
+     * so por comentario.
+     */
+    public const PLAN_CYCLE_DAYS = 30;
 
     /**
      * Cria a empresa e provisiona tudo que ela precisa para operar.
@@ -39,6 +49,10 @@ class api {
      * Tudo numa transacao: uma empresa com categoria mas sem dono, ou com dono
      * mas sem papel atribuido, seria pior que nenhuma empresa - apareceria na
      * lista e nao funcionaria.
+     *
+     * A library da Bunny (Frente B, ADR-0014) entra no mesmo passo, mas so
+     * quando a conta Bunny da plataforma ja esta configurada - ver
+     * create_video_library().
      *
      * @param object $data name, shortname, cnpj, themename, hostname
      * @param int $ownerid Usuario que passa a ser dono.
@@ -54,6 +68,12 @@ class api {
             $company->set('name', $data->name);
             $company->set('shortname', $data->shortname);
             $company->set('cnpj', !empty($data->cnpj) ? $data->cnpj : null);
+            $company->set('commissionpct', self::commission_input($data->commissionpct ?? null));
+            $company->set('commissionbase', self::commission_base_input($data->commissionbase ?? null));
+            $company->set('planid', !empty($data->planid) ? (int) $data->planid : null);
+            $company->set('pagetitle', !empty($data->pagetitle) ? $data->pagetitle : null);
+            $company->set('pageintro', $data->pageintro ?? null);
+            $company->set('pageaccent', !empty($data->pageaccent) ? $data->pageaccent : null);
             $company->set('themename', !empty($data->themename) ? $data->themename : null);
             $company->set('hostname', !empty($data->hostname) ? $data->hostname : null);
             $company->create();
@@ -68,16 +88,558 @@ class api {
             $owner->set('memberrole', member::ROLE_OWNER);
             $owner->create();
 
-            self::assign_seller_role($company, $ownerid);
+            self::assign_member_role($company, $ownerid, member::ROLE_OWNER);
             self::apply_theme($company);
-            self::create_payment_account($company);
+            self::create_payment_account($company, $data->country ?? self::default_country());
+            self::create_video_library($company);
 
             $transaction->allow_commit();
         } catch (\Throwable $e) {
             $transaction->rollback($e);
         }
 
+        // Fora da transacao de proposito: escrever arquivo nao tem rollback.
+        // Gerar antes do commit deixaria o mapa anunciando um dominio de
+        // empresa que nao chegou a existir.
+        if ($company->get('hostname')) {
+            self::regenerate_domain_map();
+        }
+
         return $company;
+    }
+
+    /**
+     * Percentual de comissao que vale para uma oferta.
+     *
+     * Hierarquia, do mais especifico para o mais geral:
+     *
+     *   1. politica do CURSO, quando a oferta libera um curso so
+     *   2. comissao negociada com a EMPRESA
+     *   3. comissao do PLANO contratado pela empresa
+     *   4. padrao do SITE
+     *
+     * A politica de curso so entra em oferta de curso unico, e a razao e que
+     * nao existe resposta correta para um combo: tres cursos com percentuais
+     * diferentes nao produzem um percentual do pacote. Pegar o maior seria
+     * predatorio, o menor seria arbitrario, e a media seria um numero que
+     * ninguem negociou. Entao no combo vale a empresa, que e o que o vendedor
+     * de fato acordou.
+     *
+     * A linha de politica so existe quando alguem a criou de proposito - nada
+     * cria por padrao. Por isso a existencia dela conta como intencao, e nao
+     * ha ambiguidade entre "definido como 25" e "nunca definido".
+     *
+     * @param offer $offer
+     * @return float Percentual entre 0 e 100.
+     */
+    public static function resolve_commission_percent(offer $offer): float {
+        return self::resolve_commission($offer)->percent;
+    }
+
+    /**
+     * Termos completos da comissao: percentual, base de calculo e origem.
+     *
+     * Mesma cadeia do percentual, com uma regra a mais: **a base sai do MESMO
+     * degrau que deu o percentual**. Resolver as duas coisas em cadeias
+     * independentes produziria combinacoes que ninguem contratou - taxa do
+     * plano com base do site, por exemplo - e o parceiro veria um numero que
+     * nao corresponde a nenhum acordo existente.
+     *
+     * Degrau que nao declara base (coluna nula) herda a base do site. E a
+     * diferenca entre "este contrato define a base" e "este contrato so define
+     * a taxa", que sem o nulo seriam indistinguiveis.
+     *
+     * @param offer $offer
+     * @return commission
+     */
+    public static function resolve_commission(offer $offer): commission {
+        if ($offer->get('offertype') === offer::TYPE_SINGLE) {
+            $courseids = $offer->get_course_ids();
+            if (count($courseids) === 1) {
+                $policy = course_policy::get_by_course((int) reset($courseids));
+                if ($policy) {
+                    return new commission(
+                        (float) $policy->get('commissionpct'),
+                        $policy->get('commissionbase'),
+                        commission::SOURCE_POLICY
+                    );
+                }
+            }
+        }
+
+        $company = company::get_record(['id' => (int) $offer->get('companyid')]);
+        if ($company) {
+            // A empresa continua vencendo o plano. "Comissao negociada com ESTA
+            // empresa" e mais especifico que "padrao da classe de empresas", e e
+            // o que garante que ligar planos hoje nao mexa em nenhuma venda que
+            // ja acontece. Quem quiser que o plano governe apaga o valor
+            // negociado - e a tela de empresas mostra de onde o numero veio.
+            $negotiated = $company->get_commission_percent();
+            if ($negotiated !== null) {
+                return new commission(
+                    $negotiated,
+                    $company->get('commissionbase'),
+                    commission::SOURCE_COMPANY
+                );
+            }
+
+            $plan = $company->get_plan();
+            if ($plan && $plan->get('status') === plan::STATUS_ACTIVE) {
+                return new commission(
+                    (float) $plan->get('commissionpct'),
+                    $plan->get('commissionbase'),
+                    commission::SOURCE_PLAN
+                );
+            }
+        }
+
+        return new commission(
+            self::default_commission_percent(),
+            commission::default_base(),
+            commission::SOURCE_SITE
+        );
+    }
+
+    /**
+     * Percentual de comissao para um item, com o guarda de componente embutido.
+     *
+     * E este o ponto que os gateways chamam. Cada um repetia o mesmo bloco -
+     * checar o componente, checar se a classe existe, buscar a oferta, cair num
+     * padrao quando nao acha - e tres copias do mesmo cuidado sao tres lugares
+     * onde ele pode divergir.
+     *
+     * Devolve o padrao do site quando o item nao e do marketplace: um gateway
+     * pode ser usado para pagar taxa de matricula do enrol_fee, e ali nao ha
+     * oferta nem empresa.
+     *
+     * @param string $component Componente do core_payment, ex.: 'local_marketplace'.
+     * @param int $itemid
+     * @return float Percentual entre 0 e 100.
+     */
+    public static function commission_for(string $component, int $itemid): float {
+        return self::commission_terms_for($component, $itemid)->percent;
+    }
+
+    /**
+     * Termos completos da comissao para um item.
+     *
+     * E este o ponto que os gateways passam a chamar: eles precisam da base
+     * para decidir COMO mandar o split, e nao so de quanto.
+     *
+     * $paymentarea existe para nao confundir $itemid com um offerid quando
+     * NAO e um - a paymentarea 'plan' (assinatura SaaS que a empresa paga a
+     * PLATAFORMA) usa companyid como itemid, e sem esta guarda um companyid
+     * que por acaso coincidisse com um offerid real devolveria a comissao de
+     * uma oferta que nao tem nada a ver com a cobranca.
+     *
+     * @param string $component Componente do core_payment.
+     * @param int $itemid
+     * @param string $paymentarea 'offer' (padrao) ou service_provider::PAYMENT_AREA_PLAN
+     * @return commission
+     */
+    public static function commission_terms_for(string $component, int $itemid, string $paymentarea = 'offer'): commission {
+        if ($paymentarea === payment\service_provider::PAYMENT_AREA_PLAN) {
+            // Assinatura SaaS: a plataforma e a UNICA parte, sem split - 0%
+            // e a resposta certa, e nao o padrao do site (25%), que faria
+            // parecer que ha comissao a repassar para alguem.
+            return new commission(0.0, commission::default_base(), commission::SOURCE_SITE);
+        }
+
+        $fallback = new commission(
+            self::default_commission_percent(),
+            commission::default_base(),
+            commission::SOURCE_SITE
+        );
+
+        if ($component !== 'local_marketplace') {
+            return $fallback;
+        }
+
+        $offer = offer::get_record(['id' => $itemid]);
+        if (!$offer) {
+            return $fallback;
+        }
+
+        return self::resolve_commission($offer);
+    }
+
+    /**
+     * O item e uma assinatura, e com que periodicidade cobra?
+     *
+     * Existe pelo mesmo motivo do commission_terms_for(): o gateway precisa
+     * decidir se cria uma cobranca avulsa ou uma assinatura, e nao pode saber
+     * o que e uma "oferta". Ele pergunta, e o marketplace responde.
+     *
+     * O core_payment nao tem conceito de assinatura - ele conhece pagamento
+     * unico. Por isso a informacao vem daqui, e nao do payable.
+     *
+     * Devolve null para qualquer coisa que nao seja assinatura, inclusive
+     * componente de fora: o gateway trata null como "cobranca avulsa", que e o
+     * comportamento que ele ja tinha antes desta funcao existir.
+     *
+     * $paymentarea existe pelo mesmo motivo de commission_terms_for(): a
+     * paymentarea 'plan' usa companyid como itemid, nunca offerid.
+     *
+     * @param string $component Componente do core_payment.
+     * @param int $itemid
+     * @param string $paymentarea 'offer' (padrao) ou service_provider::PAYMENT_AREA_PLAN
+     * @return \stdClass|null days (intervalo de cobranca) e maxcycles, ou null
+     */
+    public static function recurrence_for(string $component, int $itemid, string $paymentarea = 'offer'): ?\stdClass {
+        if ($paymentarea === payment\service_provider::PAYMENT_AREA_PLAN) {
+            return self::recurrence_for_plan($itemid);
+        }
+
+        if ($component !== 'local_marketplace' || $paymentarea !== 'offer') {
+            return null;
+        }
+
+        $offer = offer::get_record(['id' => $itemid]);
+        if (!$offer || $offer->get('accessmode') !== offer::ACCESS_RECURRING) {
+            return null;
+        }
+
+        // O intervalo de COBRANCA, e nao o de acesso. Sao campos separados de
+        // proposito - ver offer::calculate_expiry() -, e confundi-los aqui
+        // tiraria a carencia entre o vencimento da fatura e o corte do acesso.
+        $days = (int) $offer->get('billingdays');
+        if ($days <= 0) {
+            $days = (int) $offer->get('accessdays');
+        }
+        if ($days <= 0) {
+            // Assinatura sem periodicidade nao e assinatura. Melhor cair na
+            // cobranca avulsa do que criar no gateway algo que cobra sozinho
+            // num intervalo que ninguem definiu.
+            return null;
+        }
+
+        return (object) [
+            'days' => $days,
+            'maxcycles' => (int) $offer->get('maxcycles'),
+        ];
+    }
+
+    /**
+     * Recorrencia da assinatura SaaS - 30 dias fixos, sem limite de ciclos
+     * (ate a empresa cancelar ou trocar de plano).
+     *
+     * Sem plano, ou com mensalidade zero (Start-R$0), nao ha o que cobrar
+     * automaticamente - null aqui e o que impede o motor de ciclo de tentar
+     * criar uma assinatura para quem nao paga nada.
+     *
+     * @param int $companyid
+     * @return \stdClass|null
+     */
+    protected static function recurrence_for_plan(int $companyid): ?\stdClass {
+        $company = company::get_record(['id' => $companyid]);
+        if (!$company) {
+            return null;
+        }
+
+        $plan = $company->get_plan();
+        if (!$plan || (float) $plan->get('monthlyfee') <= 0) {
+            return null;
+        }
+
+        return (object) [
+            'days' => self::PLAN_CYCLE_DAYS,
+            'maxcycles' => 0,
+        ];
+    }
+
+    /**
+     * Comissao padrao do site.
+     *
+     * Vive nas settings do local_marketplace, e nao nas de um gateway. Ate a
+     * versao anterior o nucleo lia get_config('paygw_mercadopago', ...) - o que
+     * fazia a comissao do marketplace inteiro depender de um plugin de
+     * fornecedor estar instalado, e nao ter resposta quando houvesse tres.
+     *
+     * A comparacao com false, e nao o ?:, e o que preserva uma isencao: com
+     * ?: um 0% configurado de proposito voltaria a 25 em silencio.
+     *
+     * @return float
+     */
+    public static function default_commission_percent(): float {
+        $configured = get_config('local_marketplace', 'defaultfeepercent');
+        if ($configured === false || $configured === '' || !is_numeric($configured)) {
+            return 25.0;
+        }
+
+        return self::clamp((float) $configured);
+    }
+
+    /**
+     * Registra uma venda concluida.
+     *
+     * Chamado pelo gateway depois de helper::save_payment(), porque so ele sabe
+     * quanto de comissao foi de fato enviado - e nao da para recalcular a
+     * partir do percentual: cada gateway deduz as proprias taxas numa ordem
+     * diferente, e 25% do bruto nao e o que caiu na conta da plataforma.
+     *
+     * Idempotente: o webhook do gateway reenvia notificacao, e registrar a
+     * mesma venda duas vezes dobraria o faturamento no relatorio.
+     *
+     * O componente entra como parametro pelo mesmo motivo de commission_for():
+     * sem ele, um pagamento de enrol_fee cujo itemid coincidisse com um offerid
+     * viraria uma venda que nunca houve. O guarda fica aqui, e nao repetido em
+     * cada gateway, para nao existir em tres copias que podem divergir.
+     *
+     * $paymentarea existe pelo mesmo motivo de commission_terms_for() e
+     * recurrence_for(): a paymentarea 'plan' (assinatura SaaS) usa companyid
+     * como $offerid, e sale pressupoe um split entre empresa e plataforma
+     * que nao existe nesse caso - por isso ela NUNCA e gravada para
+     * paymentarea diferente de 'offer'.
+     *
+     * @param string $component Componente do core_payment.
+     * @param int $paymentid payments.id do core.
+     * @param int $offerid
+     * @param float $feeamount Comissao em moeda, ja calculada pelo gateway.
+     * @param string $externalid Id da transacao no gateway.
+     * @param commission|null $terms Termos APLICADOS. Nulo resolve na hora, e e
+     *                               so para chamador antigo: o certo e o gateway
+     *                               passar o que ele de fato usou.
+     * @param string $paymentarea 'offer' (padrao) ou service_provider::PAYMENT_AREA_PLAN
+     * @return sale|null Nulo quando o pagamento nao e de uma oferta.
+     */
+    public static function record_sale(
+        string $component,
+        int $paymentid,
+        int $offerid,
+        float $feeamount,
+        string $externalid = '',
+        ?commission $terms = null,
+        string $paymentarea = 'offer'
+    ): ?sale {
+        if ($component !== 'local_marketplace' || $paymentarea !== 'offer') {
+            return null;
+        }
+
+        $existing = sale::get_record(['paymentid' => $paymentid]);
+        if ($existing) {
+            return $existing;
+        }
+
+        $offer = offer::get_record(['id' => $offerid]);
+        if (!$offer) {
+            return null;
+        }
+
+        // A FOTO dos termos. Sem ela, uma venda de seis meses atras so pode ser
+        // explicada relendo a configuracao de hoje - e o percentual da empresa,
+        // o plano dela e o padrao do site mudam. O relatorio passaria a contar
+        // uma historia diferente da que o extrato do gateway conta, e a que
+        // muda seria a nossa.
+        $terms = $terms ?? self::resolve_commission($offer);
+
+        $record = new sale();
+        $record->set('paymentid', $paymentid);
+        $record->set('offerid', $offerid);
+        $record->set('companyid', (int) $offer->get('companyid'));
+        $record->set('feeamount', $feeamount);
+        $record->set('feepercent', $terms->percent);
+        $record->set('feebase', $terms->base);
+        $record->set('feesource', $terms->source);
+        $record->set('externalid', $externalid !== '' ? $externalid : null);
+
+        try {
+            $record->create();
+        } catch (\dml_write_exception $e) {
+            // Duas notificacoes do mesmo webhook em paralelo passam ambas pelo
+            // get_record() acima antes de qualquer commit. A chave unica em
+            // paymentid rejeita a segunda create() - sem este catch, o
+            // gateway recebia 500 num webhook duplicado em vez do retorno
+            // idempotente que a venda ja existente deveria dar.
+            $existing = sale::get_record(['paymentid' => $paymentid]);
+            if ($existing) {
+                return $existing;
+            }
+            throw $e;
+        }
+
+        return $record;
+    }
+
+    /**
+     * Mantem o percentual dentro de 0 a 100.
+     *
+     * Um valor fora da faixa viraria marketplace_fee maior que o proprio preco,
+     * e o Mercado Pago recusaria a preferencia - com o aluno ja no checkout.
+     *
+     * @param float $value
+     * @return float
+     */
+    protected static function clamp(float $value): float {
+        return max(0.0, min(100.0, $value));
+    }
+
+    /**
+     * Interpreta o campo de comissao vindo do formulario.
+     *
+     * Vazio vira NULO - herda o site. "0" vira zero - isencao negociada. Usar
+     * empty() aqui trataria os dois como a mesma coisa, e um parceiro isento
+     * passaria a pagar a comissao padrao sem ninguem ter mudado nada.
+     *
+     * @param mixed $value
+     * @return float|null
+     */
+    protected static function commission_input($value): ?float {
+        if ($value === null || $value === '' || !is_numeric($value)) {
+            return null;
+        }
+
+        return self::clamp((float) $value);
+    }
+
+    /**
+     * Traduz a base vinda de formulario.
+     *
+     * O vazio vira NULO, e nao a base padrao: nulo significa "herda o site" e e
+     * a informacao que permite o contrato acompanhar uma mudanca de politica da
+     * plataforma. Gravar 'gross' congelaria a base naquele valor para sempre,
+     * sem ninguem ter pedido isso.
+     *
+     * @param mixed $value
+     * @return string|null
+     */
+    public static function commission_base_input($value): ?string {
+        if (!is_string($value) || !in_array($value, commission::bases(), true)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Altera os dados cadastrais de uma empresa.
+     *
+     * O atalho NAO muda. Ele vira o idnumber da categoria, entra nas URLs da
+     * vitrine e do painel, e pode ja estar em link divulgado pelo vendedor.
+     * Trocar exigiria renomear o idnumber e quebraria os links antigos sem
+     * aviso - custo que nao se justifica para um campo cosmetico.
+     *
+     * O dono tambem nao muda aqui: quem responde pela empresa se resolve na
+     * tela de vendedores, onde da para promover outro antes de rebaixar o atual.
+     *
+     * @param company $company
+     * @param object $data name, cnpj, themename, hostname
+     * @return company
+     */
+    public static function update_company(company $company, object $data): company {
+        global $DB;
+
+        $transaction = $DB->start_delegated_transaction();
+
+        $hostbefore = $company->get('hostname');
+
+        try {
+            $renamed = ($company->get('name') !== $data->name);
+
+            $company->set('name', $data->name);
+            $company->set('cnpj', !empty($data->cnpj) ? $data->cnpj : null);
+            $company->set('commissionpct', self::commission_input($data->commissionpct ?? null));
+            $company->set('commissionbase', self::commission_base_input($data->commissionbase ?? null));
+            $company->set('planid', !empty($data->planid) ? (int) $data->planid : null);
+            $company->set('pagetitle', !empty($data->pagetitle) ? $data->pagetitle : null);
+            $company->set('pageintro', $data->pageintro ?? null);
+            $company->set('pageaccent', !empty($data->pageaccent) ? $data->pageaccent : null);
+            $company->set('themename', !empty($data->themename) ? $data->themename : null);
+            $company->set('hostname', !empty($data->hostname) ? $data->hostname : null);
+            $company->update();
+
+            // A categoria carrega o nome da empresa. Deixar de renomear faria a
+            // arvore de cursos divergir do cadastro, e e a arvore que o aluno ve.
+            if ($renamed && $company->get('categoryid')) {
+                $category = \core_course_category::get((int) $company->get('categoryid'), IGNORE_MISSING, true);
+                if ($category) {
+                    $category->update(['name' => $data->name]);
+                }
+            }
+
+            self::apply_theme($company);
+
+            $transaction->allow_commit();
+        } catch (\Throwable $e) {
+            $transaction->rollback($e);
+        }
+
+        // Fora da transacao: e best-effort (ver sync_video_library_resolution()),
+        // e nao pode fazer a edicao da empresa esperar a Bunny responder.
+        self::sync_video_library_resolution($company);
+
+        // Regenera quando o dominio ENTROU, SAIU ou mudou. Comparar com o
+        // valor anterior evita reescrever o arquivo a cada troca de nome ou
+        // de tema, que nao afetam o mapa. Suspender tambem nao afeta: o mapa
+        // lista dominio existente, e a situacao e conferida no banco.
+        if ($hostbefore !== $company->get('hostname')) {
+            self::regenerate_domain_map();
+        }
+
+        return $company;
+    }
+
+    /**
+     * Regenera o mapa Host -> empresa lido pelo config.php.
+     *
+     * O config.php roda ANTES do lib/setup.php, entao $DB ainda nao existe e
+     * consultar o banco ali e impossivel. Por isso o mapa e um arquivo PHP
+     * gerado: escrito quando um dominio muda, lido a cada requisicao.
+     *
+     * Escrito num temporario e movido por rename(), que e atomico no mesmo
+     * sistema de arquivos. Escrever direto no destino deixaria uma janela em
+     * que o config.php poderia incluir um arquivo pela metade - e um
+     * $CFG->wwwroot truncado derruba o site inteiro, nao so a empresa.
+     *
+     * @return int Quantos dominios entraram no mapa.
+     */
+    public static function regenerate_domain_map(): int {
+        global $CFG, $DB;
+
+        // TODA empresa com dominio entra, inclusive a suspensa. O arquivo
+        // responde "este dominio existe?", que e fronteira de SEGURANCA: sem
+        // ele, o Host da requisicao definiria o wwwroot, e um atacante mandando
+        // "Host: evil.com" faria o Moodle gerar todo link apontando para la -
+        // inclusive o de redefinicao de senha, que sai por e-mail.
+        //
+        // "Esta suspensa?" e outra pergunta, respondida no banco pelo
+        // after_config, onde da para mostrar uma pagina explicando. Deixar a
+        // suspensao aqui faria o dominio cair no site padrao em silencio, e
+        // acoplaria suspender a regenerar arquivo: se a regeneracao falhasse, a
+        // suspensao nao surtiria efeito.
+        $rows = $DB->get_records_select(
+            company::TABLE,
+            "hostname IS NOT NULL AND hostname <> ''",
+            [],
+            'hostname',
+            'id, shortname, hostname'
+        );
+
+        $map = [];
+        foreach ($rows as $row) {
+            // O host e a chave e vem do cadastro; normalizar aqui evita que
+            // "Meu.Site.com" no formulario nunca case com o Host do navegador,
+            // que chega sempre em minusculas.
+            $map[strtolower($row->hostname)] = [
+                'wwwroot' => 'https://' . strtolower($row->hostname),
+                'company' => $row->shortname,
+            ];
+        }
+
+        $file = $CFG->dataroot . '/marketplace_domains.php';
+        $tmp = $file . '.' . getmypid() . '.tmp';
+
+        $php = "<?php\n"
+            . "// GERADO por local_marketplace. Nao edite: sera sobrescrito.\n"
+            . "// Ultima geracao: " . date('c') . "\n"
+            . "return " . var_export($map, true) . ";\n";
+
+        if (file_put_contents($tmp, $php, LOCK_EX) === false) {
+            throw new moodle_exception('errordomainmap', 'local_marketplace');
+        }
+        @chmod($tmp, $CFG->filepermissions ?? 0666);
+        rename($tmp, $file);
+
+        return count($map);
     }
 
     /**
@@ -97,7 +659,7 @@ class api {
     }
 
     /**
-     * Cria a payment account da empresa, no contexto da categoria dela.
+     * Cria a payment account da empresa para um pais, no contexto da categoria.
      *
      * E o contexto que faz o vendedor conseguir administrar a propria conta
      * sem enxergar as das outras empresas: moodle/payment:manageaccounts e
@@ -108,16 +670,341 @@ class api {
      * ate o vendedor concluir o vinculo: account::is_available() exige ao
      * menos um gateway habilitado.
      *
+     * O pais entra no idnumber porque uma empresa que vende no Brasil e na
+     * Argentina tem duas contas no mesmo contexto, e sem o sufixo elas
+     * colidiriam num identificador que deveria distingui-las.
+     *
+     * Devolve a conta existente quando ja ha uma para aquele pais - criar a
+     * segunda deixaria a empresa com duas contas concorrendo pelo mesmo
+     * mercado, e o indice unico recusaria o vinculo no meio do caminho.
+     *
      * @param company $company
+     * @param string $country ISO-3166 alpha-2.
      * @return \core_payment\account
      */
-    public static function create_payment_account(company $company): \core_payment\account {
+    public static function create_payment_account(company $company, string $country): \core_payment\account {
+        $country = country::normalize($country);
+
+        $existing = $company->get_payment_account($country);
+        if ($existing) {
+            return $existing;
+        }
+
         $context = $company->get_context();
 
         $account = new \core_payment\account();
-        $account->set('name', $company->get('name'));
-        $account->set('idnumber', 'marketplace_' . $company->get('shortname'));
+        $account->set('name', $company->get('name') . ' (' . $country . ')');
+        $account->set('idnumber', 'marketplace_' . $company->get('shortname') . '_' . strtolower($country));
         $account->set('contextid', $context->id);
+        $account->set('enabled', true);
+        $account->create();
+
+        $link = new company_account();
+        $link->set('companyid', (int) $company->get('id'));
+        $link->set('country', $country);
+        $link->set('accountid', (int) $account->get('id'));
+        $link->create();
+
+        return $account;
+    }
+
+    /** @var bunny_platform_client|null Cliente falso, so para teste - ver override_bunny_client(). */
+    protected static ?bunny_platform_client $bunnyclientoverride = null;
+
+    /**
+     * Troca o cliente da Bunny por um falso, so para teste.
+     *
+     * Mesma ideia do make_curl() do asaas_client, um nivel acima: aqui quem
+     * precisa ser substituido nao e so o transporte, e o cliente inteiro,
+     * porque create_video_library() o resolve sozinho a partir da config.
+     *
+     * @param bunny_platform_client|null $client Nulo restaura o comportamento normal.
+     * @return void
+     */
+    public static function override_bunny_client(?bunny_platform_client $client): void {
+        self::$bunnyclientoverride = $client;
+    }
+
+    /**
+     * Cria a library da Bunny da empresa, dentro da conta UNICA da
+     * plataforma (Frente B, ADR-0014).
+     *
+     * Sem a chave de conta configurada (local_marketplace/bunnyaccountapikey)
+     * o provisionamento fica em espera, e devolve nulo: e o estado de hoje,
+     * antes de a conta Bunny existir num ambiente. A empresa nasce
+     * normalmente mesmo assim - falta so a library, que um comando futuro de
+     * backfill provisiona assim que a chave existir.
+     *
+     * Com a chave configurada, falha na chamada da Bunny propaga e desfaz a
+     * criacao da empresa inteira (create_company() esta numa transacao):
+     * library e provisionamento automatico, e uma empresa sem library, criada
+     * num ambiente que JA tem conta Bunny, e um estado que ninguem saberia
+     * destravar depois - ela pareceria pronta e o vendedor nao conseguiria
+     * hospedar video nenhum.
+     *
+     * @param company $company
+     * @return library_account|null Nulo quando a conta Bunny ainda nao esta configurada.
+     */
+    public static function create_video_library(company $company): ?library_account {
+        $existing = library_account::get_for((int) $company->get('id'));
+        if ($existing) {
+            return $existing;
+        }
+
+        if (self::is_byos($company)) {
+            // Frente A: a library e da CONTA DO PRODUTOR, nao da plataforma.
+            // Provisionar aqui criaria uma library na conta ERRADA - quem
+            // conecta a propria e o produtor, por connect_byos_library().
+            return null;
+        }
+
+        $client = self::$bunnyclientoverride;
+        if (!$client) {
+            $accountkey = self::bunny_account_api_key();
+            if ($accountkey === '') {
+                return null;
+            }
+            $client = new bunny_platform_client($accountkey);
+        }
+
+        $cap = self::resolution_cap_for($company);
+        $created = $client->create_library(
+            $company->get('name') . ' (' . $company->get('shortname') . ')',
+            bunny_platform_client::enabled_resolutions_for_cap($cap)
+        );
+
+        $library = new library_account();
+        $library->set('companyid', (int) $company->get('id'));
+        $library->set('bunnylibraryid', $created['bunnylibraryid']);
+        $library->set('apikey', library_account::encrypt($created['apikey']));
+        $library->set('maxresolution', $cap);
+        $library->set('origin', library_account::ORIGIN_PLATFORM);
+        $library->create();
+
+        return $library;
+    }
+
+    /**
+     * Atualiza o teto de resolucao da library conforme o plano ATUAL da
+     * empresa (Frente C, ADR-0014) - chamado sempre que `company.planid`
+     * muda depois da library ja existir.
+     *
+     * Best-effort, ao contrario de create_video_library(): a Bunny estar
+     * fora do ar nao pode impedir a troca de plano em si, que e a acao de
+     * negocio - so atrasa a atualizacao do teto de encoding, e fica
+     * registrado em debugging() para alguem notar. Idempotente: nao chama a
+     * API se o teto ja bate com o cache em `library.maxresolution`.
+     *
+     * @param company $company
+     * @return void
+     */
+    public static function sync_video_library_resolution(company $company): void {
+        if (self::is_byos($company)) {
+            // A library e da conta do PRODUTOR - a plataforma nao tem chave
+            // de conta para mexer nela, e nao e dela que travar: o produtor
+            // paga a propria banda, plan::max_resolution() ja devolve nulo
+            // para plano sem faixas (BYOS nao tem faixa nenhuma).
+            return;
+        }
+
+        $library = library_account::get_for((int) $company->get('id'));
+        if (!$library) {
+            // Sem library ainda (conta Bunny nao configurada quando a
+            // empresa nasceu) - nada a sincronizar aqui.
+            return;
+        }
+
+        if ($library->get('origin') !== library_account::ORIGIN_PLATFORM) {
+            // O plano ATUAL diz nativo, mas esta linha ainda e a que o
+            // produtor conectou antes de trocar de volta - a chave da
+            // plataforma nao tem autoridade sobre ela. Achado do code
+            // review de 25/09/2026: sem esta checagem, a chamada seguinte
+            // batia numa library de OUTRA conta com a chave errada. Ficar
+            // sem library nativa ate alguem reconectar e o mesmo gap ja
+            // documentado em connect_byos_library() - so na direcao
+            // contraria.
+            return;
+        }
+
+        $cap = self::resolution_cap_for($company);
+        if ($library->get('maxresolution') === $cap) {
+            return;
+        }
+
+        $client = self::$bunnyclientoverride;
+        if (!$client) {
+            $accountkey = self::bunny_account_api_key();
+            if ($accountkey === '') {
+                return;
+            }
+            $client = new bunny_platform_client($accountkey);
+        }
+
+        try {
+            $client->update_library_resolutions(
+                (int) $library->get('bunnylibraryid'),
+                bunny_platform_client::enabled_resolutions_for_cap($cap)
+            );
+            $library->set('maxresolution', $cap);
+            $library->update();
+        } catch (\Throwable $e) {
+            debugging(
+                'local_marketplace: nao foi possivel atualizar a resolucao da library - ' . $e->getMessage(),
+                DEBUG_DEVELOPER
+            );
+        }
+    }
+
+    /**
+     * Teto de resolucao para a empresa, a partir do plano dela.
+     *
+     * Sem plano, o teto e o mais conservador (a menor resolucao) - nunca
+     * "sem teto" por omissao, que gastaria banda da plataforma sem cobranca
+     * nenhuma por tras. E o mesmo raciocinio do ADR-0014 para o degrau mais
+     * baixo.
+     *
+     * @param company $company
+     * @return string|null
+     */
+    protected static function resolution_cap_for(company $company): ?string {
+        $plan = $company->get_plan();
+
+        return $plan ? $plan->max_resolution() : plan_tier::RESOLUTIONS[0];
+    }
+
+    /**
+     * A empresa esta num plano BYOS (Frente A)?
+     *
+     * Sem plano ainda conta como NATIVO - e o degrau que nao exige nada do
+     * vendedor, e e o unico que faz sentido provisionar sozinho antes de
+     * a empresa escolher qualquer coisa.
+     *
+     * @param company $company
+     * @return bool
+     */
+    protected static function is_byos(company $company): bool {
+        $plan = $company->get_plan();
+
+        return $plan && $plan->get('hostingmodel') === plan::HOSTING_BYOS;
+    }
+
+    /**
+     * Conecta a library da PROPRIA conta Bunny do produtor (Frente A, BYOS).
+     *
+     * Ao contrario de create_video_library(), nao fala com a Bunny nenhuma
+     * vez: a library ja existe, na conta do produtor, e ele mesmo trouxe o
+     * id e a chave. A plataforma so guarda o vinculo, cifrado - o mesmo
+     * schema de local_marketplace_library serve para os dois casos (nativo e
+     * BYOS), porque o que muda e QUEM criou a library, nao o formato do
+     * vinculo.
+     *
+     * Recusa se a empresa nao esta num plano BYOS: guardar a chave do
+     * produtor como se fosse a library nativa faria o
+     * sync_video_library_resolution() tentar mexer numa conta que a
+     * plataforma nao tem autoridade nenhuma sobre.
+     *
+     * GAP CONHECIDO: se a empresa ja tinha library NATIVA (provisionada na
+     * conta da plataforma) antes de mudar para BYOS, este metodo SOBRESCREVE
+     * o vinculo com a chave do produtor - a library antiga fica orfa na
+     * conta da plataforma, sem ninguem apagando ou avisando. Limpar isso e
+     * decisao de negocio (a empresa pode ter video la que ainda quer manter)
+     * e fica fora desta frente. O campo `origin` grava ORIGIN_BYOS aqui, e
+     * e o que impede o caminho INVERSO (empresa volta a nativo): a chave da
+     * plataforma nunca mais tenta mexer nesta linha so por causa do plano
+     * atual - ver a checagem em sync_video_library_resolution().
+     *
+     * @param company $company
+     * @param int $bunnylibraryid Id da library na conta do PRODUTOR.
+     * @param string $apikey Chave da library, em claro.
+     * @param string|null $securitykey Chave de autenticacao por token, em claro.
+     * @param string|null $cdnhostname
+     * @return library_account
+     */
+    public static function connect_byos_library(
+        company $company,
+        int $bunnylibraryid,
+        string $apikey,
+        ?string $securitykey = null,
+        ?string $cdnhostname = null
+    ): library_account {
+        if (!self::is_byos($company)) {
+            throw new moodle_exception('errornotbyos', 'local_marketplace');
+        }
+
+        $library = library_account::get_for((int) $company->get('id')) ?: new library_account();
+        $library->set('companyid', (int) $company->get('id'));
+        $library->set('bunnylibraryid', $bunnylibraryid);
+        $library->set('apikey', library_account::encrypt($apikey));
+        $library->set('securitykey', $securitykey ? library_account::encrypt($securitykey) : null);
+        $library->set('cdnhostname', $cdnhostname ?: null);
+        // BYOS nao tem teto de resolucao da plataforma - o produtor paga e
+        // controla a propria banda.
+        $library->set('maxresolution', null);
+        $library->set('origin', library_account::ORIGIN_BYOS);
+
+        if ($library->get('id')) {
+            $library->update();
+        } else {
+            $library->create();
+        }
+
+        return $library;
+    }
+
+    /**
+     * Chave de conta da plataforma, em claro, para criar libraries novas.
+     *
+     * @return string Vazio quando nao configurada ou quando a cifra falhou.
+     */
+    protected static function bunny_account_api_key(): string {
+        $stored = trim((string) get_config('local_marketplace', 'bunnyaccountapikey'));
+        if ($stored === '') {
+            return '';
+        }
+
+        try {
+            return \core\encryption::decrypt($stored);
+        } catch (\Throwable $e) {
+            debugging('local_marketplace: nao foi possivel decifrar a chave da Bunny - ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return '';
+        }
+    }
+
+    /**
+     * A payment account da PROPRIA PLATAFORMA para um pais, criando se
+     * precisar.
+     *
+     * Diferente de create_payment_account(): sem empresa, sem contexto de
+     * categoria, sem linha em company_account. E a conta que recebe a
+     * assinatura SaaS (Start/PRO) que a empresa parceira paga a plataforma -
+     * o oposto de create_payment_account(), que cria a conta que recebe a
+     * venda de curso.
+     *
+     * Vive no contexto do SITE, e nao de empresa nenhuma, porque nao e
+     * propriedade de empresa nenhuma. O idnumber com o prefixo 'platform_' e
+     * o que is_platform_account() usa para reconhecer esta conta depois -
+     * inclusive nos gateways que hoje recusam vincular a propria carteira da
+     * plataforma como "vendedor" (guarda pensada pra venda de curso, que nao
+     * se aplica aqui).
+     *
+     * IDEMPOTENTE: busca pelo idnumber antes de criar.
+     *
+     * @param string $country ISO-3166 alpha-2.
+     * @return \core_payment\account
+     */
+    public static function get_or_create_platform_account(string $country): \core_payment\account {
+        $country = country::normalize($country);
+        $idnumber = 'platform_' . strtolower($country);
+
+        $existing = \core_payment\account::get_record(['idnumber' => $idnumber]);
+        if ($existing) {
+            return $existing;
+        }
+
+        $account = new \core_payment\account();
+        $account->set('name', get_string('platformaccountname', 'local_marketplace', $country));
+        $account->set('idnumber', $idnumber);
+        $account->set('contextid', \context_system::instance()->id);
         $account->set('enabled', true);
         $account->create();
 
@@ -125,20 +1012,418 @@ class api {
     }
 
     /**
-     * Da a um usuario o papel de vendedor no contexto da empresa.
+     * Esta conta de pagamento e a da propria plataforma?
+     *
+     * So alcancavel por quem ja tem moodle/payment:manageaccounts (as telas
+     * de administracao de conta) - nao e superficie que uma empresa consiga
+     * atacar forjando um idnumber, porque nenhuma tela deixa a empresa
+     * escolher o proprio idnumber.
+     *
+     * @param int $accountid
+     * @return bool
+     */
+    public static function is_platform_account(int $accountid): bool {
+        if ($accountid <= 0) {
+            return false;
+        }
+
+        // Get_record() devolve false, e nao null, quando nao acha - por isso
+        // a checagem explicita antes de chamar get().
+        $account = \core_payment\account::get_record(['id' => $accountid]);
+        if (!$account) {
+            return false;
+        }
+
+        return str_starts_with((string) $account->get('idnumber'), 'platform_');
+    }
+
+    /**
+     * Gateways instalados e habilitados que conseguem receber neste pais.
+     *
+     * A pergunta e feita a cada gateway, nao a uma lista nossa. Um gateway novo
+     * passa a aparecer aqui so por declarar a moeda que atende - nada no nucleo
+     * precisa saber o nome dele. Foi o oposto disso que amarrou a tela da
+     * empresa ao Mercado Pago por um literal.
+     *
+     * @param string $country ISO-3166 alpha-2.
+     * @return string[] Nomes de gateway, ex.: ['asaas', 'mercadopago'].
+     */
+    public static function gateways_for_country(string $country): array {
+        $currency = country::currency_for($country);
+        if ($currency === '') {
+            return [];
+        }
+
+        $out = [];
+        foreach (array_keys(\core\plugininfo\paygw::get_enabled_plugins()) as $name) {
+            $classname = '\paygw_' . $name . '\gateway';
+            $currencies = \component_class_callback($classname, 'get_supported_currencies', [], []);
+            if (in_array($currency, $currencies, true)) {
+                $out[] = $name;
+            }
+        }
+        sort($out);
+
+        return $out;
+    }
+
+    /**
+     * A fatura em aberto do proximo ciclo, perguntada aos gateways.
+     *
+     * O aviso de vencimento mandava o aluno para a VITRINE, e o que ele precisa
+     * e da FATURA. Com boleto a diferenca e grande: a cobranca do ciclo ja nasce
+     * pronta e com linha digitavel, e o aluno estava sendo mandado para uma tela
+     * onde teria que comprar de novo.
+     *
+     * Devolve null quando nao ha assinatura, quando o gateway nao sabe
+     * responder, ou quando a rede falha. Quem chama trata a ausencia como
+     * "mostre o caminho antigo" - nem o e-mail nem a tela podem quebrar porque
+     * o gateway piscou.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return array|null url, duedate, value e line
+     */
+    public static function pending_invoice_for(string $component, int $itemid, int $userid): ?array {
+        foreach (self::billing_capable_gateways() as $name) {
+            $classname = '\paygw_' . $name . '\gateway';
+            try {
+                $invoice = \component_class_callback(
+                    $classname,
+                    'pending_invoice',
+                    [$component, $itemid, $userid],
+                    null
+                );
+            } catch (\Throwable $e) {
+                continue;
+            }
+            if (is_array($invoice) && !empty($invoice['url'])) {
+                return $invoice;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Endereco para trocar a forma de pagamento de uma assinatura por cartao
+     * guardado, quando o gateway que a cobra oferece essa troca.
+     *
+     * SO FAZ SENTIDO PARA QUEM COBRA POR FATURA (Pix, boleto): quem ja paga
+     * com cartao nao tem para onde trocar, e o gateway que nao implementa o
+     * metodo simplesmente nao aparece aqui - o mesmo desenho de
+     * pending_invoice_for(), e pela mesma razao: o nucleo continua sem saber
+     * o nome de gateway nenhum.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return string|null
+     */
+    public static function switch_to_card_url_for(string $component, int $itemid, int $userid): ?string {
+        foreach (self::billing_capable_gateways() as $name) {
+            $classname = '\paygw_' . $name . '\gateway';
+            try {
+                $url = \component_class_callback(
+                    $classname,
+                    'switch_to_card_url',
+                    [$component, $itemid, $userid],
+                    null
+                );
+            } catch (\Throwable $e) {
+                continue;
+            }
+            if (!empty($url)) {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Por qual meio uma assinatura esta sendo cobrada (cartao, Pix, boleto),
+     * ou null quando nao ha assinatura ou o gateway nao sabe responder.
+     *
+     * Mesmo desenho de pending_invoice_for(): o nucleo pergunta a cada
+     * gateway habilitado e fica com a primeira resposta, sem saber o nome de
+     * nenhum. Serve tanto para o admin gerenciar (report.php) quanto para o
+     * aluno so consultar (mysubscriptions.php) - nenhum dos dois ESCOLHE o
+     * meio aqui, so veem qual esta valendo.
+     *
+     * @param string $component
+     * @param int $itemid
+     * @param int $userid
+     * @return string|null
+     */
+    public static function payment_method_for(string $component, int $itemid, int $userid): ?string {
+        foreach (self::billing_capable_gateways() as $name) {
+            $classname = '\paygw_' . $name . '\gateway';
+            try {
+                $method = \component_class_callback(
+                    $classname,
+                    'payment_method',
+                    [$component, $itemid, $userid],
+                    null
+                );
+            } catch (\Throwable $e) {
+                continue;
+            }
+            if ($method !== null && $method !== '') {
+                return $method;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Motivo pelo qual esta venda nao pode ser estornada.
+     *
+     * Existe para a TELA: e com isto que o botao some, em vez de aparecer e
+     * falhar no clique de quem esta resolvendo um problema. Quem decide e o
+     * gateway, porque as regras sao dele - assinatura no meio do ciclo,
+     * cobranca ainda nao liquidada, estorno ja feito.
+     *
+     * @param int $paymentid Registro em {payments}
+     * @return string Chave de string do impedimento, ou vazio quando pode
+     */
+    public static function refund_blocker(int $paymentid): string {
+        global $DB;
+
+        $payment = $DB->get_record('payments', ['id' => $paymentid]);
+        if (!$payment) {
+            return 'errorrefundunknown';
+        }
+
+        $classname = '\paygw_' . $payment->gateway . '\gateway';
+
+        // Gateway que nao implementa estorno responde o padrao, e o padrao e
+        // "nao da" - melhor esconder o botao do que oferecer o que nao existe.
+        return (string) \component_class_callback($classname, 'refund_blocker', [$paymentid], 'errorrefundunknown');
+    }
+
+    /**
+     * Estorna uma venda no gateway que a cobrou, e revoga o acesso.
+     *
+     * O gateway que cobrou e descoberto pela coluna do {payments}, e nao
+     * escolhido aqui: o nucleo continua sem saber o nome de nenhum. Quem nao
+     * implementa cancel_recurring/refund simplesmente nao responde, e o
+     * callback devolve o padrao.
+     *
+     * A REVOGACAO SO ACONTECE SE O DINHEIRO VOLTOU. Revogar antes deixaria o
+     * aluno sem curso e sem reembolso caso a chamada externa falhasse - o pior
+     * dos dois lados. Por isso a ordem e gateway primeiro, direito depois.
+     *
+     * @param int $paymentid Registro em {payments}
+     * @return bool Verdadeiro quando o dinheiro voltou e o acesso caiu.
+     */
+    public static function refund_sale(int $paymentid): bool {
+        global $DB;
+
+        $payment = $DB->get_record('payments', ['id' => $paymentid], '*', MUST_EXIST);
+
+        // Reserva o estorno ANTES de chamar o gateway, dentro de transacao
+        // propria: sem isto, duplo clique no botao ou dois admins agindo
+        // sobre o mesmo pagamento mandavam o gateway estornar duas vezes,
+        // porque record_refund() so grava depois que a chamada externa ja
+        // teve sucesso.
+        $sale = sale::get_record(['paymentid' => $paymentid]);
+        $transaction = $DB->start_delegated_transaction();
+        if ($sale && $sale->get('refundedat')) {
+            $transaction->allow_commit();
+            return false;
+        }
+        if ($sale) {
+            $sale->set('refundedat', time());
+            $sale->update();
+        }
+        $transaction->allow_commit();
+
+        $classname = '\paygw_' . $payment->gateway . '\gateway';
+        $refunded = \component_class_callback($classname, 'refund', [$paymentid], false);
+        if (!$refunded) {
+            if ($sale) {
+                // O gateway recusou: libera a reserva para uma proxima tentativa.
+                $sale->set('refundedat', null);
+                $sale->update();
+            }
+            return false;
+        }
+
+        self::record_refund($paymentid);
+
+        return true;
+    }
+
+    /**
+     * Registra que uma venda foi estornada, e revoga o acesso.
+     *
+     * ESTORNO REVOGA, e essa e a diferenca em relacao ao cancelamento. Cancelar
+     * para de cobrar e deixa o aluno usar o que ja pagou; estornar devolve o
+     * dinheiro daquele periodo, entao o periodo tambem volta.
+     *
+     * Ate 09/09/2026 este projeto tratava revogacao como ato exclusivamente
+     * manual - "revogar acesso e decisao de negocio, nunca por automacao", como
+     * ainda diz o webhook do Asaas. Continua valendo para o que chega de fora:
+     * um PAYMENT_REFUNDED disparado no painel do gateway NAO revoga nada aqui,
+     * porque ninguem da plataforma decidiu. O que revoga e o estorno feito POR
+     * AQUI, por quem tem a capability - a decisao existe, e e humana.
+     *
+     * A venda fica no historico. Apagar a linha esconderia o dinheiro que
+     * entrou e saiu, e o relatorio precisa dos dois lados.
+     *
+     * @param int $paymentid Registro em {payments}
+     * @return bool Verdadeiro se algum direito foi revogado agora.
+     */
+    public static function record_refund(int $paymentid): bool {
+        global $DB;
+
+        $sale = $DB->get_record('local_marketplace_sale', ['paymentid' => $paymentid]);
+        if (!$sale) {
+            return false;
+        }
+
+        $payment = $DB->get_record('payments', ['id' => $paymentid]);
+        if (!$payment) {
+            return false;
+        }
+
+        $revoked = false;
+        $entitlements = entitlement::get_records([
+            'userid' => (int) $payment->userid,
+            'offerid' => (int) $sale->offerid,
+        ]);
+
+        foreach ($entitlements as $entitlement) {
+            if ($entitlement->get('status') === entitlement::STATUS_CANCELLED) {
+                continue;
+            }
+            $entitlement->revoke();
+            $revoked = true;
+        }
+
+        // Sem o direito, a matricula tem que cair junto - senao o aluno recebe
+        // o dinheiro de volta e continua no curso ate o cron passar.
+        if ($revoked) {
+            $plugin = enrol_get_plugin('marketplace');
+            if ($plugin) {
+                $plugin->sync_user((int) $payment->userid);
+            }
+        }
+
+        return $revoked;
+    }
+
+    /**
+     * Gateways a quem perguntar sobre cobranca ja existente.
+     *
+     * INSTALADOS, e nao habilitados, e a diferenca vale dinheiro.
+     *
+     * Habilitar governa a venda NOVA: gateway desligado nao aparece no
+     * checkout. Nao governa o que ja foi vendido - uma assinatura criada
+     * enquanto ele estava ligado CONTINUA COBRANDO depois de desligado, porque
+     * quem cobra e o gateway, e nao o Moodle.
+     *
+     * Perguntando so aos habilitados, desligar o Asaas deixaria toda assinatura
+     * dele cobrando para sempre, e o cancelamento do aluno nao faria nada - sem
+     * erro e sem log. Visto acontecer em 09/09/2026, na prova do ciclo curto.
+     *
+     * @return string[] Nomes curtos dos gateways instalados.
+     */
+    public static function billing_capable_gateways(): array {
+        return array_keys(\core_plugin_manager::instance()->get_plugins_of_type('paygw'));
+    }
+
+    /**
+     * Pede aos gateways que parem de cobrar esta assinatura.
+     *
+     * Cancelar no Moodle marcava so o norenew. Enquanto nao havia assinatura de
+     * verdade em gateway nenhum isso bastava - nao havia o que parar. Desde que
+     * o Asaas passou a criar assinatura que cobra sozinha, marcar a coluna e
+     * deixar o gateway cobrando seria tirar dinheiro de quem pediu para sair.
+     *
+     * O nucleo continua sem saber o nome de gateway nenhum: pergunta a cada um
+     * habilitado, do mesmo jeito que faz para descobrir moedas. Gateway que nao
+     * tem assinatura simplesmente nao implementa o metodo, e o callback devolve
+     * o padrao.
+     *
+     * Falha de um gateway nao impede os outros nem o cancelamento em si: o
+     * aluno pediu para sair, e isso vale mesmo que a chamada externa caia. O
+     * que sobra e uma cobranca a mais para estornar, visivel no relatorio - bem
+     * melhor que uma tela que recusa o cancelamento.
+     *
+     * @param string $component Componente do core_payment.
+     * @param int $itemid
+     * @param int $userid
+     * @return string[] Gateways que confirmaram ter cancelado algo.
+     */
+    public static function stop_recurring_billing(string $component, int $itemid, int $userid): array {
+        $parados = [];
+
+        foreach (self::billing_capable_gateways() as $name) {
+            $classname = '\paygw_' . $name . '\gateway';
+            try {
+                $parou = \component_class_callback(
+                    $classname,
+                    'cancel_recurring',
+                    [$component, $itemid, $userid],
+                    false
+                );
+            } catch (\Throwable $e) {
+                debugging(
+                    'local_marketplace: gateway ' . $name . ' falhou ao cancelar assinatura - ' . $e->getMessage(),
+                    DEBUG_NORMAL
+                );
+                continue;
+            }
+            if ($parou) {
+                $parados[] = $name;
+            }
+        }
+
+        return $parados;
+    }
+
+    /**
+     * Pais em que a primeira conta de uma empresa nova e provisionada.
+     *
+     * @return string ISO-3166 alpha-2.
+     */
+    public static function default_country(): string {
+        $configured = (string) get_config('local_marketplace', 'defaultcountry');
+
+        return country::is_supported($configured) ? country::normalize($configured) : country::DEFAULT_COUNTRY;
+    }
+
+    /**
+     * Da a um usuario o papel do Moodle que corresponde ao vinculo dele.
+     *
+     * Sao dois papeis - gerente e vendedor -, divididos por risco: quem so
+     * monta curso nao alcanca a conta de pagamento. Qual deles vale sai do
+     * memberrole, e a traducao mora em roles::shortname_for().
+     *
+     * ATRIBUI UM E TIRA O OUTRO, sempre. Trocar o vinculo de dono para vendedor
+     * sem desfazer o papel anterior deixaria o antigo grudado, e a pessoa
+     * seguiria alcancando a conta de pagamento depois de ter sido rebaixada.
      *
      * @param company $company
      * @param int $userid
+     * @param string $memberrole member::ROLE_OWNER ou member::ROLE_SELLER.
      * @return void
      */
-    public static function assign_seller_role(company $company, int $userid): void {
-        global $DB;
+    public static function assign_member_role(company $company, int $userid, string $memberrole): void {
+        $contextid = $company->get_context()->id;
+        $chosen = roles::shortname_for($memberrole);
 
-        $roleid = $DB->get_field('role', 'id', ['shortname' => 'marketplaceseller']);
-        if (!$roleid) {
-            throw new moodle_exception('errorsellerrolemissing', 'local_marketplace');
+        role_assign(roles::get_id($chosen), $userid, $contextid);
+
+        foreach ([roles::MANAGER, roles::SELLER] as $shortname) {
+            if ($shortname !== $chosen) {
+                role_unassign(roles::get_id($shortname), $userid, $contextid);
+            }
         }
-        role_assign($roleid, $userid, $company->get_context()->id);
     }
 
     /**
@@ -156,7 +1441,16 @@ class api {
 
         $theme = $company->get('themename');
         $categoryid = $company->get('categoryid');
-        if (empty($theme) || empty($categoryid)) {
+        if (empty($categoryid)) {
+            return true;
+        }
+
+        // Tema vazio LIMPA o da categoria, e nao "nao faz nada". Sair cedo aqui
+        // tornaria impossivel voltar ao tema do site pela edicao: a empresa
+        // ficaria presa ao primeiro tema escolhido.
+        if (empty($theme)) {
+            $DB->set_field('course_categories', 'theme', '', ['id' => $categoryid]);
+            theme_reset_static_caches();
             return true;
         }
 
@@ -196,12 +1490,93 @@ class api {
             $member->set('memberrole', member::ROLE_SELLER);
             $member->create();
 
-            self::assign_seller_role($company, $userid);
+            self::assign_member_role($company, $userid, member::ROLE_SELLER);
             $transaction->allow_commit();
         } catch (\Throwable $e) {
             $transaction->rollback($e);
         }
 
         return $member;
+    }
+
+    /**
+     * Remove um vendedor da empresa.
+     *
+     * Tira o papel no contexto da categoria junto com o vinculo. Apagar so a
+     * linha da tabela deixaria a pessoa com as capabilities do vendedor -
+     * criando curso na categoria de uma empresa da qual nao faz mais parte.
+     *
+     * NAO mexe em direitos de acesso nem em vendas: quem comprou continua com
+     * o que comprou, e o historico financeiro da empresa nao se altera porque
+     * um vendedor saiu.
+     *
+     * @param company $company
+     * @param int $userid
+     * @return bool Falso se a pessoa nao era membro.
+     */
+    public static function remove_member(company $company, int $userid): bool {
+        global $DB;
+
+        $member = member::get_membership($company->get('id'), $userid);
+        if (!$member) {
+            return false;
+        }
+
+        $contextid = $company->get_context()->id;
+
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            $member->delete();
+
+            // OS DOIS papeis, e nao so o de vendedor. Tirar um deixaria o outro
+            // grudado, e a pessoa continuaria enxergando a empresa depois de ter
+            // sido removida dela.
+            foreach ([roles::MANAGER, roles::SELLER] as $shortname) {
+                role_unassign(roles::get_id($shortname), $userid, $contextid);
+            }
+
+            $transaction->allow_commit();
+        } catch (\Throwable $e) {
+            $transaction->rollback($e);
+        }
+
+        return true;
+    }
+
+    /**
+     * Troca o papel de um membro entre dono e vendedor.
+     *
+     * AS CAPABILITIES DEIXARAM DE SER AS MESMAS em 04/09/2026. O dono responde
+     * pela conta de pagamento e pelos membros; o vendedor so monta curso. Entao
+     * trocar o vinculo tem que trocar o papel do Moodle junto - gravar so a
+     * linha produziria um dono sem acesso a conta de pagamento da propria
+     * empresa, ou um vendedor que continua alcancando ela.
+     *
+     * @param company $company
+     * @param int $userid
+     * @param string $memberrole
+     * @return bool
+     */
+    public static function set_member_role(company $company, int $userid, string $memberrole): bool {
+        global $DB;
+
+        $member = member::get_membership($company->get('id'), $userid);
+        if (!$member) {
+            return false;
+        }
+
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            $member->set('memberrole', $memberrole);
+            $member->update();
+
+            self::assign_member_role($company, $userid, $memberrole);
+
+            $transaction->allow_commit();
+        } catch (\Throwable $e) {
+            $transaction->rollback($e);
+        }
+
+        return true;
     }
 }

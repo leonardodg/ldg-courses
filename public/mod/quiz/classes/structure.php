@@ -811,9 +811,15 @@ class structure {
      */
     public function get_version_choices_for_slot(int $slotnumber): array {
         $slot = $this->get_slot_by_number($slotnumber);
+        $questionid = $slot->questionid;
+        if ($slot->qtype === 'missingtype') {
+            // For missing questions, there may be no id. Use 0, which will not match any questions,
+            // so the menu we build only has the ‘Always latest’ choice.
+            $questionid = is_numeric($slot->questionid) ? (int) $slot->questionid : 0;
+        }
 
         // Get all the versions which exist.
-        $versions = version_options::get_version_menu_options($slot->questionid);
+        $versions = version_options::get_version_menu_options($questionid);
         $versioninfo = [];
 
         // Loop through them and set which one is selected.
@@ -1428,7 +1434,7 @@ class structure {
      */
     public function set_section_heading($id, $newheading) {
         global $DB;
-        $section = $DB->get_record('quiz_sections', ['id' => $id], '*', MUST_EXIST);
+        $section = $DB->get_record('quiz_sections', ['id' => $id, 'quizid' => $this->get_quizid()], '*', MUST_EXIST);
         $section->heading = $newheading;
         $DB->update_record('quiz_sections', $section);
 
@@ -1454,7 +1460,7 @@ class structure {
      */
     public function set_section_shuffle($id, $shuffle) {
         global $DB;
-        $section = $DB->get_record('quiz_sections', ['id' => $id], '*', MUST_EXIST);
+        $section = $DB->get_record('quiz_sections', ['id' => $id, 'quizid' => $this->get_quizid()], '*', MUST_EXIST);
         $section->shufflequestions = $shuffle;
         $DB->update_record('quiz_sections', $section);
 
@@ -1477,11 +1483,11 @@ class structure {
      */
     public function remove_section_heading($sectionid) {
         global $DB;
-        $section = $DB->get_record('quiz_sections', ['id' => $sectionid], '*', MUST_EXIST);
+        $section = $DB->get_record('quiz_sections', ['id' => $sectionid, 'quizid' => $this->get_quizid()], '*', MUST_EXIST);
         if ($section->firstslot == 1) {
             throw new coding_exception('Cannot remove the first section in a quiz.');
         }
-        $DB->delete_records('quiz_sections', ['id' => $sectionid]);
+        $DB->delete_records('quiz_sections', ['id' => $sectionid, 'quizid' => $this->get_quizid()]);
 
         // Log page deleted created event.
         $firstslot = $DB->get_record('quiz_slots', ['quizid' => $this->get_quizid(), 'slot' => $section->firstslot]);

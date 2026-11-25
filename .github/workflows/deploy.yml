@@ -3,8 +3,16 @@ name: CI/CD - courses.leodg.dev
 # =============================================================================
 # Ambiente unico (development) na VPS Oracle. Sem GCP, sem AWS.
 #
-#   pull_request  -> so valida
-#   push em main  -> valida, publica a imagem e faz deploy
+#   pull_request        -> so valida
+#   push em dev ou main -> valida, publica a imagem e faz deploy
+#
+# A validacao e UM JOB POR PLUGIN, em paralelo (matrix alimentada pelo job
+# "plugins"). Era um for sequencial e custava 79 minutos de parede para um
+# deploy de 2. Detalhe e motivo no comentario do job "validate".
+#
+# dev deploya porque o ambiente e um so. Exigir um PR dev->main a cada mudanca
+# so acrescentava um clique entre o merge e a VPS, sem separar nada: os dois
+# branches iam para a mesma maquina, com a mesma tag de imagem.
 #
 # -----------------------------------------------------------------------------
 # BOOTSTRAP: automatico. O job de deploy detecta se a tabela mdl_config existe;
@@ -17,7 +25,7 @@ name: CI/CD - courses.leodg.dev
 
 on:
   push:
-    branches: [main]
+    branches: [dev, main]
   pull_request:
     branches: [main, dev]
   workflow_dispatch:
@@ -25,64 +33,69 @@ on:
 concurrency:
   # Um deploy por vez: dois rodando juntos corrompem o upgrade.php.
   #
-  # O grupo TEM que variar por ref. Com uma string fixa, todas as execucoes
-  # entram no mesmo grupo - inclusive as de pull_request - e, como
-  # cancel-in-progress e false, uma validacao de PR segura o deploy do main
-  # em "pending" ate terminar. Foi o que travou o primeiro deploy.
-  group: deploy-courses-free-${{ github.ref }}
+  # Duas exigencias opostas, resolvidas por evento:
+  #
+  # PULL REQUEST - grupo POR REF. Com uma string fixa, uma validacao de PR
+  #   entraria na mesma fila do deploy e, como cancel-in-progress e false ali,
+  #   seguraria o deploy em "pending" ate terminar. Foi o que travou o primeiro
+  #   deploy deste repositorio.
+  #
+  # PUSH - grupo FIXO. Desde que dev e main deployam, um grupo por ref deixaria
+  #   os dois rodarem em paralelo na MESMA VPS, com a mesma tag de imagem e o
+  #   mesmo banco. Dois upgrade.php concorrentes e exatamente o que esta linha
+  #   existe para impedir.
+  group: deploy-ldg-courses-${{ github.event_name == 'pull_request' && github.ref || 'vps' }}
   # Em PR pode cancelar a execucao anterior; no main nunca, para nao
   # interromper um upgrade.php no meio.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # IMAGE NAO pode ser definido aqui: vars.* do environment "development" nao sao
-# visiveis no nivel do workflow, e sairia "/courses-free:development".
+# visiveis no nivel do workflow, e sairia "/ldg-courses:development".
 # Cada job que precisa dele declara environment + env proprio.
 
 jobs:
   # ===========================================================================
-  validate:
-    name: Validar plugins proprios
+  # Job de preparo: barato, sem banco, e roda o que so precisa acontecer UMA vez.
+  #
+  # Existe para alimentar a matrix do job seguinte. Uma matrix precisa da lista
+  # de valores ANTES de o job comecar, e a lista mora num arquivo do repositorio
+  # - entao alguem tem que ler o arquivo e publicar o JSON.
+  plugins:
+    name: Ler a lista de plugins
     runs-on: ubuntu-latest
-
-    # moodle-plugin-ci instala um Moodle de verdade para rodar os testes,
-    # entao precisa de um banco no runner.
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    outputs:
+      list: ${{ steps.ler.outputs.list }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: plugins-src
 
       - name: Ler .github/moodle-plugins.txt
-        id: plugins
+        id: ler
         working-directory: plugins-src
         run: |
+          set -euo pipefail
           # Ignora comentarios e linhas vazias.
           LIST=$(grep -vE '^\s*(#|$)' .github/moodle-plugins.txt || true)
+
+          # Lista vazia e ERRO, e nao "nada a validar".
+          #
+          # Antes isto era tolerado, de quando o arquivo ainda ia ser preenchido.
+          # Hoje ele tem nove plugins e e versionado: chegar aqui vazio significa
+          # que alguem esvaziou o arquivo, e seguir em frente deployaria SEM
+          # validar nada. Uma matrix vazia tambem quebra o GitHub Actions
+          # ("does not contain any values"), entao a falha e explicita.
           if [ -z "$LIST" ]; then
-            echo "Nenhum plugin proprio listado ainda - nada a validar."
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "$LIST"
-            echo "found=true" >> "$GITHUB_OUTPUT"
-            echo "list<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$LIST" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "::error::.github/moodle-plugins.txt esta vazio - nada seria validado"
+            exit 1
           fi
+          echo "$LIST"
+
+          # A matrix consome JSON. O -R/-s/-c le linha a linha e devolve o array
+          # numa linha so, que e o que o GITHUB_OUTPUT aceita.
+          echo "list=$(printf '%s\n' "$LIST" | jq -R -s -c 'split("\n")|map(select(length>0))')" >> "$GITHUB_OUTPUT"
 
       - name: Conferir que cada path listado existe e tem version.php
-        if: steps.plugins.outputs.found == 'true'
         working-directory: plugins-src
         run: |
           FAIL=0
@@ -92,103 +105,482 @@ jobs:
               echo "::error::$p nao tem version.php"
               FAIL=1
             fi
-          done <<< "${{ steps.plugins.outputs.list }}"
+          done <<< "$(grep -vE '^\s*(#|$)' .github/moodle-plugins.txt)"
           exit $FAIL
 
-      - uses: shivammathur/setup-php@v2
-        if: steps.plugins.outputs.found == 'true'
+      # O projeto foi renomeado em 11/09/2026. O modo de falha que este passo
+      # cobre nao e alguem reverter o rename - e alguem copiar de um documento
+      # antigo um "docker exec" com o nome de container que nao existe mais, ou
+      # uma referencia de imagem que a VPS nao vai achar no Docker Hub.
+      #
+      # A busca e por IDENTIFICADOR, e nao pela palavra solta: nome de container,
+      # prefixo de volume, caminho de imagem, caminho de dado no host. O nome
+      # antigo segue escrito de proposito em prosa historica (a etimologia do
+      # "cf"), na nota do CF_DATA_ROOT e no registro do sandbox do Asaas, onde e
+      # o nome REAL da conta de la. Casar a palavra solta reprovaria essas linhas,
+      # o passo viraria ruido, e ruido acaba silenciado - que e como guarda morre.
+      #
+      # O padrao e montado a partir de $ANTIGO em vez de escrito por extenso para
+      # que este arquivo nao case consigo mesmo. A alternativa seria excluir o
+      # proprio workflow da varredura, mas e justamente aqui que a referencia da
+      # imagem mora: a guarda ficaria cega onde mais importa.
+      #
+      # docs/ai-plans/ e docs/private/ ficam de fora: sao historico, e plano
+      # antigo cita com razao os identificadores da epoca.
+      - name: Conferir que o nome antigo do projeto nao voltou
+        working-directory: plugins-src
+        run: |
+          set -uo pipefail
+          ANTIGO='courses-free'
+          PADRAO="${ANTIGO}-(moodle|db|selenium)|${ANTIGO}_|/${ANTIGO}([:/.]|\$)"
+          PADRAO="$PADRAO|(moodledata|dbdata|backups)-${ANTIGO}|STACK_NAME:-${ANTIGO}"
+          PADRAO="$PADRAO|localhost/cf[-]data"
+          HITS=$(grep -rInE "$PADRAO" . \
+                   --exclude-dir=.git \
+                   --exclude-dir=node_modules \
+                   --exclude-dir=ai-plans \
+                   --exclude-dir=private || true)
+          if [ -n "$HITS" ]; then
+            echo "$HITS"
+            echo "::error::identificador do nome antigo voltou ao repositorio - veja as linhas acima"
+            exit 1
+          fi
+          echo "nenhum identificador do nome antigo no repositorio"
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
-          extensions: mbstring, pgsql, mysqli, gd, zip, intl, soap, xmlrpc
+          coverage: none
+
+      # Plugins de terceiros: SO phplint.
+      #
+      # Sao 800+ arquivos de upstream. Um phpcs com --max-warnings 0 acusaria
+      # centenas de violacoes que nao podemos corrigir, e como este job bloqueia
+      # o deploy, travaria os deploys para sempre por problema que nao e nosso.
+      #
+      # O que phplint pega e o risco real de manter plugin de terceiro: subir a
+      # versao do PHP e so descobrir em producao que um deles usa sintaxe
+      # removida.
+      #
+      # Mora aqui, e nao na matrix, porque a resposta nao muda por plugin nosso:
+      # na matrix ele rodaria nove vezes para dar nove vezes o mesmo resultado.
+      - name: Conferir que os plugins de terceiros parseiam no PHP do projeto
+        working-directory: plugins-src
+        run: |
+          set -euo pipefail
+          LIST=$(grep -vE '^\s*(#|$)' .github/moodle-plugins-thirdparty.txt || true)
+          if [ -z "$LIST" ]; then
+            echo "Nenhum plugin de terceiro listado."
+            exit 0
+          fi
+
+          FAIL=0
+          while IFS= read -r p; do
+            [ -z "$p" ] && continue
+            if [ ! -d "$p" ]; then
+              echo "::error::$p nao existe"
+              FAIL=1
+              continue
+            fi
+            N=$(find "$p" -name '*.php' | wc -l)
+            echo "::group::$p ($N arquivos)"
+            # -print0/-0 aguenta caminho com espaco; -P usa os nucleos do runner.
+            if ! find "$p" -name '*.php' -print0 \
+                 | xargs -0 -P 4 -n 20 php -l > /tmp/lint.out 2>&1; then
+              grep -v '^No syntax errors' /tmp/lint.out | head -20
+              echo "::error::$p tem erro de sintaxe no PHP $(php -r 'echo PHP_VERSION;')"
+              FAIL=1
+            else
+              echo "ok"
+            fi
+            echo "::endgroup::"
+          done <<< "$LIST"
+          exit $FAIL
+
+  # ===========================================================================
+  # UM JOB POR PLUGIN, EM PARALELO.
+  #
+  # Antes isto era um `for` dentro de um job so: cada volta instalava um Moodle
+  # inteiro pelo moodle-plugin-ci e rodava phpunit. Com nove plugins deu 79
+  # MINUTOS de parede, medidos - e o deploy em si custa 2. A fila era o custo,
+  # nao o trabalho.
+  #
+  # A matrix nao reduz trabalho nenhum: sao os mesmos nove Moodles e os mesmos
+  # testes. O que muda e que os nove runners rodam ao mesmo tempo, entao o tempo
+  # de parede passa a ser o do plugin MAIS LENTO, e nao a soma dos nove.
+  validate:
+    name: Validar ${{ matrix.plugin }}
+    runs-on: ubuntu-latest
+    needs: plugins
+
+    strategy:
+      # Sem isto, o primeiro plugin que falhar cancela os outros oito e voce
+      # descobre um problema por rodada. Queremos a lista inteira de uma vez.
+      fail-fast: false
+      matrix:
+        plugin: ${{ fromJson(needs.plugins.outputs.list) }}
+
+    # moodle-plugin-ci instala um Moodle de verdade para rodar os testes,
+    # entao precisa de um banco no runner.
+    #
+    # MariaDB, e nao Postgres, porque a VPS roda MariaDB. Testar num motor
+    # diferente do de producao deixa passar exatamente o que so aparece em
+    # producao: diferenca de collation, de tipo de coluna, de comportamento em
+    # ordenacao. A versao acompanha a do compose.
+    #
+    # Cada job da matrix levanta o PROPRIO servico, num runner proprio. Foi o
+    # que dispensou o "um banco por plugin" que existia aqui: o
+    # 'database already exists' vinha de varias instalacoes dividirem o mesmo
+    # MariaDB, e agora nao dividem mais.
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'true'
+          MARIADB_CHARACTER_SET_SERVER: utf8mb4
+          # utf8mb4_bin e exigencia do Moodle, e e a mesma da VPS.
+          MARIADB_COLLATION_SERVER: utf8mb4_bin
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: plugins-src
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, mysqli, gd, zip, intl, soap, xmlrpc
           ini-values: max_input_vars=5000
           coverage: none
 
+      # O PHPUnit do Moodle exige en_AU.UTF-8 e aborta sem ele, com
+      # "Required locale 'en_AU.UTF-8' is not installed" - antes de rodar teste
+      # nenhum. O runner do GitHub nao traz esse locale.
+      - name: Instalar o locale que o PHPUnit do Moodle exige
+        run: |
+          sudo locale-gen en_AU.UTF-8
+          sudo update-locale
+
       - name: moodle-plugin-ci
-        if: steps.plugins.outputs.found == 'true'
         env:
           # Tem que acompanhar a branch do repo.
           MOODLE_BRANCH: MOODLE_502_STABLE
-          DB: pgsql
+          # Acompanha o servico acima e o motor da VPS.
+          DB: mariadb
+          PLUGIN: ${{ matrix.plugin }}
+          LISTA_JSON: ${{ needs.plugins.outputs.list }}
         run: |
           set -euo pipefail
           composer create-project -n --no-dev --prefer-dist \
             moodlehq/moodle-plugin-ci /tmp/ci ^4
           export PATH="/tmp/ci/bin:/tmp/ci/vendor/bin:$PATH"
 
-          # install monta um Moodle limpo por plugin; por isso o loop refaz
-          # a instalacao a cada um, em diretorio proprio.
-          i=0
-          while IFS= read -r p; do
-            [ -z "$p" ] && continue
-            i=$((i+1))
-            echo "::group::$p"
-            rm -rf "/tmp/moodle-$i"
-            moodle-plugin-ci install \
-              --plugin "$GITHUB_WORKSPACE/plugins-src/$p" \
-              --db-host 127.0.0.1 \
-              --moodle "/tmp/moodle-$i"
-            moodle-plugin-ci phplint
-            moodle-plugin-ci phpcs --max-warnings 0
-            moodle-plugin-ci phpunit
-            echo "::endgroup::"
-          done <<< "${{ steps.plugins.outputs.list }}"
+          # Quatro dos plugins dependem do local_marketplace: o enrol e o
+          # availability usam as classes dele, e o block declara a dependencia.
+          # Instalar um sozinho num Moodle limpo faria o phpunit falhar por
+          # classe inexistente - falha do arranjo, nao do codigo.
+          #
+          # Por isso cada rodada leva os OUTROS plugins da lista em
+          # --extra-plugins, que espera um diretorio plano com um plugin por
+          # subpasta, nomeada com o nome do componente.
+          EXTRA=/tmp/extra
+          mkdir -p "$EXTRA"
+          for dep in $(echo "$LISTA_JSON" | jq -r '.[]'); do
+            [ "$dep" = "$PLUGIN" ] && continue
+            cp -a "$GITHUB_WORKSPACE/plugins-src/$dep" "$EXTRA/$(basename "$dep")"
+          done
+
+          # Dependencias que sao plugin de TERCEIRO, e por isso vivem em
+          # moodle-plugins-thirdparty.txt e nao entram na lista acima.
+          #
+          # Hoje ha uma so: o theme_ldg e filho do theme_moove. Sem o pai
+          # aqui, o install monta um tema com parents = ['moove','boost']
+          # apontando para o nada e o job morre - nao no phpcs, no install.
+          #
+          # A lista e explicita de proposito. Copiar o arquivo de terceiros
+          # inteiro instalaria tambem o attendance, o onetopic e o tiles, que
+          # nao tem release 5.2 e derrubariam o install por outro motivo.
+          for dep in public/theme/moove; do
+            [ "$dep" = "$PLUGIN" ] && continue
+            cp -a "$GITHUB_WORKSPACE/plugins-src/$dep" "$EXTRA/$(basename "$dep")"
+          done
+
+          moodle-plugin-ci install \
+            --plugin "$GITHUB_WORKSPACE/plugins-src/$PLUGIN" \
+            --extra-plugins "$EXTRA" \
+            --db-host 127.0.0.1 \
+            --moodle /tmp/moodle
+          moodle-plugin-ci phplint
+          # moodle-extra estende moodle; --max-warnings 0 faz aviso reprovar.
+          # Default do moodle-plugin-ci e 'moodle' — o standard do projeto e extra.
+          moodle-plugin-ci phpcs --standard moodle-extra --max-warnings 0
+          moodle-plugin-ci phpunit
 
   # ===========================================================================
+  # Roda os testes dos plugins de TERCEIROS no Moodle 5.2.
+  #
+  # NAO bloqueia o deploy, e nao e por preguica: se travasse, um teste quebrado
+  # no upstream deixaria a plataforma sem poder subir codigo nosso - e nao temos
+  # como corrigir o codigo deles. O valor aqui e saber, nao impedir.
+  #
+  # A pergunta que este job responde: customcert e moove nao declaram
+  # $plugin->supported, entao ninguem sabe se funcionam no 5.2. Rodar os testes
+  # deles e a unica forma de descobrir sem esperar quebrar em producao.
+  thirdparty:
+    name: Testar plugins de terceiros (informativo)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'true'
+          MARIADB_CHARACTER_SET_SERVER: utf8mb4
+          MARIADB_COLLATION_SERVER: utf8mb4_bin
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: plugins-src
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, mysqli, gd, zip, intl, soap, xmlrpc
+          ini-values: max_input_vars=5000
+          coverage: none
+
+      - name: Instalar o locale que o PHPUnit do Moodle exige
+        run: |
+          sudo locale-gen en_AU.UTF-8
+          sudo update-locale
+
+      - name: phpunit nos plugins sem suporte declarado
+        env:
+          MOODLE_BRANCH: MOODLE_502_STABLE
+          DB: mariadb
+        run: |
+          set -uo pipefail
+          composer create-project -n --no-dev --prefer-dist \
+            moodlehq/moodle-plugin-ci /tmp/ci ^4
+          export PATH="/tmp/ci/bin:/tmp/ci/vendor/bin:$PATH"
+
+          # So os que NAO declaram supported. Quem declara e cobre o 5.2 ja
+          # respondeu a pergunta; rodar tudo custaria minutos sem informacao
+          # nova.
+          RESUMO=""
+          i=0
+          for p in public/mod/customcert public/theme/moove; do
+            i=$((i+1))
+            echo "::group::$p"
+            rm -rf "/tmp/tp-$i"
+            if moodle-plugin-ci install \
+                 --plugin "$GITHUB_WORKSPACE/plugins-src/$p" \
+                 --db-host 127.0.0.1 \
+                 --db-name "moodle_tp_$i" \
+                 --moodle "/tmp/tp-$i" \
+               && moodle-plugin-ci phpunit; then
+              RESUMO="$RESUMO\n  OK      $p"
+            else
+              RESUMO="$RESUMO\n  FALHOU  $p"
+            fi
+            echo "::endgroup::"
+          done
+
+          echo "### Plugins de terceiros no Moodle 5.2" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          printf "%b\n" "$RESUMO" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          printf "%b\n" "$RESUMO"
+
+  # ===========================================================================
+  # IMAGEM MULTI-ARQUITETURA
+  # ===========================================================================
+  # A VPS Oracle e aarch64 (Ampere), mas quem desenvolve esta em x86_64. Com a
+  # imagem publicada so em arm64, "docker compose pull" na maquina de
+  # desenvolvimento falhava com:
+  #
+  #     no matching manifest for linux/amd64 in the manifest list entries
+  #
+  # e o unico caminho local era compilar ("moodev build").
+  #
+  # A saida NAO e "platforms: linux/amd64,linux/arm64" num job so: isso poe o
+  # amd64 sob emulacao QEMU, que num build de Moodle custa dezenas de minutos -
+  # exatamente o que o runner ARM nativo foi escolhido para evitar.
+  #
+  # Em vez disso: cada arquitetura compila no SEU runner nativo e empurra por
+  # DIGEST (sem tag), e um terceiro job funde os dois digests numa unica tag
+  # multi-arch. Cada runner faz so o seu trabalho, em paralelo, sem emulacao.
+  # Gratuito porque o repositorio e publico.
   image:
-    name: Build e push da imagem (arm64)
+    name: Build da imagem (${{ matrix.arch }})
     needs: validate
     if: github.event_name != 'pull_request'
-    # A VPS Oracle e aarch64 (Ampere). Buildar na ubuntu-latest, que e x86_64,
-    # geraria uma imagem que nao roda la. Runner ARM nativo evita a emulacao
-    # QEMU, que num build de Moodle custa dezenas de minutos.
-    # Gratuito porque o repositorio e publico.
-    runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     # Obrigatorio: DOCKER_USERNAME e DOCKER_TOKEN vivem no environment.
     environment: development
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
     env:
-      IMAGE: ${{ vars.DOCKER_USERNAME }}/courses-free:development
+      # Sem tag: o push-by-digest publica no repositorio, nao numa tag.
+      REPO: ${{ vars.DOCKER_USERNAME }}/ldg-courses
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - uses: docker/build-push-action@v6
+      - name: Build e push por digest
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: .devcontainer/build/moodle.Dockerfile
           target: development
-          platforms: linux/arm64
-          push: true
-          tags: |
-            ${{ env.IMAGE }}
-            ${{ vars.DOCKER_USERNAME }}/courses-free:${{ github.sha }}
-          cache-from: type=registry,ref=${{ env.IMAGE }}
-          cache-to: type=inline
+          platforms: ${{ matrix.platform }}
+          # name-canonical grava o nome do repositorio no manifesto, que o
+          # imagetools do job seguinte precisa para resolver o digest.
+          outputs: type=image,name=${{ env.REPO }},push-by-digest=true,name-canonical=true,push=true
+          # Cache no GitHub Actions, nao no Docker Hub.
+          #
+          # O "type=inline" de antes nao serve com push-by-digest: sem tag no
+          # push, nao ha onde embutir o cache. A alternativa obvia seria uma tag
+          # de cache no registro, mas isso criaria mais duas tags grandes no
+          # Docker Hub - o oposto do que se quer, ja que o repositorio estava
+          # acumulando uma tag de ~585 MB por commit.
+          #
+          # O scope separa os caches: sem ele as duas arquiteturas disputariam a
+          # mesma entrada e cada build invalidaria o cache da outra.
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
           build-args: |
             ENVIRONMENT=development
             TZ=America/Sao_Paulo
 
+      - name: Guardar o digest
+        run: |
+          mkdir -p /tmp/digests
+          # O conteudo nao importa: o job seguinte le o digest do NOME do arquivo.
+          #
+          # O prefixo "sha256:" TEM que sair. O upload-artifact@v4 recusa dois
+          # pontos em nome de arquivo (junto com " < > | * ? \r \n), por causa
+          # de sistemas de arquivos como o NTFS. Com o digest cru, o passo falha
+          # com "The path for one of the files in artifact is not valid".
+          digest='${{ steps.build.outputs.digest }}'
+          touch "/tmp/digests/${digest#sha256:}"
+        shell: bash
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          # Um artefato por arquitetura: o upload-artifact@v4 recusa nomes
+          # repetidos entre jobs da mesma matriz.
+          name: digest-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
   # ===========================================================================
-  deploy:
-    name: Deploy na VPS Oracle
+  image-manifest:
+    name: Publicar manifesto multi-arch
     needs: image
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: development
     env:
-      IMAGE: ${{ vars.DOCKER_USERNAME }}/courses-free:development
+      REPO: ${{ vars.DOCKER_USERNAME }}/ldg-courses
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Fundir os digests numa tag multi-arch
+        working-directory: /tmp/digests
+        run: |
+          set -euo pipefail
+          # Cada arquivo tem por NOME o digest de uma arquitetura.
+          referencias=""
+          for f in *; do
+            referencias="$referencias ${REPO}@sha256:${f#sha256:}"
+          done
+          echo "fundindo:$referencias"
+          # Uma tag so, "development".
+          #
+          # Havia tambem uma tag por SHA de commit. Como cada push publica ~585
+          # MB, o repositorio acumulou dezenas delas em poucos dias, sem que
+          # nada as consumisse: o deploy usa :development, e para voltar a uma
+          # versao anterior o digest continua acessivel
+          # (docker pull leodg/ldg-courses@sha256:...), que e o identificador
+          # imutavel de verdade.
+          # shellcheck disable=SC2086
+          docker buildx imagetools create --tag "${REPO}:development" $referencias
+
+      - name: Conferir que a tag tem as duas arquiteturas
+        run: |
+          set -euo pipefail
+          # O deploy depende deste job. Se o manifesto sair com uma arquitetura
+          # so, a VPS ou a maquina de desenvolvimento fica sem imagem - melhor
+          # falhar aqui do que no "docker compose pull" do deploy.
+          arquiteturas=$(docker buildx imagetools inspect "${REPO}:development" --raw \
+            | jq -r '.manifests[].platform | select(.os != "unknown") | .architecture' \
+            | sort -u | tr '\n' ' ')
+          echo "arquiteturas publicadas: $arquiteturas"
+          for esperada in amd64 arm64; do
+            case "$arquiteturas" in
+              *"$esperada"*) ;;
+              *) echo "::error::manifesto sem $esperada"; exit 1 ;;
+            esac
+          done
+
+  # ===========================================================================
+  deploy:
+    name: Deploy na VPS Oracle
+    needs: image-manifest
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: development
+    env:
+      IMAGE: ${{ vars.DOCKER_USERNAME }}/ldg-courses:development
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # O dev.yml monta o repo do host em /var/www/html, entao o codigo precisa
       # estar no filesystem da VPS - nao basta a imagem.
       - name: Enviar o codigo
-        uses: easingthemes/ssh-deploy@main
+        uses: easingthemes/ssh-deploy@2cc5b27bf3029d0455dd5e09fe02633904031447 # v6.0.3
         with:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_HOST: ${{ secrets.VPS_HOST }}
@@ -203,10 +595,10 @@ jobs:
           # excluiria public/cache/classes/config.php, public/theme/boost/config.php
           # e outros 6 arquivos do proprio Moodle, e a instalacao morre com
           # 'Class "core_cache\config" not found'.
-          EXCLUDE: ".git/, .github/, node_modules/, .devcontainer/secrets/, .devcontainer/certs/, /.env, /config.php"
+          EXCLUDE: ".git/, .github/, node_modules/, .devcontainer/secrets/, .devcontainer/certs/, /.env, /config.php, /config-local.php"
 
       - name: Configurar e subir
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -244,7 +636,11 @@ jobs:
             MOODLE_DBPFX=mdl_
             MOODLE_DBCOLLATION=utf8mb4_bin
             MOODLE_URL=${{ vars.MOODLE_URL }}
-            MOODLE_DEBUG=DEVELOPER
+            MOODLE_DEBUG=NONE
+            # Independente do debug. Desligar faz o Moodle servir cada modulo
+            # AMD numa requisicao, e o botao de comprar passa a exigir dois
+            # cliques enquanto o modal de pagamento termina de carregar.
+            MOODLE_CACHEJS=true
             MOODLE_DEBUG_DISPLAY=0
             PHP_OPCACHE_VALIDATE_TIMESTAMPS=1
             CRON_ENABLED=true
@@ -264,23 +660,44 @@ jobs:
             # Sem MOODLE_HTTPS_PORT: a 443 do container so e publicada por
             # local-tls.yml, que nao entra no COMPOSE_FILE da VPS.
             DB_PORT=3307
-            XDEBUG_PORT=9004
-            # So o nginx local alcanca o container; nada exposto na internet.
+            # Interface do Apache (8095). FIXO em 127.0.0.1: o nginx da VPS e quem
+            # fala com o container, e publicar a porta alta em outra interface
+            # contorna o proxy e o TLS.
             BIND_ADDR=127.0.0.1
+            # Interface do banco. Variavel separada de proposito - ver o
+            # comentario em .devcontainer/compose/db.yml.
+            #
+            # Padrao 127.0.0.1: so quem esta na VPS alcanca. Para acesso pela
+            # VPN, defina a variable DB_BIND_ADDR no environment com o IP da
+            # interface do WireGuard: o banco fica visivel na VPN e invisivel
+            # no IP publico, sem depender de firewall de borda.
+            #
+            # 0.0.0.0 aqui publica o MariaDB em todas as interfaces, a publica
+            # inclusive.
+            DB_BIND_ADDR=${{ vars.DB_BIND_ADDR != '' && vars.DB_BIND_ADDR || '127.0.0.1' }}
             MOODLE_DBNAME=${{ vars.MOODLE_DBNAME }}
             EOF
 
             # O bind mount esconde o config.php da imagem: ele tem que existir aqui.
-            # So cria se NAO existir. Sobrescrever a cada deploy apagaria
-            # qualquer ajuste feito direto na VPS - e o config.php e onde vai
-            # morar o mapa Host->wwwroot dos dominios de vendedor (Fase 3).
-            # Para forcar a atualizacao a partir do template, apague o arquivo
-            # na VPS e rode o deploy de novo.
-            if [ -f config.php ]; then
-              echo ">> config.php ja existe - preservado"
-            else
-              cp .devcontainer/config/config-docker.php config.php
-              echo ">> config.php criado a partir do template"
+            # O config.php e GERADO a cada deploy, e nao preservado.
+            #
+            # Preservar parecia prudente - protegia ajuste feito direto na
+            # maquina - mas o efeito era que mudanca no template nunca chegava
+            # sozinha. Uma correcao de cachejs ficou semanas sem efeito, e
+            # recria-lo a mao derrubou o site em 2026-08-25.
+            #
+            # Ajuste especifico da maquina vai em config-local.php, que o
+            # proprio template inclui se existir e que esta no EXCLUDE do rsync.
+            # O deploy nunca toca nele.
+            # Escreve ao lado e move: rename() e atomico no mesmo sistema de
+            # arquivos. Um cp interrompido deixaria o config.php pela metade, e
+            # config.php truncado derruba o site inteiro - nao uma pagina.
+            cp .devcontainer/config/config-docker.php config.php.novo
+            mv -f config.php.novo config.php
+            echo ">> config.php gerado do template"
+
+            if [ -f config-local.php ]; then
+              echo ">> config-local.php encontrado - ajustes locais preservados"
             fi
 
             # Nao ha certificado a gerar aqui: quem termina TLS e o nginx, com
@@ -302,29 +719,22 @@ jobs:
 
             # --- espaco em disco ---
             #
-            # Cada deploy baixa uma imagem nova e deixa a anterior para tras. A
-            # imagem do Moodle passa de 1 GB, entao um dia de iteracao enche o
-            # disco da VPS - e o sintoma nao diz "disco cheio" de cara: o pull
-            # falha no meio da extracao, com "no space left on device" no meio
-            # de um caminho de arquivo qualquer.
+            # NAO limpe imagens daqui. Esta VPS hospeda outros servicos, e
+            # "docker image prune -a" apaga a imagem de qualquer container que
+            # esteja parado no momento - inclusive de projetos que nao sao
+            # deste repositorio. Imagem buildada localmente, sem registry, nao
+            # volta.
             #
-            # E o site continua NO AR com o container antigo, entao "o site
-            # responde" nao prova que o deploy aplicou. Em 2026-08-25 o job
-            # falhou aqui e mesmo assim courses.leodg.dev devolvia HTTP 200,
-            # servindo o codigo da versao anterior.
+            # A limpeza e manual, feita por quem sabe o que mais roda aqui.
             #
-            # A limpeza vem ANTES do pull, senao nao ha espaco para a imagem
-            # nova. "prune -a" so remove imagem que nenhum container usa - as
-            # dos servicos em execucao ficam.
-            #
-            # Volumes NAO entram: dbdata e moodledata sao bind mounts nesta VPS,
-            # mas basta alguem trocar por volume nomeado para "prune --volumes"
-            # apagar o banco. O risco nao compensa o espaco que liberaria.
-            echo ">> disco antes da limpeza:"
-            df -h / | tail -1
-            docker image prune -af || true
-            docker builder prune -af || true
-            echo ">> disco depois da limpeza:"
+            # O log abaixo existe porque a falha por disco cheio engana duas
+            # vezes: nao diz "disco cheio" de cara - aparece como "no space
+            # left on device" no meio de um caminho de arquivo qualquer, dentro
+            # da extracao da imagem - e o site continua NO AR com o container
+            # antigo, entao "o site responde" nao prova que o deploy aplicou.
+            # Em 2026-08-25 o job falhou e courses.leodg.dev seguia em 200,
+            # servindo a versao anterior.
+            echo ">> espaco em disco:"
             df -h / | tail -1
 
             docker compose pull
@@ -366,6 +776,28 @@ jobs:
                  -e "SELECT 1 FROM \`${{ vars.MOODLE_DBNAME }}\`.mdl_config LIMIT 1" \
                  </dev/null >/dev/null 2>&1; then
               echo ">> Moodle ja instalado - rodando upgrade"
+
+              # Backup so quando ha upgrade a fazer, e FORA do repo: o rsync com
+              # --delete apagaria uma copia la dentro. O --is-pending sai com 2
+              # quando ha pendencia; qualquer outro codigo diferente de 0 e erro.
+              PENDING=0
+              docker compose exec -T moodle php admin/cli/upgrade.php --is-pending </dev/null || PENDING=$?
+              if [ "$PENDING" -eq 2 ]; then
+                BACKUPS="${{ vars.VPS_PATH }}/backups"
+                mkdir -p "$BACKUPS"
+                DUMP="$BACKUPS/pre-upgrade-$(date +%Y%m%d-%H%M%S).sql.gz"
+                ( umask 077
+                  docker compose exec -T db sh -c \
+                    'mariadb-dump -uroot -p"$(cat /run/secrets/db_root_password)" --single-transaction --all-databases' \
+                    </dev/null | gzip > "$DUMP" )
+                ls -la "$DUMP"
+                # Guarda os cinco mais recentes.
+                ls -1t "$BACKUPS"/pre-upgrade-*.sql.gz | tail -n +6 | xargs -r rm -f
+              elif [ "$PENDING" -ne 0 ]; then
+                echo "::error::upgrade.php --is-pending saiu com $PENDING"
+                exit 1
+              fi
+
               docker compose exec -T moodle php admin/cli/upgrade.php --non-interactive </dev/null
             else
               echo ">> Banco vazio - primeira instalacao"
@@ -374,11 +806,22 @@ jobs:
                 --adminuser=admin \
                 --adminpass='${{ secrets.MOODLE_ADMIN_PASS }}' \
                 --adminemail='leonardodg@msn.com' \
-                --fullname="Courses Free" \
-                --shortname="courses-free" </dev/null
+                --fullname="LDG Technology & Courses" \
+                --shortname="LDG-Courses" </dev/null
             fi
 
             docker compose exec -T moodle php admin/cli/purge_caches.php </dev/null
+
+            # Leitura de volta: job verde nao prova o que esta rodando. Em
+            # 02/11/2026 o container seguiu em versao vulneravel por um build que
+            # nao aconteceu, e so a medicao la dentro mostrava isso.
+            MIN_PHP=$(cat .devcontainer/build/min-php-version)
+            docker compose exec -T moodle php -r \
+              'exit(version_compare(PHP_VERSION, $argv[1], ">=") ? 0 : 1);' "$MIN_PHP" </dev/null \
+              || { echo "::error::PHP do container abaixo de $MIN_PHP"; exit 1; }
+            docker compose exec -T moodle php -r \
+              'exit(ini_get("session.upload_progress.enabled") ? 1 : 0);' </dev/null \
+              || { echo "::error::session.upload_progress ligado no container"; exit 1; }
 
             # --- nginx -------------------------------------------------------
             # Instala a config do site e o snippet de IP real da Cloudflare.
@@ -423,8 +866,13 @@ jobs:
           for i in $(seq 1 10); do
             CODE=$(curl -sS -o /dev/null -w '%{http_code}' -L "${{ vars.MOODLE_URL }}/login/index.php" || echo 000)
             echo "tentativa $i: HTTP $CODE"
-            [ "$CODE" = "200" ] && exit 0
+            [ "$CODE" = "200" ] && break
             sleep 10
           done
-          echo "::error::Site nao respondeu 200 em ${{ vars.MOODLE_URL }}"
-          exit 1
+          [ "$CODE" = "200" ] || { echo "::error::Site nao respondeu 200 em ${{ vars.MOODLE_URL }}"; exit 1; }
+
+          # Debug ligado aqui mostra caminho e pilha para qualquer visitante.
+          if curl -sS "${{ vars.MOODLE_URL }}/login/index.php" | grep -q '"developerdebug":true'; then
+            echo "::error::developerdebug ligado em producao"
+            exit 1
+          fi

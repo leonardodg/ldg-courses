@@ -1,6 +1,6 @@
 # tiny_recordrtc Upgrade notes
 
-## 5.2.2+
+## 5.2.3
 
 ### Added
 
@@ -19,4 +19,3 @@
 - Duration metadata is created when recording is stopped to accurately determine the recording duration.
 
   For more information see [MDL-88603](https://tracker.moodle.org/browse/MDL-88603)
-

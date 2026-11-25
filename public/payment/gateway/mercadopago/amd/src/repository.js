@@ -22,7 +22,7 @@
  * sempre que nao existe um .map ao lado do build, produzindo "No define call".
  *
  * @module     paygw_mercadopago/repository
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

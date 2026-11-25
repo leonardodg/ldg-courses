@@ -10,7 +10,20 @@
 # Projeto tem um unico ambiente (development), rodando na VPS Oracle.
 # =============================================================================
 
-name: courses-free
+# Nome do projeto compose. Sem STACK_NAME definido, o default abaixo e quem
+# nomeia o stack principal - e por isso trocar este default renomeia containers,
+# rede e volumes de TODO mundo que nao define STACK_NAME, a VPS inclusive.
+# Quem ja tem um stack no ar precisa derrubar o antigo antes de subir com o nome
+# novo: o compose enxerga projeto diferente e as portas continuam ocupadas.
+#
+# Cada worktree que quer subir em paralelo define seu proprio STACK_NAME no .env
+# da raiz (ldg-courses-<worktree>), e com isso ganha containers, rede e volumes
+# proprios. Sem isso, subir de outra worktree nao cria um segundo ambiente:
+# RECRIA o mesmo container apontando para outro codigo.
+#
+# Nao usamos COMPOSE_PROJECT_NAME direto para o nome ficar visivel aqui, e nao
+# escondido num env que quem le o arquivo nao ve.
+name: ${STACK_NAME:-ldg-courses}
 
 # =============================================================================
 #                           SHARED RESOURCES
@@ -20,6 +33,12 @@ volumes:
   # pasta conhecida do host (DB_HOST_DATA / MOODLE_HOST_DATA no .env), para o
   # dado ficar num caminho previsivel na VPS e o backup ser um tar da pasta.
   composer_cache:
+    # Nome fixo, ao contrario dos demais: o cache do Composer e conteudo
+    # imutavel enderecado por hash, entao todos os stacks do projeto podem
+    # dividir o mesmo e evitar baixar tudo de novo a cada worktree nova.
+    # O prefixo ldg-courses_ mantem a protecao contra colidir com o volume
+    # homonimo de outro projeto, que e o motivo do comentario em build-dev.yml.
+    name: ldg-courses_composer_cache
 
 secrets:
   db_root_password:
@@ -36,6 +55,6 @@ networks:
   moodle_network:
     driver: bridge
     # Sem "name:" fixo de proposito: o compose prefixa com o nome do projeto
-    # (courses-free_moodle_network). Um nome global faria este stack entrar na
+    # (ldg-courses_moodle_network). Um nome global faria este stack entrar na
     # mesma rede do ivana-academy, que tambem tem servicos "db" e "moodle" -
     # o DNS interno ficaria ambiguo.

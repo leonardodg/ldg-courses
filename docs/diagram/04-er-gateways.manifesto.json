@@ -1,0 +1,59 @@
+{
+ "indices": {
+  "paygw_asaas": [
+   "externalreference (unique)",
+   "subscriptionid"
+  ],
+  "paygw_mercadopago": [
+   "externalreference (unique)",
+   "mppaymentid"
+  ],
+  "paygw_pagarme": [
+   "externalreference (unique)",
+   "subscriptionid"
+  ]
+ },
+ "tabelas": {
+  "paygw_asaas": [
+   "id",
+   "externalreference",
+   "asaaspaymentid",
+   "subscriptionid",
+   "userid",
+   "feebase",
+   "paymentid"
+  ],
+  "paygw_mercadopago": [
+   "id",
+   "externalreference",
+   "preferenceid",
+   "userid",
+   "feeamount",
+   "feebase",
+   "paymentid"
+  ],
+  "paygw_pagarme": [
+   "id",
+   "externalreference",
+   "chargeid",
+   "subscriptionid",
+   "userid",
+   "feebase",
+   "paymentid"
+  ],
+  "payment_accounts": [
+   "id",
+   "name",
+   "contextid",
+   "enabled"
+  ],
+  "payments": [
+   "id",
+   "component",
+   "paymentarea",
+   "itemid",
+   "userid",
+   "accountid"
+  ]
+ }
+}

@@ -1,0 +1,148 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Campos de formulario e botoes.
+//
+// Este arquivo conserta um problema real, e nao so aplica a paleta: o
+// $input-bg do Bootstrap 5.3 e `$body-bg !default`, e o $body-bg NAO tem
+// variante dark. Sem estas regras, todo campo do site sai com o fundo do modo
+// CLARO mesmo no escuro - inclusive os dois campos da tela de login.
+
+.form-control,
+.form-select,
+.custom-select,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+input[type="search"],
+textarea,
+select {
+    background-color: var(--ldg-field-bg);
+    border: 1px solid var(--ldg-border);
+    color: var(--ldg-text);
+}
+
+// O foco e o unico lugar do sistema que usa brilho externo. E deliberado:
+// navegacao por teclado precisa de um alvo obvio, e no modo escuro a borda de
+// 1px sozinha nao se distingue da borda de repouso.
+.form-control:focus,
+.form-select:focus,
+.custom-select:focus,
+textarea:focus,
+select:focus {
+    background-color: var(--ldg-field-bg);
+    border-color: var(--ldg-accent);
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.35);
+    color: var(--ldg-text);
+}
+
+.form-control::placeholder,
+textarea::placeholder {
+    color: var(--ldg-text-muted);
+    opacity: 1;
+}
+
+.form-control:disabled,
+.form-control[readonly] {
+    background-color: var(--ldg-surface);
+    color: var(--ldg-text-muted);
+}
+
+.input-group-text {
+    background-color: var(--ldg-surface);
+    border-color: var(--ldg-border);
+    color: var(--ldg-text-muted);
+}
+
+.form-check-input {
+    background-color: var(--ldg-field-bg);
+    border-color: var(--ldg-border);
+
+    &:checked {
+        background-color: var(--ldg-accent);
+        border-color: var(--ldg-accent);
+    }
+}
+
+// O olho de "mostrar senha" nasce .btn-secondary, e o cinza dele destoa do
+// campo nos dois modos. Aqui ele passa a ser parte do campo, e nao um botao
+// colado por cima.
+.toggle-sensitive-wrapper .toggle-sensitive-btn {
+    background-color: var(--ldg-field-bg);
+    border: 1px solid var(--ldg-border);
+    border-left: 0;
+    color: var(--ldg-text-muted);
+
+    &:hover,
+    &:focus {
+        background-color: var(--ldg-surface);
+        color: var(--ldg-text);
+    }
+}
+
+// Botoes. O azul da marca e o mesmo nos dois modos; so o tom de TEXTO azul
+// muda, porque #007AFF nao passa no contraste da WCAG AA em nenhum dos dois
+// fundos.
+.btn-primary {
+    --bs-btn-bg: var(--ldg-accent);
+    --bs-btn-border-color: var(--ldg-accent);
+    --bs-btn-hover-bg: var(--ldg-accent-hover);
+    --bs-btn-hover-border-color: var(--ldg-accent-hover);
+    --bs-btn-active-bg: var(--ldg-accent-hover);
+    --bs-btn-active-border-color: var(--ldg-accent-hover);
+    --bs-btn-color: #ffffff;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-active-color: #ffffff;
+}
+
+// O .btn-secundario e o botao mais comum das telas de administracao do Moodle
+// - "Criar categoria", "Ordenar", "Mover", a barra de acoes do curso. O
+// Bootstrap o deriva de $secondary, um cinza claro que nao tem variante dark:
+// no modo escuro ele vira um bloco claro com texto escuro no meio da tela.
+//
+// Aqui ele passa a ser um botao NEUTRO de verdade: a superficie elevada, com
+// borda, e o texto do corpo. Funciona nos dois modos com os mesmos tokens.
+.btn-secondary {
+    --bs-btn-bg: var(--ldg-surface-raised);
+    --bs-btn-border-color: var(--ldg-border);
+    --bs-btn-color: var(--ldg-text);
+    --bs-btn-hover-bg: var(--ldg-border);
+    --bs-btn-hover-border-color: var(--ldg-border);
+    --bs-btn-hover-color: var(--ldg-text);
+    --bs-btn-active-bg: var(--ldg-border);
+    --bs-btn-active-border-color: var(--ldg-border);
+    --bs-btn-active-color: var(--ldg-text);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--ldg-accent-text);
+    --bs-btn-border-color: var(--ldg-accent);
+    --bs-btn-hover-bg: var(--ldg-accent);
+    --bs-btn-hover-border-color: var(--ldg-accent);
+    --bs-btn-hover-color: #ffffff;
+}
+
+// Chip de status em formato de pilula, para nao ser confundido com botao.
+.badge {
+    border-radius: var(--bs-border-radius-xl);
+}

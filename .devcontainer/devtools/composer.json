@@ -1,0 +1,17 @@
+{
+    "name": "leodg/ldg-courses-devtools",
+    "description": "Ferramentas de desenvolvimento do projeto. NAO e o composer.json do Moodle.",
+    "type": "project",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "moodlehq/moodle-cs": "^3.7"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "extra": {
+        "comment-moosh": "moosh NAO e instalavel por composer - ver README.md. A versao dele fica em moosh.version."
+    }
+}

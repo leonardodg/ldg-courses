@@ -6,6 +6,10 @@
 
     DocumentRoot ${APACHE_DOCUMENT_ROOT}
 
+	# O /sitemap.xml e gerado pelo local_partners. Alias, e nao rewrite: nao
+	# depende do mod_rewrite estar carregado, e o handler do PHP roda igual.
+	Alias /sitemap.xml ${APACHE_DOCUMENT_ROOT}/local/partners/sitemap.php
+
     <Directory "${APACHE_DOCUMENT_ROOT}">
 		Options FollowSymLinks
 		AllowOverride All

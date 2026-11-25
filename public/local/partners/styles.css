@@ -1,0 +1,2164 @@
+/*
+ * Estilo da landing e do cadastro de parceiros.
+ *
+ * MORA NO PLUGIN, e nao no theme_ldg, e essa e a diferenca que sustenta o resto
+ * do arquivo. O theme_config varre styles.css de todo plugin e o injeta na CSS
+ * compilada de QUALQUER tema, entao esta pagina renderiza igual sob theme_ldg,
+ * theme_boost e theme_moove - que e o requisito. Enquanto o estilo morava no
+ * tema, a mesma pagina saia crua nos outros dois.
+ *
+ * TRES REGRAS QUE NAO SE QUEBRAM AQUI:
+ *
+ * 1. Todo seletor carrega .ldgp. A CSS de plugin entra ANTES da do tema
+ *    (plugins -> parents -> theme), e em empate de especificidade o tema vence.
+ *    O escopo da 0,2,0 contra o 0,1,0 de `.form-control`, e ganha
+ *    independentemente da ordem. Uma regra sem ele funciona sob Boost e
+ *    desaparece sob o ldg, em silencio.
+ *
+ * 2. Custom property vive em .ldgp, nunca em :root. O :root e o <html>, e o
+ *    atributo de modo e escrito no wrapper - mirar a raiz casa onde nao devia.
+ *
+ * 3. Contraste se calcula, nao se estima. Os numeros ao lado de cada cor foram
+ *    medidos, e a paleta CLARA foi derivada por medicao porque o mockup nao
+ *    tinha uma.
+ *
+ * EDITOU ESTE ARQUIVO E NADA MUDOU NA TELA? Suba o version.php do plugin. O
+ * purge_caches nao invalida CSS de plugin - ja custou uma sessao inteira de
+ * medicao com o estilo anterior.
+ */
+
+/* -------------------------------------------------------------------------
+ * Fontes
+ *
+ * Servidas pelo proprio plugin, e nao pelo Google Fonts: a landing e publica, e
+ * uma requisicao a terceiro numa pagina publica entrega o IP de todo visitante
+ * a quem nao precisa dele. O [[font:...]] e reescrito pelo theme_config na CSS
+ * agregada, e funciona a partir de qualquer componente.
+ * ------------------------------------------------------------------------- */
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url("[[font:local_partners|inter-latin.woff2]]") format("woff2");
+    unicode-range:
+        u+0000-00ff,
+        u+0131,
+        u+0152-0153,
+        u+02bb-02bc,
+        u+02c6,
+        u+02da,
+        u+02dc,
+        u+0304,
+        u+0308,
+        u+0329,
+        u+2000-206f,
+        u+20ac,
+        u+2122,
+        u+2191,
+        u+2193,
+        u+2212,
+        u+2215,
+        u+feff,
+        u+fffd;
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url("[[font:local_partners|inter-latin-ext.woff2]]") format("woff2");
+    unicode-range:
+        u+0100-02ba,
+        u+02bd-02c5,
+        u+02c7-02cc,
+        u+02ce-02d7,
+        u+02dd-02ff,
+        u+0304,
+        u+0308,
+        u+0329,
+        u+1d00-1dbf,
+        u+1e00-1e9f,
+        u+1ef2-1eff,
+        u+2020,
+        u+20a0-20ab,
+        u+20ad-20c0,
+        u+2113,
+        u+2c60-2c7f,
+        u+a720-a7ff;
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url("[[font:local_partners|jetbrains-mono-latin.woff2]]") format("woff2");
+    unicode-range:
+        u+0000-00ff,
+        u+0131,
+        u+0152-0153,
+        u+02bb-02bc,
+        u+02c6,
+        u+02da,
+        u+02dc,
+        u+2000-206f,
+        u+2074,
+        u+20ac,
+        u+2122,
+        u+2191,
+        u+2193,
+        u+2212,
+        u+2215,
+        u+feff,
+        u+fffd;
+}
+
+/* -------------------------------------------------------------------------
+ * Tokens - modo ESCURO, que e o padrao
+ *
+ * Contrastes medidos sobre o card (#1e1e1e):
+ *   texto  #fff  16.67:1   AA
+ *   muted  #b0b3b8   7.93:1   AA
+ *   low    #868b93   4.86:1   AA   (o #71767b do mockup dava 3.64:1 e reprovava)
+ *   link   #3d97ff   5.61:1   AA   (o #007aff como TEXTO dava 4.15:1)
+ *   ok     #34c759   7.51:1   AA
+ * Branco sobre o preenchimento #0062cc: 5.80:1, AA.
+ *
+ * Por que o preenchimento nao e o #007aff do mockup: branco sobre ele da
+ * 4.02:1, que so passa em texto grande, e o botao do desenho e de 14px
+ * semibold. O #007aff continua sendo a cor da MARCA - bordas, icones, aneis de
+ * foco, barras - e volta no hover, que e para onde o proprio design system
+ * mandava o botao clarear.
+ * ------------------------------------------------------------------------- */
+.ldgp,
+.ldgp[data-bs-theme="dark"] {
+    --ldgp-canvas: #121212;
+    --ldgp-card: #1e1e1e;
+    --ldgp-elevated: #2a2a2a;
+    --ldgp-border: #3a3b3c;
+    --ldgp-border-strong: #4f5052;
+
+    --ldgp-primary: #007aff;
+    --ldgp-primary-text: #3d97ff;
+    --ldgp-primary-fill: #0062cc;
+    --ldgp-primary-fill-hover: #007aff;
+    --ldgp-primary-soft: rgba(0, 122, 255, 0.12);
+    --ldgp-primary-edge: rgba(0, 122, 255, 0.35);
+
+    --ldgp-text: #fff;
+    --ldgp-text-muted: #b0b3b8;
+    --ldgp-text-low: #868b93;
+    --ldgp-ok: #34c759;
+    --ldgp-ok-soft: rgba(52, 199, 89, 0.14);
+
+    --ldgp-shadow-card: 0 8px 24px -6px rgba(0, 0, 0, 0.55);
+    --ldgp-shadow-glow: 0 0 35px -5px rgba(0, 122, 255, 0.35);
+    --ldgp-mesh: radial-gradient(circle at 50% -10%, rgba(0, 122, 255, 0.18) 0%, rgba(18, 18, 18, 0) 70%);
+    --ldgp-grid-line: rgba(58, 59, 60, 0.35);
+
+    --ldgp-radius: 0.5rem;
+    --ldgp-radius-lg: 0.75rem;
+    --ldgp-radius-xl: 1rem;
+    --ldgp-gutter: 1.5rem;
+    /* 80rem = 1280px, que e o max-w-7xl do mockup. Com 75rem a coluna do
+       cadastro saia 26px mais estreita que a referencia em 1440. */
+    --ldgp-container: 80rem;
+    /* stylelint-disable-next-line length-zero-no-unit -- e operando de
+       calc() e fallback de `top`, e nos dois o zero sem unidade e invalido. */
+    --ldgp-sticky-top: 0px;
+    --ldgp-bar-height: 3rem;
+
+    --ldgp-sans: "Inter", system-ui, -apple-system, "Segoe UI", roboto, sans-serif;
+    --ldgp-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+    /*
+     * As --bs-* que os componentes reaproveitados leem. Redefini-las dentro do
+     * escopo e a defesa mais barata contra tema alheio: o acordeao e os campos
+     * passam a ler as nossas por heranca, sem precisar de override por seletor.
+     */
+    --bs-body-color: var(--ldgp-text);
+    --bs-body-bg: var(--ldgp-canvas);
+    --bs-border-color: var(--ldgp-border);
+    --bs-emphasis-color: var(--ldgp-text);
+    --bs-secondary-color: var(--ldgp-text-muted);
+    --bs-link-color: var(--ldgp-primary-text);
+    --bs-link-hover-color: var(--ldgp-text);
+    --bs-accordion-bg: var(--ldgp-card);
+    --bs-accordion-color: var(--ldgp-text);
+    --bs-accordion-border-color: var(--ldgp-border);
+    --bs-accordion-btn-color: var(--ldgp-text);
+    --bs-accordion-btn-bg: var(--ldgp-card);
+    --bs-accordion-active-bg: var(--ldgp-elevated);
+    --bs-accordion-active-color: var(--ldgp-text);
+    --bs-accordion-btn-focus-box-shadow: 0 0 0 0.2rem var(--ldgp-primary-edge);
+}
+
+/* -------------------------------------------------------------------------
+ * Tokens - modo CLARO
+ *
+ * O mockup nao tinha versao clara. Esta foi derivada e MEDIDA sobre o card
+ * (#fff):
+ *   texto  #101214  18.77:1   AA
+ *   muted  #4a5057   8.15:1   AA
+ *   low    #6a7078   5.00:1   AA
+ *   link   #0062cc   5.80:1   AA   (o #007aff dava 4.02:1)
+ *   ok     #1a7f37   5.08:1   AA   (o #34c759 do desenho e ilegivel sobre branco)
+ * ------------------------------------------------------------------------- */
+.ldgp[data-bs-theme="light"] {
+    --ldgp-canvas: #f5f6f8;
+    --ldgp-card: #fff;
+    --ldgp-elevated: #eef0f3;
+    --ldgp-border: #d8dbdf;
+    --ldgp-border-strong: #b9bec6;
+
+    --ldgp-primary: #007aff;
+    --ldgp-primary-text: #0062cc;
+    --ldgp-primary-fill: #0062cc;
+    --ldgp-primary-fill-hover: #0057b8;
+    --ldgp-primary-soft: rgba(0, 122, 255, 0.08);
+    --ldgp-primary-edge: rgba(0, 122, 255, 0.3);
+
+    --ldgp-text: #101214;
+    --ldgp-text-muted: #4a5057;
+    --ldgp-text-low: #6a7078;
+    --ldgp-ok: #1a7f37;
+    --ldgp-ok-soft: rgba(26, 127, 55, 0.1);
+
+    --ldgp-shadow-card: 0 8px 24px -10px rgba(16, 18, 20, 0.18);
+    --ldgp-shadow-glow: 0 0 30px -8px rgba(0, 122, 255, 0.28);
+    --ldgp-mesh: radial-gradient(circle at 50% -10%, rgba(0, 122, 255, 0.1) 0%, rgba(245, 246, 248, 0) 70%);
+    --ldgp-grid-line: rgba(16, 18, 20, 0.05);
+}
+
+/* -------------------------------------------------------------------------
+ * As duas superficies que ficam ESCURAS nos dois modos
+ *
+ * O rodape e a barra de controles do cadastro nao acompanham o modo claro. Nao
+ * e descuido: sao superficies de MOLDURA, e a moldura escura e o que da a estas
+ * paginas a cara que elas tem. O mesmo vale no tema do Moodle, onde a navbar
+ * permanece escura com o site em claro - e a decisao ja tomada la.
+ *
+ * A tabela de tokens e a mesma do bloco escuro, redeclarada aqui. Redeclarar
+ * custa repeticao; a alternativa - um `data-bs-theme="dark"` no HTML destes dois
+ * blocos - custaria fazer o alternador de modo mexer em tres elementos em vez de
+ * um, e e mais facil de esquecer.
+ *
+ * O contraste continua o mesmo do modo escuro, ja medido: branco sobre #121212
+ * da 18.1:1, e o `text-low` #868b93 da 5.6:1.
+ * ------------------------------------------------------------------------- */
+.ldgp[data-bs-theme="light"] .ldgp-footer,
+.ldgp[data-bs-theme="light"] .ldgp-applytop {
+    --ldgp-canvas: #121212;
+    --ldgp-card: #1e1e1e;
+    --ldgp-elevated: #2a2a2a;
+    --ldgp-border: #3a3b3c;
+    --ldgp-border-strong: #4f5052;
+    --ldgp-primary-text: #3d97ff;
+    --ldgp-primary-fill-hover: #007aff;
+    --ldgp-text: #fff;
+    --ldgp-text-muted: #b0b3b8;
+    --ldgp-text-low: #868b93;
+
+    /* O fundo NAO e fixado aqui: a regra propria do rodape ja o calcula a partir
+       de --ldgp-canvas, e com os tokens trocados ela chega sozinha no tom certo.
+       O que precisa ser dito e a cor do TEXTO, que o rodape herdava do .ldgp. */
+    color: var(--ldgp-text);
+}
+
+/*
+ * A barra de controles do cadastro vira uma FAIXA quando o resto clareia. Sem
+ * moldura propria ela seria um borrao escuro no meio do texto; com ela, le-se
+ * como o que e - o lugar dos controles da pagina.
+ */
+.ldgp[data-bs-theme="light"] .ldgp-applytop {
+    background-color: var(--ldgp-canvas);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius-lg);
+    padding: 0.5rem 0.75rem;
+}
+
+/*
+ * Dentro de superficie escura vale a logo do modo ESCURO, mesmo com a pagina em
+ * claro - senao a marca preta desaparece no fundo #121212.
+ */
+.ldgp[data-bs-theme="light"] .ldgp-footer .ldgp-brand-logo--dark {
+    display: inline;
+}
+
+.ldgp[data-bs-theme="light"] .ldgp-footer .ldgp-brand-logo--light {
+    display: none;
+}
+
+/* -------------------------------------------------------------------------
+ * Base
+ * ------------------------------------------------------------------------- */
+.ldgp {
+    background-color: var(--ldgp-canvas);
+    color: var(--ldgp-text);
+    font-family: var(--ldgp-sans);
+    /* O miolo tem os proprios containers; o casco da pagina e do tema. */
+    margin: 0;
+    /* Contem os fundos decorativos, que sao absolutos. */
+    position: relative;
+}
+
+.ldgp *,
+.ldgp *::before,
+.ldgp *::after {
+    box-sizing: border-box;
+}
+
+.ldgp p {
+    color: var(--ldgp-text-muted);
+    line-height: 1.6;
+}
+
+.ldgp h1,
+.ldgp h2,
+.ldgp h3,
+.ldgp h4 {
+    color: var(--ldgp-text);
+    font-family: var(--ldgp-sans);
+    margin-top: 0;
+}
+
+.ldgp a {
+    color: var(--ldgp-primary-text);
+}
+
+.ldgp a:hover,
+.ldgp a:focus-visible {
+    color: var(--ldgp-text);
+}
+
+/* O anel de foco e do design system, e vale para tudo que recebe foco. */
+.ldgp a:focus-visible,
+.ldgp button:focus-visible,
+.ldgp input:focus-visible,
+.ldgp select:focus-visible,
+.ldgp textarea:focus-visible,
+.ldgp summary:focus-visible,
+.ldgp [tabindex]:focus-visible {
+    outline: 2px solid var(--ldgp-primary);
+    outline-offset: 2px;
+}
+
+/*
+ * Tamanho padrao do icone. Sem isto o SVG assume a caixa do viewBox e estica o
+ * que estiver ao lado - o botao do hero saiu com 110px de altura na medicao.
+ */
+.ldgp-i {
+    flex: 0 0 auto;
+    height: 1.15em;
+    width: 1.15em;
+}
+
+.ldgp-inner {
+    margin: 0 auto;
+    max-width: var(--ldgp-container);
+    padding: 0 1rem;
+    position: relative;
+    width: 100%;
+}
+
+.ldgp-section {
+    border-top: 1px solid var(--ldgp-border);
+    padding: 3.5rem 0;
+    position: relative;
+}
+
+.ldgp-section--alt {
+    background-color: color-mix(in srgb, var(--ldgp-canvas) 92%, var(--ldgp-card));
+}
+
+/*
+ * O alvo da ancora desconta a altura do cabecalho FIXO do tema mais a barra de
+ * secoes. O scroll-margin vai no ALVO, e nao um scroll-padding no <html>: o
+ * <html> e do tema, e mexer nele afeta o site inteiro.
+ */
+.ldgp [id] {
+    scroll-margin-top: calc(var(--ldgp-sticky-top) + var(--ldgp-bar-height) + 1rem);
+}
+
+/* Rotulo pequeno em maiuscula que abre cada secao. */
+.ldgp-eyebrow {
+    color: var(--ldgp-primary-text);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.ldgp-sectiontitle {
+    /* stylelint-disable-next-line csstree/validator -- clamp() e CSS
+       valido; o csstree empacotado aqui nao conhece a funcao. */
+    font-size: clamp(1.5rem, calc(1.1rem + 1.6vw), 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+}
+
+.ldgp-sectionlead {
+    color: var(--ldgp-text-muted);
+    margin-bottom: 0;
+    max-width: 46rem;
+}
+
+.ldgp-sectionhead {
+    margin-bottom: 2rem;
+}
+
+.ldgp-sectionhead--center {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 44rem;
+    text-align: center;
+}
+
+.ldgp-sectionhead--center .ldgp-sectionlead {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* -------------------------------------------------------------------------
+ * Botoes
+ * ------------------------------------------------------------------------- */
+.ldgp .ldgp-btn {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: var(--ldgp-radius);
+    display: inline-flex;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    gap: 0.5rem;
+    justify-content: center;
+    /* 44px de alvo de toque, por padding e nao por altura fixa: o texto precisa
+       poder quebrar sem estourar o botao. */
+    min-height: 2.75rem;
+    padding: 0.625rem 1.5rem;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ldgp .ldgp-btn--primary {
+    background-color: var(--ldgp-primary-fill);
+    box-shadow: var(--ldgp-shadow-glow);
+    color: #fff;
+}
+
+.ldgp .ldgp-btn--primary:hover,
+.ldgp .ldgp-btn--primary:focus-visible {
+    background-color: var(--ldgp-primary-fill-hover);
+    color: #fff;
+}
+
+.ldgp .ldgp-btn--ghost {
+    background-color: transparent;
+    border-color: var(--ldgp-border);
+    color: var(--ldgp-text);
+}
+
+.ldgp .ldgp-btn--ghost:hover,
+.ldgp .ldgp-btn--ghost:focus-visible {
+    background-color: var(--ldgp-elevated);
+    border-color: var(--ldgp-border-strong);
+    color: var(--ldgp-text);
+}
+
+.ldgp .ldgp-btn--sm {
+    font-size: 0.8125rem;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.875rem;
+}
+
+.ldgp .ldgp-btn--block {
+    width: 100%;
+}
+
+/* -------------------------------------------------------------------------
+ * Barra de secoes
+ * ------------------------------------------------------------------------- */
+.ldgp-bar {
+    background-color: color-mix(in srgb, var(--ldgp-card) 88%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--ldgp-border);
+    position: sticky;
+    top: var(--ldgp-sticky-top);
+    z-index: 3;
+}
+
+/*
+ * No celular a barra QUEBRA em duas linhas: marca e acoes em cima, ancoras
+ * embaixo. Foi medido - com a marca e o botao de entrar, o conteudo passava de
+ * 627px numa tela de 485, e a pagina rolava para o lado.
+ *
+ * Duas linhas, e nao hamburguer: o hamburguer esconde a navegacao atras de um
+ * toque a mais, e aqui ela e a coisa que o visitante mais usa.
+ */
+.ldgp-bar-inner {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    justify-content: space-between;
+    margin: 0 auto;
+    max-width: var(--ldgp-container);
+    min-height: var(--ldgp-bar-height);
+    padding: 0.375rem 1rem;
+}
+
+/* A lista de ancoras ocupa a linha inteira enquanto nao couber ao lado. */
+.ldgp-bar-nav {
+    order: 3;
+    width: 100%;
+}
+
+/*
+ * No celular a barra e de DUAS linhas, e nao de tres.
+ *
+ * MEDIDO em 390: a marca ocupa 73px e o bloco de acoes 274, num miolo util de
+ * 358 - faltavam 5px para as duas caberem lado a lado, e a marca era empurrada
+ * para uma linha so dela. Tirar o globo do seletor de idioma devolve 22px, e a
+ * sigla sozinha ja diz o que ele faz.
+ *
+ * O globo NAO some do desktop: la sobra espaco, e o icone e o que faz o botao
+ * ser reconhecido como seletor de idioma por quem nunca o usou.
+ */
+@media (max-width: 575px) {
+    .ldgp-bar-inner {
+        column-gap: 0.75rem;
+    }
+
+    .ldgp-langbtn .ldgp-i-globe {
+        display: none;
+    }
+
+    /*
+     * Na barra do cadastro o "voltar" leva a linha inteira, e os controles ficam
+     * na de baixo, juntos. Sem isto o voltar e o entrar dividiam a primeira
+     * linha, o seletor de idioma ia com eles e o alternador de modo sobrava
+     * sozinho numa terceira - um botao orfao no meio da pagina.
+     */
+    .ldgp-applytop .ldgp-back {
+        flex-basis: 100%;
+    }
+
+    .ldgp-applytop .ldgp-langs {
+        margin-left: 0;
+    }
+}
+
+.ldgp-brand {
+    order: 1;
+}
+
+.ldgp-bar-actions {
+    order: 2;
+}
+
+/* A marca. Voltou para ca quando a navbar do tema saiu destas paginas. */
+.ldgp-brand {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 auto;
+    margin-right: 1rem;
+    text-decoration: none;
+}
+
+.ldgp-brand-logo {
+    display: block;
+    height: auto;
+    max-height: 1.75rem;
+    width: auto;
+}
+
+/* Uma variante por modo: a marca em fundo claro nao e a mesma que em escuro. */
+.ldgp[data-bs-theme="dark"] .ldgp-brand-logo--light,
+.ldgp[data-bs-theme="light"] .ldgp-brand-logo--dark {
+    display: none;
+}
+
+/* Sem imagem, a marca vira palavra - com a moldura do desenho. */
+.ldgp-brand-word {
+    border: 1px solid var(--ldgp-text);
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text);
+    font-family: var(--ldgp-mono);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    padding: 0.25rem 0.5rem;
+}
+
+.ldgp-brand--apply {
+    margin-bottom: 1.25rem;
+    margin-right: 0;
+}
+
+.ldgp-bar-nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    /* No celular a lista rola na horizontal em vez de virar um segundo menu:
+       duplicar a navegacao que o tema ja entrega sao dois menus fazendo um
+       trabalho so. */
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.ldgp-bar-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.ldgp-bar-list {
+    display: flex;
+    gap: 0.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+}
+
+.ldgp-bar-link {
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text-muted);
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    text-decoration: none;
+}
+
+.ldgp-bar-link:hover {
+    background-color: var(--ldgp-elevated);
+    color: var(--ldgp-text);
+}
+
+.ldgp-bar-link[aria-current="true"] {
+    background-color: var(--ldgp-primary-soft);
+    color: var(--ldgp-primary-text);
+}
+
+.ldgp-bar-actions {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0.5rem;
+}
+
+/* Entrar e Aplicar, lado a lado, com a mesma caixa. */
+.ldgp-bar-actions .ldgp-btn {
+    font-size: 0.8125rem;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.875rem;
+    white-space: nowrap;
+}
+
+/*
+ * O seletor de idioma e um menu SUSPENSO, e nao uma fileira de siglas.
+ *
+ * A fileira mostrava as tres o tempo todo e nao dizia qual estava valendo sem
+ * olhar a cor. O suspenso mostra so a atual, abre as outras para baixo e marca a
+ * escolhida com um sinal - o mesmo desenho que o menu de idiomas do tema ja usa,
+ * para as duas superficies nao ensinarem dois gestos diferentes.
+ */
+.ldgp-langs {
+    position: relative;
+}
+
+.ldgp-langbtn {
+    align-items: center;
+    background-color: var(--ldgp-canvas);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text-muted);
+    display: inline-flex;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    gap: 0.375rem;
+    letter-spacing: 0.04em;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.ldgp-langbtn:hover,
+.ldgp-langbtn[aria-expanded="true"] {
+    background-color: var(--ldgp-elevated);
+    color: var(--ldgp-text);
+}
+
+.ldgp-caret {
+    display: inline-flex;
+    transition: transform 0.15s ease;
+}
+
+.ldgp-langbtn[aria-expanded="true"] .ldgp-caret {
+    transform: rotate(180deg);
+}
+
+/*
+ * O menu mostra SIGLA, e nao o nome inteiro do idioma.
+ *
+ * "Espanol - Internacional (es)" fazia a caixa ter 12rem para dizer o que "ES"
+ * diz em duas letras. O nome completo continua no DOM, escondido visualmente,
+ * entao leitor de tela anuncia o idioma por extenso - quem enxerga reconhece a
+ * sigla, e quem nao enxerga ouve o nome.
+ */
+.ldgp-langmenu {
+    background-color: var(--ldgp-elevated);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius);
+    box-shadow: var(--ldgp-shadow-card);
+    min-width: 7rem;
+    padding: 0.25rem;
+}
+
+.ldgp-langitem {
+    align-items: center;
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text-muted);
+    display: flex;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    gap: 0.5rem;
+    letter-spacing: 0.04em;
+    min-height: 2.5rem;
+    padding: 0.375rem 0.625rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.ldgp-langitem:hover,
+.ldgp-langitem:focus-visible {
+    background-color: var(--ldgp-card);
+    color: var(--ldgp-text);
+}
+
+/*
+ * A MARCA DE SELECAO E DO CORE.
+ *
+ * O Moodle ja desenha um check em `.dropdown-item[aria-current="true"]::before`,
+ * com a fonte de icones dele. Eu tinha acrescentado um SVG proprio aqui, e o
+ * resultado foram DOIS checks lado a lado - so a captura ampliada mostrou.
+ *
+ * Ficou o do core: e um lugar so, ele ja vale no menu de idiomas do tema, e
+ * segue o icone que o Moodle usar. O que resta aqui e a cor.
+ */
+.ldgp-langitem--current {
+    color: var(--ldgp-primary-text);
+    font-weight: 600;
+}
+
+.ldgp-modetoggle {
+    align-items: center;
+    background-color: transparent;
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text-muted);
+    display: inline-flex;
+    height: 2.25rem;
+    justify-content: center;
+    padding: 0;
+    width: 2.25rem;
+}
+
+.ldgp-modetoggle:hover {
+    background-color: var(--ldgp-elevated);
+    color: var(--ldgp-text);
+}
+
+.ldgp-modetoggle svg {
+    height: 1.125rem;
+    width: 1.125rem;
+}
+
+/* Sol no escuro (clique leva ao claro), lua no claro. */
+.ldgp[data-bs-theme="dark"] .ldgp-modetoggle .ldgp-i-moon,
+.ldgp[data-bs-theme="light"] .ldgp-modetoggle .ldgp-i-sun {
+    display: none;
+}
+
+/* -------------------------------------------------------------------------
+ * Hero
+ * ------------------------------------------------------------------------- */
+/*
+ * O hero e uma FAIXA de largura total com a imagem de fundo.
+ *
+ * O endereco da imagem chega por style inline, do PHP. O que esta aqui e o
+ * enquadramento: a foto cobre a faixa inteira, e o miolo continua preso ao
+ * container - fundo sangrando, texto alinhado com o resto da pagina.
+ */
+.ldgp-hero {
+    background-color: var(--ldgp-canvas);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    border-top: 0;
+    overflow: hidden;
+    padding: 4.5rem 0 4rem;
+    position: relative;
+    text-align: center;
+}
+
+/*
+ * A cortina sobre a foto, mais a malha quadriculada.
+ *
+ * Ela e ESCURA NOS DOIS MODOS, e nao acompanha o alternador. A foto e escura;
+ * texto escuro sobre ela ficaria ilegivel no modo claro, e clarear a cortina
+ * apagaria a imagem. Por isso o texto do hero tambem e fixo em claro - ver o
+ * bloco logo abaixo.
+ */
+.ldgp-hero::before {
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(9, 14, 26, 0.82) 0%, rgba(9, 14, 26, 0.92) 100%);
+    background-size: 4rem 4rem, 4rem 4rem, auto;
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+}
+
+/* O miolo fica ACIMA da cortina. */
+.ldgp-hero > .ldgp-inner {
+    position: relative;
+    z-index: 1;
+}
+
+/*
+ * Texto do hero em claro, sempre. Ver a razao no bloco da cortina.
+ *
+ * Contraste MEDIDO no pixel, amostrando a captura sobre o composto foto+cortina
+ * (nao estimado a partir da cor da cortina): branco 15,98:1 no ponto mais claro
+ * do fundo e 18,60:1 na media; o lead a 86% de branco da 11,54:1 no pior caso.
+ * Refaca a medicao se a foto do hero mudar - o numero e da COMPOSICAO, e nao
+ * das cores declaradas aqui.
+ */
+.ldgp-hero .ldgp-herotitle {
+    color: #fff;
+}
+
+.ldgp-hero .ldgp-herolead,
+.ldgp-hero .ldgp-herostats {
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.ldgp-hero .ldgp-pill {
+    background-color: rgba(9, 14, 26, 0.55);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.ldgp-hero .ldgp-pill strong {
+    color: #fff;
+}
+
+.ldgp-hero .ldgp-btn--ghost {
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #fff;
+}
+
+.ldgp-hero .ldgp-btn--ghost:hover,
+.ldgp-hero .ldgp-btn--ghost:focus-visible {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.6);
+    color: #fff;
+}
+
+.ldgp-hero .ldgp-herostats svg {
+    color: #8fc2ff;
+}
+
+.ldgp-pill {
+    align-items: center;
+    background-color: var(--ldgp-elevated);
+    border: 1px solid var(--ldgp-border);
+    border-radius: 9999px;
+    color: var(--ldgp-text-muted);
+    display: inline-flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    padding: 0.375rem 0.875rem;
+}
+
+.ldgp-pill strong {
+    color: var(--ldgp-text);
+    font-weight: 600;
+}
+
+.ldgp-dot {
+    background-color: var(--ldgp-ok);
+    border-radius: 9999px;
+    display: inline-block;
+    flex: 0 0 auto;
+    height: 0.5rem;
+    width: 0.5rem;
+}
+
+.ldgp-herotitle {
+    /* stylelint-disable-next-line csstree/validator -- clamp() e CSS
+       valido; o csstree empacotado aqui nao conhece a funcao. */
+    font-size: clamp(2rem, calc(1.2rem + 3.6vw), 3.75rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+    margin: 0 auto 1rem;
+    max-width: 20ch;
+}
+
+/* O trecho em degrade do mockup. Com background-clip o texto some se o degrade
+   nao pintar, entao a cor de base fica declarada antes. */
+.ldgp-gradient {
+    background-image: linear-gradient(90deg, #4c9fff, var(--ldgp-primary), #a9cdff);
+    background-clip: text;
+    color: var(--ldgp-primary-text);
+    display: block;
+    -webkit-text-fill-color: transparent;
+}
+
+.ldgp-herolead {
+    font-size: 1.0625rem;
+    margin: 0 auto 1.75rem;
+    max-width: 42rem;
+}
+
+.ldgp-heroactions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0 auto;
+    max-width: 26rem;
+}
+
+.ldgp-herostats {
+    color: var(--ldgp-text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    gap: 0.75rem 1.5rem;
+    justify-content: center;
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+}
+
+.ldgp-herostats li {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.5rem;
+}
+
+.ldgp-herostats svg {
+    color: var(--ldgp-primary-text);
+    height: 1rem;
+    width: 1rem;
+}
+
+/* -------------------------------------------------------------------------
+ * Grades
+ * ------------------------------------------------------------------------- */
+.ldgp-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* -------------------------------------------------------------------------
+ * Pilares
+ * ------------------------------------------------------------------------- */
+.ldgp-pillar {
+    background-color: var(--ldgp-card);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius-lg);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.25rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ldgp-pillar:hover {
+    border-color: var(--ldgp-primary-edge);
+    box-shadow: var(--ldgp-shadow-card);
+}
+
+.ldgp-icontile {
+    align-items: center;
+    background-color: var(--ldgp-elevated);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-primary-text);
+    display: inline-flex;
+    height: 2.5rem;
+    justify-content: center;
+    margin-bottom: 0.875rem;
+    width: 2.5rem;
+}
+
+.ldgp-icontile svg {
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.ldgp-pillar h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.375rem;
+}
+
+.ldgp-pillar p {
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}
+
+.ldgp-pillarnote {
+    border-top: 1px solid var(--ldgp-border);
+    color: var(--ldgp-primary-text);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+}
+
+/* -------------------------------------------------------------------------
+ * Planos
+ * ------------------------------------------------------------------------- */
+.ldgp-plan {
+    background-color: var(--ldgp-card);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius-xl);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    position: relative;
+    transition: border-color 0.2s ease;
+}
+
+.ldgp-plan:hover {
+    border-color: var(--ldgp-border-strong);
+}
+
+.ldgp-plan--featured {
+    border-color: var(--ldgp-primary);
+    border-width: 2px;
+    box-shadow: var(--ldgp-shadow-glow);
+}
+
+.ldgp-planbadge {
+    background-color: var(--ldgp-primary-fill);
+    border-radius: 9999px;
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    left: 50%;
+    letter-spacing: 0.06em;
+    padding: 0.1875rem 0.75rem;
+    position: absolute;
+    text-transform: uppercase;
+    top: -0.75rem;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+
+.ldgp-planhead {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.ldgp-plan h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.ldgp-tag {
+    background-color: var(--ldgp-elevated);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.125rem 0.5rem;
+    white-space: nowrap;
+}
+
+.ldgp-tag--primary {
+    background-color: var(--ldgp-primary-soft);
+    border-color: var(--ldgp-primary-edge);
+    color: var(--ldgp-primary-text);
+}
+
+.ldgp-plandesc {
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.ldgp-price {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+
+.ldgp-pricevalue {
+    color: var(--ldgp-text);
+    font-size: 1.875rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.ldgp-priceunit {
+    color: var(--ldgp-text-muted);
+    font-size: 0.8125rem;
+}
+
+.ldgp-commission {
+    color: var(--ldgp-primary-text);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin: 0.25rem 0 1rem;
+}
+
+.ldgp-commission--free {
+    color: var(--ldgp-ok);
+}
+
+.ldgp-hosting {
+    background-color: var(--ldgp-elevated);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text-muted);
+    display: flex;
+    font-size: 0.75rem;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.625rem;
+}
+
+.ldgp-hosting svg {
+    color: var(--ldgp-primary-text);
+    flex: 0 0 auto;
+    height: 0.875rem;
+    margin-top: 0.125rem;
+    width: 0.875rem;
+}
+
+.ldgp-tiers {
+    border-top: 1px solid var(--ldgp-border);
+    margin-bottom: 1rem;
+    padding-top: 0.75rem;
+}
+
+.ldgp-tierslabel {
+    color: var(--ldgp-text-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.ldgp-tierlist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ldgp-tierlist li {
+    border-bottom: 1px solid var(--ldgp-border);
+    color: var(--ldgp-text-muted);
+    display: flex;
+    font-size: 0.8125rem;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 0.3125rem 0;
+}
+
+.ldgp-tierlist li:last-child {
+    border-bottom: 0;
+}
+
+.ldgp-tierlist strong {
+    color: var(--ldgp-text);
+    font-family: var(--ldgp-mono);
+    font-weight: 700;
+}
+
+.ldgp-planfoot {
+    margin-top: auto;
+    padding-top: 1.25rem;
+}
+
+.ldgp-note {
+    color: var(--ldgp-text-muted);
+    font-size: 0.8125rem;
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+/* -------------------------------------------------------------------------
+ * Passos
+ * ------------------------------------------------------------------------- */
+.ldgp-step {
+    background-color: var(--ldgp-card);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius-lg);
+    padding: 1.25rem;
+}
+
+.ldgp-stephead {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.ldgp-stepnumber {
+    align-items: center;
+    background-color: var(--ldgp-primary-fill);
+    border-radius: 9999px;
+    color: #fff;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    height: 2rem;
+    justify-content: center;
+    width: 2rem;
+}
+
+.ldgp-step h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.ldgp-step p {
+    font-size: 0.875rem;
+    margin: 0;
+    padding-left: 2.75rem;
+}
+
+/* -------------------------------------------------------------------------
+ * FAQ - acordeao nativo do Bootstrap 5, so repintado
+ * ------------------------------------------------------------------------- */
+.ldgp-faq .accordion-item {
+    background-color: var(--ldgp-card);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius-lg);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+
+.ldgp-faq .accordion-button {
+    background-color: var(--ldgp-card);
+    color: var(--ldgp-text);
+    font-weight: 600;
+}
+
+.ldgp-faq .accordion-button:not(.collapsed) {
+    background-color: var(--ldgp-elevated);
+    box-shadow: none;
+    color: var(--ldgp-text);
+}
+
+.ldgp-faq .accordion-body {
+    color: var(--ldgp-text-muted);
+    font-size: 0.9375rem;
+}
+
+/* -------------------------------------------------------------------------
+ * Chamada final
+ * ------------------------------------------------------------------------- */
+.ldgp-cta {
+    background-image: var(--ldgp-mesh);
+    text-align: center;
+}
+
+.ldgp-ctamark {
+    display: block;
+    height: auto;
+    margin: 0 auto 1.25rem;
+    max-height: 2.5rem;
+    width: auto;
+}
+
+.ldgp-ctatitle {
+    /* stylelint-disable-next-line csstree/validator -- clamp() e CSS
+       valido; o csstree empacotado aqui nao conhece a funcao. */
+    font-size: clamp(1.5rem, calc(1.1rem + 1.6vw), 2.25rem);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 0 auto 0.75rem;
+    max-width: 24ch;
+}
+
+.ldgp-ctalead {
+    margin: 0 auto 1.75rem;
+    max-width: 40rem;
+}
+
+.ldgp-ctaactions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0 auto;
+    max-width: 26rem;
+}
+
+.ldgp-ctanote {
+    color: var(--ldgp-text-low);
+    font-size: 0.75rem;
+    margin-top: 1rem;
+}
+
+/* -------------------------------------------------------------------------
+ * Cadastro
+ * ------------------------------------------------------------------------- */
+.ldgp--apply {
+    padding-bottom: 3rem;
+}
+
+.ldgp-split {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 2rem;
+}
+
+.ldgp-back {
+    align-items: center;
+    color: var(--ldgp-text-muted);
+    display: inline-flex;
+    font-size: 0.875rem;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    text-decoration: none;
+}
+
+.ldgp-back svg {
+    height: 1rem;
+    width: 1rem;
+}
+
+.ldgp-badge {
+    align-items: center;
+    background-color: var(--ldgp-primary-soft);
+    border: 1px solid var(--ldgp-primary-edge);
+    border-radius: 9999px;
+    color: var(--ldgp-primary-text);
+    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 600;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.3125rem 0.875rem;
+}
+
+.ldgp-badge .ldgp-dot {
+    background-color: var(--ldgp-primary);
+}
+
+.ldgp-applytitle {
+    /* stylelint-disable-next-line csstree/validator -- clamp() e CSS
+       valido; o csstree empacotado aqui nao conhece a funcao. */
+    font-size: clamp(1.75rem, calc(1.2rem + 2.2vw), 3rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+}
+
+.ldgp-applylead {
+    font-size: 1rem;
+    margin-bottom: 1.75rem;
+}
+
+.ldgp-trust {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.ldgp-trustitem {
+    background-color: var(--ldgp-card);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius-lg);
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.ldgp-trustitem .ldgp-icontile {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+}
+
+/*
+ * O titulo do cartao e h2 na marcacao - a hierarquia da pagina e h1 do hero
+ * seguido de h2 por cartao, e nao ha nivel intermediario para gastar. O TAMANHO
+ * e que e de cartao; sem esta regra o h2 sai com a escala de titulo de secao.
+ */
+.ldgp-trustitem h2,
+.ldgp-trustitem h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.ldgp-trustitem p {
+    font-size: 0.8125rem;
+    margin: 0;
+}
+
+.ldgp-applytop {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+.ldgp-applytop .ldgp-langs {
+    margin-left: auto;
+}
+
+.ldgp-applytop .ldgp-back {
+    margin-bottom: 0;
+}
+
+.ldgp-formcard {
+    background-color: var(--ldgp-card);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius-xl);
+    box-shadow: var(--ldgp-shadow-card);
+    overflow: hidden;
+    padding: 1.5rem;
+}
+
+.ldgp-formhead {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--ldgp-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+}
+
+.ldgp-formhead h2 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.ldgp-formhead p {
+    flex: 1 1 100%;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.ldgp-securetag {
+    align-items: center;
+    background-color: var(--ldgp-ok-soft);
+    border: 1px solid var(--ldgp-ok);
+    border-radius: 9999px;
+    color: var(--ldgp-ok);
+    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 600;
+    gap: 0.375rem;
+    padding: 0.1875rem 0.625rem;
+    white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------------
+ * O moodleform dentro do cartao
+ *
+ * O formulario continua sendo renderizado pelo Moodle - sesskey, validacao,
+ * reCAPTCHA e honeypot vem de graca por isso. O que muda e a pintura, e o
+ * layout de duas colunas, que vem de anular o col-md-3/col-md-9 do
+ * element-template do core dentro do escopo.
+ * ------------------------------------------------------------------------- */
+.ldgp-formcard .mform fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+}
+
+/*
+ * A grade e o PROPRIO .mform. Sem addElement('header', ...) o Moodle nao
+ * envolve os campos num fieldset .fcontainer, e os .fitem sao filhos diretos do
+ * <form> - descoberto lendo a marcacao servida, depois de a medicao acusar oito
+ * campos numa coluna so.
+ */
+.ldgp-formcard .mform,
+.ldgp-formcard .mform .fcontainer {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * O campo obedece a COLUNA, e nao ao size="50" do moodleform. Sem isto a grade
+ * nao encolhe no celular: medido em 644px de largura dentro de um viewport de
+ * 390.
+ */
+.ldgp-formcard .form-control,
+.ldgp-formcard .form-select,
+.ldgp-formcard .custom-select,
+.ldgp-formcard textarea {
+    max-width: 100%;
+    width: 100%;
+}
+
+.ldgp-formcard .mform .fitem {
+    grid-column: 1 / -1;
+    margin: 0;
+}
+
+/* O rotulo do mockup fica EM CIMA do campo, e nao a esquerda. */
+.ldgp-formcard .mform .fitem > [class*="col-md-3"],
+.ldgp-formcard .mform .fitem > [class*="col-md-9"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+    width: 100%;
+}
+
+.ldgp-formcard .mform .col-form-label,
+.ldgp-formcard .mform label {
+    color: var(--ldgp-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin-bottom: 0.375rem;
+    padding: 0;
+    text-align: left;
+}
+
+.ldgp-formcard .form-control,
+.ldgp-formcard .form-select,
+.ldgp-formcard .custom-select {
+    background-color: var(--ldgp-canvas);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text);
+    min-height: 2.75rem;
+    padding: 0.5rem 0.875rem;
+}
+
+.ldgp-formcard .form-control::placeholder {
+    color: var(--ldgp-text-low);
+}
+
+.ldgp-formcard .form-control:focus,
+.ldgp-formcard .form-select:focus {
+    background-color: var(--ldgp-canvas);
+    border-color: var(--ldgp-primary);
+    box-shadow: 0 0 0 1px var(--ldgp-primary);
+    color: var(--ldgp-text);
+}
+
+.ldgp-formcard textarea.form-control {
+    min-height: 6rem;
+}
+
+.ldgp-formcard .form-check-input {
+    background-color: var(--ldgp-canvas);
+    border-color: var(--ldgp-border);
+}
+
+.ldgp-formcard .form-check-input:checked {
+    background-color: var(--ldgp-primary-fill);
+    border-color: var(--ldgp-primary-fill);
+}
+
+.ldgp-formcard .form-check-label,
+.ldgp-formcard .felement .form-check-label {
+    color: var(--ldgp-text-muted);
+    font-size: 0.8125rem;
+}
+
+.ldgp-formcard .error,
+.ldgp-formcard .invalid-feedback,
+.ldgp-formcard .form-control-feedback {
+    color: #ff6b61;
+    font-size: 0.8125rem;
+}
+
+.ldgp-formcard .mform .fitem .felement .form-control.is-invalid,
+.ldgp-formcard .mform .fitem .felement .form-select.is-invalid {
+    border-color: #ff6b61;
+}
+
+.ldgp-formcard .form-text {
+    color: var(--ldgp-text-low);
+}
+
+/* Os botoes do moodleform saem como <input type="submit">, entao a pintura vai
+   pelo seletor de tipo e nao por classe nossa. */
+.ldgp-formcard .btn-primary,
+.ldgp-formcard input[type="submit"].btn-primary {
+    background-color: var(--ldgp-primary-fill);
+    border-color: var(--ldgp-primary-fill);
+    border-radius: var(--ldgp-radius);
+    color: #fff;
+    font-weight: 600;
+    min-height: 2.75rem;
+    padding: 0.625rem 1.5rem;
+}
+
+.ldgp-formcard .btn-primary:hover,
+.ldgp-formcard input[type="submit"].btn-primary:hover {
+    background-color: var(--ldgp-primary-fill-hover);
+    border-color: var(--ldgp-primary-fill-hover);
+}
+
+.ldgp-formcard .btn-secondary,
+.ldgp-formcard input[type="submit"].btn-secondary {
+    background-color: transparent;
+    border-color: var(--ldgp-border);
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text);
+    min-height: 2.75rem;
+}
+
+.ldgp-formcard .btn-secondary:hover {
+    background-color: var(--ldgp-elevated);
+    color: var(--ldgp-text);
+}
+
+.ldgp-formfoot {
+    border-top: 1px solid var(--ldgp-border);
+    color: var(--ldgp-text-low);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    gap: 0.5rem;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+}
+
+.ldgp-required {
+    color: #ff6b61;
+    font-weight: 700;
+}
+
+/*
+ * Os cartoes de plano do cadastro.
+ *
+ * Sao radios de verdade, com o cartao inteiro dentro do <label>. O input fica
+ * FORA DA TELA por opacidade, e nunca com display:none: o segundo tira o radio
+ * da ordem de foco e mata a navegacao por setas, que e como um leitor de tela
+ * escolhe entre opcoes de um grupo.
+ */
+/*
+ * Os cartoes de plano se organizam COM o flex do Moodle, e nao contra ele.
+ *
+ * O grupo sai como .felement > fieldset > div.d-flex.flex-wrap, e `.d-flex` e
+ * utilitario do Bootstrap: `display: flex !important`. Uma grade declarada por
+ * cima e ignorada - o computed style mostrava grid-template-columns definido e
+ * display:flex ao mesmo tempo, com os cartoes distribuidos por largura de
+ * conteudo (tres numa linha e um sobrando, medido em 768px).
+ *
+ * Entao a largura vem da BASE de cada cartao. Os <span> de mensagem de erro que
+ * o Moodle intercala sao zerados: com largura propria quebrariam a linha em
+ * lugar errado, e continuam no DOM para o leitor de tela.
+ */
+.ldgp-formcard #fgroup_id_plangroup .felement > fieldset > div {
+    gap: 0.625rem;
+}
+
+.ldgp-formcard #fgroup_id_plangroup .invalid-feedback,
+.ldgp-formcard #fgroup_id_plangroup .form-control-feedback {
+    flex: 0 0 0;
+    margin: 0;
+    min-width: 0;
+    padding: 0;
+}
+
+/* O <label> que envolve cada radio, e que e o item flexivel da linha. */
+.ldgp-formcard .ldgp-plancard__wrap {
+    flex: 0 0 100%;
+    margin: 0;
+    max-width: 100%;
+    padding: 0;
+    position: relative;
+}
+
+.ldgp-formcard .ldgp-plancard__wrap input {
+    height: 0;
+    opacity: 0;
+    position: absolute;
+    width: 0;
+}
+
+.ldgp-formcard .ldgp-plancard {
+    background-color: var(--ldgp-canvas);
+    border: 1px solid var(--ldgp-border);
+    border-radius: var(--ldgp-radius);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-height: 2.75rem;
+    padding: 0.75rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ldgp-formcard .ldgp-plancard__wrap input:checked + .ldgp-plancard {
+    background-color: var(--ldgp-primary-soft);
+    border-color: var(--ldgp-primary);
+}
+
+.ldgp-formcard .ldgp-plancard__wrap input:focus-visible + .ldgp-plancard {
+    outline: 2px solid var(--ldgp-primary);
+    outline-offset: 2px;
+}
+
+.ldgp-formcard .ldgp-plancard__name {
+    color: var(--ldgp-text);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.ldgp-formcard .ldgp-plancard__price {
+    color: var(--ldgp-primary-text);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.ldgp-formcard .ldgp-plancard__note {
+    color: var(--ldgp-text-muted);
+    font-size: 0.75rem;
+}
+
+.ldgp-formcard .ldgp-plancard--undecided {
+    align-items: center;
+    color: var(--ldgp-text-muted);
+    flex-direction: row;
+}
+
+/* -------------------------------------------------------------------------
+ * Rodape e atalho de teclado
+ *
+ * Os dois existem porque estas paginas usam o layout 'embedded', que nao traz
+ * chrome nenhum: a barra de secoes e o unico menu, e nada do tema aparece.
+ * ------------------------------------------------------------------------- */
+.ldgp-skip {
+    background-color: var(--ldgp-card);
+    border: 1px solid var(--ldgp-primary);
+    border-radius: var(--ldgp-radius);
+    color: var(--ldgp-text);
+    left: 0.5rem;
+    padding: 0.625rem 1rem;
+    position: absolute;
+    text-decoration: none;
+    /* Fora da tela ate receber foco - e nao display:none, que o tiraria da
+       ordem de tabulacao e anularia o proprio atalho. */
+    top: -6rem;
+    transition: top 0.15s ease;
+    z-index: 10;
+}
+
+.ldgp-skip:focus {
+    top: 0.5rem;
+}
+
+.ldgp-footer {
+    background-color: color-mix(in srgb, var(--ldgp-canvas) 92%, var(--ldgp-card));
+    border-top: 1px solid var(--ldgp-border);
+    padding: 2.5rem 0 2rem;
+}
+
+.ldgp-footer-top {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+/*
+ * A marca do rodape e a MESMA da barra: a logo da casa.
+ *
+ * Era o nome curto do site em negrito, e a pagina abria com uma imagem de marca
+ * e terminava com um texto - duas identidades para a mesma empresa. Sem imagem
+ * configurada o `.ldgp-brand-word` continua valendo, e o rodape volta a ser
+ * palavra sem buraco nenhum.
+ */
+.ldgp-footer-name {
+    align-items: center;
+    color: var(--ldgp-text);
+    display: inline-flex;
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.ldgp-footer-name .ldgp-brand-logo {
+    /* Menor que a da barra: aqui a marca assina, e nao anuncia. */
+    max-height: 2rem;
+    width: auto;
+}
+
+.ldgp-footer-brand p {
+    font-size: 0.875rem;
+    margin: 0.75rem 0 0;
+    max-width: 34rem;
+}
+
+.ldgp-footer-cols {
+    display: grid;
+    gap: 1.5rem 3rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ldgp-footer-col h2 {
+    color: var(--ldgp-text);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+.ldgp-footer-col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ldgp-footer-col a,
+.ldgp-footer-inline a {
+    align-items: center;
+    color: var(--ldgp-text-muted);
+    display: inline-flex;
+    font-size: 0.875rem;
+    /* 44px de alvo mesmo no rodape, que no celular e onde os links ficam mais
+       apertados. */
+    min-height: 2.75rem;
+    text-decoration: none;
+}
+
+.ldgp-footer-col a:hover,
+.ldgp-footer-inline a:hover {
+    color: var(--ldgp-text);
+    text-decoration: underline;
+}
+
+.ldgp-footer-legal {
+    align-items: baseline;
+    border-top: 1px solid var(--ldgp-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+    justify-content: space-between;
+    padding-top: 1.25rem;
+}
+
+.ldgp-footer-company,
+.ldgp-footer-credit {
+    color: var(--ldgp-text-low);
+    font-size: 0.8125rem;
+    margin: 0;
+}
+
+.ldgp-footer-company strong {
+    color: var(--ldgp-text-muted);
+    font-weight: 600;
+}
+
+.ldgp-footer-taxid {
+    margin-left: 0.5rem;
+}
+
+.ldgp-footer-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.25rem;
+}
+
+/*
+ * A variante SIMPLES: uma linha so, como no mockup do cadastro. Ali a atencao
+ * pertence ao formulario, e um rodape com colunas so disputa com ele.
+ */
+.ldgp-footer--simple {
+    padding: 1.5rem 0;
+}
+
+.ldgp-footer--simple .ldgp-footer-legal {
+    border-top: 0;
+    padding-top: 0;
+}
+
+/*
+ * O honeypot.
+ *
+ * ESTA REGRA MUDOU DE CASA, e a mudanca conserta um defeito: ela morava no
+ * theme_ldg, entao sob theme_boost e theme_moove o campo "fax" aparecia na tela
+ * para todo visitante, com o rotulo "Leave this field empty".
+ *
+ * Fora da tela por posicionamento, e nunca display:none nem type="hidden": robo
+ * preenche hidden do mesmo jeito, e o que se quer e que ele preencha um campo
+ * que nenhuma pessoa ve.
+ */
+.local-partners-honeypot,
+#fitem_id_fax {
+    left: -10000px;
+    position: absolute;
+}
+
+/* -------------------------------------------------------------------------
+ * Responsivo
+ *
+ * Celular primeiro. Cada faixa so acrescenta colunas - nenhuma regra acima
+ * depende de largura para funcionar.
+ * ------------------------------------------------------------------------- */
+@media (min-width: 576px) {
+    .ldgp-inner,
+    .ldgp-bar-inner {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+
+    .ldgp-heroactions,
+    .ldgp-ctaactions {
+        flex-direction: row;
+        justify-content: center;
+        max-width: none;
+    }
+
+    .ldgp-heroactions .ldgp-btn,
+    .ldgp-ctaactions .ldgp-btn {
+        min-width: 14rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .ldgp-section {
+        padding: 4.5rem 0;
+    }
+
+    .ldgp-hero {
+        padding: 6rem 0 5.5rem;
+    }
+
+    .ldgp-grid--pillars,
+    .ldgp-grid--steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ldgp-grid--plans {
+        gap: 1.25rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /*
+     * Tres colunas, e a primeira vale por DUAS.
+     *
+     * Grade e nao flex: com flex as tres se dividiam em partes iguais, e as
+     * colunas de link - listas de uma palavra so - ficavam tao largas quanto a
+     * frase que explica o produto, que precisa de linha larga para ser lida.
+     *
+     * A divisao e em DOIS niveis, e nao `2fr 1fr 1fr` num nivel so: a marca fica
+     * com metade, e a outra metade e uma grade de duas dentro do <nav>. O
+     * caminho de um nivel exigiria `display: contents` no <nav>, e isso apaga o
+     * landmark de navegacao em parte dos navegadores - acessibilidade paga a
+     * conta de uma linha de CSS mais curta.
+     */
+    .ldgp-footer-top {
+        align-items: flex-start;
+        display: grid;
+        gap: 3rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* No desktop o alvo de 44px deixa a coluna esticada sem ganho: quem usa
+       mouse nao precisa dele, e o dedo nao chega aqui. */
+    .ldgp-footer-col a {
+        min-height: 2rem;
+    }
+
+    .ldgp-formcard {
+        padding: 2rem;
+    }
+
+    .ldgp-formcard .mform,
+    .ldgp-formcard .mform .fcontainer {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Dois cartoes por linha. O desconto de 0.9375rem cobre metade da lacuna
+       de cada lado mais a folga dos <span> zerados no meio. */
+    .ldgp-formcard .ldgp-plancard__wrap {
+        flex: 0 0 calc(50% - 0.9375rem);
+        max-width: calc(50% - 0.9375rem);
+    }
+
+    /* Os pares que o formulario marca como meia largura. O resto ocupa a linha
+       inteira, que e o padrao declarado em .fitem. */
+    .ldgp-formcard .mform .fitem.ldgp-half {
+        grid-column: span 1;
+    }
+}
+
+@media (min-width: 992px) {
+    .ldgp-inner,
+    .ldgp-bar-inner {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+
+    /* Cabe tudo numa linha so: as ancoras voltam para o meio. */
+    .ldgp-bar-inner {
+        flex-wrap: nowrap;
+        padding-bottom: 0;
+        padding-top: 0;
+    }
+
+    .ldgp-bar-nav {
+        order: 2;
+        width: auto;
+    }
+
+    .ldgp-bar-actions {
+        order: 3;
+    }
+
+    .ldgp-grid--plans {
+        align-items: stretch;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .ldgp-split {
+        gap: 3rem;
+        grid-template-columns: 5fr 7fr;
+    }
+
+    .ldgp-splitside {
+        position: sticky;
+        top: calc(var(--ldgp-sticky-top) + 1.5rem);
+    }
+}
+
+@media (min-width: 1200px) {
+    .ldgp-grid--pillars,
+    .ldgp-grid--steps {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* Quem pediu menos movimento nao recebe nem a rolagem suave nem as transicoes. */
+@media (prefers-reduced-motion: no-preference) {
+    .ldgp {
+        scroll-behavior: smooth;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* stylelint-disable declaration-no-important -- a regra precisa vencer
+       transicao declarada em qualquer lugar da subarvore, e quem pediu menos
+       movimento nao esta pedindo "um pouco menos". */
+    .ldgp *,
+    .ldgp *::before,
+    .ldgp *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+    /* stylelint-enable declaration-no-important */
+}
+
+/*
+ * A landing ocupa a largura toda.
+ *
+ * MEDIDO, e em duas rodadas. Primeiro o miolo saia com 720px dentro de um
+ * viewport de 1440 - nao e o `limitedwidth` do body, e o proprio
+ * `.pagelayout-standard` do Boost, que limita a .main-inner a largura de
+ * leitura. Depois, ja com a .main-inner solta, sobravam 70px de fundo do TEMA
+ * de cada lado, porque o padding restante estava no `#page.drawers` e num div
+ * sem classe dentro do `#region-main`. Numa landing escura sob um tema claro,
+ * essa moldura clara parece defeito.
+ *
+ * A cadeia inteira e zerada de uma vez. A classe vem do PHP
+ * (`$PAGE->add_body_class`), e nao de um `:has()`: e explicita, funciona em
+ * qualquer tema e nao depende de suporte do navegador.
+ *
+ * `ldg-has-landing` e a mesma coisa pela home do theme_ldg, que serve a landing
+ * no lugar da frontpage.
+ */
+/*
+ * No layout 'embedded' a cadeia e outra: #page > section.embedded-main, sem
+ * drawers e sem region-main. As duas listas convivem porque o mesmo
+ * styles.css atende as paginas de captacao (embedded) e a home do theme_ldg,
+ * que serve a landing dentro do layout de frontpage.
+ */
+body.ldgp-page #page,
+body.ldgp-page .embedded-main,
+body.ldg-has-landing #page,
+body.ldg-has-landing .embedded-main,
+body.ldgp-page #page.drawers,
+body.ldgp-page #page.drawers .main-inner,
+body.ldgp-page #page-content,
+body.ldgp-page #region-main-box,
+body.ldgp-page #region-main,
+body.ldgp-page #page.drawers div[role="main"],
+body.ldgp-page #region-main > div,
+body.ldg-has-landing #page.drawers,
+body.ldg-has-landing #page.drawers .main-inner,
+body.ldg-has-landing #page-content,
+body.ldg-has-landing #region-main-box,
+body.ldg-has-landing #region-main,
+body.ldg-has-landing #page.drawers div[role="main"],
+body.ldg-has-landing #region-main > div {
+    margin-left: 0;
+    margin-right: 0;
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+    width: 100%;
+}
+
+body.ldgp-page #region-main,
+body.ldg-has-landing #region-main {
+    border: 0;
+}
+
+/*
+ * O que o Moodle monta para a pagina inicial, ABAIXO da landing.
+ *
+ * Lista de cursos, categorias, novidades - o que estiver marcado em
+ * Configuracoes da pagina inicial. A landing e de sangria total, mas isto e
+ * conteudo de leitura, e leitura de ponta a ponta de um monitor de 27 polegadas
+ * nao se le. Volta a ter a largura do resto do site.
+ *
+ * Vazio, nao ocupa nada: sem :empty o padding vertical deixaria uma faixa em
+ * branco depois do rodape da landing, e o caso comum e justamente esse -
+ * a home so com a landing.
+ */
+.ldg-landing-extra {
+    margin: 0 auto;
+    max-width: 1180px;
+    padding: 2rem 1.5rem;
+}
+
+.ldg-landing-extra:empty {
+    display: none;
+}

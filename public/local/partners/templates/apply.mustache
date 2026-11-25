@@ -1,0 +1,214 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_partners/apply
+
+    Cadastro de parceiro: coluna de valor a esquerda, formulario a direita.
+
+    O formulario chega PRONTO em formhtml, renderizado pelo proprio Moodle. E
+    assim que sesskey, redisplay de erro, reCAPTCHA e honeypot continuam
+    funcionando enquanto a aparencia muda - o mesmo caminho do
+    login/signup_form.php do core.
+
+    NAO escreva chave dupla de mustache dentro deste comentario: ele termina no
+    primeiro fecha-chaves, e o resto do texto vai parar na tela.
+
+    Context variables required for this template:
+    * formhtml - o formulario ja renderizado
+    * landingurl - URL da landing, para o link de voltar
+    * colormode - 'dark' ou 'light', ja resolvido no servidor
+    * isloggedin - onde o alternador guarda a escolha
+    * brand - { name, homeurl, logolight, logodark, haslogo }
+    * loginurl - URL da tela de login; o botao vira SAIR para quem ja entrou
+    * logouturl - URL de sair, ja com sesskey, para quem entrou
+    * languages / haslanguages - o seletor de idioma, como na barra da landing
+    * trust - array de { title, text, iscoin, isserver, isshield }
+
+    Example context (json):
+    {
+        "formhtml": "<form></form>",
+        "landingurl": "/local/partners/index.php",
+        "colormode": "dark",
+        "isloggedin": false,
+        "loginurl": "/login/index.php",
+        "logouturl": "/login/logout.php?sesskey=abc",
+        "brand": {"name": "LeoDG", "homeurl": "/local/partners/index.php",
+                  "logolight": "/logo.svg", "logodark": "/logo-dark.svg", "haslogo": true},
+        "haslanguages": true,
+        "languages": [
+            {"code": "en", "hreflang": "en", "label": "English", "short": "EN",
+             "url": "/local/partners/apply.php?lang=en", "iscurrent": true}
+        ],
+        "trust": [
+            {"title": "You pay when you sell", "text": "No monthly fee.", "iscoin": true,
+             "isserver": false, "isshield": false}
+        ]
+    }
+}}
+<div class="ldgp ldgp--apply" data-bs-theme="{{colormode}}">
+
+    {{! Ver o comentario equivalente no template da landing: o visitante anonimo
+        que escolheu claro guardou a escolha no navegador, e o servidor nao tem
+        como saber. Corrigir aqui, antes da pintura, evita o pisca. }}
+    <script>
+        (function() {
+            try {
+                var m = localStorage.getItem('local_partners-colormode');
+                if (m === 'light' || m === 'dark') {
+                    document.currentScript.parentElement.setAttribute('data-bs-theme', m);
+
+                    // O chrome do tema acompanha, mas SO se ele ja for dono do
+                    // atributo. Sob theme_ldg isso evita a pagina clara com a
+                    // navbar escura depois de recarregar; sob Boost e Moove, que
+                    // nao tem desenho escuro para o cabecalho, nao mexemos.
+                    if (document.body && document.body.hasAttribute('data-bs-theme')) {
+                        document.body.setAttribute('data-bs-theme', m);
+                    }
+                }
+            } catch (e) {
+                // Sem armazenamento local, vale o que o servidor decidiu.
+            }
+        }());
+    </script>
+
+    <main id="ldgp-main" tabindex="-1" class="ldgp-inner">
+        <div class="ldgp-split">
+
+            <section class="ldgp-splitside">
+                {{#brand}}
+                    <a class="ldgp-brand ldgp-brand--apply" href="{{homeurl}}">
+                        {{#haslogo}}
+                            <img src="{{logolight}}" alt="{{name}}" class="ldgp-brand-logo ldgp-brand-logo--light">
+                            <img src="{{logodark}}" alt="{{name}}" class="ldgp-brand-logo ldgp-brand-logo--dark">
+                        {{/haslogo}}
+                        {{^haslogo}}
+                            <span class="ldgp-brand-word">{{name}}</span>
+                        {{/haslogo}}
+                    </a>
+                {{/brand}}
+
+                <div class="ldgp-applytop">
+                    <a href="{{landingurl}}" class="ldgp-back">
+                        {{> local_partners/icons/arrowleft }}
+                        <span>{{#str}}backtolanding, local_partners{{/str}}</span>
+                    </a>
+
+                    {{! Quem ja entrou ve SAIR no lugar de ENTRAR, com sesskey no
+                        endereco - mesma regra do sectionbar. }}
+                    {{^isloggedin}}
+                        <a href="{{loginurl}}" class="ldgp-btn ldgp-btn--ghost ldgp-btn--sm">
+                            {{#str}}login{{/str}}
+                        </a>
+                    {{/isloggedin}}
+                    {{#isloggedin}}
+                        <a href="{{logouturl}}" class="ldgp-btn ldgp-btn--ghost ldgp-btn--sm">
+                            {{#str}}logout{{/str}}
+                        </a>
+                    {{/isloggedin}}
+
+                    {{#haslanguages}}
+                            <div class="ldgp-langs dropdown">
+                        <button type="button" class="ldgp-langbtn" data-bs-toggle="dropdown"
+                                aria-expanded="false" aria-label="{{#str}}languageselector, local_partners{{/str}}">
+                            {{> local_partners/icons/globe }}
+                            <span>{{currentlanguage}}</span>
+                            <span class="ldgp-caret" aria-hidden="true">{{> local_partners/icons/chevrondown }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end ldgp-langmenu">
+                            {{#languages}}
+                                <li>
+                                    <a class="dropdown-item ldgp-langitem{{#iscurrent}} ldgp-langitem--current{{/iscurrent}}"
+                                       href="{{url}}" hreflang="{{hreflang}}" lang="{{hreflang}}"
+                                       {{#iscurrent}}aria-current="true"{{/iscurrent}}>
+                                        <span aria-hidden="true">{{short}}</span>
+                                        <span class="visually-hidden">{{label}}</span>
+                                    </a>
+                                </li>
+                            {{/languages}}
+                        </ul>
+                    </div>
+                    {{/haslanguages}}
+
+                    {{! O alternador tambem vive aqui: quem chega direto no
+                        cadastro por um link compartilhado nunca passou pela
+                        landing, e ficaria sem a opcao de trocar o modo. }}
+                    <button type="button" class="ldgp-modetoggle" data-ldgp="colormode"
+                            aria-pressed="false" title="{{#str}}colormodetoggle, local_partners{{/str}}">
+                        <span class="visually-hidden">{{#str}}colormodetoggle, local_partners{{/str}}</span>
+                        {{> local_partners/icons/sun }}
+                        {{> local_partners/icons/moon }}
+                    </button>
+                </div>
+
+                <p class="ldgp-badge">
+                    <span class="ldgp-dot"></span>
+                    <span>{{#str}}applybadge, local_partners{{/str}}</span>
+                </p>
+
+                <h1 class="ldgp-applytitle">
+                    {{#str}}herotitle, local_partners{{/str}}
+                    <span class="ldgp-gradient">{{#str}}herotitleaccent, local_partners{{/str}}</span>
+                </h1>
+
+                <p class="ldgp-applylead">{{#str}}applylead, local_partners{{/str}}</p>
+
+                <div class="ldgp-trust">
+                    {{#trust}}
+                        <div class="ldgp-trustitem">
+                            <span class="ldgp-icontile">
+                                {{#iscoin}}{{> local_partners/icons/coin }}{{/iscoin}}
+                                {{#isserver}}{{> local_partners/icons/server }}{{/isserver}}
+                                {{#isshield}}{{> local_partners/icons/shield }}{{/isshield}}
+                            </span>
+                            <div>
+                                <h2>{{title}}</h2>
+                                <p>{{text}}</p>
+                            </div>
+                        </div>
+                    {{/trust}}
+                </div>
+            </section>
+
+            <section>
+                <div class="ldgp-formcard">
+                    <div class="ldgp-formhead">
+                        <h2>{{#str}}applytitle, local_partners{{/str}}</h2>
+                        <span class="ldgp-securetag">
+                            {{> local_partners/icons/lock }}
+                            <span>{{#str}}applysecure, local_partners{{/str}}</span>
+                        </span>
+                        <p>{{#str}}applyformlead, local_partners{{/str}}</p>
+                    </div>
+
+                    {{{formhtml}}}
+
+                    <p class="ldgp-formfoot">
+                        <span><span class="ldgp-required">*</span> {{#str}}requiredfields, local_partners{{/str}}</span>
+                        <span>{{#str}}applyreviewed, local_partners{{/str}}</span>
+                    </p>
+                </div>
+            </section>
+
+        </div>
+    </main>
+    {{#footer}}{{> local_partners/footer }}{{/footer}}
+</div>
+{{#js}}
+    require(['local_partners/colormode'], function(ColorMode) {
+        ColorMode.init({{#isloggedin}}true{{/isloggedin}}{{^isloggedin}}false{{/isloggedin}});
+    });
+{{/js}}

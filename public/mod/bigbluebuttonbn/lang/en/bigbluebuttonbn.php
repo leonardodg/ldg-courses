@@ -102,6 +102,7 @@ $string['config_disablepublicchat_default'] = 'Disable public chat enabled by de
 $string['config_disablepublicchat_default_description'] = 'If enabled the public chat will be disabled.';
 $string['config_disablepublicchat_editable'] = 'Disable public chat can be edited';
 $string['config_disablepublicchat_editable_description'] = 'Disable public chat by default can be edited when the instance is added or updated.';
+$string['config_empty_credentials_warning'] = 'Before using this plugin, you must enter your BigBlueButton server URL and security secret.';
 $string['config_extended_capabilities'] = 'Extended capabilities';
 $string['config_extended_capabilities_description'] = 'Configuration for extended capabilities when the BigBlueButton server offers them.';
 $string['config_general'] = 'General settings';
@@ -381,14 +382,14 @@ $string['mod_form_field_welcome_default'] = 'Welcome to %%CONFNAME%%.';
 $string['mod_form_field_welcome_help'] = 'The welcome message is displayed when participants enter the room. If the field is left blank, then a default message set in the site administration is displayed.';
 $string['mod_form_locksettings'] = 'Lock settings';
 $string['modulename'] = 'BigBlueButton';
-$string['modulename_help'] = '###### Key features
+$string['modulename_help'] = '#### Key features
 *  Host live sessions with audio, video, and chat
 *  Use built-in quizzes and polling tools
 *  Share slides, your screen, or a collaborative whiteboard
 *  Create breakout rooms for activities in groups
 *  Record sessions so students can watch later
 
-###### Ways to use it
+#### Ways to use it
 *  Run a live online lecture where students can ask questions in real time
 *  Hold virtual office hours
 *  Organise group discussions using breakout rooms';
@@ -457,6 +458,13 @@ $string['subplugintype_bbbext'] = 'BigBlueButton activity extension';
 $string['subplugintype_bbbext_plural'] = 'BigBlueButton activity extensions';
 $string['taskname:check_dismissed_recordings'] = 'Check for recordings that haven\'t been found yet';
 $string['taskname:check_pending_recordings'] = 'Fetch pending recordings';
+$string['unconfigured_chooser_admin'] = 'BigBlueButton is not configured. Please complete the setup in Site administration.';
+$string['unconfigured_chooser_user'] = 'BigBlueButton is not available. Please contact your site administrator to complete the setup.';
+$string['unconfigured_view_admin'] = 'The BigBlueButton server is not yet configured. You can complete the setup in Site administration.';
+$string['unconfigured_view_heading'] = 'BigBlueButton is not yet configured';
+$string['unconfigured_view_settings_link'] = 'BigBlueButton settings';
+$string['unconfigured_view_student'] = 'BigBlueButton is not available. Please contact your teacher.';
+$string['unconfigured_view_teacher'] = 'BigBlueButton is not available. Please contact your site administrator to complete the setup.';
 $string['userlimitreached'] = 'The number of users allowed in a session has been reached.';
 $string['view_conference_action_end'] = 'End session';
 $string['view_conference_action_join'] = 'Join session';

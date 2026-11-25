@@ -1,0 +1,136 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Cards, modais, drawers e tabelas.
+//
+// Nada aqui e escopado por modo: os tokens ja mudam de valor entre claro e
+// escuro, e o componente nao precisa saber em qual esta.
+
+.card {
+    background-color: var(--ldg-surface);
+    border-color: var(--ldg-border);
+    border-radius: var(--bs-border-radius);
+    box-shadow: var(--ldg-shadow-card);
+}
+
+// Cabecalho e rodape de card sao a MESMA superficie do corpo: mais um tom
+// vira ruido, e quem separa e a linha.
+.card-header,
+.card-footer {
+    background-color: transparent;
+    border-color: var(--ldg-border);
+}
+
+// Modal, popover e dropdown sobem um degrau tonal. E o que diz ao olho que
+// estao POR CIMA sem depender de a sombra aparecer - no modo escuro ela
+// praticamente nao aparece.
+.modal-content,
+.popover,
+.dropdown-menu {
+    background-color: var(--ldg-surface-raised);
+    border: 1px solid var(--ldg-border);
+    box-shadow: var(--ldg-shadow-raised);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--ldg-border);
+}
+
+.drawer {
+    background-color: var(--ldg-surface);
+    border-color: var(--ldg-border);
+}
+
+.table {
+    --bs-table-color: var(--ldg-text);
+    --bs-table-border-color: var(--ldg-border);
+    --bs-table-striped-bg: var(--ldg-hover-overlay);
+    --bs-table-hover-bg: var(--ldg-hover-overlay);
+}
+
+hr {
+    border-color: var(--ldg-border);
+}
+
+// O rodape acompanha o cromo: navy no modo claro, superficie no escuro. Sem
+// isto o rodape do modo claro fica branco sobre branco e some.
+#page-footer {
+    background-color: var(--ldg-chrome-bg);
+    color: var(--ldg-chrome-text);
+
+    .footer-title,
+    a {
+        color: var(--ldg-chrome-text);
+    }
+
+    // O credito da marca, que substituiu a faixa da Conecti.me no override de
+    // templates/footer.mustache.
+    .madeby {
+        text-align: center;
+
+        p {
+            color: var(--ldg-chrome-text);
+            font-size: var(--ldg-fs-caption);
+            margin-bottom: var(--ldg-space);
+            opacity: 0.75;
+        }
+
+        img {
+            height: 56px;
+            max-width: 100%;
+        }
+    }
+}
+
+// Barras de rolagem.
+//
+// A do navegador e desenhada pelo SISTEMA, e nao pelo CSS da pagina: sem dizer
+// a ele que o esquema e escuro, ela sai clara sobre a pagina escura. O
+// color-scheme e o jeito padronizado de informar isso - funciona em Chrome,
+// Firefox e Safari, e de quebra acerta tambem os controles nativos de
+// formulario, o select e o campo de data.
+[data-bs-theme="dark"] {
+    color-scheme: dark;
+}
+
+[data-bs-theme="light"] {
+    color-scheme: light;
+}
+
+// Rolagem HORIZONTAL so onde ela e legitima.
+//
+// A pagina inteira nunca deve rolar de lado: quando isso acontece e porque algum
+// filho estourou a largura, e o sintoma aparece longe da causa. Tabela larga,
+// bloco de codigo e diagrama continuam rolando - dentro do proprio contêiner.
+html,
+body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+// O conteudo que REALMENTE precisa rolar de lado rola sozinho, sem empurrar a
+// pagina.
+.table-responsive,
+pre {
+    overflow-x: auto;
+    max-width: 100%;
+}

@@ -18,20 +18,21 @@
  * Strings for availability_marketplace.
  *
  * @package    availability_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['pluginname'] = 'Restriction by purchase';
-$string['title'] = 'Purchase';
+$string['anyoffer'] = 'Any offer that includes this course';
+$string['buyaccess'] = 'Buy access';
 $string['description'] = 'Only learners who hold an active entitlement can access the content.';
 $string['label_offer'] = 'Required offer';
-$string['anyoffer'] = 'Any offer that includes this course';
+$string['pluginname'] = 'Restriction by purchase';
+$string['privacy:metadata'] = 'The Restriction by purchase plugin does not store personal data; it reads entitlements held by local_marketplace.';
 $string['requires_access'] = 'You have purchased access to this course';
 $string['requires_noaccess'] = 'You have <b>not</b> purchased access to this course';
-$string['requires_offer'] = 'You have purchased <b>{$a}</b>';
 $string['requires_notoffer'] = 'You have <b>not</b> purchased <b>{$a}</b>';
+$string['requires_offer'] = 'You have purchased <b>{$a}</b>';
+$string['title'] = 'Purchase';
 $string['unknownoffer'] = '(offer removed)';
-$string['privacy:metadata'] = 'The Restriction by purchase plugin does not store personal data; it reads entitlements held by local_marketplace.';

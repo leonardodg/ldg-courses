@@ -1,0 +1,259 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    A pagina do curso no formato portal.
+
+    Este template e derivado de core_courseformat/local/content, e a estrutura
+    do miolo foi mantida linha a linha de proposito. O que muda e o
+    ENQUADRAMENTO: o conteudo entra numa coluna e a lista de aulas em outra.
+
+    Nao da para fazer isso so por heranca de bloco. O template do core expoe
+    blocos de heranca para trocar a secao e o JS, mas nenhum que envolva a
+    pagina inteira - e e disso que as duas colunas precisam.
+
+    ARMADILHA: nao escreva tag mustache dentro deste comentario. O bloco de
+    comentario termina no PRIMEIRO fecha-chaves duplo, entao uma tag citada em
+    prosa vira secao de verdade, sem fechamento, e o template quebra com
+    "Missing closing tag" apontando para uma linha que nao existe. Foi
+    exatamente o que aconteceu aqui.
+
+    A coluna principal muda conforme a edicao:
+
+    - EDICAO LIGADA: a pilha de secoes do core, igual ao Topics. Arrastar
+      atividade, renomear e o menu de acoes vivem nos ganchos que o core poe
+      naquela marcacao, e nenhum deles funciona dentro de um quadro embutido.
+    - EDICAO DESLIGADA: a aula em foco, embutida.
+
+    Tres coisas NAO se mexe no ramo de edicao:
+
+    - o data-for="course_sectionlist" na ul, que e por onde o editor reativo
+      encontra a lista de secoes
+    - o bloco js do fim, que inicializa o componente de edicao. Sem ele,
+      arrastar atividade para de funcionar - e sem erro nenhum no console. Ele
+      so e emitido com a edicao ligada, porque sem a lista de secoes na pagina
+      o componente nao tem o que observar
+    - o id do course-format na div raiz, usado como raiz do componente
+
+    A ordem no HTML e conteudo primeiro, lista depois. No celular a lista cai
+    embaixo do conteudo, que e onde ela tem que ficar: quem abre o curso quer a
+    aula, nao o indice. No desktop o CSS reordena.
+
+    @template format_ldg/local/content
+    @author    LeoDG <callme@leodg.dev>
+    @copyright 2026 LeoDG <callme@leodg.dev>
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+    Context variables required for this template:
+    * uniqid - Sufixo unico do componente reativo
+    * title - Titulo do curso, para leitor de tela
+    * format - Nome do formato, usado como classe
+    * sections - Lista de secoes
+    * lessonlist - A lista de aulas do portal
+    * hascourseprogress - Se o curso acompanha conclusao
+    * courseprogress - Percentual concluido, de 0 a 100
+
+    Example context (json):
+    {
+        "uniqid": "0",
+        "title": "Curso de demonstracao",
+        "format": "ldg",
+        "sections": [],
+        "hascourseprogress": true,
+        "courseprogress": 33,
+        "courseprogresslabel": "33% concluido",
+        "lessonlist": {
+            "hasmodules": true,
+            "modules": [
+                {
+                    "num": 1,
+                    "name": "Modulo 1",
+                    "hasprogress": true,
+                    "complete": 1,
+                    "total": 3,
+                    "percentage": 33,
+                    "progresslabel": "1 de 3",
+                    "lessons": [
+                        {
+                            "cmid": 1,
+                            "name": "Aula 1",
+                            "url": "#",
+                            "iconurl": "#",
+                            "modname": "page",
+                            "trackscompletion": true,
+                            "completed": true,
+                            "locked": false,
+                            "lockinfo": "",
+                            "current": true
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}}
+<div id="course-format-{{uniqid}}" class="ldg-portal{{#hidenav}} ldg-portal--hide-nav{{/hidenav}}{{#hideindex}} ldg-portal--hide-index{{/hideindex}}">
+    <h2 class="accesshide">{{{title}}}</h2>
+    {{{completionhelp}}}
+
+    <div class="ldg-portal__body">
+        {{!
+            O cartao do aluno e a PRIMEIRA regiao da grade, e nao um bloco solto
+            no topo da pagina. A barra de progresso vivia atravessando a tela
+            inteira; aqui ela fica onde o desenho a poe, junto de quem ela
+            descreve.
+
+            Nao ha selo de plano: nao existe no Moodle nada que diga o plano do
+            aluno nesta tela, e inventar um seria mentir para ele.
+        }}
+        {{^isediting}}
+            <div class="ldg-portal__student">
+                <div class="ldg-portal__studenthead">
+                    <p class="ldg-portal__greeting">{{studentgreeting}}</p>
+
+                    {{!
+                        Os dois botoes vivem aqui, e nao dentro das laterais: uma
+                        lateral escondida nao pode guardar o proprio botao de
+                        voltar. O cartao do aluno esta sempre visivel.
+                    }}
+                    <span class="ldg-portal__asidetoggles">
+                        <button type="button" class="ldg-portal__asidetoggle"
+                                data-ldg-aside="nav" aria-expanded="{{^hidenav}}true{{/hidenav}}{{#hidenav}}false{{/hidenav}}"
+                                aria-controls="ldg-portal-nav">{{#str}}togglenav, format_ldg{{/str}}</button>
+                        <button type="button" class="ldg-portal__asidetoggle"
+                                data-ldg-aside="index" aria-expanded="{{^hideindex}}true{{/hideindex}}{{#hideindex}}false{{/hideindex}}"
+                                aria-controls="ldg-portal-index">{{#str}}toggleindex, format_ldg{{/str}}</button>
+                    </span>
+                </div>
+
+                {{#hascourseprogress}}
+                    <div class="ldg-portal__progress">
+                        <div class="ldg-portal__progress-label">{{courseprogresslabel}}</div>
+                        <div class="progress" role="progressbar"
+                             aria-label="{{#str}}courseprogressbar, format_ldg{{/str}}"
+                             aria-valuenow="{{courseprogress}}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar" style="width: {{courseprogress}}%"></div>
+                        </div>
+                    </div>
+                {{/hascourseprogress}}
+            </div>
+
+            {{#js}}
+            require(['format_ldg/aside'], function(aside) {
+                aside.init('#course-format-{{uniqid}}');
+            });
+            {{/js}}
+        {{/isediting}}
+
+        {{!
+            A navegacao entra UMA vez e desenha as tres superficies - menu, abas
+            e barra de baixo -, que sao IRMAS do miolo e da lista. E de proposito:
+            o styles.css usa grid e poe cada uma no seu lugar por largura. Incluir
+            o parcial duas vezes daria seis elementos de navegacao na mesma
+            pagina, e o leitor de tela leria todos.
+        }}
+        {{^isediting}}
+            {{#portalnav}}
+                {{> format_ldg/local/content/portalnav }}
+            {{/portalnav}}
+        {{/isediting}}
+
+        <div class="ldg-portal__main">
+            {{^isediting}}
+                {{#ismaterials}}
+                    {{#materiallist}}
+                        {{> format_ldg/local/content/materiallist }}
+                    {{/materiallist}}
+                {{/ismaterials}}
+
+                {{^ismaterials}}
+                    {{! O atalho vem ANTES do quadro, e nao embaixo: ele e o que
+                        sobra quando as laterais estao escondidas, e precisa
+                        estar na tela sem rolar. }}
+                    {{#lessonnav}}
+                        {{> format_ldg/local/content/lessonnav }}
+                    {{/lessonnav}}
+
+                    {{#lessonviewer}}
+                        {{> format_ldg/local/content/lessonviewer }}
+                    {{/lessonviewer}}
+                {{/ismaterials}}
+            {{/isediting}}
+            {{#isediting}}
+            <ul class="{{format}} section-list" data-for="course_sectionlist">
+                {{#initialsection}}
+                    {{$ core_courseformat/local/content/section }}
+                        {{> core_courseformat/local/content/section }}
+                    {{/ core_courseformat/local/content/section }}
+                {{/initialsection}}
+                {{#sections}}
+                    {{$ core_courseformat/local/content/section }}
+                        {{> core_courseformat/local/content/section }}
+                    {{/ core_courseformat/local/content/section }}
+                {{/sections}}
+            </ul>
+            {{#hasnavigation}}
+                <div class="single-section">
+                    {{#sectionnavigation}}
+                        {{$ core_courseformat/local/content/sectionnavigation }}
+                            {{> core_courseformat/local/content/sectionnavigation }}
+                        {{/ core_courseformat/local/content/sectionnavigation }}
+                    {{/sectionnavigation}}
+                    <ul class="{{format}} section-list">
+                        {{#singlesection}}
+                            {{$ core_courseformat/local/content/section }}
+                                {{> core_courseformat/local/content/section }}
+                            {{/ core_courseformat/local/content/section }}
+                        {{/singlesection}}
+                    </ul>
+                    {{#sectionselector}}
+                        {{$ core_courseformat/local/content/sectionselector }}
+                            {{> core_courseformat/local/content/sectionselector }}
+                        {{/ core_courseformat/local/content/sectionselector }}
+                    {{/sectionselector}}
+                </div>
+            {{/hasnavigation}}
+            {{#numsections}}
+                {{^singlesection}}
+                    {{$ core_courseformat/local/content/addsection}}
+                        {{> core_courseformat/local/content/addsection}}
+                    {{/ core_courseformat/local/content/addsection}}
+                {{/singlesection}}
+            {{/numsections}}
+            {{#bulkedittools}}
+                {{$ core_courseformat/local/content/bulkedittools}}
+                    {{> core_courseformat/local/content/bulkedittools}}
+                {{/ core_courseformat/local/content/bulkedittools}}
+            {{/bulkedittools}}
+            {{/isediting}}
+        </div>
+
+        {{#lessonlist}}
+            {{> format_ldg/local/content/lessonlist }}
+        {{/lessonlist}}
+    </div>
+</div>
+{{#isediting}}
+{{$ core_courseformat/local/content-js}}
+{{#js}}
+require(['core_courseformat/local/content'], function(component) {
+    component.init(
+        '#page', {}, {{sectionreturn}}, {{#pagesectionid}}{{.}}{{/pagesectionid}}{{^pagesectionid}}null{{/pagesectionid}}
+    );
+});
+{{/js}}
+{{/ core_courseformat/local/content-js}}
+{{/isediting}}

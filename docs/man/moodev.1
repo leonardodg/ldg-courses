@@ -1,0 +1,309 @@
+'\" t
+.\" A linha acima e obrigatoria: manda o man rodar o preprocessador tbl, sem o
+.\" qual a tabela da secao OFFSET nao e renderizada.
+.\" Manual do moodev - ambiente de desenvolvimento Moodle: worktrees, devcontainer e devtools
+.\" Instalar:  sudo install -m 644 docs/man/moodev.1 /usr/local/share/man/man1/moodev.1 && sudo mandb -q
+.TH MOODEV 1 "2026-09-04" "moodev" "Comandos do usuario"
+.
+.SH NOME
+moodev \- ambiente de desenvolvimento Moodle: worktrees, devcontainer e devtools
+.
+.SH SINOPSE
+.B moodev new
+.I nome
+.RB [ \-\-branch
+.IR branch ]
+.RB [ \-\-from
+.IR branch ]
+.RB [ \-\-new\-stack ]
+.RB [ \-\-seed
+.IR modo ]
+.RB [ \-\-no\-code ]
+.br
+.B moodev use
+.I worktree
+.br
+.B moodev rm
+.I worktree
+.RB [ \-\-force ]
+.br
+.B moodev
+.RB { ls | doctor }
+.br
+.B moodev
+.RB { up | down | restart | logs | code | shell | build }
+.RI [ worktree ]
+.br
+.B moodev cli
+.I script.php
+.RI [ argumentos ]
+.
+.SH DESCRICAO
+.B moodev
+abrevia
+.IR "Moodle Dev" .
+O comando gerencia os ambientes Docker de um repositorio
+organizado em worktrees, resolvendo dois problemas: os arquivos que o
+.B .gitignore
+esconde e sem os quais o ambiente nao sobe, e o fato de o stack ser unico por
+construcao.
+.PP
+Duas coisas independentes:
+.B worktree
+e uma pasta com um checkout do repositorio, barata; e
+.B stack
+e o par de containers (Moodle e MariaDB) que serve uma worktree, caro. Varias
+worktrees podem existir para um stack so \- o container monta o codigo de uma
+delas por vez.
+.PP
+Sem
+.BR \-\-new\-stack ,
+.B moodev new
+apenas troca o codigo montado no container que ja roda: mesmo banco, mesmas
+portas, custo zero, mas um ambiente de cada vez. Com
+.BR \-\-new\-stack ,
+sobe um ambiente proprio que roda em paralelo, ao custo de cerca de 900 MB.
+.PP
+Omitindo
+.IR worktree ,
+o comando age sobre a worktree do diretorio atual.
+.
+.SH COMANDOS
+.SS Ciclo de vida
+.TP
+.BI "new " nome
+Cria worktree e branch a partir de
+.BR origin/dev ,
+copia a configuracao local, coloca no ar e abre o VS Code dentro do container.
+.TP
+.BI "use " worktree
+O stack atual passa a servir outra worktree. Mesmo container, mesmo banco,
+mesmas portas \- so o bind mount do codigo muda.
+.TP
+.BI "rm " worktree
+Remove a worktree e a branch que ela tem de fato. Derruba stack e apaga dados
+somente se forem proprios dela.
+.
+.SS Operacao
+.TP
+.B ls
+Lista worktrees, offsets, stacks, status e URLs.
+.TP
+.BI "up " [worktree]
+Sobe o stack.
+.TP
+.BI "down " [worktree]
+Para o stack.
+.TP
+.BI "restart " [worktree]
+Equivale a
+.B down
+seguido de
+.BR up .
+E o que faz o stack adotar uma imagem nova;
+.B up
+sozinho reaproveita o container existente.
+.TP
+.BI "logs " [worktree]
+Segue os logs.
+.TP
+.B doctor
+Confere a propria instalacao, ferramentas, disco, certificado, os arquivos
+.B .env
+e as portas.
+.
+.SS Trabalho
+.TP
+.BI "code " [worktree]
+Abre o VS Code ja conectado ao container.
+.TP
+.BI "shell " [worktree]
+Abre um
+.B bash
+no container como
+.BR 1000:33 ,
+o uid do host com o grupo www\-data.
+.TP
+.BI "cli " script.php
+Executa um script de
+.B admin/cli
+do Moodle dentro do container.
+.TP
+.BI "build " [worktree]
+Reconstroi a imagem. E o unico comando que carrega
+.BR build\-dev.yml .
+.
+.SH OPCOES
+Validas para
+.BR "moodev new" .
+.TP
+.BI \-\-branch " branch"
+Nome da branch, quando difere do nome da pasta. Por padrao,
+.BI feature/ nome\fR.
+.TP
+.BI \-\-from " branch"
+Base da branch nova. Padrao
+.BR origin/dev .
+.B main
+nao serve: nao tem
+.B .devcontainer/
+e esta fora do fluxo do projeto.
+.TP
+.B \-\-new\-stack
+Sobe um ambiente proprio \- container, banco e portas separados \- que roda em
+paralelo com os outros.
+.TP
+.BI \-\-seed " modo"
+De onde vem o banco. So tem efeito com
+.BR \-\-new\-stack .
+.RS
+.TP
+.B clone
+Padrao. Copia banco e moodledata do stack principal.
+.TP
+.B fresh
+Instala o banco do zero, exercitando a migracao em base virgem.
+.TP
+.B share
+Aponta para os dados do principal. Os dois stacks disputam o mesmo schema.
+.RE
+.TP
+.B \-\-no\-code
+Nao abre o VS Code ao final. Util em script ou por SSH.
+.TP
+.B \-\-force
+Em
+.BR "moodev rm" :
+pula a confirmacao por nome.
+.
+.SH NOME DA PASTA E NOME DA BRANCH
+Sao coisas diferentes. Barra no nome significa "isto e a branch inteira", e a
+pasta sai dela trocando barra por hifen:
+.PP
+.RS
+.EX
+moodev new paygw\-pix            # pasta paygw\-pix      branch feature/paygw\-pix
+moodev new fix/tls\-porta        # pasta fix\-tls\-porta  branch fix/tls\-porta
+moodev new x \-\-branch hotfix/y  # pasta x              branch hotfix/y
+.EE
+.RE
+.PP
+Sem barra, mantem\-se o prefixo
+.BR feature/ .
+O
+.B moodev rm
+le a branch da worktree em vez de deduzi\-la do nome da pasta, entao uma branch
+.B fix/...
+nao fica orfa.
+.
+.SH OFFSET
+Cada worktree registrada tem um offset, que define seu estado e suas portas.
+.\" Tabela estreita de proposito: precisa caber em terminal de 72 colunas, que
+.\" e o padrao do man quando a janela e pequena.
+.TS
+tab(@) allbox;
+lb lb lb
+l l l.
+Offset@Significa@Portas
+0@servida agora@8080 8443 3307 9004
+>= 1@stack proprio@base + N x 10
+\-@sem ambiente@\-
+.TE
+.PP
+Offset
+.B \-
+nao e erro: e uma worktree que nao e a atual.
+.B moodev use
+a coloca no ar.
+.
+.SH ARQUIVOS
+.TP
+.I <raiz>/.moodev/registry.tsv
+Registro das worktrees: nome, offset, stack e caminhos de dado. Fica fora de
+qualquer worktree porque e estado da maquina, nao do codigo.
+.TP
+.I <worktree>/.env
+Gerado pelo
+.BR moodev .
+Variaveis de interpolacao do compose. Nao editar a mao.
+.TP
+.I <worktree>/.devcontainer/compose/.env
+Symlink para o anterior. A extensao Dev Containers monta o proprio
+.B docker compose
+sem
+.BR \-\-env\-file ,
+e sem este link o Reopen in Container falha.
+.TP
+.I ~/localhost/ldg-data/<nome>/
+Banco e moodledata das worktrees com stack proprio. E o unico lugar de onde o
+.B moodev rm
+apaga dados.
+.
+.SH DIAGNOSTICO
+.TP
+.B moodev: command not found
+O symlink ficou pendurado, em geral porque a worktree que ele apontava foi
+removida. Reaponte para a indirecao na raiz do repositorio.
+.TP
+.B arithmetic syntax error: operand expected
+Versao antiga do
+.B moodev
+lendo um registro escrito por uma versao nova. Atualize a worktree que fornece
+o comando.
+.TP
+.B required variable DB_HOST_DATA is missing a value
+Falta o symlink
+.IR .devcontainer/compose/.env .
+Um
+.B moodev up
+recria.
+.TP
+.B invaliddatarootpermissions
+Diretorio com dono root dentro do moodledata. O entrypoint corrige no boot.
+.
+.SH EXEMPLOS
+.TP
+Comecar uma feature:
+.EX
+moodev new paygw\-pix
+.EE
+.TP
+Comparar duas features lado a lado:
+.EX
+moodev new relatorios \-\-new\-stack
+.EE
+.TP
+Alternar entre worktrees existentes:
+.EX
+moodev use paygw\-pix
+.EE
+.TP
+Rodar um CLI do Moodle:
+.EX
+moodev cli upgrade.php \-\-non\-interactive
+.EE
+.TP
+Encerrar depois do merge:
+.EX
+moodev rm paygw\-pix
+.EE
+.
+.SH VEJA TAMBEM
+.BR git\-worktree (1),
+.BR docker\-compose (1)
+.PP
+.I docs/dev/moodev.md
+\- documentacao completa
+.br
+.I docs/dev/guia\-worktrees.md
+\- o fluxo de trabalho: portas, VS Code, a VPS, armadilhas
+.
+.SH BUGS
+No modo padrao ha um ambiente por vez, e o banco e compartilhado: alternar entre
+branches com versoes diferentes de plugin roda
+.B upgrade.php
+nos dois sentidos.
+.PP
+.B main
+nao pode ser usada como base nem como worktree de repouso enquanto nao tiver
+.BR .devcontainer/ .

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/partners/db" VERSION="20260831" COMMENT="Captacao de empresas parceiras."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="local_partners_application" COMMENT="Candidatura de empresa parceira. NAO e uma empresa: e um pedido. Existe porque criar empresa cria uma CATEGORIA de curso, que e objeto global - a decisao de nao ter auto-atendimento continua valendo, e esta tabela e a fila que o administrador aprova.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="companyname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Razao social informada. NAO vira shortname sozinho: o shortname vai para a URL e para a categoria, e quem escolhe e o administrador na tela de aprovacao."/>
+        <FIELD NAME="cnpj" TYPE="char" LENGTH="14" NOTNULL="false" SEQUENCE="false" COMMENT="So digitos. Opcional, porque pessoa fisica tambem vende - mesma regra do campo na empresa."/>
+        <FIELD NAME="contactname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="contactemail" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="contactphone" TYPE="char" LENGTH="30" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="website" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="planid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Plano escolhido na landing. E INTENCAO, e nao contrato: quem grava o plano na empresa e a aprovacao. Sem chave estrangeira declarada de proposito - ela apontaria para tabela de outro plugin, e o check_database_schema reclama; a integridade vem do validate_planid do persistent."/>
+        <FIELD NAME="country" TYPE="char" LENGTH="2" NOTNULL="false" SEQUENCE="false" COMMENT="ISO 3166-1 alpha-2, o mesmo alfabeto da oferta. NAO e enfeite de formulario: e o pais que decide a moeda e a conta que pode receber o split, e conta so guarda a moeda do proprio pais. Anulavel porque as candidaturas anteriores a este campo nao declararam nenhum."/>
+        <FIELD NAME="learnersband" TYPE="char" LENGTH="20" NOTNULL="false" SEQUENCE="false" COMMENT="Faixa declarada de alunos ativos por mes: upto100|100to1000|1000to5000|over5000. Char e nao int de proposito - um inteiro remapeia em silencio se a lista de faixas mudar, e a faixa 2 de hoje viraria outra coisa amanha sem ninguem perceber."/>
+        <FIELD NAME="termsaccepted" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="MOMENTO do aceite dos termos, e nao um booleano: um 1 em toda linha e redundante com a existencia da linha e nao prova nada. Anulavel porque as candidaturas que ja estavam na fila entraram antes de o aceite existir - preenche-las com 1 inventaria um consentimento que ninguem deu."/>
+        <FIELD NAME="message" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending" SEQUENCE="false" COMMENT="unconfirmed|pending|approved|rejected. A unconfirmed nao entra na fila: e candidatura de visitante anonimo que ainda nao clicou no link do e-mail. Depois de decidida nunca volta para pending - reenvio e linha nova, para o historico de quem tentou nao sumir."/>
+        <FIELD NAME="reviewnote" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Anotacao de quem decidiu. Na recusa, vai para o e-mail do candidato."/>
+        <FIELD NAME="reviewerid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="timereviewed" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="companyid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Empresa criada na aprovacao. E o que torna aprovar IDEMPOTENTE: preenchido, a segunda aprovacao nao cria uma segunda categoria."/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Usuario que enviou a candidatura, quando ela veio de alguem autenticado. E o dono natural da empresa: quem ja tem perfil no site nao precisa de conta nova nem de confirmar e-mail que o site ja confirmou."/>
+        <FIELD NAME="confirmtoken" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false" COMMENT="Token do link de confirmacao, para candidatura enviada por visitante anonimo. Apagado assim que confirma."/>
+        <FIELD NAME="timeconfirmed" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Quando o e-mail foi confirmado. Nulo em candidatura que nunca precisou confirmar - a de usuario autenticado."/>
+        <FIELD NAME="submitterip" TYPE="char" LENGTH="45" NOTNULL="false" SEQUENCE="false" COMMENT="IPv6 cabe em 45. Serve ao limite de taxa e a nada mais; sai no privacy provider e e apagado junto com a candidatura."/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="status-timecreated" UNIQUE="false" FIELDS="status, timecreated" COMMENT="A fila e sempre lida por situacao e por ordem de chegada."/>
+        <INDEX NAME="contactemail" UNIQUE="false" FIELDS="contactemail"/>
+        <INDEX NAME="confirmtoken" UNIQUE="false" FIELDS="confirmtoken" COMMENT="O link de confirmacao busca por aqui."/>
+        <INDEX NAME="submitterip-timecreated" UNIQUE="false" FIELDS="submitterip, timecreated" COMMENT="Indice do limite de taxa: sem ele a checagem varre a tabela a cada envio."/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

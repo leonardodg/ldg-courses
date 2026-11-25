@@ -1,0 +1,56 @@
+# =============================================================================
+# BEHAT COM NAVEGADOR DE VERDADE
+# =============================================================================
+# Os cenarios marcados @javascript exigem um navegador que execute JS. Sem este
+# servico o behat roda so o driver sem JS, e tudo que depende de clique, menu
+# que abre ou preferencia gravada por AJAX fica de fora.
+#
+# NAO SOBE JUNTO COM O STACK, de proposito. O "moodev up" inicia apenas moodle e db;
+# o Chrome ocupa memoria e a maioria das rodadas nao precisa dele. Suba sob
+# demanda:
+#
+#     docker compose --project-name ldg-courses \
+#       -f .devcontainer/compose/base.yml -f .devcontainer/compose/behat.yml \
+#       up -d selenium
+#
+# O caminho completo, com o servidor web que o Chrome precisa enxergar, esta em
+# docs/dev/behat.md.
+# =============================================================================
+
+services:
+  selenium:
+    # A tag :4 acompanha o Selenium 4, que e o que o Moodle 5.2 espera no
+    # wd_host .../wd/hub. Imagem oficial, ja com o chromedriver pareado com o
+    # Chrome de dentro - pares desencontrados sao a causa mais comum de
+    # "session not created" no meio da suite.
+    image: selenium/standalone-chrome:4
+    container_name: ${STACK_NAME:-ldg-courses}-selenium
+
+    # O Chrome escreve em /dev/shm, e o default de 64MB do Docker estoura com
+    # pagina grande: a aba morre e o cenario falha com erro de conexao, nao com
+    # falha de asserçao - o que manda quem investiga para o lado errado.
+    shm_size: 2gb
+
+    # Porta NAO publicada no host de proposito. Quem fala com ele e o container
+    # do Moodle, pela rede do compose. Publicar exigiria entrar no calculo de
+    # offset do cf, e um numero a mais para colidir entre worktrees.
+    expose:
+      - "4444"
+
+    # A rede e a MESMA do stack, e nao a "default" do compose.
+    #
+    # Custou uma rodada: com "networks: default", o selenium subia saudavel e
+    # respondia no proprio IP, mas o curl de dentro do container do Moodle dava
+    # 000. Os dois estavam em redes diferentes - ldg-courses_default contra
+    # ldg-courses_moodle_network. O sintoma parece Chrome quebrado; o problema
+    # e DNS que nunca chegou a resolver.
+    networks:
+      - moodle_network
+
+    restart: unless-stopped
+
+# Declarada como EXTERNA a este arquivo: quem a cria e o base.yml. Repetir o
+# "driver: bridge" aqui faria o compose considerar a definicao divergente
+# dependendo da ordem dos -f.
+networks:
+  moodle_network:

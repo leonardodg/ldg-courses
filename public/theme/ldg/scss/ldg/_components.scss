@@ -1,0 +1,228 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// Componentes alinhados ao design system.
+//
+// Os tokens ja estavam certos, mas os COMPONENTES do Bootstrap desenham a
+// partir das custom properties --bs-btn-*, --bs-form-* e afins. Definir
+// --ldg-accent nao muda um botao: e preciso dizer ao Bootstrap.
+//
+// Referencia: docs/brand/design_system_leodg.md
+
+// -----------------------------------------------------------------------------
+// Botoes
+// -----------------------------------------------------------------------------
+//
+// "Primary Button: Background #007AFF, Text #FFFFFF, Border-radius 8px"
+// "Primary Hover: Background #3394FF"
+.btn-primary {
+    --bs-btn-bg: var(--ldg-accent);
+    --bs-btn-border-color: var(--ldg-accent);
+    --bs-btn-color: #ffffff;
+    --bs-btn-hover-bg: var(--ldg-accent-hover);
+    --bs-btn-hover-border-color: var(--ldg-accent-hover);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-active-bg: var(--ldg-accent-hover);
+    --bs-btn-active-border-color: var(--ldg-accent-hover);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-disabled-bg: var(--ldg-accent);
+    --bs-btn-disabled-border-color: var(--ldg-accent);
+}
+
+// "Secondary Button: Border 1px solid #007AFF, Text #007AFF, Background
+// transparent"
+//
+// O padrao do Bootstrap para .btn-secondary e CINZA. Era ele que aparecia em
+// "Limpar caches do tema" e em quase todo botao de acao secundaria do Moodle -
+// cinza chapado onde o design system pede contorno azul.
+.btn-secondary,
+.btn-outline-secondary {
+    --bs-btn-bg: transparent;
+    --bs-btn-border-color: var(--ldg-accent);
+    --bs-btn-color: var(--ldg-accent-text);
+    --bs-btn-hover-bg: var(--ldg-accent);
+    --bs-btn-hover-border-color: var(--ldg-accent);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-active-bg: var(--ldg-accent-hover);
+    --bs-btn-active-border-color: var(--ldg-accent-hover);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: var(--ldg-border);
+    --bs-btn-disabled-color: var(--ldg-text-muted);
+}
+
+// "Inverted Button: Background #FFFFFF, Text #121212"
+.btn-light {
+    --bs-btn-bg: #ffffff;
+    --bs-btn-border-color: #ffffff;
+    --bs-btn-color: #121212;
+    --bs-btn-hover-bg: #e9ecef;
+    --bs-btn-hover-border-color: #e9ecef;
+    --bs-btn-hover-color: #121212;
+}
+
+// -----------------------------------------------------------------------------
+// Campos
+// -----------------------------------------------------------------------------
+//
+// "Input Field: Background #1E1E1E, Border 1px solid #3A3B3C, Text #FFFFFF,
+// Border-radius 8px" e "Focus Ring: Border 2px solid #007AFF".
+.form-control,
+.form-select,
+.custom-select {
+    background-color: var(--ldg-field-bg);
+    border-color: var(--ldg-border);
+    color: var(--ldg-text);
+
+    &:focus {
+        background-color: var(--ldg-field-bg);
+        color: var(--ldg-text);
+        border-color: var(--ldg-accent);
+        // 2px, como o documento pede - o padrao do Bootstrap e uma sombra
+        // difusa de 4px, que le como brilho e nao como contorno.
+        box-shadow: 0 0 0 2px rgba(0, 122, 255, .45);
+    }
+
+    &::placeholder {
+        color: var(--ldg-text-muted);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Cartoes
+// -----------------------------------------------------------------------------
+//
+// "Card Container: Background #1E1E1E, Border-radius 8px, Padding 24px,
+// Box-shadow 0 4px 6px rgba(0,0,0,0.3)"
+.card {
+    background-color: var(--ldg-surface);
+    border: 1px solid var(--ldg-border);
+    border-radius: var(--bs-border-radius);
+    box-shadow: var(--ldg-shadow-card);
+
+    // O padding vive no .card-body: aplicar no .card empurraria tambem o
+    // cabecalho e a imagem de capa, que devem sangrar ate a borda.
+    > .card-body {
+        padding: 1.5rem;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Estados interativos
+// -----------------------------------------------------------------------------
+//
+// O design system nao cobre hover de link e de icone. A regra adotada e usar o
+// MESMO azul do destaque: com uma cor so para "interativo", o usuario aprende a
+// affordance uma vez e ela vale no site inteiro.
+a:hover,
+a:focus-visible {
+    color: var(--ldg-accent-hover);
+}
+
+// Icone dentro de link ou botao de acao acompanha o texto. Sem isto o icone
+// fica na cor antiga enquanto o rotulo ao lado muda - e o par parece quebrado.
+a:hover .icon,
+a:focus-visible .icon,
+.btn-link:hover .icon,
+.btn-link:focus-visible .icon {
+    color: var(--ldg-accent-hover);
+}
+
+// Foco visivel, em qualquer elemento alcancavel por teclado.
+//
+// Nao e enfeite: sem um anel consistente, navegar por Tab vira adivinhacao. O
+// :focus-visible so aparece para teclado, entao o clique de mouse continua
+// limpo.
+:focus-visible {
+    outline: 2px solid var(--ldg-accent);
+    outline-offset: 2px;
+}
+
+// Botoes de acao que sao so um icone.
+//
+// O Moodle usa .btn sem variante para os alternadores de gaveta e afins. Sem
+// variante, o Bootstrap deixa a cor do texto herdada - que no chrome escuro
+// resulta em icone cinza apagado. O design system pede "Icon Actions: flat
+// layout with color accent highlighting on state change".
+.btn.icon-no-margin,
+.drawer-toggler .btn,
+.btn-footer-popover {
+    color: var(--ldg-text);
+
+    &:hover,
+    &:focus-visible {
+        color: var(--ldg-accent-hover);
+    }
+}
+
+// O botao de ajuda do rodape vinha com a utility .bg-secondary, que e cinza.
+.btn-footer-popover {
+    background-color: var(--ldg-accent);
+    color: #ffffff;
+
+    &:hover,
+    &:focus-visible {
+        background-color: var(--ldg-accent-hover);
+        color: #ffffff;
+    }
+}
+
+// Avisos.
+//
+// O Bootstrap monta o .alert com --bs-alert-bg, e o alert-secondary recebe o
+// --bs-secondary-bg-subtle: #f5f6f8 no claro e #292a2c no escuro. Cinza nos dois
+// - o mesmo cinza ja reclamado nos botoes. A tela de inscricao usa justamente
+// esse, entao o aviso mais visto do site era o mais apagado.
+//
+// A cor deixa de carregar o significado sozinha: o fundo passa a ser a mesma
+// superficie dos cartoes, e quem diz o que e a mensagem e uma BARRA a esquerda.
+// Isso resolve dois problemas de uma vez - o cinza some, e o aviso para de
+// depender de fundo saturado, que no modo escuro sempre sai sujo.
+//
+// Barra, e nao so texto colorido: contraste de cor sozinho nao serve a quem nao
+// distingue as cores, e a barra da posicao e espessura alem do matiz.
+.alert {
+    background-color: var(--ldg-surface-raised);
+    border: 1px solid var(--ldg-border);
+    border-left: 4px solid var(--ldg-accent);
+    border-radius: 0.5rem;
+    color: var(--ldg-text);
+
+    .close,
+    .btn-close {
+        color: var(--ldg-text-muted);
+    }
+
+    a:not(.btn) {
+        color: var(--ldg-accent-text);
+    }
+}
+
+.alert-success {
+    border-left-color: var(--bs-success);
+}
+
+// O Moodle usa alert-error em alguns lugares antigos, e alert-danger nos novos.
+.alert-danger,
+.alert-error {
+    border-left-color: var(--bs-danger);
+}
+
+.alert-warning {
+    border-left-color: var(--bs-warning);
+}
+
+.alert-info {
+    border-left-color: var(--bs-info);
+}
+
+// O neutro fica com o azul da marca, e nao com cinza: e o aviso das telas de
+// inscricao, que e onde o aluno decide comprar.
+.alert-secondary,
+.alert-light,
+.alert-dark {
+    border-left-color: var(--ldg-accent);
+}

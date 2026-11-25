@@ -25,7 +25,7 @@
  * repository.js: sem transpilador, este e o arquivo que o servidor entrega.
  *
  * @module     paygw_mercadopago/gateways_modal
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

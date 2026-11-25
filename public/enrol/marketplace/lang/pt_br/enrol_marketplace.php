@@ -15,17 +15,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for enrol_marketplace.
+ * Strings do enrol_marketplace.
  *
  * @package    enrol_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['marketplace:config'] = 'Configurar a inscrição do marketplace';
 $string['pluginname'] = 'Acesso do marketplace';
-$string['pluginname_desc'] = 'Matricula alunos conforme os direitos de acesso do marketplace. A matrícula é criada quando uma oferta é comprada e suspensa quando o direito vence ou é cancelado.';
+$string['pluginname_desc'] = 'Matricula alunos conforme os direitos de acesso do marketplace que eles têm. Matrícula em curso nenhum é feita à mão: ela segue os direitos.';
+$string['privacy:metadata'] = 'O plugin Acesso do marketplace não guarda dados pessoais; ele age a partir dos direitos guardados pelo local_marketplace.';
 $string['tasksyncentitlements'] = 'Sincronizar direitos do marketplace';
-$string['marketplace:config'] = 'Configurar matrícula do marketplace';
-$string['privacy:metadata'] = 'O plugin Acesso do marketplace não armazena dados pessoais; ele age sobre os direitos mantidos pelo local_marketplace.';

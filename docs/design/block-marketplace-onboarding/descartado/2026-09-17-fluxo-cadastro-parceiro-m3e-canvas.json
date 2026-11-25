@@ -1,0 +1,352 @@
+{
+  "version": "1.0",
+  "project": "LDG Courses - Fluxo Cadastro Empresa Parceira",
+  "description": "11 telas do wizard de ativação de empresa parceira no block_marketplace - Bootstrap 5 + LDG tokens + Mustache",
+  "theme": {
+    "name": "LDG Studio (Boost + Bootstrap 5)",
+    "note": "Tema LDG estende Boost. Default = dark mode. Tokens CSS custom properties em [data-bs-theme]. Use classes Bootstrap 5 + tokens --ldg-*",
+    "tokens": {
+      "light": {
+        "--ldg-bg": "#f4f6fa",
+        "--ldg-surface": "#ffffff",
+        "--ldg-surface-raised": "#ffffff",
+        "--ldg-border": "#d5dce6",
+        "--ldg-text": "#0e192b",
+        "--ldg-text-muted": "#5a6b82",
+        "--ldg-accent": "#007aff",
+        "--ldg-accent-hover": "#3394ff",
+        "--ldg-accent-text": "#0062cc",
+        "--ldg-accent-fill": "#0062cc",
+        "--ldg-btn-fill": "#0062cc",
+        "--ldg-btn-fill-hover": "#007aff",
+        "--ldg-on-accent": "#ffffff",
+        "--ldg-status-success": "#1a7f37",
+        "--ldg-text-label": "#5c6a80",
+        "--ldg-field-bg": "#ffffff",
+        "--ldg-chrome-bg": "#0e192b",
+        "--ldg-chrome-bg-soft": "#16273f",
+        "--ldg-chrome-text": "#ffffff",
+        "--ldg-chrome-border": "rgba(255,255,255,0.12)",
+        "--ldg-shadow-card": "0 2px 8px rgba(14,25,43,0.08)",
+        "--ldg-shadow-raised": "0 8px 24px rgba(14,25,43,0.16)",
+        "--ldg-hover-overlay": "rgba(14,25,43,0.05)"
+      },
+      "dark": {
+        "--ldg-bg": "#121212",
+        "--ldg-surface": "#1e1e1e",
+        "--ldg-surface-raised": "#252525",
+        "--ldg-border": "#3a3b3c",
+        "--ldg-text": "#ffffff",
+        "--ldg-text-muted": "#b0b3b8",
+        "--ldg-accent": "#4b8eff",
+        "--ldg-accent-hover": "#65a1ff",
+        "--ldg-accent-text": "#4b8eff",
+        "--ldg-accent-fill": "#4b8eff",
+        "--ldg-btn-fill": "#4b8eff",
+        "--ldg-btn-fill-hover": "#65a1ff",
+        "--ldg-on-accent": "#00285c",
+        "--ldg-status-success": "#30d158",
+        "--ldg-text-label": "#8a8f94",
+        "--ldg-field-bg": "#1e1e1e",
+        "--ldg-chrome-bg": "#1e1e1e",
+        "--ldg-chrome-bg-soft": "#2a2a2a",
+        "--ldg-chrome-text": "#ffffff",
+        "--ldg-chrome-border": "#3a3b3c",
+        "--ldg-shadow-card": "0 4px 6px rgba(0,0,0,0.3)",
+        "--ldg-shadow-raised": "0 8px 24px rgba(0,0,0,0.6)",
+        "--ldg-hover-overlay": "rgba(255,255,255,0.06)"
+      },
+      "shared": {
+        "--ldg-navy": "#0e192b",
+        "--ldg-navy-soft": "#16273f",
+        "--ldg-accent-base": "#007aff",
+        "--ldg-secondary": "#8e24aa",
+        "--ldg-fs-hero": "4rem",
+        "--ldg-fs-h1": "3rem",
+        "--ldg-fs-h2": "2.25rem",
+        "--ldg-fs-h3": "1.5rem",
+        "--ldg-fs-body": "1rem",
+        "--ldg-fs-caption": "0.875rem",
+        "--ldg-space": "0.5rem",
+        "--ldg-gutter": "1.5rem",
+        "--ldg-container": "1440px",
+        "--ldg-navbar-height": "64px",
+        "--ldg-font-sans": "\"Inter\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif",
+        "--ldg-font-mono": "\"JetBrains Mono\", sfmono-regular, Menlo, Monaco, Consolas, monospace",
+        "--ldg-border-radius": "0.5rem",
+        "--ldg-border-radius-sm": "0.25rem",
+        "--ldg-border-radius-lg": "1rem",
+        "--ldg-line-height-base": "1.6",
+        "--ldg-headings-font-weight": "600"
+      }
+    },
+    "bootstrap": {
+      "version": "5.3",
+      "components": ["card", "button", "form", "progress", "badge", "table", "modal", "accordion", "dropdown", "toast"],
+      "utilities": ["d-flex", "gap", "p-*", "m-*", "text-*", "bg-*", "border-*", "rounded-*", "shadow-*", "w-*", "h-*"]
+    },
+    "moodle": {
+      "templates": "Mustache",
+      "renderer": "templatable classes + renderer.php",
+      "amd": "ESM (export const init)",
+      "blocks": "block_marketplace",
+      "theme": "theme_ldg (parent: boost)"
+    }
+  },
+  "screens": [
+    {
+      "id": "D1",
+      "name": "Wizard de Ativação - Dashboard",
+      "description": "Bloco no Dashboard (/my) para empresa em ativação. Progresso geral, checklist 6 etapas, botão Continuar por etapa.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/wizard_dashboard",
+      "context": {
+        "company": { "name": "TechEdu Ltda", "status": "pending" },
+        "progress": { "current": 1, "total": 6, "percent": 17 },
+        "steps": [
+          { "num": 1, "label": "Conta criada e e-mail confirmado", "state": "done", "href": null },
+          { "num": 2, "label": "Termos de contrato aceitos", "state": "current", "href": "/blocks/marketplace/terms.php" },
+          { "num": 3, "label": "Documento CNPJ ou CPF", "state": "pending", "href": "/blocks/marketplace/document.php" },
+          { "num": 4, "label": "Conta de pagamento vinculada", "state": "blocked", "reason": "Requer etapas 2 e 3", "href": "/blocks/marketplace/gateway.php" },
+          { "num": 5, "label": "Plano escolhido", "state": "blocked", "reason": "Requer etapa 4", "href": "/blocks/marketplace/plan.php" },
+          { "num": 6, "label": "Aprovação do ADMIN", "state": "blocked", "reason": "Requer etapas 1-5", "href": null }
+        ],
+        "helpItems": [
+          "Cada etapa desbloqueia a próxima",
+          "Plano Free: sem hospedagem de vídeos",
+          "Planos pagos: hospedagem nativa ou BYOS",
+          "Aprovação manual enquanto testamos"
+        ],
+        "cta": { "label": "Aceitar termos de contrato", "href": "/blocks/marketplace/terms.php", "variant": "primary" }
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Painel Ativo - Dashboard",
+      "description": "Dashboard da empresa aprovada. 3 cards de métricas + ações rápidas + plano atual.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/dashboard_active",
+      "context": {
+        "company": { "name": "TechEdu Ltda", "status": "active", "plan": "Hospedagem Nativa 4K (R$100/mês)", "commission": "12%", "maxResolution": "4K", "storage": "Ilimitado" },
+        "metrics": [
+          { "label": "Alunos matriculados", "value": "1.234", "icon": "fa-users", "href": "/local/marketplace/report.php?tab=students", "trend": "+12%", "trendClass": "text-success" },
+          { "label": "Assinaturas ativas", "value": "567", "icon": "fa-credit-card", "href": "/local/marketplace/report.php?tab=subscriptions", "trend": "+8%", "trendClass": "text-success" },
+          { "label": "Cursos vendidos", "value": "89", "icon": "fa-chart-line", "href": "/local/marketplace/report.php?tab=courses", "trend": "+5%", "trendClass": "text-success" }
+        ],
+        "actions": [
+          { "label": "Criar novo curso", "href": "/course/edit.php", "variant": "primary" },
+          { "label": "Criar oferta", "href": "/local/marketplace/offer.php", "variant": "outline-primary" },
+          { "label": "Relatório completo", "href": "/local/marketplace/report.php", "variant": "outline-secondary" }
+        ]
+      }
+    },
+    {
+      "id": "D3",
+      "name": "Etapa: Conta de Pagamento",
+      "description": "Configuração de gateway por país. Estados: connected/available. Bootstrap 5 card + badge.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/step_gateway",
+      "context": {
+        "progress": { "current": 4, "total": 6 },
+        "gateways": [
+          { "name": "Mercado Pago", "countries": ["Brasil"], "status": "connected", "statusLabel": "Vinculado e ativo", "badgeClass": "bg-success", "actions": [{ "label": "Gerenciar", "href": "/local/marketplace/manage_gateway.php?gw=mercadopago", "variant": "outline-primary" }] },
+          { "name": "Asaas", "countries": ["Brasil"], "status": "available", "statusLabel": "Disponível", "badgeClass": "bg-secondary", "actions": [{ "label": "Conectar", "href": "/local/marketplace/connect_gateway.php?gw=asaas", "variant": "primary" }] },
+          { "name": "Pagar.me", "countries": ["Brasil"], "status": "available", "statusLabel": "Disponível", "badgeClass": "bg-secondary", "actions": [{ "label": "Conectar", "href": "/local/marketplace/connect_gateway.php?gw=pagarme", "variant": "primary" }] }
+        ],
+        "nextCta": { "label": "Escolher plano", "href": "/blocks/marketplace/plan.php", "variant": "primary", "disabled": false }
+      }
+    },
+    {
+      "id": "D4",
+      "name": "Etapa: Escolha do Plano",
+      "description": "4 cards de plano usando Bootstrap 5 card + badge. Free, Nativo HD (R$50), Nativo 4K (R$100), BYOS (disabled).",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/step_plan",
+      "context": {
+        "progress": { "current": 5, "total": 6 },
+        "plans": [
+          { "id": "free", "name": "Free", "price": "R$ 0/mês", "description": "Para testar a plataforma sem hospedar vídeos", "badge": null, "features": ["Cursos ilimitados", "Vendas com split (comissão 20%)", "Sem hospedagem de vídeo", "Suporte comunitário"], "restrictions": ["Não pode hospedar vídeos na plataforma", "Apenas links externos (YouTube, Vimeo)"], "cta": { "label": "Selecionar Free", "variant": "outline-primary" } },
+          { "id": "native_720p", "name": "Hospedagem Nativa - HD", "price": "R$ 50/mês", "description": "Hospede seus vídeos na nossa infraestrutura", "badge": null, "features": ["Vídeos até 1024px (720p)", "Streaming adaptativo", "Comissão: 15%", "Suporte por e-mail"], "restrictions": [], "cta": { "label": "Selecionar HD", "variant": "primary" } },
+          { "id": "native_4k", "name": "Hospedagem Nativa - 4K", "price": "R$ 100/mês", "description": "Qualidade máxima para seus conteúdos", "badge": { "label": "Recomendado", "class": "bg-warning text-dark" }, "features": ["Vídeos até 4K", "Streaming adaptativo", "Comissão: 12%", "Suporte prioritário"], "restrictions": [], "cta": { "label": "Selecionar 4K", "variant": "primary" } },
+          { "id": "byos", "name": "Profissional BYOS", "price": "Sob consulta", "description": "Hospedagem na sua infraestrutura (Bring Your Own Storage)", "badge": { "label": "Em breve", "class": "bg-secondary" }, "features": ["Sua nuvem, seu controle", "Comissão: 8%", "Integração S3/Wasabi/etc", "Suporte dedicado"], "restrictions": ["Requer configuração técnica avançada", "Em fase de testes - indisponível no momento"], "cta": { "label": "Em breve", "variant": "secondary", "disabled": true } }
+        ]
+      }
+    },
+    {
+      "id": "D5",
+      "name": "Etapa: Documento CNPJ/CPF",
+      "description": "Formulário Bootstrap 5 com radio group CNPJ/CPF, máscara, validação. Tokens LDG para cores.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/step_document",
+      "context": {
+        "progress": { "current": 3, "total": 6 },
+        "documentTypes": [
+          { "value": "cnpj", "label": "CNPJ (Pessoa Jurídica)", "placeholder": "00.000.000/0000-00", "mask": "cnpj" },
+          { "value": "cpf", "label": "CPF (Pessoa Física)", "placeholder": "000.000.000-00", "mask": "cpf", "note": "Pessoa física pode vender cursos normalmente" }
+        ],
+        "formFields": [
+          { "type": "text", "name": "document", "label": "Número do documento", "placeholder": "00.000.000/0000-00", "required": true, "validation": "cnpj|cpf" },
+          { "type": "text", "name": "companyName", "label": "Razão social / Nome completo", "required": true },
+          { "type": "text", "name": "tradeName", "label": "Nome fantasia (opcional)", "required": false },
+          { "type": "select", "name": "country", "label": "País", "options": [{ "value": "BR", "label": "Brasil" }], "required": true }
+        ],
+        "cta": { "label": "Salvar e continuar", "variant": "primary" },
+        "alert": { "variant": "info", "text": "O documento será validado automaticamente. Para CNPJ, consultamos a Receita Federal. Para CPF, validamos o dígito verificador." }
+      }
+    },
+    {
+      "id": "D6",
+      "name": "Etapa: Termos de Contrato",
+      "description": "Texto scrollable em card, checkbox obrigatório habilita botão. Bootstrap 5 form-check.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/step_terms",
+      "context": {
+        "progress": { "current": 2, "total": 6 },
+        "sections": [
+          { "heading": "1. Objeto", "text": "Estes termos regem a parceria entre a LDG Courses e a Empresa Parceira para venda de cursos online na plataforma." },
+          { "heading": "2. Comissão e Repasses", "text": "A plataforma retém a comissão conforme o plano escolhido (12-20%). Repasses ocorrem mensalmente via gateway configurado." },
+          { "heading": "3. Hospedagem de Conteúdo", "text": "Planos pagos incluem hospedagem nativa com streaming adaptativo. Plano Free permite apenas links externos." },
+          { "heading": "4. Responsabilidades", "text": "A empresa é responsável pelo conteúdo dos cursos, direitos autorais e conformidade legal." },
+          { "heading": "5. Vigência e Rescisão", "text": "Contrato por prazo indeterminado. Qualquer parte pode rescindir com 30 dias de antecedência." },
+          { "heading": "6. LGPD e Dados", "text": "Ambas as partes comprometem-se com a LGPD. Dados dos alunos são controlados pela plataforma." }
+        ],
+        "checkbox": { "name": "termsAccepted", "label": "Li e concordo com os Termos de Parceria LDG Courses", "required": true },
+        "cta": { "label": "Aceitar e continuar", "variant": "primary", "disabled": true }
+      }
+    },
+    {
+      "id": "D7",
+      "name": "Aprovação - Visão Admin",
+      "description": "Tabela Bootstrap 5 com ações. Badge modo manual/auto. Modal para nota ao aprovar/reprovar.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/admin_approval",
+      "context": {
+        "approvalMode": "manual",
+        "modeBadge": { "label": "Modo: Manual", "class": "bg-warning text-dark" },
+        "alert": { "variant": "warning", "text": "⚙️ Modo de aprovação: Manual (padrão). Para ativar automático, altere approvalmode em Admin > Plugins > Local > Marketplace." },
+        "table": {
+          "columns": ["Empresa", "Plano", "Documento", "Gateway", "Submetido em", "Prioridade", "Ações"],
+          "rows": [
+            { "cells": ["TechEdu Ltda", "Nativo 4K (R$100)", "CNPJ ✓", "Mercado Pago ✓", "2026-09-15 14:30", { "label": "Alta", "class": "bg-danger text-white" }, { "actions": [{ "label": "Ver", "href": "/local/marketplace/admin_company.php?id=12", "variant": "outline-secondary", "size": "sm" }, { "label": "Aprovar", "variant": "success", "size": "sm" }, { "label": "Reprovar", "variant": "outline-danger", "size": "sm" }] }] },
+            { "cells": ["Maria Silva Cursos", "Free", "CPF ✓", "Asaas ✓", "2026-09-16 09:15", { "label": "Normal", "class": "bg-secondary" }, { "actions": [{ "label": "Ver", "href": "/local/marketplace/admin_company.php?id=13", "variant": "outline-secondary", "size": "sm" }, { "label": "Aprovar", "variant": "success", "size": "sm" }, { "label": "Reprovar", "variant": "outline-danger", "size": "sm" }] }] },
+            { "cells": ["StartupXYZ SA", "Nativo HD (R$50)", "CNPJ ✓", "Pagar.me ✓", "2026-09-16 16:45", { "label": "Alta", "class": "bg-danger text-white" }, { "actions": [{ "label": "Ver", "href": "/local/marketplace/admin_company.php?id=14", "variant": "outline-secondary", "size": "sm" }, { "label": "Aprovar", "variant": "success", "size": "sm" }, { "label": "Reprovar", "variant": "outline-danger", "size": "sm" }] }] }
+          ]
+        },
+        "modalNote": "Ao clicar em Aprovar/Reprovar, abre modal para nota obrigatória. Empresa aprovada vira status=active, categoria torna-se visível."
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Bloco no Curso - Admin",
+      "description": "Bloco marketplace no curso para admin. Métricas do curso + ações configuração.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/course_block_admin",
+      "context": {
+        "courseName": "React Avançado",
+        "company": { "name": "TechEdu Ltda", "status": "Ativa", "planBadge": { "label": "Plano Nativo 4K", "class": "bg-primary" } },
+        "metrics": [
+          { "label": "Alunos matriculados", "value": "234" },
+          { "label": "Assinaturas ativas", "value": "156" },
+          { "label": "Vendas avulsas", "value": "78" },
+          { "label": "Receita do curso", "value": "R$ 45.670" }
+        ],
+        "actions": [
+          { "label": "Editar oferta", "href": "/local/marketplace/offer.php?id=5", "variant": "outline-primary" },
+          { "label": "Relatório detalhado", "href": "/local/marketplace/report.php?course=42", "variant": "outline-secondary" },
+          { "label": "Configurar gateway", "href": "/local/marketplace/manage_gateway.php", "variant": "outline-secondary" }
+        ]
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Bloco no Curso - Empresa Cadastrando",
+      "description": "Bloco compacto: etapa pendente + progress steps visual + link Mais informações.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/course_block_pending",
+      "context": {
+        "courseName": "React Avançado",
+        "currentStep": { "num": 2, "label": "Termos de contrato", "total": 6 },
+        "cta": { "label": "Mais informações", "href": "/blocks/marketplace/onboarding.php", "variant": "primary" },
+        "progressSteps": [
+          { "num": 1, "label": "Conta", "state": "done" },
+          { "num": 2, "label": "Termos", "state": "current" },
+          { "num": 3, "label": "Documento", "state": "pending" },
+          { "num": 4, "label": "Pagamento", "state": "blocked" },
+          { "num": 5, "label": "Plano", "state": "blocked" },
+          { "num": 6, "label": "Aprovação", "state": "blocked" }
+        ]
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Bloco no Curso - Empresa Ativa",
+      "description": "Métricas escopadas ao curso + ações. Bootstrap 5 card grid.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/course_block_active",
+      "context": {
+        "courseName": "React Avançado",
+        "metrics": [
+          { "label": "Alunos matriculados", "value": "234", "trend": "+12%", "trendClass": "text-success" },
+          { "label": "Assinaturas ativas", "value": "156", "trend": "+8%", "trendClass": "text-success" },
+          { "label": "Vendas avulsas", "value": "78", "trend": "+5%", "trendClass": "text-success" },
+          { "label": "Receita líquida", "value": "R$ 38.820", "trend": "+10%", "trendClass": "text-success" }
+        ],
+        "actions": [
+          { "label": "Ver alunos", "href": "/local/marketplace/report.php?course=42&tab=students", "variant": "outline-secondary" },
+          { "label": "Ver assinaturas", "href": "/local/marketplace/report.php?course=42&tab=subscriptions", "variant": "outline-secondary" },
+          { "label": "Editar oferta", "href": "/local/marketplace/offer.php?id=5", "variant": "primary" }
+        ]
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Bloco no Curso - Aluno",
+      "description": "Assinatura ativa, próximas faturas (table), histórico, nota de acesso.",
+      "viewport": { "width": 412, "height": 892 },
+      "viewportDesktop": { "width": 1280, "height": 800 },
+      "template": "block_marketplace/course_block_student",
+      "context": {
+        "courseName": "React Avançado",
+        "subscription": { "plan": "Plano Mensal - React Avançado", "status": "Ativa", "statusClass": "bg-success", "nextBilling": "2026-10-15", "price": "R$ 49,90/mês" },
+        "invoices": [
+          { "date": "2026-10-15", "amount": "R$ 49,90", "status": "Agendada", "statusClass": "text-warning" },
+          { "date": "2026-11-15", "amount": "R$ 49,90", "status": "Agendada", "statusClass": "text-warning" }
+        ],
+        "historyCta": { "label": "Ver histórico completo", "href": "/local/marketplace/my_purchases.php", "variant": "outline-secondary" },
+        "accessNote": "Vitalício enquanto assinatura ativa. Se a assinatura for cancelada, o acesso permanece até o fim do período pago."
+      }
+    }
+  ],
+  "navigation": {
+    "flow": "D1 -> D6 -> D5 -> D3 -> D4 -> D7 -> D2",
+    "courseBlockFlow": "C2 (em cadastro) -> C1 (admin) / C3 (empresa ativa) / C4 (aluno)",
+    "deepLinks": {
+      "D1_step2": "/blocks/marketplace/terms.php",
+      "D1_step3": "/blocks/marketplace/document.php",
+      "D1_step4": "/blocks/marketplace/gateway.php",
+      "D1_step5": "/blocks/marketplace/plan.php",
+      "admin_approve": "/local/marketplace/admin_company.php"
+    }
+  },
+  "implementation": {
+    "templates": "dev/public/blocks/marketplace/templates/*.mustache",
+    "renderer": "dev/public/blocks/marketplace/classes/renderer.php",
+    "outputClasses": "dev/public/blocks/marketplace/classes/output/*.php",
+    "styles": "dev/public/blocks/marketplace/styles.css (escopo .block_marketplace, usa tokens --ldg-*)",
+    "amd": "dev/public/blocks/marketplace/amd/src/*.js (ESM export const init)",
+    "lang": "dev/public/blocks/marketplace/lang/{en,pt_br,es}/block_marketplace.php",
+    "responsive": "Mobile-first: coluna única ≤412px, grid ≥768px, container ≤1440px",
+    "accessibility": "Contraste AA, focus-visible, alvos ≥44px, ARIA labels, landmarks"
+  },
+  "notes": "Todas as telas usam Bootstrap 5 components + LDG tokens (--ldg-*). Funcionam em light/dark via [data-bs-theme]. Templates Mustache renderizados via templatable classes. Styles.css escopado em .block_marketplace."
+}

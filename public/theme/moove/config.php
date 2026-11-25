@@ -29,7 +29,7 @@ require_once(__DIR__ . '/lib.php');
 $THEME->name = 'moove';
 $THEME->sheets = [];
 $THEME->editor_sheets = [];
-$THEME->editor_scss = ['editor'];
+// LDG: editor_scss removido. O upstream declara ['editor'] sem ter o arquivo.
 $THEME->usefallback = true;
 $THEME->scss = function ($theme) {
     return theme_moove_get_main_scss_content($theme);

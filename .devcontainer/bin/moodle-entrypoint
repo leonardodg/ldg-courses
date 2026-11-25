@@ -150,10 +150,29 @@ fi
 # ======================== PERMISSIONS ========================
 echo "🔧 Adjusting file permissions..."
 
-CURRENT_PERM=$(stat -c "%a" /var/www/moodledata)
-if [ "$CURRENT_PERM" != "755" ]; then
-    find /var/www/moodledata -type d -exec chmod 755 {} + 2>/dev/null || true
-    find /var/www/moodledata -type f -exec chmod 644 {} + 2>/dev/null || true
+# SO EM DESENVOLVIMENTO. O bloco antigo normalizava para 755/644 em qualquer
+# ambiente, mas so rodava se a RAIZ do dataroot estivesse fora do padrao - o que
+# quase nunca acontece. Na pratica era codigo morto, e a VPS nunca o executou.
+#
+# Consertar o guard sem mexer no alvo teria ligado, em producao, um chmod
+# recursivo no dataroot inteiro a cada boot. Por isso duas mudancas juntas:
+#
+#   1. Escopo: development. Em producao ninguem escreve no dataroot alem do
+#      proprio www-data, entao nao ha o que normalizar.
+#   2. Alvo 2775/664 em vez de 755/644, porque local o PHPUnit e os scripts de
+#      CLI rodam como "-u 1000:33" (uid do host, grupo www-data) para os arquivos
+#      gerados ficarem editaveis no host. Com 755 o grupo so le, e o PHPUnit
+#      falha ao escrever no dataroot. O setgid faz o que for criado ali herdar o
+#      grupo www-data, senao o arquivo sai com grupo do host e o Apache perde
+#      acesso no boot seguinte.
+#
+# O guard olha a ARVORE, nao so a raiz; -print -quit para no primeiro fora do
+# padrao, entao a checagem custa quase nada mesmo num dataroot grande.
+if [[ "${ENVIRONMENT}" =~ ^(development|dev)$ ]] \
+   && { [ -n "$(find /var/www/moodledata -type d ! -perm -g+w -print -quit 2>/dev/null)" ] \
+        || [ -n "$(find /var/www/moodledata -type f ! -perm -g+w -print -quit 2>/dev/null)" ]; }; then
+    find /var/www/moodledata -type d -exec chmod 2775 {} + 2>/dev/null || true
+    find /var/www/moodledata -type f -exec chmod 664 {} + 2>/dev/null || true
     echo "✅ Adjusted permissions CHMOD!"
 fi
 
@@ -162,7 +181,19 @@ fi
 # reescreve o dono dos arquivos do usuário (inclusive .git) para www-data,
 # quebrando o git com "dubious ownership". O Moodle só escreve no dataroot;
 # o diretório de código ele apenas lê, e 644/755 já bastam para o Apache.
-if [ "$(stat -c '%U' /var/www/moodledata)" != "www-data" ]; then
+#
+# Este vale em TODOS os ambientes, ao contrario do chmod acima: dono errado
+# derruba o site, e o conserto e o mesmo em qualquer lugar.
+#
+# O guard tinha o mesmo defeito do outro, e este ja causou queda: um CLI rodado
+# como root dentro do container criou cache/cachestore_file com dono root, a raiz
+# continuou www-data, o guard deu como tudo certo e o Apache passou a responder
+# 500 com "invaliddatarootpermissions" - o site ficou fora do ar ate alguem rodar
+# o chown na mao. Procurar o primeiro arquivo com dono errado detecta esse caso.
+#
+# Quando nao ha nada errado - o normal - o find para no primeiro item e o custo
+# no boot e desprezivel, inclusive na VPS.
+if [ -n "$(find /var/www/moodledata ! -user www-data -print -quit 2>/dev/null)" ]; then
     chown -R www-data:www-data /var/www/moodledata 2>/dev/null || true
     echo "✅ Adjusted permissions CHOWN!"
 fi

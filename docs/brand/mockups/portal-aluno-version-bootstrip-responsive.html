@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeoDG Course Portal • Ciência dos Aromas & Software (Bootstrap 5.3.3)</title>
+  
+  <!-- Twitter Bootstrap 5.3.3 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  />
+  
+  <!-- Bootstrap Icons 1.11.3 -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  />
+
+  <!-- Tipografia: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ==========================================================================
+       LeoDG Course Portal - Custom Design System & Bootstrap 5.3.3 Overrides
+       ========================================================================== */
+    :root {
+      --leodg-bg-main: #121212;
+      --leodg-bg-card: #1E1E1E;
+      --leodg-bg-subtle: #252525;
+      --leodg-bg-darkest: #0E0E0E;
+      --leodg-border-color: #3A3B3C;
+      --leodg-primary: #4b8eff;
+      --leodg-primary-hover: #3d7ce6;
+      --leodg-primary-dark: #00285c;
+      --leodg-success: #30D158;
+      --leodg-text-muted: #B0B3B8;
+      --leodg-text-dim: #6C7075;
+      --leodg-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --leodg-font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    body {
+      background-color: var(--leodg-bg-main);
+      color: #FFFFFF;
+      font-family: var(--leodg-font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    .font-mono {
+      font-family: var(--leodg-font-mono) !important;
+    }
+
+    /* Barras de Rolagem Personalizadas */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--leodg-bg-main);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--leodg-border-color);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--leodg-text-dim);
+    }
+
+    /* Cabeçalho da Plataforma */
+    .portal-header {
+      background-color: var(--leodg-bg-card);
+      border-bottom: 1px solid var(--leodg-border-color);
+      height: 56px;
+      z-index: 1040;
+    }
+
+    /* Container Principal */
+    .portal-wrapper {
+      flex: 1;
+      display: flex;
+      width: 100%;
+      position: relative;
+    }
+
+    /* Barra Lateral Esquerda (Navegação & Perfil) */
+    .portal-left-sidebar {
+      width: 280px;
+      background-color: var(--leodg-bg-card);
+      border-right: 1px solid var(--leodg-border-color);
+      height: calc(100vh - 56px);
+      position: sticky;
+      top: 56px;
+      display: flex;
+      flex-direction: column;
+      transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1020;
+    }
+    .portal-left-sidebar.collapsed {
+      margin-left: -280px;
+    }
+
+    /* Barra Lateral Direita (Grade de Módulos) */
+    .portal-right-sidebar {
+      width: 360px;
+      background-color: var(--leodg-bg-card);
+      border-left: 1px solid var(--leodg-border-color);
+      height: calc(100vh - 56px);
+      position: sticky;
+      top: 56px;
+      display: flex;
+      flex-direction: column;
+      transition: margin-right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1020;
+    }
+    .portal-right-sidebar.collapsed {
+      margin-right: -360px;
+    }
+
+    /* Área Central de Trabalho */
+    .portal-main-canvas {
+      flex: 1;
+      min-width: 0;
+      padding: 1.5rem;
+      background-color: var(--leodg-bg-main);
+    }
+
+    @media (max-width: 991.98px) {
+      .portal-main-canvas {
+        padding: 0 0 5rem 0;
+        max-width: 540px;
+        margin: 0 auto;
+      }
+    }
+
+    /* Links de Navegação do Aluno */
+    .nav-btn-link {
+      color: var(--leodg-text-muted);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.825rem;
+      font-weight: 500;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-btn-link:hover {
+      color: #FFF;
+      background-color: var(--leodg-bg-subtle);
+    }
+    .nav-btn-link.active {
+      color: #FFF;
+      background-color: var(--leodg-bg-subtle);
+      border-left: 4px solid var(--leodg-primary);
+      font-weight: 600;
+    }
+
+    /* Player de Vídeo 16:9 */
+    .video-player-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background-color: var(--leodg-bg-darkest);
+      border: 1px solid var(--leodg-border-color);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+
+    .video-poster-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.75) contrast(1.05);
+      transition: transform 0.4s ease;
+    }
+    .video-player-container:hover .video-poster-img {
+      transform: scale(1.02);
+    }
+
+    .video-gradient-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.6) 100%);
+      pointer-events: none;
+    }
+
+    .central-play-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background-color: var(--leodg-primary);
+      color: var(--leodg-primary-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      border: 2px solid rgba(255,255,255,0.4);
+      box-shadow: 0 0 25px rgba(75, 142, 255, 0.6);
+      cursor: pointer;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+      z-index: 20;
+    }
+    .central-play-button:hover {
+      transform: translate(-50%, -50%) scale(1.08);
+      background-color: #65a1ff;
+    }
+
+    .video-subtitles {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.88);
+      color: #FFFFFF;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid rgba(255,255,255,0.15);
+      z-index: 20;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .video-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.7) 70%, transparent 100%);
+      padding: 12px 16px 8px 16px;
+      z-index: 25;
+    }
+
+    .video-seek-bar {
+      width: 100%;
+      height: 6px;
+      background-color: rgba(255,255,255,0.25);
+      border-radius: 3px;
+      cursor: pointer;
+      position: relative;
+      transition: height 0.15s ease;
+    }
+    .video-seek-bar:hover {
+      height: 8px;
+    }
+    .video-seek-progress {
+      height: 100%;
+      background-color: var(--leodg-primary);
+      border-radius: 3px;
+      width: 32.4%;
+      position: relative;
+    }
+    .video-seek-handle {
+      position: absolute;
+      right: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 10px;
+      height: 10px;
+      background: #FFFFFF;
+      border-radius: 50%;
+    }
+
+    /* Terminal de Código macOS */
+    .code-box-container {
+      background-color: var(--leodg-bg-darkest);
+      border: 1px solid var(--leodg-border-color);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .code-box-header {
+      background-color: var(--leodg-bg-card);
+      border-bottom: 1px solid var(--leodg-border-color);
+      padding: 8px 16px;
+    }
+    .window-dots {
+      display: inline-flex;
+      gap: 6px;
+    }
+    .window-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* Accordion de Módulos (Sidebar Direita) */
+    .modules-accordion .accordion-item {
+      background-color: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(58, 59, 60, 0.4);
+    }
+    .modules-accordion .accordion-button {
+      background-color: var(--leodg-bg-card);
+      color: #FFF;
+      font-size: 0.85rem;
+      padding: 12px 16px;
+      box-shadow: none;
+    }
+    .modules-accordion .accordion-button:not(.collapsed) {
+      background-color: var(--leodg-bg-subtle);
+      color: #FFF;
+    }
+    .modules-accordion .accordion-button::after {
+      filter: invert(1);
+    }
+    .lesson-item-btn {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      padding: 10px 16px;
+      font-size: 0.8rem;
+      color: var(--leodg-text-muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      border-bottom: 1px solid #2B2B2B;
+      transition: background-color 0.15s;
+      cursor: pointer;
+    }
+    .lesson-item-btn:hover {
+      background-color: var(--leodg-bg-card);
+      color: #FFF;
+    }
+    .lesson-item-btn.active {
+      background-color: var(--leodg-bg-subtle);
+      border-left: 4px solid var(--leodg-primary);
+      color: #FFF;
+      font-weight: 600;
+    }
+
+    /* Navegação Inferior Mobile */
+    .mobile-bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background-color: rgba(30, 30, 30, 0.96);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--leodg-border-color);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 1030;
+      padding: 0 8px;
+    }
+    .mobile-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--leodg-text-muted);
+      font-size: 0.65rem;
+      text-decoration: none;
+      gap: 3px;
+    }
+    .mobile-nav-item.active {
+      color: var(--leodg-primary);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =========================================================================
+       1. Top Portal Header
+       ========================================================================= -->
+  <header class="portal-header d-flex align-items-center justify-content-between px-3 px-lg-4 sticky-top">
+    <div class="d-flex align-items-center gap-3">
+      <!-- Toggle Sidebar Esquerda (Desktop) -->
+      <button
+        id="btn-toggle-left-sidebar"
+        class="btn btn-outline-secondary btn-sm d-none d-lg-inline-flex align-items-center justify-content-center p-2 text-white border-0 bg-dark"
+        title="Alternar barra de navegação"
+      >
+        <i class="bi bi-layout-sidebar-inset"></i>
+      </button>
+
+      <!-- Toggle Drawer Aluno (Mobile) -->
+      <button
+        class="btn btn-outline-secondary btn-sm d-lg-none p-1 text-white border-0"
+        type="button"
+        data-bs-toggle="offcanvas"
+        data-bs-target="#studentDrawerMobile"
+      >
+        <i class="bi bi-list fs-5"></i>
+      </button>
+
+      <!-- Logo e Título do Curso -->
+      <div class="d-flex align-items-center gap-2">
+        <div class="p-1.5 rounded-2 bg-primary bg-opacity-25 border border-primary border-opacity-50 text-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+          <i class="bi bi-terminal-fill fs-6"></i>
+        </div>
+        <div>
+          <div class="d-flex align-items-center gap-1.5">
+            <span class="fw-bold text-white fs-6 tracking-tight">LeoDG Course Portal</span>
+            <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-50 font-mono" style="font-size: 0.65rem;">PRO</span>
+          </div>
+          <div class="text-secondary small font-mono d-none d-md-block" style="font-size: 0.7rem; line-height: 1;">
+            SUA SALA DE AULA PARTICULAR E RECURSOS PREMIUM DE PRODUÇÃO
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="d-flex align-items-center gap-2">
+      <button
+        id="btn-toggle-right-sidebar"
+        class="btn btn-sm btn-outline-secondary text-white d-none d-xl-inline-flex align-items-center gap-1.5 px-3 py-1.5 border-secondary"
+        style="font-size: 0.8rem;"
+      >
+        <i class="bi bi-collection-play text-primary"></i>
+        <span>Módulos</span>
+      </button>
+
+      <button
+        class="btn btn-sm btn-outline-success text-success d-inline-flex align-items-center gap-1.5 px-2.5 py-1.5"
+        style="font-size: 0.8rem;"
+        data-bs-toggle="modal"
+        data-bs-target="#certificateModal"
+      >
+        <i class="bi bi-award-fill"></i>
+        <span class="d-none d-sm-inline">Certificado VIP</span>
+      </button>
+
+      <button
+        id="btn-theme-toggle"
+        class="btn btn-sm btn-outline-secondary text-secondary p-2 border-0"
+        title="Tema Escuro"
+      >
+        <i class="bi bi-moon-stars text-info"></i>
+      </button>
+
+      <button
+        class="btn btn-sm btn-outline-secondary text-secondary d-none d-sm-inline-flex align-items-center gap-1 px-2.5 py-1.5"
+        style="font-size: 0.8rem;"
+        onclick="alert('Progresso gravado com sucesso.')"
+      >
+        <i class="bi bi-x-lg"></i>
+        <span>Fechar Aula</span>
+      </button>
+    </div>
+  </header>
+
+
+  <!-- =========================================================================
+       2. Layout 3 Colunas (Wrapper Desktop)
+       ========================================================================= -->
+  <div class="portal-wrapper">
+
+    <!-- Coluna 1: Sidebar Esquerda (Navegação & Perfil) -->
+    <aside id="portal-left-sidebar" class="portal-left-sidebar d-none d-lg-flex">
+      <div class="p-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+        <span class="text-secondary font-mono small text-uppercase fw-bold" style="font-size: 0.7rem;">Navegação</span>
+        <button id="btn-collapse-left" class="btn btn-sm text-secondary p-0 border-0" title="Recolher painel">
+          <i class="bi bi-chevron-bar-left"></i>
+        </button>
+      </div>
+
+      <!-- Card do Aluno -->
+      <div class="p-3 border-bottom border-secondary border-opacity-25">
+        <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-secondary border-opacity-25">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="text-secondary font-mono text-uppercase fw-bold" style="font-size: 0.65rem;">
+              <i class="bi bi-person-badge text-primary me-1"></i> Área do Aluno
+            </span>
+            <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-25 font-mono" style="font-size: 0.6rem;">
+              VIP PASS
+            </span>
+          </div>
+
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="rounded-circle bg-primary text-dark fw-bold d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-size: 0.8rem;">
+              LD
+            </div>
+            <div class="overflow-hidden">
+              <div class="fw-bold text-white small text-truncate">Olá, Dev!</div>
+              <div class="text-secondary font-mono" style="font-size: 0.7rem;">Lucas Dorneles</div>
+            </div>
+          </div>
+
+          <div class="pt-1">
+            <div class="d-flex justify-content-between text-secondary mb-1" style="font-size: 0.7rem;">
+              <span>Progresso Geral</span>
+              <span class="text-info font-mono fw-bold">65% Concluído</span>
+            </div>
+            <div class="progress" style="height: 6px; background-color: #252525;">
+              <div class="progress-bar bg-primary" role="progressbar" style="width: 65%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Menus -->
+      <nav class="p-2 flex-grow-1 overflow-y-auto">
+        <button class="nav-btn-link active mb-1" onclick="switchTab('content-tab')">
+          <span class="d-flex align-items-center gap-2.5">
+            <i class="bi bi-play-circle-fill text-primary"></i>
+            <span>Assistir Aulas</span>
+          </span>
+          <span class="p-1 rounded-circle bg-primary"></span>
+        </button>
+
+        <button class="nav-btn-link mb-1" onclick="switchTab('materials-tab')">
+          <span class="d-flex align-items-center gap-2.5">
+            <i class="bi bi-folder-fill text-secondary"></i>
+            <span>Material de Apoio</span>
+          </span>
+          <span class="badge bg-secondary text-white font-mono" style="font-size: 0.65rem;">3</span>
+        </button>
+
+        <button class="nav-btn-link mb-1" data-bs-toggle="modal" data-bs-target="#certificateModal">
+          <span class="d-flex align-items-center gap-2.5">
+            <i class="bi bi-award-fill text-warning"></i>
+            <span>Certificado</span>
+          </span>
+          <span class="badge bg-success-subtle text-success font-mono" style="font-size: 0.65rem;">Emitir</span>
+        </button>
+
+        <button class="nav-btn-link mb-1" onclick="switchTab('forum-tab')">
+          <span class="d-flex align-items-center gap-2.5">
+            <i class="bi bi-chat-dots-fill text-secondary"></i>
+            <span>Fórum de Alunos</span>
+          </span>
+          <span class="badge bg-secondary text-white font-mono" style="font-size: 0.65rem;">12</span>
+        </button>
+      </nav>
+
+      <div class="p-3 border-top border-secondary border-opacity-25">
+        <button class="btn btn-outline-secondary w-100 btn-sm text-secondary d-flex align-items-center justify-content-center gap-2 border-0" style="font-size: 0.75rem;">
+          <i class="bi bi-arrow-left"></i>
+          <span>Voltar para a Landing</span>
+        </button>
+      </div>
+    </aside>
+
+
+    <!-- Coluna 2: Workstation Central (Vídeo, Aulas, Simulador, Código) -->
+    <main class="portal-main-canvas">
+      <div class="container-fluid max-w-5xl p-0">
+
+        <!-- Player 16:9 -->
+        <div class="video-player-container mb-4">
+          <img
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAF09BF21ZgnjFXYOPnNuomDMHEpvnKC2RuK3PDmlpWTXZlVx3YfEjI9nLuuZyueeD5r9SWq5B6b5QeeXiEBEyWFcLMMvTz7ropbJBw2nNgFO0h_SBjivhlmiqB92K41YPd45TdA9esRgUayjDCnD7hT-ZYVAP4SxLSshPOShzlbzMzTc8uEkGIyndxOVqXCTNhQ7pufDCRMI8rS7mKBbTLTHOZNtylXdNaH_zhgK3cvyAsyP1nLoo6"
+            alt="Vídeo Aula"
+            class="video-poster-img"
+          />
+          <div class="video-gradient-overlay"></div>
+
+          <div class="position-absolute top-0 start-0 m-3 z-3">
+            <span class="badge bg-black bg-opacity-75 text-white border border-primary border-opacity-50 px-3 py-2 font-mono" style="font-size: 0.7rem;">
+              <span class="spinner-grow spinner-grow-sm text-primary me-1" style="width: 8px; height: 8px;" role="status"></span>
+              REPRODUZINDO AGORA: MÓDULO 02 – AULA 02
+            </span>
+          </div>
+
+          <div class="position-absolute top-0 end-0 m-3 z-3 d-none d-sm-block">
+            <span class="badge bg-black bg-opacity-75 text-info border border-secondary px-2 py-1.5 font-mono" style="font-size: 0.65rem;">
+              <i class="bi bi-broadcast text-success me-1"></i> HD 1080p 60fps
+            </span>
+          </div>
+
+          <!-- Legendas Dinâmicas -->
+          <div class="video-subtitles d-none d-md-block">
+            O valor de LogP de 2.34 nos dá uma janela terapêutica com taxa cinética ótima de dispersão.
+          </div>
+
+          <!-- Botão Play Central -->
+          <button class="central-play-button" id="btn-play-pause">
+            <i class="bi bi-play-fill" style="margin-left: 4px;"></i>
+          </button>
+
+          <!-- Barra de Controles -->
+          <div class="video-controls">
+            <div class="video-seek-bar mb-2">
+              <div class="video-seek-progress">
+                <div class="video-seek-handle"></div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between font-mono text-secondary small">
+              <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-link text-white p-0 text-decoration-none">
+                  <i class="bi bi-play-fill fs-5"></i>
+                </button>
+                <div class="d-flex align-items-center gap-1.5">
+                  <span class="text-white fw-bold">06:05</span>
+                  <span class="text-secondary">/</span>
+                  <span>18:45</span>
+                </div>
+                <span class="d-none d-md-inline text-secondary">•</span>
+                <span class="d-none d-md-inline text-info" style="font-size: 0.75rem;">1080p 60fps</span>
+              </div>
+
+              <div class="d-flex align-items-center gap-2.5">
+                <button class="btn btn-dark btn-sm py-0 px-2 font-mono text-secondary border-secondary" style="font-size: 0.7rem;">
+                  1.0x
+                </button>
+                <button class="btn btn-link text-primary p-0">
+                  <i class="bi bi-badge-cc-fill fs-6"></i>
+                </button>
+                <button class="btn btn-link text-secondary p-0">
+                  <i class="bi bi-fullscreen fs-6"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra de Navegação Rápida entre Aulas -->
+        <div class="card bg-dark border-secondary border-opacity-25 rounded-3 mb-4 p-3 shadow-sm">
+          <div class="d-flex align-items-center justify-content-between gap-2">
+            <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 text-truncate" style="max-width: 40%; font-size: 0.8rem;">
+              <i class="bi bi-arrow-left"></i>
+              <span class="text-truncate">Aula Anterior: Física da Fusão</span>
+            </button>
+
+            <div class="text-center px-2">
+              <span class="font-mono small text-info fw-bold d-block" style="font-size: 0.75rem;">
+                Aula 2 de 5 • Módulo 02
+              </span>
+            </div>
+
+            <button class="btn btn-primary btn-sm d-flex align-items-center gap-2 text-truncate fw-semibold" style="max-width: 40%; font-size: 0.8rem;">
+              <span class="text-truncate">Próxima Aula: Manejo de Pavio</span>
+              <i class="bi bi-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Abas Centrais Bootstrap Nav-Pills -->
+        <ul class="nav nav-pills mb-4 p-1.5 bg-dark border border-secondary border-opacity-25 rounded-3" id="portalTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active btn-sm px-3 py-2 text-white fw-semibold" id="tab-content-btn" data-bs-toggle="pill" data-bs-target="#pane-content" type="button" role="tab">
+              <i class="bi bi-play-circle text-primary me-1.5"></i> Aula & Conteúdo
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link btn-sm px-3 py-2 text-secondary fw-semibold" id="tab-modules-btn" data-bs-toggle="pill" data-bs-target="#pane-modules" type="button" role="tab">
+              <i class="bi bi-layers text-primary me-1.5"></i> Todos os Módulos (8)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link btn-sm px-3 py-2 text-secondary fw-semibold" id="tab-materials-btn" data-bs-toggle="pill" data-bs-target="#pane-materials" type="button" role="tab">
+              <i class="bi bi-folder-check text-primary me-1.5"></i> Material de Apoio (3)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link btn-sm px-3 py-2 text-secondary fw-semibold" id="tab-forum-btn" data-bs-toggle="pill" data-bs-target="#pane-forum" type="button" role="tab">
+              <i class="bi bi-chat-left-text text-primary me-1.5"></i> Fórum de Dúvidas (3)
+            </button>
+          </li>
+        </ul>
+
+        <!-- Painéis de Conteúdo -->
+        <div class="tab-content" id="portalTabsContent">
+
+          <!-- Painel 1: Aula & Conteúdo -->
+          <div class="tab-pane fade show active" id="pane-content" role="tabpanel">
+            <div class="card bg-dark border-secondary border-opacity-25 rounded-3 p-4 p-md-5 mb-4">
+              <div class="d-flex flex-column flex-md-row md-items-center justify-content-between gap-3 mb-4">
+                <div>
+                  <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                    <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-25 font-mono text-uppercase">
+                      MÓDULO 02 – CIÊNCIA DOS AROMAS & SOFTWARE
+                    </span>
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary border-opacity-25 font-mono">
+                      <i class="bi bi-clock me-1"></i> 18:45
+                    </span>
+                    <span class="badge bg-success-subtle text-success border border-success border-opacity-25 font-mono">
+                      <i class="bi bi-check-circle me-1"></i> Em andamento
+                    </span>
+                  </div>
+                  <h1 class="h3 fw-bold text-white mb-1">
+                    2. Aditivação de Essências Lipofílicas
+                  </h1>
+                  <p class="text-secondary small mb-0">
+                    Fórmula Integrada de Concentração e Absorção Lipofílica
+                  </p>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                  <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 px-3 py-2 text-white" onclick="switchTab('materials-tab')">
+                    <i class="bi bi-download text-primary"></i>
+                    <span>Material</span>
+                  </button>
+                  <button class="btn btn-success btn-sm d-flex align-items-center gap-2 px-3 py-2 fw-semibold" id="btn-toggle-complete">
+                    <i class="bi bi-check2-circle"></i>
+                    <span>Marcar Concluída</span>
+                  </button>
+                </div>
+              </div>
+
+              <hr class="border-secondary border-opacity-25 my-4" />
+
+              <h5 class="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+                <i class="bi bi-journal-code text-primary"></i>
+                Notas & Fundamentos da Aula
+              </h5>
+              <p class="text-secondary leading-relaxed mb-4">
+                Nesta aula prática estruturamos o algoritmo de dispersão para substâncias lipofílicas em matriz aquosa estabilizada. O cálculo de coeficiente de partição LogP direciona a cinética de absorção sistêmica dos compostos ativos.
+              </p>
+
+              <!-- Simulador Interativo -->
+              <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-primary border-opacity-50 mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom border-secondary border-opacity-25 pb-2">
+                  <span class="fw-bold text-info small">
+                    <i class="bi bi-calculator me-1"></i> Simulador Cinético de Saturação Lab LeoDG
+                  </span>
+                  <span class="badge bg-primary font-mono text-dark fw-bold">Python 3.11</span>
+                </div>
+                <div class="row g-3">
+                  <div class="col-sm-4">
+                    <label class="form-label font-mono text-secondary small">Conc. Base (mg/dL)</label>
+                    <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary font-mono" value="12.5" />
+                  </div>
+                  <div class="col-sm-4">
+                    <label class="form-label font-mono text-secondary small">Coeficiente LogP</label>
+                    <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary font-mono" value="2.34" />
+                  </div>
+                  <div class="col-sm-4">
+                    <label class="form-label font-mono text-secondary small">Temperatura (°C)</label>
+                    <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary font-mono" value="37.0" />
+                  </div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <span class="text-secondary small font-mono">T = 310.15 K • r = 0.08206</span>
+                  <span class="badge bg-success-subtle text-success p-2 font-mono fs-6 border border-success border-opacity-25">
+                    Taxa de dispersão: 13.7842 mg/dL
+                  </span>
+                </div>
+              </div>
+
+              <!-- Caixa de Código macOS -->
+              <div class="code-box-container mb-4">
+                <div class="code-box-header d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="window-dots">
+                      <span class="window-dot" style="background-color: #FF5F56;"></span>
+                      <span class="window-dot" style="background-color: #FFBD2E;"></span>
+                      <span class="window-dot" style="background-color: #27C93F;"></span>
+                    </div>
+                    <span class="font-mono text-white small fw-bold ms-2">calculo_fusao_lipofilica.py</span>
+                  </div>
+                  <button class="btn btn-sm btn-outline-secondary text-secondary py-0 px-2 font-mono" onclick="navigator.clipboard.writeText('active_rate = calc_lipophilic_rate(12.5, log_p=2.34)'); alert('Código copiado!')">
+                    <i class="bi bi-clipboard me-1"></i> Copiar
+                  </button>
+                </div>
+                <pre class="p-3 m-0 font-mono text-white bg-black bg-opacity-75 small overflow-x-auto"><code><span class="text-danger">import</span> numpy <span class="text-danger">as</span> np
+
+<span class="text-secondary"># Cálculo da taxa cinética de dispersão lipofílica</span>
+<span class="text-warning">def</span> <span class="text-info">calc_lipophilic_rate</span>(conc_base, log_p, temp_k=310.15):
+    r_factor = 0.08206
+    saturation = conc_base * np.exp(log_p / (r_factor * temp_k))
+    <span class="text-danger">return</span> round(saturation, 4)
+
+<span class="text-secondary"># Exemplo prático de execução Módulo 02</span>
+active_rate = calc_lipophilic_rate(12.5, log_p=2.34)
+<span class="text-info">print</span>(f<span class="text-success">"Taxa de dispersão da matriz: {active_rate} mg/dL"</span>)</code></pre>
+              </div>
+
+              <!-- Destaques e Diretrizes -->
+              <div class="p-4 rounded-3 bg-dark border border-secondary border-opacity-25">
+                <h6 class="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+                  <i class="bi bi-lightbulb-fill text-warning"></i>
+                  Pontos Chave & Diretrizes Técnicas da Aula
+                </h6>
+                <ul class="text-secondary small mb-0 ps-3">
+                  <li class="mb-2">Constante LogP ideal calibrada entre 1.8 e 2.5 para penetração dérmica sem citotoxicidade celular.</li>
+                  <li>Curva de liberação bifásica estabilizada em 37°C biológicos com surfactante tipo polissorbato.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Painel 2: Todos os Módulos -->
+          <div class="tab-pane fade" id="pane-modules" role="tabpanel">
+            <div class="card bg-dark border-secondary border-opacity-25 rounded-3 p-4">
+              <h4 class="fw-bold text-white mb-3">Grade Curricular Completa do Curso</h4>
+              <p class="text-secondary small mb-4">Acesse qualquer aula dos 8 módulos homologados pela certificação LeoDG PRO.</p>
+
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-secondary border-opacity-25">
+                    <span class="badge bg-primary-subtle text-primary font-mono mb-2">Módulo 01</span>
+                    <h6 class="fw-bold text-white">Fundamentos & Setup do Ambiente</h6>
+                    <p class="text-secondary small">Vidrarias, balanço de massa, termodinâmica e metrologia analítica.</p>
+                    <span class="badge bg-success-subtle text-success">4 Aulas Concluídas</span>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-primary">
+                    <span class="badge bg-primary font-mono text-dark fw-bold mb-2">Módulo 02 • Ativo</span>
+                    <h6 class="fw-bold text-white">Arquitetura & Lógica de Fusão</h6>
+                    <p class="text-secondary small">Termodinâmica, essências lipofílicas, pavios de madeira e formulações em gel.</p>
+                    <span class="badge bg-primary-subtle text-primary">1 de 5 Concluídas</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Painel 3: Material de Apoio -->
+          <div class="tab-pane fade" id="pane-materials" role="tabpanel">
+            <div class="card bg-dark border-secondary border-opacity-25 rounded-3 p-4">
+              <h4 class="fw-bold text-white mb-2">Arquivos e Ferramentas Práticas</h4>
+              <p class="text-secondary small mb-4">Planilhas validadas, apostilas teóricas e repositórios de código executável.</p>
+
+              <div class="d-flex flex-column gap-3">
+                <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="p-2 rounded bg-success bg-opacity-25 text-success fs-4">
+                      <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                    </div>
+                    <div>
+                      <div class="fw-bold text-white small">Planilha de Cálculo Cinético LogP v2</div>
+                      <div class="text-secondary small">Excel com macros em VBA • 1.4 MB</div>
+                    </div>
+                  </div>
+                  <button class="btn btn-sm btn-primary d-flex align-items-center gap-2" onclick="alert('Download da Planilha iniciado!')">
+                    <i class="bi bi-download"></i> Baixar Arquivo
+                  </button>
+                </div>
+
+                <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="p-2 rounded bg-danger bg-opacity-25 text-danger fs-4">
+                      <i class="bi bi-file-earmark-pdf-fill"></i>
+                    </div>
+                    <div>
+                      <div class="fw-bold text-white small">Apostila Farmacotécnica Cap. 02</div>
+                      <div class="text-secondary small">Documento PDF ilustrado • 8.2 MB</div>
+                    </div>
+                  </div>
+                  <button class="btn btn-sm btn-primary d-flex align-items-center gap-2" onclick="alert('Download da Apostila iniciado!')">
+                    <i class="bi bi-download"></i> Baixar Arquivo
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Painel 4: Fórum de Dúvidas -->
+          <div class="tab-pane fade" id="pane-forum" role="tabpanel">
+            <div class="card bg-dark border-secondary border-opacity-25 rounded-3 p-4">
+              <h4 class="fw-bold text-white mb-2">Comunidade & Suporte da Aula</h4>
+              <p class="text-secondary small mb-4">Tire suas dúvidas técnicas diretamente com o instrutor LeoDG e formuladores VIP.</p>
+
+              <div class="mb-4">
+                <textarea class="form-control bg-black bg-opacity-50 text-white border-secondary mb-2" rows="3" placeholder="Escreva sua dúvida técnica sobre a aula..."></textarea>
+                <div class="d-flex justify-content-end">
+                  <button class="btn btn-sm btn-primary fw-semibold" onclick="alert('Dúvida enviada para a banca técnica!')">
+                    <i class="bi bi-send-fill me-1"></i> Publicar Dúvida
+                  </button>
+                </div>
+              </div>
+
+              <div class="d-flex flex-column gap-3">
+                <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-secondary border-opacity-25">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="rounded-circle bg-secondary text-white fw-bold d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.75rem;">MS</div>
+                      <div>
+                        <div class="fw-bold text-white small">Marcos Silveira</div>
+                        <div class="text-secondary font-mono" style="font-size: 0.65rem;">Farmacêutico Bioquímico • Ontem às 19:42</div>
+                      </div>
+                    </div>
+                    <span class="badge bg-secondary text-white font-mono"><i class="bi bi-hand-thumbs-up me-1"></i> 14</span>
+                  </div>
+                  <p class="text-secondary small mb-0">
+                    Professor Leo, no cálculo da taxa cinética de saturação, se a temperatura for elevada para 40°C durante a emulsificação, como devemos ajustar a constante do r_factor?
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+
+
+    <!-- Coluna 3: Sidebar Direita (Grade de Aulas dos 8 Módulos) -->
+    <aside id="portal-right-sidebar" class="portal-right-sidebar d-none d-xl-flex">
+      <div class="p-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="text-secondary font-mono small text-uppercase fw-bold" style="font-size: 0.7rem;">Conteúdo do Curso</span>
+          <div class="fw-bold text-white small">8 Módulos • 38 Aulas</div>
+        </div>
+        <button id="btn-collapse-right" class="btn btn-sm text-secondary p-0 border-0" title="Recolher lista">
+          <i class="bi bi-chevron-bar-right"></i>
+        </button>
+      </div>
+
+      <div class="p-3 border-bottom border-secondary border-opacity-25">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-black border-secondary text-secondary">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control bg-black border-secondary text-white small" placeholder="Buscar aula ou tema..." />
+        </div>
+      </div>
+
+      <!-- Accordion Flush com Módulos e Aulas -->
+      <div class="flex-grow-1 overflow-y-auto modules-accordion accordion accordion-flush" id="accordionModulesRight">
+        
+        <!-- Módulo 1 -->
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mod1Collapse">
+              <div>
+                <div class="font-mono text-primary text-uppercase" style="font-size: 0.65rem;">MÓDULO 01 • CONCLUÍDO</div>
+                <div class="fw-semibold">Fundamentos & Setup</div>
+              </div>
+            </button>
+          </h2>
+          <div id="mod1Collapse" class="accordion-collapse collapse" data-bs-parent="#accordionModulesRight">
+            <div class="accordion-body p-0">
+              <button class="lesson-item-btn">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <div>
+                  <div class="text-white">1. Setup do Laboratório</div>
+                  <div class="font-mono text-secondary" style="font-size: 0.65rem;">12:10</div>
+                </div>
+              </button>
+              <button class="lesson-item-btn">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <div>
+                  <div class="text-white">2. Balanço de Massa</div>
+                  <div class="font-mono text-secondary" style="font-size: 0.65rem;">15:40</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo 2 (Ativo) -->
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#mod2Collapse">
+              <div>
+                <div class="font-mono text-primary text-uppercase" style="font-size: 0.65rem;">MÓDULO 02 • 1/5 AULAS</div>
+                <div class="fw-semibold">Arquitetura & Fusão</div>
+              </div>
+            </button>
+          </h2>
+          <div id="mod2Collapse" class="accordion-collapse collapse show" data-bs-parent="#accordionModulesRight">
+            <div class="accordion-body p-0">
+              <button class="lesson-item-btn">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <div>
+                  <div class="text-white">1. Física da Fusão</div>
+                  <div class="font-mono text-secondary" style="font-size: 0.65rem;">14:20</div>
+                </div>
+              </button>
+              <button class="lesson-item-btn active">
+                <i class="bi bi-play-circle-fill text-primary"></i>
+                <div>
+                  <div class="text-white fw-bold">2. Aditivação de Essências</div>
+                  <div class="font-mono text-info" style="font-size: 0.65rem;">18:45 • Em reprodução</div>
+                </div>
+              </button>
+              <button class="lesson-item-btn">
+                <i class="bi bi-circle text-secondary"></i>
+                <div>
+                  <div>3. Manejo de Pavio de Madeira</div>
+                  <div class="font-mono text-secondary" style="font-size: 0.65rem;">22:10</div>
+                </div>
+              </button>
+              <button class="lesson-item-btn">
+                <i class="bi bi-circle text-secondary"></i>
+                <div>
+                  <div>4. Estratégia de Rótulo</div>
+                  <div class="font-mono text-secondary" style="font-size: 0.65rem;">15:30</div>
+                </div>
+              </button>
+              <button class="lesson-item-btn">
+                <i class="bi bi-circle text-secondary"></i>
+                <div>
+                  <div>5. Velas de Gel Cristal</div>
+                  <div class="font-mono text-secondary" style="font-size: 0.65rem;">28:15</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+
+  <!-- =========================================================================
+       3. Bottom Nav Fixa (Mobile)
+       ========================================================================= -->
+  <nav class="mobile-bottom-nav d-lg-none">
+    <button class="mobile-nav-item active" onclick="switchTab('content-tab')">
+      <i class="bi bi-play-circle-fill fs-5"></i>
+      <span>Aula</span>
+    </button>
+    <button class="mobile-nav-item" onclick="switchTab('modules-tab')">
+      <i class="bi bi-layers-fill fs-5"></i>
+      <span>Módulos</span>
+    </button>
+    <button class="mobile-nav-item" onclick="switchTab('materials-tab')">
+      <i class="bi bi-folder-fill fs-5"></i>
+      <span>Material</span>
+    </button>
+    <button class="mobile-nav-item" onclick="switchTab('forum-tab')">
+      <i class="bi bi-chat-dots-fill fs-5"></i>
+      <span>Fórum</span>
+    </button>
+  </nav>
+
+
+  <!-- =========================================================================
+       4. Offcanvas Drawer do Aluno (Mobile)
+       ========================================================================= -->
+  <div class="offcanvas offcanvas-start bg-dark text-white border-secondary" tabindex="-1" id="studentDrawerMobile">
+    <div class="offcanvas-header border-bottom border-secondary border-opacity-25">
+      <div class="d-flex align-items-center gap-2">
+        <div class="rounded-circle bg-primary text-dark fw-bold d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+          LD
+        </div>
+        <div>
+          <h6 class="offcanvas-title fw-bold">Lucas Dorneles</h6>
+          <span class="text-secondary small font-mono">Dev Fullstack VIP</span>
+        </div>
+      </div>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="p-3 rounded-3 bg-black border border-secondary border-opacity-25 mb-4">
+        <div class="d-flex justify-content-between small text-secondary mb-1">
+          <span>Progresso do Curso</span>
+          <span class="text-info font-mono fw-bold">65%</span>
+        </div>
+        <div class="progress" style="height: 6px;">
+          <div class="progress-bar bg-primary" style="width: 65%;"></div>
+        </div>
+      </div>
+
+      <div class="d-flex flex-column gap-2">
+        <button class="btn btn-outline-secondary text-start text-white border-0 py-2 d-flex align-items-center gap-2" data-bs-dismiss="offcanvas" onclick="switchTab('content-tab')">
+          <i class="bi bi-play-circle text-primary"></i> Assistir Aulas
+        </button>
+        <button class="btn btn-outline-secondary text-start text-white border-0 py-2 d-flex align-items-center gap-2" data-bs-dismiss="offcanvas" onclick="switchTab('materials-tab')">
+          <i class="bi bi-folder text-primary"></i> Material de Apoio
+        </button>
+        <button class="btn btn-outline-secondary text-start text-white border-0 py-2 d-flex align-items-center gap-2" data-bs-dismiss="offcanvas" onclick="switchTab('forum-tab')">
+          <i class="bi bi-chat-dots text-primary"></i> Fórum de Alunos
+        </button>
+        <button class="btn btn-outline-secondary text-start text-white border-0 py-2 d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#certificateModal">
+          <i class="bi bi-award text-warning"></i> Certificado VIP
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       5. Modal do Certificado Oficial
+       ========================================================================= -->
+  <div class="modal fade" id="certificateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary border-opacity-25 py-2.5">
+          <h6 class="modal-title font-mono small text-uppercase text-info">
+            <i class="bi bi-shield-check text-success me-1"></i> Certificado de Conclusão LeoDG PRO
+          </h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 p-md-5 text-center">
+          <div class="p-4 p-md-5 rounded-4 bg-black bg-opacity-60 border-2 border-primary border-opacity-50 position-relative shadow">
+            <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-50 font-mono mb-3">
+              CERTIFICADO OFICIAL HOMOLOGADO
+            </span>
+            <h2 class="fw-bold tracking-tight text-white mb-2">CERTIFICADO DE EXCELÊNCIA</h2>
+            <p class="text-secondary small mb-4">Certificamos que o aluno abaixo concluiu o programa técnico avançado</p>
+            
+            <h3 class="text-info font-serif fw-bold my-4">Lucas Dorneles</h3>
+            
+            <p class="text-secondary small max-w-lg mx-auto mb-4">
+              Concluiu com êxito a formação prática dominando Farmacotécnica, Cinética Lipofílica, Arquitetura de Reatores e Automação de Produção.
+            </p>
+
+            <div class="row pt-3 border-top border-secondary border-opacity-25 text-start font-mono small">
+              <div class="col-sm-4 mb-2">
+                <span class="text-secondary" style="font-size: 0.65rem;">DATA DE EMISSÃO</span>
+                <div class="text-white">03 de Setembro de 2026</div>
+              </div>
+              <div class="col-sm-4 mb-2">
+                <span class="text-secondary" style="font-size: 0.65rem;">CÓDIGO DE AUTENTICIDADE</span>
+                <div class="text-primary">LEODG-88F4-E91B-2026</div>
+              </div>
+              <div class="col-sm-4 mb-2">
+                <span class="text-secondary" style="font-size: 0.65rem;">STATUS</span>
+                <div class="text-success"><i class="bi bi-check-circle-fill"></i> Autêntico & Verificado</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25 d-flex justify-content-between">
+          <span class="text-secondary small font-mono">Rastreabilidade ICP-Brasil</span>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+              <i class="bi bi-printer me-1"></i> Imprimir
+            </button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="alert('Download do Certificado iniciado!')">
+              <i class="bi bi-download me-1"></i> Baixar PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       6. Twitter Bootstrap 5.3.3 JavaScript Bundle
+       ========================================================================= -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"
+  ></script>
+
+  <script>
+    // Alternância de Abas
+    function switchTab(tabId) {
+      if (tabId === 'content-tab') {
+        const triggerEl = document.querySelector('#tab-content-btn');
+        bootstrap.Tab.getInstance(triggerEl)?.show() || new bootstrap.Tab(triggerEl).show();
+      } else if (tabId === 'modules-tab') {
+        const triggerEl = document.querySelector('#tab-modules-btn');
+        bootstrap.Tab.getInstance(triggerEl)?.show() || new bootstrap.Tab(triggerEl).show();
+      } else if (tabId === 'materials-tab') {
+        const triggerEl = document.querySelector('#tab-materials-btn');
+        bootstrap.Tab.getInstance(triggerEl)?.show() || new bootstrap.Tab(triggerEl).show();
+      } else if (tabId === 'forum-tab') {
+        const triggerEl = document.querySelector('#tab-forum-btn');
+        bootstrap.Tab.getInstance(triggerEl)?.show() || new bootstrap.Tab(triggerEl).show();
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Controle de Recolhimento das Barras Laterais (Desktop)
+    const leftSidebar = document.getElementById('portal-left-sidebar');
+    const rightSidebar = document.getElementById('portal-right-sidebar');
+    
+    document.getElementById('btn-toggle-left-sidebar')?.addEventListener('click', () => {
+      leftSidebar.classList.toggle('collapsed');
+    });
+    document.getElementById('btn-collapse-left')?.addEventListener('click', () => {
+      leftSidebar.classList.add('collapsed');
+    });
+
+    document.getElementById('btn-toggle-right-sidebar')?.addEventListener('click', () => {
+      rightSidebar.classList.toggle('collapsed');
+    });
+    document.getElementById('btn-collapse-right')?.addEventListener('click', () => {
+      rightSidebar.classList.add('collapsed');
+    });
+
+    // Toggle de Conclusão da Aula
+    const btnToggleComplete = document.getElementById('btn-toggle-complete');
+    let isCompleted = false;
+    btnToggleComplete?.addEventListener('click', () => {
+      isCompleted = !isCompleted;
+      if (isCompleted) {
+        btnToggleComplete.classList.remove('btn-success');
+        btnToggleComplete.classList.add('btn-outline-success');
+        btnToggleComplete.innerHTML = '<i class="bi bi-check2-all"></i> Concluída!';
+      } else {
+        btnToggleComplete.classList.remove('btn-outline-success');
+        btnToggleComplete.classList.add('btn-success');
+        btnToggleComplete.innerHTML = '<i class="bi bi-check2-circle"></i> Marcar Concluída';
+      }
+    });
+
+    // Play/Pause Interativo
+    const btnPlayPause = document.getElementById('btn-play-pause');
+    let isPlaying = false;
+    btnPlayPause?.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      btnPlayPause.innerHTML = isPlaying ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill" style="margin-left: 4px;"></i>';
+    });
+  </script>
+</body>
+</html>

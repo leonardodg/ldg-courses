@@ -1,0 +1,87 @@
+Para o seu cenário, que exige recorrência (assinaturas) e vendas avulsas, aceitando Pix e Cartão, com a obrigatoriedade de split de pagamento em ambas as modalidades, a melhor escolha do mercado é o Pagar.me (Stone), seguido de perto pelo Efí Bank (antiga Gerencianet) ou a Vindi. [1, 2, 3] 
+O motivo dessa recomendação é técnico: fazer split de pagamento em assinaturas recorrentes via API é um recurso complexo que nem todo gateway tradicional (como o Mercado Pago padrão) oferece de forma nativa ou robusta para Pix e cartão ao mesmo tempo. [4, 5] 
+------------------------------
+## 📊 Comparativo dos Gateways para o seu Cenário
+
+| Gateway | Split na Venda Avulsa (Pix/Cartão) | Split na Recorrência (Pix/Cartão) | Perfil do Negócio |
+|---|---|---|---|
+| Pagar.me (Stone) | ✅ Total completo | ✅ Excelente via API | E-commerces em crescimento, marketplaces e SaaS com alto volume. |
+| Efí Bank | ✅ Muito robusto | ✅ Disponível via API | Negócios focados em automação financeira e APIs bem documentadas. |
+| Vindi | ✅ Suporta bem | ✅ Especialista nativo | Foco total em assinaturas e economia da recorrência. |
+| Mercado Pago | ✅ Excelente | ⚠️ Limitado na recorrência | Ideal para marketplaces avulsos; mais complexo para split de assinaturas. |
+
+------------------------------
+## 💡 Análise Detalhada das Opções## 1. Pagar.me (Stone) — A Escolha Mais Equilibrada
+É uma das plataformas mais completas do Brasil para modelos de negócios complexos (como marketplaces ou plataformas que usam split). [4] 
+
+* 
+* Vantagens na Recorrência: A API deles permite criar planos e assinaturas. Quando a cobrança recorrente é gerada (seja no cartão ou via Pix), as regras de split pré-definidas associadas àquela conta ou transação são aplicadas automaticamente.
+* Customização: É extremamente flexível para definir quem paga a taxa do gateway e os prazos de recebimento de cada recebedor do split. [1, 6, 7] 
+* 
+
+## 2. Efí Bank — Robusto em Pix e APIs
+O Efí Bank é muito forte em automação de cobranças e possui uma das APIs de Pix mais consolidadas do mercado. [2] 
+
+* 
+* Vantagens no Split: Permite configurar o Split de pagamento via API dividindo os valores de forma fixa ou percentual entre as contas integradas. [3, 8] 
+* Recorrência: Oferece excelente suporte para planos e assinaturas recorrentes, funcionando muito bem tanto para cartões quanto para Pix e o "Bolix" (boleto com Pix). [9, 10, 11] 
+* 
+
+## 3. Vindi — A Especialista em Recorrência
+Se o coração do seu negócio for o modelo de assinaturas, a Vindi é a maior referência no Brasil. Eles possuem uma plataforma nativa de recorrência que gerencia tentativas de cobrança, réguas de cobrança para inadimplência e possuem soluções integradas de split de pagamento com diversos adquirentes do mercado. [12] 
+------------------------------
+## ⚠️ Alerta Importante sobre as Regras de Split
+Ao implementar split em recorrência, garanta com a sua equipe de desenvolvimento que o fluxo trate os seguintes pontos:
+
+   1. Cobranças Recorrentes no Pix: Diferente do cartão, onde o split roda na cobrança automática, no Pix Recorrente o sistema precisa gerar um QR Code dinâmico com o split atrelado a cada mês, aguardando a liquidação do cliente. [6, 13, 14] 
+   2. Atualização de Recebedores: Escolha uma API onde você possa alterar as regras ou os recebedores do split no meio do contrato da assinatura, caso um fornecedor ou parceiro seu mude de conta.
+
+Para afunilar para a escolha final, me conta: você pretende fazer essa integração via API própria (com desenvolvedores criando um sistema do zero) ou vai usar alguma plataforma pronta (como WooCommerce ou Magento)?
+
+[1] https://www.pagar.me
+[2] [https://sejaefi.com.br](https://sejaefi.com.br/blog/melhor-gateway-de-pagamento)
+[3] [https://sejaefi.com.br](https://sejaefi.com.br/blog/o-que-e-split-de-pagamento)
+[4] [https://www.mercadopago.com.br](https://www.mercadopago.com.br/blog/split-pagamento-ecommerce-comissoes-afiliados)
+[5] [https://www.mercadopago.com.br](https://www.mercadopago.com.br/blog/recorrencia-pix-vs-cartao-custo)
+[6] [https://www.mercadopago.com.br](https://www.mercadopago.com.br/blog/split-de-pagamento-o-que-e)
+[7] [https://pagarme.helpjuice.com](https://pagarme.helpjuice.com/pt_BR/sobre-o-pagarme/voc%C3%AAs-trabalham-com-pagamentos-recorrentes)
+[8] [https://dev.efipay.com.br](https://dev.efipay.com.br/docs/api-cobrancas/split-de-pagamento/)
+[9] [https://sejaefi.com.br](https://sejaefi.com.br/central-de-ajuda/emissao-de-cobrancas/como-cobrar-assinaturas)
+[10] [https://www.youtube.com](https://www.youtube.com/watch?v=WkhTON1vhEs)
+[11] [https://sejaefi.com.br](https://sejaefi.com.br/blog/bolix-automatico-recorrencia-sem-esforco)
+[12] [https://vindi.com.br](https://vindi.com.br/formas-de-pagamentos/pix/)
+[13] [https://sejaefi.com.br](https://sejaefi.com.br/blog/pagamento-recorrente)
+[14] [https://pagarme.helpjuice.com](https://pagarme.helpjuice.com/pt_BR/p1-meios-de-pagamento/pix-saiba-mais-sobre-esse-meio-de-pagamento)
+
+
+_____________________________________
+
+O Asaas (sediado em Joinville) atende perfeitamente e é uma das melhores opções do mercado para o seu caso. Ele é uma fintech extremamente robusta focada em automação financeira e possui, justamente, uma das APIs mais elogiadas do Brasil para cenários complexos. [1, 2] 
+O Asaas brilha exatamente onde você precisa: eles suportam nativamente o Split de Pagamentos para vendas avulsas, parceladas e recorrentes (assinaturas), tanto via Pix quanto por Cartão de Crédito e Boleto bancário. [1, 3] 
+------------------------------
+## 📊 Como o Asaas Resolve o seu Cenário
+
+* 
+* ✅ Split na Recorrência (Assinaturas): Ao criar uma assinatura pela API do Asaas, você pode atrelar as regras de split (quem recebe qual porcentagem ou valor fixo) diretamente ao contrato da recorrência. Toda vez que a mensalidade rodar, o sistema divide o dinheiro automaticamente. [1, 3, 4] 
+* ✅ Split nas Vendas Avulsas: Funciona de forma imediata tanto para cartão quanto para Pix. [1, 3] 
+* 🌟 Diferencial (Pix Automático): O Asaas já está totalmente integrado ao ecossistema do Pix Automático do Banco Central. Isso significa que, na recorrência via Pix, seu cliente autoriza uma única vez e o valor é debitado da conta dele todo mês automaticamente (exatamente como um cartão), reduzindo drasticamente a inadimplência no Pix. [5, 6] 
+* 
+
+------------------------------
+## ⚙️ Detalhes Importantes de Funcionamento no Asaas
+
+   1. Ecossistema de Subcontas (Wallets): Para o split funcionar, a sua conta principal gerencia o sistema e os seus parceiros/fornecedores precisam ter uma subconta (ou conta digital PJ própria) criada dentro do ecossistema do Asaas. Você consegue abrir essas subcontas de forma automatizada via API. [1, 7] 
+   2. Uso focado em API ou Plugins: O split de pagamentos do Asaas é um recurso nativo da API deles. Caso você não use desenvolvimento próprio, precisará utilizar integrações prontas oficiais, como o plugin deles para WooCommerce (WordPress), onde o split também é suportado de forma configurável. [7, 8] 
+   3. Flexibilidade: Você pode definir regras customizadas de quem arca com a taxa do gateway (se a conta principal ou a subconta que recebeu o split) e configurar se o repasse será feito na hora ou retido. [1] 
+
+Se você busca uma empresa nacional com excelente suporte técnico, documentação impecável para desenvolvedores e tarifas muito agressivas em Pix e Boleto, o Asaas deve entrar no topo da sua lista de avaliação junto ao Pagar.me. [1, 2] 
+Você pretende usar uma plataforma de e-commerce pronta (como o WooCommerce) onde o Asaas tem plugin oficial ou seu modelo exige um desenvolvimento do zero (API própria)? [7, 8] 
+
+[1] [https://blog.asaas.com](https://blog.asaas.com/split-de-pagamento/)
+[2] [https://blog.asaas.com](https://blog.asaas.com/gateway-de-pagamento-para-e-commerce/)
+[3] [https://materiais.asaas.com](https://materiais.asaas.com/split-de-pagamentos)
+[4] [https://blog.asaas.com](https://blog.asaas.com/split-de-pagamento-no-asaas/)
+[5] [https://www.youtube.com](https://www.youtube.com/watch?v=99ItZzNJTUE)
+[6] [https://www.youtube.com](https://www.youtube.com/watch?v=V_V7hz2Bha8)
+[7] [https://docs.asaas.com](https://docs.asaas.com/docs/split-de-pagamentos)
+[8] [https://www.youtube.com](https://www.youtube.com/watch?v=1I4lVzRGoPA)

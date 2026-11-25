@@ -1,0 +1,56 @@
+# LeoDG — plataforma de cursos online em Moodle 5.2
+
+> Plataforma onde uma empresa ou pessoa publica e vende os próprios cursos
+> online. A cobrança nasce na conta de pagamento do próprio vendedor, a nota
+> fiscal é emitida por ele, e a plataforma fica apenas com uma comissão sobre o
+> que for vendido. O plano de entrada não tem mensalidade.
+
+Este arquivo descreve o site para leitores automatizados, incluindo assistentes
+de IA. Ele é mantido à mão e diz apenas o que a plataforma faz hoje.
+
+O que a plataforma **é**: uma instalação de Moodle 5.2 padrão, sem fork, com
+plugins próprios que acrescentam venda de cursos com divisão de pagamento,
+empresas parceiras isoladas por categoria, e matrícula a partir do direito de
+acesso gerado pela compra.
+
+O que ela **não é**: não é uma revenda de infraestrutura, não hospeda vídeo no
+plano de entrada (o vídeo fica na plataforma de vídeo do próprio produtor), e
+não faz cadastro automático de empresa — cada candidatura é lida por uma pessoa.
+
+## Páginas principais
+
+- [Seja um parceiro](https://courses.leodg.dev/local/partners/index.php): o que
+  a parceria oferece, os planos com preço e comissão, como funciona e as
+  perguntas frequentes. Os preços vêm do banco de dados e são os mesmos que o
+  checkout pratica.
+- [Enviar candidatura](https://courses.leodg.dev/local/partners/apply.php):
+  formulário público de candidatura a parceria. Não cria conta nem empresa; abre
+  uma solicitação que um administrador analisa.
+
+## Como funciona a parte comercial
+
+- **Quem recebe o dinheiro da venda é o vendedor.** A cobrança é criada na conta
+  de pagamento dele, e a plataforma recebe apenas a comissão, por divisão
+  automática no gateway.
+- **Quem emite a nota fiscal é o vendedor**, porque a cobrança nasce na conta
+  dele. A plataforma não emite nota em nome de terceiros.
+- **Curso gratuito não tem comissão** e não exige plano.
+- **A comissão incide sobre o valor da venda**, e a base de cálculo é declarada
+  no plano contratado.
+- **Meios de pagamento:** Mercado Pago e Asaas (Pix, boleto e cartão). A
+  plataforma não usa Stripe nem PayPal.
+
+## Limites que valem a pena conhecer
+
+- A divisão de pagamento só ocorre entre contas do mesmo país, porque a comissão
+  cai numa conta que guarda a moeda daquele país.
+- Assinatura com cobrança recorrente automática existe no Asaas; no Mercado Pago
+  a renovação é manual, com aviso de vencimento.
+- Não existe autoatendimento para criar empresa parceira: a solicitação é
+  analisada por uma pessoa antes de qualquer coisa ser criada.
+
+## Contato
+
+- Empresa responsável: LDG Tecnologia Ltda
+- Site do responsável: https://leodg.dev
+- Candidaturas: pelo formulário acima, respondidas por e-mail.

@@ -4,14 +4,47 @@
 #
 # ATENCAO: no Moodle 5.x os plugins ficam sob public/.
 
-# --- Fase 1 ---
-# public/local/marketplace
+# A ORDEM IMPORTA pouco para a validacao, mas o local_marketplace vem primeiro
+# porque e do que os outros dependem - quem ler o arquivo entende a hierarquia.
+public/local/marketplace
+public/payment/gateway/mercadopago
+public/payment/gateway/asaas
+public/payment/gateway/pagarme
+public/enrol/marketplace
+public/availability/condition/marketplace
+public/blocks/marketplace
 
-# --- Fase 2 ---
-# public/payment/gateway/mercadopago
+# Captacao de parceiros: landing publica e fila de candidaturas. Depende do
+# local_marketplace para ler os planos, e o --extra-plugins ja o leva junto.
+public/local/partners
 
-# --- Fase 4 ---
-# public/theme/coursesfree
+# Tema global da plataforma. E FILHO do theme_moove, que e plugin de terceiro e
+# por isso vive em moodle-plugins-thirdparty.txt. O deploy.yml sabe disso e
+# copia os pais para o --extra-plugins; sem aquele passo, o install monta um
+# tema com $THEME->parents = ['moove','boost'] apontando para o nada.
+public/theme/ldg
+
+# Formato de curso do portal do aluno. Estava fora desta lista ate 03/09/2026,
+# ou seja, sem passar pelo portao que bloqueia o deploy.
+#
+# Depende do theme_ldg apenas para a MARCA, e a dependencia e verificada em
+# tempo de execucao: o portal so substitui o chrome se o tema ativo declarar o
+# layout 'ldgportal'. Por isso ele roda no CI SOZINHO, sem o tema no
+# --extra-plugins, e os testes continuam valendo - a decisao recebe os layouts
+# por parametro justamente para nao depender de tema instalado.
+public/course/format/ldg
+
+# Aula em video por embed: a peca do plano Free. Nao depende do format_ldg nem
+# do local_marketplace - a atividade funciona em qualquer curso, e o portal a
+# embute como embute qualquer outra. Roda sozinho no CI.
+public/mod/ldgvideo
+
+# Video Bunny Stream multi-tenant: a peca dos planos pagos (Frente B+C).
+# Depende do local_marketplace de verdade - resolve a library pela empresa
+# dona do curso (company::for_course() -> library_account::get_for()), e
+# a trava de resolucao le plan::max_resolution(). O --extra-plugins ja leva
+# o local_marketplace junto por estar antes nesta lista.
+public/mod/bunnystream
 
 # --- Plugins de terceiros -----------------------------------------------------
 # INSTALADOS em 2026-08-24, da release oficial 5.2 do marketplace, com MD5

@@ -562,7 +562,11 @@ function enrol_add_course_navigation(navigation_node $coursenode, $course) {
                     }
                     $plugin = $plugins[$instance->enrol];
                     if ($plugin->show_enrolme_link($instance)) {
-                        $url = new moodle_url('/enrol/index.php', array('id'=>$course->id));
+                        // This link bypasses require_login(), so tell the enrolment page where to return to.
+                        $url = new moodle_url('/enrol/index.php', [
+                            'id' => $course->id,
+                            'wantsurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
+                        ]);
                         $shortname = format_string($course->shortname, true, array('context' => $coursecontext));
                         $coursenode->add(get_string('enrolme', 'core_enrol', $shortname), $url, navigation_node::TYPE_SETTING, null, 'enrolself', new pix_icon('i/user', ''));
                         break;
@@ -1181,7 +1185,8 @@ function enrol_course_delete($course, $userid = null) {
         // the given user have a capability to perform unenrolment.
         $instances = array_filter($instances, function($instance) use ($userid, $plugins, $context) {
             $unenrolcap = "enrol/{$instance->enrol}:unenrol";
-            return $plugins[$instance->enrol]->allow_unenrol($instance) &&
+            return isset($plugins[$instance->enrol]) &&
+                $plugins[$instance->enrol]->allow_unenrol($instance) &&
                 has_capability($unenrolcap, $context, $userid);
         });
     }
@@ -3648,9 +3653,20 @@ abstract class enrol_plugin {
         $course = get_course($instance->courseid);
         $context = context_course::instance($course->id);
 
+        $contact = $this->get_welcome_message_contact(
+            sendoption: $sendoption,
+            context: $context,
+        );
+        if (!$contact) {
+            // Cannot find the contact to send the message from.
+            return;
+        }
+
         // Fallback to the instance role ID if parameter not specified.
         $courseroleid = $roleid ?: $instance->roleid;
         $courserole = $DB->get_record('role', ['id' => $courseroleid]);
+
+        $oldforcelang = force_current_language($user->lang);
 
         $a = new stdClass();
         $a->coursename = format_string($course->fullname, true, ['context' => $context, 'escape' => false]);
@@ -3689,7 +3705,7 @@ abstract class enrol_plugin {
             $message = str_replace($placeholders, $values, $message);
             if (strpos($message, '<') === false) {
                 // Plain text only.
-                $messagetext = $message;
+                $messagetext = format_string($message, true, ['context' => $context, 'escape' => false]);
                 $messagehtml = text_to_html($messagetext, null, false, true);
             } else {
                 // This is most probably the tag/newline soup known as FORMAT_MOODLE.
@@ -3698,17 +3714,12 @@ abstract class enrol_plugin {
                 $messagetext = html_to_text($messagehtml);
             }
         } else {
-            $messagetext = get_string('customwelcomemessageplaceholder', 'core_enrol', $a);
+            $messagetext = format_string(
+                get_string('customwelcomemessageplaceholder', 'core_enrol', $a),
+                true,
+                ['context' => $context, 'escape' => false]
+            );
             $messagehtml = text_to_html($messagetext, null, false, true);
-        }
-
-        $contact = $this->get_welcome_message_contact(
-            sendoption: $sendoption,
-            context: $context,
-        );
-        if (!$contact) {
-            // Cannot find the contact to send the message from.
-            return;
         }
 
         $message = new \core\message\message();
@@ -3726,6 +3737,7 @@ abstract class enrol_plugin {
         $message->contexturlname = $a->coursename;
 
         message_send($message);
+        force_current_language($oldforcelang);
     }
 
     /**

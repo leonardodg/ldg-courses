@@ -1,0 +1,151 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_partners/sectionbar
+
+    Barra fina de secoes da landing, pegajosa ao rolar.
+
+    NAO substitui a navegacao do tema. O mockup trazia navbar propria com
+    hamburguer; portar aquilo seria dois menus fazendo um trabalho so, e o
+    cabecalho do Moodle carrega login, idioma e acessibilidade. Aqui ficam
+    apenas as ancoras da propria pagina, o botao de acao e o alternador de modo
+    de cor - que existe porque o theme_boost do 5.2 nao tem nenhum.
+
+    Os links saem do export "sections", a mesma lista de onde saem os id= das
+    secoes no template da landing.
+
+    NAO escreva chave dupla de mustache dentro deste comentario: ele termina no
+    primeiro fecha-chaves, e o resto do texto vai parar na tela.
+
+    Context variables required for this template:
+    * sections - array de { id, label }
+    * applyurl - URL do formulario de candidatura
+    * brand - { name, homeurl, logolight, logodark, haslogo }
+    * loginurl - URL da tela de login, para quem ainda nao entrou
+    * logouturl - URL de sair, ja com sesskey, para quem entrou
+    * isloggedin - boolean; decide qual dos dois botoes aparece
+    * languages - array de { code, hreflang, label, short, url, iscurrent }
+    * haslanguages - boolean; falso quando o site tem um idioma so ou o menu
+                     de idiomas esta desligado
+
+    Example context (json):
+    {
+        "applyurl": "/local/partners/apply.php",
+        "loginurl": "/login/index.php",
+        "logouturl": "/login/logout.php?sesskey=abc",
+        "isloggedin": false,
+        "brand": {"name": "LeoDG", "homeurl": "/local/partners/index.php",
+                  "logolight": "/logo.svg", "logodark": "/logo-dark.svg", "haslogo": true},
+        "haslanguages": true,
+        "languages": [
+            {"code": "en", "hreflang": "en", "label": "English", "short": "EN",
+             "url": "/local/partners/index.php?lang=en", "iscurrent": true},
+            {"code": "pt_br", "hreflang": "pt-br", "label": "Portugues", "short": "PT",
+             "url": "/local/partners/index.php?lang=pt_br", "iscurrent": false}
+        ],
+        "sections": [
+            {"id": "ldgp-features", "label": "Features", "inbar": true},
+            {"id": "ldgp-pricing", "label": "Plans", "inbar": true},
+            {"id": "ldgp-apply", "label": "Apply", "inbar": false}
+        ]
+    }
+}}
+{{! O layout embedded nao traz o atalho do tema, e sem ele quem navega
+    por teclado atravessa a barra inteira a cada pagina. }}
+<a class="ldgp-skip" href="#ldgp-main">{{#str}}skiptomain, local_partners{{/str}}</a>
+<div class="ldgp-bar">
+    <div class="ldgp-bar-inner">
+        {{#brand}}
+            <a class="ldgp-brand" href="{{homeurl}}">
+                {{#haslogo}}
+                    <img src="{{logolight}}" alt="{{name}}" class="ldgp-brand-logo ldgp-brand-logo--light">
+                    <img src="{{logodark}}" alt="{{name}}" class="ldgp-brand-logo ldgp-brand-logo--dark">
+                {{/haslogo}}
+                {{^haslogo}}
+                    {{! Sem imagem, a marca continua existindo como palavra. }}
+                    <span class="ldgp-brand-word">{{name}}</span>
+                {{/haslogo}}
+            </a>
+        {{/brand}}
+
+        <nav class="ldgp-bar-nav" aria-label="{{#str}}sectionnavlabel, local_partners{{/str}}">
+            <ul class="ldgp-bar-list">
+                {{! O `inbar` deixa o "Apply" de fora: ele ja e o botao primario
+                    a dois centimetros dali, e a ancora repetia a mesma acao. }}
+                {{#sections}}
+                    {{#inbar}}
+                        <li><a class="ldgp-bar-link" href="#{{id}}">{{label}}</a></li>
+                    {{/inbar}}
+                {{/sections}}
+            </ul>
+        </nav>
+
+        <div class="ldgp-bar-actions">
+            {{#haslanguages}}
+                {{! Links de verdade, e nao um select com JavaScript: o buscador
+                    segue link, e cada um casa com o hreflang do cabecalho. A
+                    lista sai do que o Moodle tem instalado E habilitado. }}
+                <div class="ldgp-langs dropdown">
+                    <button type="button" class="ldgp-langbtn" data-bs-toggle="dropdown"
+                            aria-expanded="false" aria-label="{{#str}}languageselector, local_partners{{/str}}">
+                        {{> local_partners/icons/globe }}
+                        <span>{{currentlanguage}}</span>
+                        <span class="ldgp-caret" aria-hidden="true">{{> local_partners/icons/chevrondown }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end ldgp-langmenu">
+                        {{#languages}}
+                            <li>
+                                <a class="dropdown-item ldgp-langitem{{#iscurrent}} ldgp-langitem--current{{/iscurrent}}"
+                                   href="{{url}}" hreflang="{{hreflang}}" lang="{{hreflang}}"
+                                   {{#iscurrent}}aria-current="true"{{/iscurrent}}>
+                                    <span aria-hidden="true">{{short}}</span>
+                                    <span class="visually-hidden">{{label}}</span>
+                                </a>
+                            </li>
+                        {{/languages}}
+                    </ul>
+                </div>
+            {{/haslanguages}}
+
+            <button type="button" class="ldgp-modetoggle" data-ldgp="colormode"
+                    aria-pressed="false" title="{{#str}}colormodetoggle, local_partners{{/str}}">
+                <span class="visually-hidden">{{#str}}colormodetoggle, local_partners{{/str}}</span>
+                {{> local_partners/icons/sun }}
+                {{> local_partners/icons/moon }}
+            </button>
+
+            {{! Entrar e Aplicar sao o MESMO componente de botao, um fantasma e o
+                outro primario. Quem ja entrou ve SAIR no lugar de entrar: antes
+                o botao simplesmente sumia, e a barra ficava sem nenhuma saida
+                para a sessao aberta. }}
+            {{^isloggedin}}
+                <a href="{{loginurl}}" class="ldgp-btn ldgp-btn--ghost">
+                    {{#str}}login{{/str}}
+                </a>
+            {{/isloggedin}}
+            {{#isloggedin}}
+                <a href="{{logouturl}}" class="ldgp-btn ldgp-btn--ghost">
+                    {{#str}}logout{{/str}}
+                </a>
+            {{/isloggedin}}
+
+            <a href="{{applyurl}}" class="ldgp-btn ldgp-btn--primary">
+                {{#str}}sectionapply, local_partners{{/str}}
+            </a>
+        </div>
+    </div>
+</div>

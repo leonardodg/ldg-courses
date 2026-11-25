@@ -1,0 +1,311 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Navbar: 64px no desktop, 50px no mobile, com vidro fosco.
+//
+// O Moove usa 70px chapado em dez lugares - navbar, navegacao secundaria,
+// popovers e os quatro offsets dos drawers. Trocar so a altura da navbar
+// deixaria uma faixa de 6px de conteudo escondida atras dela, e o drawer
+// desalinhado do topo. Por isso TODOS os dependentes vem junto, e todos
+// passam a ler o mesmo token.
+
+.navbar.fixed-top {
+    // O FUNDO precisa estar aqui.
+    //
+    // Enquanto este tema foi filho do Moove, quem pintava a navbar era o CSS
+    // dele, lendo a custom property --moove-navbar-bg-color que os tokens
+    // alimentavam. Ao sair do Moove ninguem mais consumia aquele alias, e a
+    // navbar voltou ao fundo claro do Bootstrap - com o resto da pagina escuro.
+    //
+    // O !important existe porque o Boost marca a navbar com .bg-body, que e
+    // uma utility do Bootstrap e vence por especificidade de classe empatada
+    // com ordem de declaracao.
+    background-color: var(--ldg-chrome-bg) !important;
+    height: var(--ldg-navbar-height);
+    border-bottom: 1px solid var(--ldg-border);
+
+    .primary-navigation {
+        .navigation {
+            height: var(--ldg-navbar-height);
+
+            .nav-link {
+                height: var(--ldg-navbar-height);
+            }
+        }
+    }
+}
+
+// Vidro fosco nos dois modos. O rgba tem que ser literal - color-mix sobre
+// custom property ainda nao e confiavel o bastante em navegador antigo - entao
+// cada modo declara o seu, com a MESMA opacidade de 85%.
+//
+// NAO usar :root:not([data-bs-theme="dark"]) como fallback do modo claro. O
+// :root e o <html>, e o data-bs-theme e escrito no <body>: o seletor casaria
+// SEMPRE, inclusive no escuro, e com especificidade maior que a regra escura -
+// a navbar do modo escuro sairia navy. O core_renderer sempre emite o atributo,
+// entao [data-bs-theme="light"] sozinho basta.
+[data-bs-theme="light"] .navbar.fixed-top {
+    background-color: rgba(14, 25, 43, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+[data-bs-theme="dark"] .navbar.fixed-top {
+    background-color: rgba(30, 30, 30, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+// A navbar e escura nos dois modos, entao o conteudo dela e claro nos dois.
+// Sem isto, no modo claro o Bootstrap deixa o texto #0E192B sobre o navy.
+.navbar.fixed-top {
+    color: var(--ldg-chrome-text);
+
+    .nav-link,
+    .navbar-brand,
+    .btn-link {
+        color: var(--ldg-chrome-text);
+    }
+}
+
+// E, pela mesma razao, a logo do navbar e SEMPRE a variante para fundo escuro.
+//
+// O Moove alterna entre .logo.light e .logo.dark conforme o modo, assumindo
+// que a navbar acompanha o fundo da pagina. Aqui ela nao acompanha: e navy no
+// claro e #1E1E1E no escuro. Mantendo o comportamento dele, o modo claro
+// mostraria a logo escura - preta sobre navy - e a marca sumiria.
+.navbar .navbar-brand {
+    // O ARQUIVO manda no tamanho se ninguem limitar.
+    //
+    // A marca e um SVG de 300x115 intrinsecos. Sem max-height ele renderiza no
+    // tamanho natural e estoura a navbar de 64px - o sintoma parece "a logo
+    // sumiu", porque o que aparece e um pedaco dela ou nada.
+    //
+    // max-height, e nao height: assim uma logo mais quadrada nao e esticada.
+    .logo {
+        max-height: calc(var(--ldg-navbar-height) - 24px);
+        width: auto;
+    }
+
+}
+
+.secondary-navigation {
+    color: var(--ldg-chrome-text);
+
+    .nav-link {
+        color: var(--ldg-chrome-text);
+    }
+}
+
+// Hover e item ativo da navegacao principal e da secundaria.
+//
+// Sem isto o texto SOME ao passar o mouse. O Bootstrap pinta o fundo do
+// .nav-link em hover com um cinza claro, contando que a barra acompanhe o fundo
+// da pagina; aqui a barra e escura nos dois modos, entao o resultado e branco
+// sobre branco. A correcao nao e escurecer o texto no hover - e trocar o fundo
+// por um veu claro sobre o proprio cromo, que mantem a barra escura e o texto
+// legivel.
+//
+// A especificidade precisa chegar a (0,5,0) para vencer
+// `.moremenu .nav-tabs .nav-link:hover` do core.
+//
+// Sao dois caminhos de markup, e os dois precisam estar aqui: o Moodle usa
+// `.moremenu .nav-tabs .nav-link`, e o Moove tem uma regra propria em
+// `body[data-bs-theme="dark"] .primary-navigation .navigation .nav-link`, com
+// especificidade (0,4,1). O prefixo `body` abaixo existe so para passar dela.
+body .navbar.fixed-top .primary-navigation .moremenu .nav-tabs .nav-link,
+body .navbar.fixed-top .primary-navigation .navigation .nav-link,
+body .secondary-navigation .moremenu .nav-tabs .nav-link {
+    color: var(--ldg-chrome-text);
+    border-color: transparent;
+
+    &:hover,
+    &:focus {
+        background-color: rgba(255, 255, 255, 0.12);
+        border-color: transparent;
+        color: var(--ldg-chrome-text);
+    }
+
+    &.active,
+    &[aria-current="true"] {
+        background-color: transparent;
+        border-bottom: 2px solid var(--ldg-chrome-text);
+        color: var(--ldg-chrome-text);
+    }
+}
+
+// O botao "mais" do moremenu e os icones do canto direito seguem a mesma
+// regra: fundo veu, nunca fundo claro.
+.navbar.fixed-top {
+    .nav-link:hover,
+    .nav-link:focus,
+    .btn-link:hover,
+    .btn-link:focus {
+        background-color: rgba(255, 255, 255, 0.12);
+        color: var(--ldg-chrome-text);
+    }
+}
+
+.secondary-navigation {
+    top: var(--ldg-navbar-height);
+}
+
+.popover-region-mylearning,
+.popover-region-notifications {
+    .popover-region-container {
+        top: var(--ldg-navbar-height);
+    }
+}
+
+#page,
+#page.drawers {
+    margin-top: var(--ldg-navbar-height);
+}
+
+// A landing NAO tem navbar do tema, e por isso nao reserva altura para ela. Sem
+// esta excecao a pagina inicial abria com uma faixa vazia de 64px acima da barra
+// de secoes - o espaco de uma barra que nao esta la.
+#page.ldg-landing-page {
+    margin-top: 0;
+}
+
+[data-region="right-hand-drawer"].drawer {
+    top: var(--ldg-navbar-height);
+    height: calc(100% - var(--ldg-navbar-height));
+}
+
+@include media-breakpoint-up(md) {
+    .drawer-left,
+    .drawer-right {
+        top: calc(var(--ldg-navbar-height) + 1px);
+        height: calc(100vh - var(--ldg-navbar-height));
+    }
+}
+
+// Mesma historia da navbar: a cor vinha do Moove lendo
+// --moove-secondary-navigation-bg-color.
+.secondary-navigation {
+    background-color: var(--ldg-chrome-bg-soft);
+
+    .nav-link {
+        color: var(--ldg-chrome-text);
+    }
+}
+
+// Container do chrome.
+//
+// Era .moove-container-fluid, e as regras vinham do CSS do Moove. Ao sair do
+// Moove a classe continuou na marcacao SEM NENHUMA regra, e navbar e rodape
+// perderam a largura - foi a quebra visual mais visivel da migracao.
+.ldg-container-fluid {
+    width: 100%;
+    padding: 0;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+// Alternador de modo de cor.
+//
+// Os SVGs de sol e lua vem no template sem width/height proprios - o dimensiona-
+// mento vinha do CSS do tema de terceiro. Sem estas regras eles colapsam para
+// zero, e sobra so o interruptor solto na navbar, sem dizer o que alterna.
+#toggle-darkmode {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    color: var(--ldg-chrome-text);
+
+    .icon-sun {
+        width: 22px;
+        height: 22px;
+        margin-right: .25rem;
+    }
+
+    .icon-moon {
+        width: 18px;
+        height: 18px;
+        margin-left: .25rem;
+    }
+}
+
+// Navegacao secundaria (as abas do administrador).
+//
+// O Boost pinta `.secondary-navigation .navigation` com o $body-bg CLARO
+// compilado como literal - mesma familia de seletores que motivou o
+// _corefixes.scss. A regra do contêiner externo nao adianta: quem pinta a faixa
+// visivel e a interna.
+.secondary-navigation {
+    background-color: var(--ldg-chrome-bg-soft);
+
+    .navigation {
+        background-color: var(--ldg-chrome-bg-soft);
+        border-bottom-color: var(--ldg-border);
+    }
+
+    .nav-link,
+    .nav-tabs .nav-link {
+        color: var(--ldg-chrome-text);
+
+        &.active {
+            color: var(--ldg-accent-text);
+            border-bottom-color: var(--ldg-accent);
+        }
+    }
+}
+
+// Qual variante da logo aparece.
+//
+// A regra e "a logo contrasta com o FUNDO EM QUE ESTA", e nao "com o modo de
+// cor". A distincao importa porque o chrome deste tema e azul-escuro nos DOIS
+// modos: uma logo preta ali sumiria mesmo no modo claro.
+//
+// Padrao - a logo acompanha o fundo da pagina.
+.logo.light {
+    display: block;
+}
+
+.logo.dark {
+    display: none;
+}
+
+[data-bs-theme="dark"] {
+    .logo.light {
+        display: none;
+    }
+
+    .logo.dark {
+        display: block;
+    }
+}
+
+// Excecao - superficies que sao escuras NOS DOIS MODOS. Quem acrescentar uma
+// superficie assim (um hero, um rodape escuro) marca com .ldg-on-dark e a logo
+// se resolve sozinha.
+.navbar .navbar-brand,
+.ldg-on-dark {
+    .logo.light {
+        display: none;
+    }
+
+    .logo.dark {
+        display: block;
+    }
+}

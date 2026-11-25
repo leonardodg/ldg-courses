@@ -1,0 +1,130 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    Menu lateral de navegacao, com trilho de icones.
+
+    @template theme_ldg/ldg/navmenu
+    @author    LeoDG <callme@leodg.dev>
+    @copyright 2026 LeoDG <callme@leodg.dev>
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+{{!
+    @template theme_ldg/ldg/navmenu
+
+    Menu de navegacao lateral, dentro do drawer esquerdo.
+
+    Quando recolhido vira um trilho so de icones: o texto some, mas o menu
+    continua VISIVEL. Por isso cada item leva title e aria-label alem do texto -
+    no trilho, o texto nao esta la para ser lido.
+
+    Context variables required for this template:
+    * collapsed - boolean, o menu esta em modo trilho
+    * groups - array de { title, items }
+    * hasgroups - boolean
+    * footeritems - array de itens fixados na base
+    * hasfooteritems - boolean
+    * courseindex - html do course index, quando a pagina e de um curso
+    * userfullname - string
+    * useravatar - html do avatar
+
+    Cada item: { label, url, icon, active, isdefaulthome }
+
+    Example context (json):
+    {
+        "collapsed": false,
+        "hasgroups": true,
+        "groups": [
+            {
+                "title": "Navigation",
+                "items": [
+                    {"label": "Dashboard", "url": "/my/", "icon": "fa-table-columns", "active": true}
+                ]
+            }
+        ],
+        "hasfooteritems": true,
+        "footeritems": [
+            {"label": "Log out", "url": "/login/logout.php", "icon": "fa-right-from-bracket", "active": false}
+        ],
+        "userfullname": "Admin User",
+        "useravatar": "<img src='#' alt=''>"
+    }
+}}
+<nav class="ldg-navmenu{{#collapsed}} ldg-navmenu-collapsed{{/collapsed}}"
+     id="ldg-navmenu"
+     aria-label="{{#str}}navmenulabel, theme_ldg{{/str}}">
+
+    <button type="button"
+            class="ldg-navmenu-toggle btn btn-link"
+            data-action="ldg-navmenu-toggle"
+            aria-controls="ldg-navmenu"
+            aria-expanded="{{^collapsed}}true{{/collapsed}}{{#collapsed}}false{{/collapsed}}">
+        <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+        <span class="sr-only">{{#str}}navmenutoggle, theme_ldg{{/str}}</span>
+    </button>
+
+    {{#hasgroups}}
+        <div class="ldg-navmenu-body">
+            {{#groups}}
+                <div class="ldg-navmenu-group">
+                    <h3 class="ldg-navmenu-grouptitle">{{title}}</h3>
+                    <ul class="ldg-navmenu-list">
+                        {{#items}}
+                            <li>
+                                <a href="{{url}}"
+                                   class="ldg-navmenu-item{{#active}} active{{/active}}"
+                                   title="{{label}}"
+                                   {{#active}}aria-current="page"{{/active}}>
+                                    <i class="fa-solid {{icon}}" aria-hidden="true"></i>
+                                    <span class="ldg-navmenu-label">{{label}}</span>
+                                </a>
+                            </li>
+                        {{/items}}
+                    </ul>
+                </div>
+            {{/groups}}
+        </div>
+    {{/hasgroups}}
+
+    {{#courseindex}}
+        <div class="ldg-drawer-courseindex">{{{courseindex}}}</div>
+    {{/courseindex}}
+
+    {{#hasfooteritems}}
+        <div class="ldg-navmenu-footer">
+            <div class="ldg-navmenu-user" title="{{userfullname}}">
+                {{{useravatar}}}
+                <span class="ldg-navmenu-label">{{userfullname}}</span>
+            </div>
+            <ul class="ldg-navmenu-list">
+                {{#footeritems}}
+                    <li>
+                        <a href="{{url}}" class="ldg-navmenu-item" title="{{label}}">
+                            <i class="fa-solid {{icon}}" aria-hidden="true"></i>
+                            <span class="ldg-navmenu-label">{{label}}</span>
+                        </a>
+                    </li>
+                {{/footeritems}}
+            </ul>
+        </div>
+    {{/hasfooteritems}}
+</nav>
+
+{{#js}}
+    require(['theme_ldg/navmenu'], function(NavMenu) {
+        NavMenu.init();
+    });
+{{/js}}

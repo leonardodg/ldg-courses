@@ -1,0 +1,93 @@
+# =============================================================================
+# nginx - dominio de vendedor - __DOMINIO__
+# =============================================================================
+# Gerado por .devcontainer/nginx/provisiona-dominio.sh. Editar a mao funciona,
+# mas o script sobrescreve na proxima execucao para este dominio.
+#
+# O nginx NAO sabe qual empresa e qual, e nao precisa saber. Ele preserva o
+# header Host; quem resolve empresa, tema e wwwroot e o mapa gerado no
+# dataroot, lido pelo config.php antes do lib/setup.php.
+#
+# A SEGURANCA NAO DEPENDE DESTE ARQUIVO. Um dominio que chegue aqui sem estar
+# cadastrado no banco nao vira wwwroot: o config.php usa o Host apenas como
+# chave de busca numa lista gerada, e chave ausente nao entra no if. O pior
+# caso de um bloco mal configurado e o dominio nao funcionar - nao e vazar.
+# =============================================================================
+
+# --- HTTP: so redireciona. O certbot injeta o desafio ACME aqui. -------------
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMINIO__;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# --- HTTPS ------------------------------------------------------------------
+server {
+    # Sintaxe do nginx 1.24 (a da VPS). O "http2 on;" separado so existe a
+    # partir do 1.25.1 e quebra aqui com: unknown directive "http2".
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name __DOMINIO__;
+
+    ssl_certificate     /etc/letsencrypt/live/__DOMINIO__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__DOMINIO__/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Mesmos limites do dominio principal: o vendedor sobe curso e restaura
+    # backup pelo dominio dele tambem.
+    client_max_body_size 128M;
+
+    server_tokens off;
+    add_header Strict-Transport-Security "max-age=86400" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # O Moodle publica upgrade.txt e readme em public/, e eles revelam a versao.
+    # Exige um diretorio simples antes do arquivo: robots.txt e llms.txt, na
+    # raiz, passam, e pluginfile.php/.../x.txt tem ponto no caminho e tambem.
+    location ~* ^/[a-z0-9_]+/(?:[^.]*/)?[^/]+\.(?:txt|md)$ {
+        return 404;
+    }
+    proxy_connect_timeout 60s;
+    proxy_send_timeout    300s;
+    proxy_read_timeout    300s;
+
+    # IP real do visitante quando o dominio esta atras da Cloudflare. Sem isto
+    # o Moodle grava o IP da Cloudflare em todo log de acesso - dado que nao da
+    # para corrigir depois.
+    include /etc/nginx/snippets/cloudflare-realip.conf;
+
+    access_log /var/log/nginx/__DOMINIO__.access.log;
+    error_log  /var/log/nginx/__DOMINIO__.error.log;
+
+    location / {
+        proxy_pass http://ldg_courses;
+        proxy_http_version 1.1;
+
+        # Host e X-Forwarded-Proto sao OBRIGATORIOS.
+        #
+        # Sem Host, o mapa nao tem como saber de qual vendedor e a requisicao e
+        # o dominio cai no site principal.
+        #
+        # Sem X-Forwarded-Proto, o Moodle monta URL http:// dentro de pagina
+        # https e o navegador bloqueia como conteudo misto.
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Port  $server_port;
+
+        proxy_buffering off;
+        proxy_set_header Connection "";
+    }
+}

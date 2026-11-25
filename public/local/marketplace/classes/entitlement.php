@@ -26,22 +26,21 @@ use core\persistent;
  * diz o que aconteceu uma vez, o direito diz o que vale agora.
  *
  * @package    local_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class entitlement extends persistent {
-
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_entitlement';
+    public const TABLE = 'local_marketplace_entitlement';
 
     /** @var string Vigente. */
-    const STATUS_ACTIVE = 'active';
+    public const STATUS_ACTIVE = 'active';
 
     /** @var string Passou de timeend. */
-    const STATUS_EXPIRED = 'expired';
+    public const STATUS_EXPIRED = 'expired';
 
     /** @var string Cancelado pelo aluno ou pela plataforma. */
-    const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_CANCELLED = 'cancelled';
 
     /**
      * Define as propriedades.
@@ -60,6 +59,8 @@ class entitlement extends persistent {
                 'default' => self::STATUS_ACTIVE,
                 'choices' => [self::STATUS_ACTIVE, self::STATUS_EXPIRED, self::STATUS_CANCELLED],
             ],
+            'cycles' => ['type' => PARAM_INT, 'default' => 0],
+            'norenew' => ['type' => PARAM_INT, 'default' => 0],
         ];
     }
 
@@ -142,6 +143,75 @@ class entitlement extends persistent {
         $records = $DB->get_records_select(self::TABLE, $where, $params);
 
         return array_map(fn($record) => new self(0, $record), $records);
+    }
+
+    /**
+     * Alunos de uma empresa, com o direito de cada um.
+     *
+     * E esta consulta que responde "quem sao os meus alunos?" sem precisar de
+     * nenhuma estrutura nova: a coluna companyid ja esta aqui, desnormalizada
+     * de proposito. Um cohort responderia a uma pergunta parecida e diferente -
+     * cohort e binario, direito vence - e criaria uma segunda fonte da verdade
+     * sobre pertencimento.
+     *
+     * Traz TODOS os direitos, inclusive vencidos e cancelados: quem vende
+     * assinatura precisa enxergar quem saiu tanto quanto quem ficou. Quem so
+     * quer os vigentes filtra pela situacao na tela.
+     *
+     * Um aluno com tres ofertas aparece em tres linhas. Agrupar por pessoa
+     * esconderia justamente o que interessa - qual oferta ele tem, e ate quando.
+     *
+     * @param int $companyid
+     * @return \stdClass[] Linhas com os dados do direito, do aluno e da oferta.
+     */
+    public static function get_for_company(int $companyid): array {
+        global $DB;
+
+        // Os campos de nome vem do core: fullname() precisa de todos eles, e a
+        // lista muda conforme o idioma e a configuracao do site. Escrever
+        // firstname e lastname a mao daria nome errado em quem usa nome
+        // alternativo ou fonetico.
+        $userfields = \core_user\fields::for_name()->get_sql('u', false, '', '', false)->selects;
+
+        $sql = "SELECT e.id, e.userid, e.offerid, e.timestart, e.timeend, e.status, e.cycles, e.norenew,
+                       e.timecreated, u.email, u.username, $userfields,
+                       o.name AS offername, o.accessmode, o.price, o.currency, o.country
+                  FROM {" . self::TABLE . "} e
+                  JOIN {user} u ON u.id = e.userid
+                  JOIN {" . offer::TABLE . "} o ON o.id = e.offerid
+                 WHERE e.companyid = :companyid
+              ORDER BY u.lastname, u.firstname, o.name";
+
+        return $DB->get_records_sql($sql, ['companyid' => $companyid]);
+    }
+
+    /**
+     * Quantos alunos DISTINTOS a empresa tem com direito vigente.
+     *
+     * Distintos porque um aluno com tres ofertas e um aluno so. Contar linhas
+     * de direito daria um numero maior que a base real de alunos, e e esse
+     * numero que o vendedor usa para tomar decisao.
+     *
+     * @param int $companyid
+     * @return int
+     */
+    public static function count_active_students(int $companyid): int {
+        global $DB;
+
+        $now = time();
+        $sql = "SELECT COUNT(DISTINCT userid)
+                  FROM {" . self::TABLE . "}
+                 WHERE companyid = :companyid
+                   AND status = :status
+                   AND timestart <= :now
+                   AND (timeend = 0 OR timeend > :now2)";
+
+        return (int) $DB->count_records_sql($sql, [
+            'companyid' => $companyid,
+            'status' => self::STATUS_ACTIVE,
+            'now' => $now,
+            'now2' => $now,
+        ]);
     }
 
     /**

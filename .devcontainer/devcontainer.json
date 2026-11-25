@@ -1,26 +1,67 @@
 // See https://containers.dev/implementors/json_reference/ for configuration reference
+//
+// ============================================================================
+// POR QUE ESTE ARQUIVO NAO TEM "features" NEM "build-dev.yml"
+// ============================================================================
+// Este projeto usa varias worktrees do mesmo repo bare, e cada uma abre uma
+// janela do VS Code. Duas coisas faziam o "Reopen in Container" reconstruir a
+// imagem toda vez que se abria uma worktree nova:
+//
+//   1. "features". Cada feature declarada obriga a CLI do Dev Containers a
+//      construir uma imagem DERIVADA para injeta-la, por pasta. As tres que
+//      existiam aqui foram resolvidas na origem: git ja vem instalado no stage
+//      development do Dockerfile, common-utils nao agregava com remoteUser
+//      www-data, e shell-history virou ENV HISTFILE + volume nomeado.
+//
+//   2. "build-dev.yml" na lista abaixo. Aquele arquivo tem uma secao "build:"
+//      com context ../../ - o caminho muda a cada worktree, entao o cache nao
+//      aproveita e a imagem e reconstruida. Aqui usamos a imagem ja publicada
+//      (leodg/ldg-courses:development). Para reconstruir de proposito, use
+//      "moodev build", que carrega o build-dev.yml explicitamente.
+//
+// Resultado: abrir uma worktree nova conecta no container em segundos, sem
+// build. Ver .devcontainer/bin/moodev.
+// ============================================================================
 {
-    "name": "Moodle 4.5.1+ for Ivana Academy By LeoDG",
+    // O basename identifica a worktree na barra de titulo. Com varias janelas
+    // abertas ao mesmo tempo, sem isso nao da para saber qual e qual.
+    "name": "ldg-courses — ${localWorkspaceFolderBasename}",
+
+    // Mesma lista que o "moodev" usa para subir o stack. Precisa bater exatamente:
+    // se divergir, a extensao considera a configuracao diferente e RECRIA os
+    // containers que o cf acabou de subir.
+    //
+    // local-tls.yml e local-dev.yml sao SO LOCAIS. O COMPOSE_FILE da VPS e
+    // apenas base.yml:db.yml:dev.yml (ver .github/workflows/deploy.yml).
+    // local-tls.yml publica a 443 do container; sem ele, abrir pelo VS Code
+    // perderia o HTTPS que o MOODLE_URL exige.
     "dockerComposeFile": [
         "./compose/base.yml",
         "./compose/db.yml",
         "./compose/dev.yml",
-        "./compose/build-dev.yml"
+        "./compose/local-tls.yml",
+        "./compose/local-dev.yml"
     ],
     "service": "moodle",
     "runServices": [
         "moodle",
         "db"
     ],
+
+    // Raiz do repo, nao public/: o config.php mora aqui, fora do webroot.
     "workspaceFolder": "/var/www/html",
     "remoteUser": "www-data",
-    // Features to add to the dev container. More info: https://containers.dev/features.
-    "features": {
-        "ghcr.io/devcontainers/features/git:1": {},
-        "ghcr.io/devcontainers/features/common-utils:2": {},
-        "ghcr.io/stuartleeks/dev-container-features/shell-history:0": {}
-    },
-    // Mounts are used to share configuration files and SSH keys between the host and the container.
+
+    // Fechar a janela do VS Code NAO derruba o stack. Sem isto, fechar a
+    // worktree A mataria o ambiente que estava rodando, e o padrao com compose
+    // e parar os servicos.
+    "shutdownAction": "none",
+
+    // O ENTRYPOINT da imagem (moodle-entrypoint) precisa rodar: e ele que
+    // configura Apache, TLS e permissoes. Sobrescrever deixaria o Apache parado.
+    "overrideCommand": false,
+
+    // Mounts para compartilhar configuracao e chaves entre host e container.
     "mounts": [
         {
             "source": "${localEnv:HOME}/.gitconfig",
@@ -32,26 +73,21 @@
             "target": "/home/www-data/.ssh",
             "type": "bind"
         },
+        // Historico de shell por worktree, em volume nomeado. Substitui o bind
+        // em ../../moodle-academy-bashhistory, que era do projeto anterior.
+        // Volume e nao bind porque o docker inicializa um volume nomeado com o
+        // conteudo e o dono que a imagem ja tem em /commandhistory; um bind numa
+        // pasta nova do host entraria como root e o www-data nao escreveria.
         {
-            "source": "${localEnv:HOME}/.ssh/known_hosts",
-            "target": "/home/www-data/.ssh/known_hosts",
-            "type": "bind"
-        },
-        {
-            "source": "../../moodle-academy-bashhistory",
+            "source": "ldg-courses-history-${localWorkspaceFolderBasename}",
             "target": "/commandhistory",
-            "type": "bind"
-        },
-        {
-            "source": "../../moodledata-academy",
-            "target": "/var/www/moodledata-academy",
-            "type": "bind"
+            "type": "volume"
         }
+        // Removidos: o bind de ../../moodledata-academy apontava para um caminho
+        // que NAO EXISTE nesta maquina, e o moodledata real ja vem pelo dev.yml
+        // via MOODLE_HOST_DATA.
     ],
-    // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": {
-        "Fix Volume Permissions": "sudo chown -R $(whoami): /commandhistory"
-    },
+
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
@@ -94,6 +130,9 @@
         }
     },
     "containerEnv": {
+        // core.filemode=false: o bind mount do repo nao preserva o bit de
+        // execucao igual ao host, e sem isto o git marca metade da arvore como
+        // modificada.
         "GIT_CONFIG_PARAMETERS": "'core.filemode=false'",
         "COMPOSER_ALLOW_PLUGINS": "dealerdirect/phpcodesniffer-composer-installer:true"
     }

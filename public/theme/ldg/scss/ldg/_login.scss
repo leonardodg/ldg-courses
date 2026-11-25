@@ -1,0 +1,179 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Tela de login.
+//
+// A imagem de fundo vem do theme_ldg_get_extra_scss, que roda depois de tudo
+// isto - aqui fica so o que esta POR CIMA dela.
+//
+// O painel da esquerda e escuro nos DOIS modos: e a foto com degrade por cima.
+// Por isso o cartao sobre ele nao usa token de superficie, e sim valores
+// fixos - no modo claro, --ldg-surface seria branco sobre a foto.
+
+body.pagelayout-login {
+    // O #page da tela de entrar sai BRANCO, e o branco vence tudo que esta
+    // dentro dele: o painel da marca cobre a metade esquerda, e a metade
+    // direita ficava um retangulo branco com um cartao escuro no meio - a
+    // pagina mais visitada do site com duas identidades ao mesmo tempo.
+    //
+    // Nao e a regra do .login-layout-right que falhou: aquela pinta a COLUNA,
+    // que continua transparente por desenho. O branco vem do #page, um degrau
+    // acima, e e la que ele precisa ser desfeito.
+    #page {
+        background-color: var(--ldg-bg);
+    }
+
+    #page .login-layout-left {
+        // O Boost pinta o painel com $primary enquanto a imagem carrega. Sem
+        // isto, o azul chapado pisca antes da foto aparecer.
+        background-color: var(--ldg-navy);
+    }
+
+    .login-layout-left-content {
+        background-color: rgba(14, 25, 43, 0.55);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: var(--bs-border-radius);
+        color: #ffffff;
+    }
+
+    .login-layout-right {
+        background-color: var(--ldg-bg);
+    }
+}
+
+// Os campos da tela de login precisam de uma regra SO PARA ELES.
+//
+// O Moove pinta `.login-container .login-form .form-control` com #f8f9fa
+// chapado - sem variavel, sem escopo de tema - e tambem no :hover e no :focus.
+// Aquilo tem especificidade (0,3,0) e ganha da regra geral de campo em
+// _forms.scss, que e (0,1,0). O resultado, ate esta regra existir, era um
+// formulario de login com dois campos claros sobre fundo #121212: o unico
+// formulario que 100% dos visitantes veem.
+.login-container .login-form {
+    .form-control,
+    .form-control:hover {
+        background-color: var(--ldg-field-bg);
+        border-color: var(--ldg-border);
+        color: var(--ldg-text);
+    }
+
+    .form-control:focus {
+        background-color: var(--ldg-field-bg);
+        border-color: var(--ldg-accent);
+        box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.35);
+        color: var(--ldg-text);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Painel da marca, no login
+// -----------------------------------------------------------------------------
+//
+// O painel esquerdo e SEMPRE escuro, nos dois modos: e a superficie de marca, e
+// a identidade nao deve mudar de cor porque o usuario prefere tela clara.
+//
+// O fundo e um degrade, e nao um preto chapado. Preto liso ao lado de um
+// formulario tambem escuro le como "sem estilo" - o degrade e a luz difusa dao
+// profundidade sem custar imagem nenhuma, e continuam funcionando quando o
+// administrador nao subiu foto de fundo.
+.ldg-login .login-layout-left {
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    overflow: hidden;
+    background:
+        radial-gradient(120% 100% at 15% 0%, rgba(0, 122, 255, .22) 0%, transparent 55%),
+        radial-gradient(90% 80% at 90% 100%, rgba(0, 122, 255, .12) 0%, transparent 60%),
+        linear-gradient(160deg, #16243d 0%, var(--ldg-navy) 45%, #070d18 100%);
+}
+
+.ldg-login-brand {
+    position: relative;
+    z-index: 1;
+    max-width: 30rem;
+    text-align: left;
+    color: #ffffff;
+}
+
+.ldg-login-logo {
+    margin-bottom: 2.5rem;
+
+    // Aqui a logo e o elemento principal, e nao um item de barra - por isso a
+    // altura e maior que a da navbar.
+    .logo {
+        max-height: 4.5rem;
+        width: auto;
+    }
+}
+
+.ldg-login-headline {
+    font-size: clamp(1.75rem, 2.4vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+    color: #ffffff;
+}
+
+.ldg-login-lead {
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    margin-bottom: 0;
+    color: rgba(255, 255, 255, .72);
+}
+
+// -----------------------------------------------------------------------------
+// Lado do formulario
+// -----------------------------------------------------------------------------
+//
+// Uma superficie um degrau acima do fundo, e nao o mesmo tom: o formulario
+// precisa parecer um objeto sobre a pagina, senao a tela inteira vira um bloco
+// cinza so - que foi exatamente a reclamacao.
+.ldg-login .login-layout-right {
+    align-items: center;
+    background-color: var(--ldg-bg);
+}
+
+.ldg-login .login-container {
+    padding: 2rem;
+    border-radius: 12px;
+    background-color: var(--ldg-surface);
+    border: 1px solid var(--ldg-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .28);
+}
+
+[data-bs-theme="light"] .ldg-login .login-container {
+    box-shadow: 0 10px 30px rgba(14, 25, 43, .10);
+}
+
+// O botao de mostrar a senha vinha com #f8f9fa embutido pelo core - claro sobre
+// campo escuro, foi o retangulo cinza que aparecia colado no campo de senha.
+.login-container .login-form .toggle-sensitive-wrapper .toggle-sensitive-btn {
+    --bs-btn-bg: var(--ldg-field-bg);
+    --bs-btn-hover-bg: var(--ldg-field-bg);
+    --bs-btn-active-bg: var(--ldg-field-bg);
+    --bs-btn-border-color: var(--ldg-border);
+    --bs-btn-hover-border-color: var(--ldg-border);
+    --bs-btn-active-border-color: var(--ldg-border);
+    color: var(--ldg-text);
+}

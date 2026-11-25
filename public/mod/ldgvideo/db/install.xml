@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="mod/ldgvideo/db" VERSION="20260904" COMMENT="XMLDB file for the LDG video module"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="ldgvideo" COMMENT="Uma aula em video por linha. O video e sempre externo: o endereco e guardado, nunca o arquivo.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="course" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="1333" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="intro" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="videourl" TYPE="char" LENGTH="1333" NOTNULL="true" SEQUENCE="false" COMMENT="A URL canonica do video, ja normalizada. E a fonte da verdade: nao ha videoid nem provider, porque quem resolve o endereco e o core_media_manager na hora de desenhar - guardar o player escolhido congelaria a decisao de hoje."/>
+        <FIELD NAME="aspectratio" TYPE="char" LENGTH="8" NOTNULL="true" DEFAULT="16:9" SEQUENCE="false" COMMENT="16:9, 9:16 ou 4:3. A largura vem sempre da coluna que contem o video; so a proporcao e escolhida."/>
+        <FIELD NAME="displayoptions" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Serializado, como no mod_page. Guarda o printintro."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course" UNIQUE="false" FIELDS="course"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

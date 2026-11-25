@@ -20,6 +20,9 @@
 *~
 #
 /config.php
+# Ajuste local da maquina. Nunca versionado: e por definicao o que vale
+# numa maquina so, e costuma conter credencial de teste ou chave de debug.
+/config-local.php
 /tags
 /TAGS
 /cscope.*
@@ -62,6 +65,17 @@ UPGRADING-CURRENT.md
 .phpunit.cache
 tsconfig.aliases.json
 
+# Documentacao CONFIDENCIAL de negocio: planos, margem, custo, comparacao com
+# concorrente. O remote origin e um repositorio PUBLICO, e o deploy faz rsync de
+# docs/ para a VPS - um "git add ." aqui publicaria calculo de lucro.
+#
+# O que pode entrar em documento versionado e so o que a landing EXIBE: preco,
+# percentual de comissao, resolucao por faixa. Margem e custo, nunca.
+#
+# Ignorado aqui, no .gitignore versionado, e nao em .git/info/exclude, de
+# proposito: um exclude invisivel some num clone novo e ninguem revisa.
+/docs/private/
+
 # Segredos e certificados locais de dev - nunca versionar.
 # Os arquivos .example ao lado servem de template.
 .devcontainer/secrets/
@@ -76,5 +90,22 @@ tsconfig.aliases.json
 # .env da raiz: variaveis de interpolacao do compose, com caminhos da maquina.
 /.env
 
+# Symlink para o /.env acima, criado pelo "cf".
+# A extensao Dev Containers monta o proprio "docker compose -f ..." sem passar
+# --env-file, e o compose entao procura o .env no diretorio do PRIMEIRO arquivo
+# compose - este aqui - em vez da raiz do repo. Sem o link, o Reopen in Container
+# falha com "required variable DB_HOST_DATA is missing a value".
+.devcontainer/compose/.env
+
+# Dataroot do PHPUnit, por worktree (montado por compose/local-dev.yml).
+/phpu_moodledata/
+
 # Mapa de dominios por vendedor, gerado pelo local_marketplace em runtime.
 .devcontainer/marketplace_domains.php
+
+# Grafo de conhecimento gerado pelo graphify. Regeneravel, ~1 MB.
+/graphify-out/
+
+# Bytecode do Python, gerado pelos scripts de docs/diagram/gerar/.
+__pycache__/
+*.pyc

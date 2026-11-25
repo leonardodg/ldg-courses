@@ -18,14 +18,14 @@
  * Gateway do Mercado Pago (Checkout Pro) com split de pagamento.
  *
  * @package    paygw_mercadopago
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'paygw_mercadopago';
-$plugin->version   = 2026082510;
+$plugin->version   = 2026091772;
 $plugin->requires  = 2026042000; // Moodle 5.2.
 $plugin->maturity  = MATURITY_ALPHA;
 $plugin->release   = '0.1.0';

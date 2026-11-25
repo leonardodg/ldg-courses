@@ -1,0 +1,204 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Lugares do core e do Boost que pintam fundo com a variavel SCSS $body-bg.
+//
+// $body-bg e resolvido em tempo de COMPILACAO e nao tem variante dark: o
+// Bootstrap 5.3 tem $body-bg-dark para a custom property --bs-body-bg, mas todo
+// SCSS que escreve `background: $body-bg` direto congela o valor do modo claro.
+// O resultado no modo escuro e um painel claro com o texto branco por cima -
+// invisivel. Foi assim que a tela de gestao de cursos apareceu quebrada.
+//
+// Nao da para consertar na origem: trocar $body-bg por uma custom property
+// quebra a compilacao, porque o _root.scss do Bootstrap chama to-rgb($body-bg)
+// para gerar --bs-body-bg-rgb, e to-rgb() nao aceita var().
+//
+// Entao a correcao e por seletor, com os MESMOS seletores do core - este
+// arquivo carrega por ultimo, e em empate de especificidade quem vem depois
+// vence. Onde ha ID no seletor do core, o ID precisa estar aqui tambem.
+//
+// COMO REFAZER ESTA LISTA depois de atualizar o Moodle: baixe o CSS compilado
+// do tema e procure o valor literal do $body-bg do modo claro.
+//
+//   curl -sk "https://<site>/theme/styles.php/ldg/<rev>/all" -o /tmp/t.css
+//   grep -o '[^{}]*{[^}]*background[^}]*#f4f6fa[^}]*}' /tmp/t.css
+//
+// Se aparecer seletor que nao esta aqui, o core ganhou um lugar novo.
+
+// Fundo de pagina. Sao areas que, no modo claro, se confundem de proposito com
+// o fundo do documento - entao acompanham --ldg-bg, e nao a superficie.
+#region-main,
+.region_main_settings_menu_proxy,
+.pagelayout-maintenance .page-header-headings,
+.pagelayout-secure .page-header-headings,
+.block .block-cards .course-summaryitem,
+.modchoosernav,
+.btn-add-content,
+.message-app .message.received,
+.form-autocomplete-suggestions li.suggestions-heading,
+#page-backup-restore .filealiasesfailures .aliaseslist,
+#page-mod-quiz-edit div.question div.content div.questioncontrols,
+#page-mod-quiz-edit div.question div.content div.points,
+#page-mod-quiz-edit div.quizpage .pagecontent .pagestatus,
+#page-mod-quiz-edit div.editq div.question div.content,
+.moodle-dialogue-base .moodle-dialogue .moodle-dialogue-bd body {
+    background-color: var(--ldg-bg);
+}
+
+// Gestao de cursos e categorias. O seletor do core tem DOIS ids
+// (#course-category-listings + #category-listing), especificidade (2,1,0):
+// a regra generica de .card, que e (0,1,0), nunca chegaria perto.
+#course-category-listings.columns-3 {
+    background-color: var(--ldg-bg);
+}
+
+#course-category-listings.columns-3 #category-listing > div,
+#course-category-listings.columns-3 #course-listing > div,
+#course-category-listings.columns-3 #course-detail > div {
+    background-color: var(--ldg-surface);
+}
+
+// A linha em destaque nao pode ser um fundo opaco: no escuro ela apagaria o
+// texto. Veu translucido resolve nos dois modos com um valor so.
+#course-category-listings .listitem.highlight {
+    background-color: var(--ldg-hover-overlay);
+}
+
+// Estas duas sao cromo, e cromo e escuro nos dois modos.
+.moremenu .nav-tabs,
+.secondary-navigation .navigation {
+    background-color: transparent;
+}
+
+// Sobras de tema claro no CSS do core, com cor chapada em vez de variavel.
+.formlisting {
+    background-color: var(--ldg-surface);
+}
+
+.formlistingmore,
+.formlistingrow {
+    background-color: var(--ldg-bg);
+}
+
+// -----------------------------------------------------------------------------
+// A moldura branca em volta de todo o conteudo
+// -----------------------------------------------------------------------------
+//
+// O core compila `#page.drawers .main-inner { background-color: #fff }` com o
+// branco LITERAL. E o retangulo claro que emoldurava a pagina inteira no modo
+// escuro - o defeito mais visivel do tema, e nao vinha de nada nosso.
+#page.drawers .main-inner {
+    background-color: var(--ldg-surface);
+}
+
+// -----------------------------------------------------------------------------
+// bg-secondary
+// -----------------------------------------------------------------------------
+//
+// O Bootstrap NAO redefine --bs-secondary nem --bs-secondary-rgb no modo
+// escuro: so o --bs-secondary-bg. Entao toda utility .bg-secondary continua
+// pintando o cinza claro do modo claro - era o circulo cinza do botao de ajuda
+// no rodape.
+[data-bs-theme="dark"] {
+    --bs-secondary: #{$gray-700};
+    --bs-secondary-rgb: 42, 42, 42;
+}
+
+// -----------------------------------------------------------------------------
+// activity-details
+// -----------------------------------------------------------------------------
+//
+// A caixa de "Completion requirements" no topo da atividade nasce com um cinza
+// claro FIXO do core. No modo escuro ela vira uma faixa quase branca com o texto
+// branco por cima - ilegivel.
+//
+// Foi vista pela primeira vez DENTRO do quadro do formato de curso, que e onde a
+// atividade aparece embutida, mas o problema nao e do formato: acontece em
+// qualquer atividade aberta no modo escuro.
+// O seletor precisa BATER a especificidade do core, que e
+// `.path-mod .activity-details:not(:empty)`. Uma versao mais curta perde, mesmo
+// vindo depois - foi o que aconteceu na primeira tentativa.
+//
+// As duas formas porque `data-bs-theme` e `path-mod` ficam no MESMO elemento, o
+// body: uma delas casa como ancestral, a outra como o proprio elemento.
+[data-bs-theme="dark"] .path-mod .activity-details:not(:empty),
+[data-bs-theme="dark"].path-mod .activity-details:not(:empty) {
+    background-color: var(--ldg-surface-raised);
+    color: var(--ldg-text);
+}
+
+// O cabecalho das paginas de administracao encolhia ate o conteudo.
+//
+// Sintoma: em /admin/*, o titulo "Site administration" e a caixa de busca
+// apareciam ESPREMIDOS no meio da tela, um do lado do outro, em vez de o titulo
+// a esquerda e a busca a direita. Medido em 1440px: o <header> tinha 370px de
+// largura, com 365px de margem de cada lado.
+//
+// A causa nao e o max-width, que e onde se olha primeiro. E o `margin: 0 auto`
+// que o Boost poe em .header-maxwidth (moodle/layout.scss) combinado com o
+// `#page-wrapper #page { display: flex; flex-direction: column }`, tambem dele:
+// margem automatica no eixo CRUZADO de um flex nao centraliza dentro da largura
+// cheia - ela cancela o stretch e encolhe o item ate o conteudo.
+//
+// Perguntado ao navegador, e nao deduzido: CSS.getMatchedStylesForNode mostrou
+// que so aquela regra bate no elemento, e que o `.path-admin .header-maxwidth
+// { max-width: none }` do proprio Boost nao chega a casar.
+//
+// Zerar a margem devolve o stretch, e o cabecalho volta a ocupar a area de
+// conteudo - que e como o tema pai se comporta nas mesmas telas.
+.path-admin header.header-maxwidth,
+.format-site header.header-maxwidth {
+    max-width: none;
+    margin-inline: 0;
+    padding-inline: 0;
+}
+
+// A navegacao secundaria atravessa a area de conteudo, de ponta a ponta.
+//
+// Ela e uma FAIXA abaixo da navbar, e nao um cartao no meio da pagina - e como o
+// tema pai se comporta, e foi o que o usuario apontou comparando as duas telas.
+//
+// O recuo do #page.drawers e ASSIMETRICO, e isso nao se adivinha: medido no
+// navegador, sao 16px a esquerda e 48px a direita. A faixa cancela cada lado com
+// o valor dele e devolve o mesmo por dentro.
+//
+// Cancelar 48px dos dois lados - que foi a primeira tentativa - jogava a faixa
+// 32px POR BAIXO do trilho de icones, porque a esquerda so havia 16px para
+// cancelar. Media x=228 com o trilho terminando em 260.
+//
+// A faixa nao passa por baixo do trilho de proposito: ele e uma coluna fixa, e o
+// conteudo comeca depois dele. "Ponta a ponta" aqui e a area de conteudo, e nao
+// a janela - o tema pai nao tem trilho, e por isso a dele vai ate a borda.
+#page.drawers .secondary-navigation {
+    margin-left: -1rem;
+    margin-right: -3rem;
+    padding-left: 1rem;
+    padding-right: 3rem;
+    background-color: var(--ldg-chrome-bg);
+    border-bottom: 1px solid var(--ldg-chrome-border);
+}
+
+@include media-breakpoint-down(md) {
+    #page.drawers .secondary-navigation {
+        margin-right: -1rem;
+        padding-right: 1rem;
+    }
+}

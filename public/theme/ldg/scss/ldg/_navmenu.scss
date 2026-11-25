@@ -1,0 +1,302 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Menu de navegacao lateral.
+//
+// Sao DOIS comportamentos, e a fronteira e o breakpoint md do Bootstrap:
+//
+//   Desktop  o drawer fica sempre visivel. Recolher nao o esconde: ele
+//            estreita para um trilho so de icones. O conteudo da pagina
+//            acompanha a largura do trilho.
+//   Mobile   o trilho nao existe. O drawer volta a ser o off-canvas do Boost -
+//            escondido por padrao, abre por cima do conteudo pelo botao da
+//            barra. Um trilho fixo comeria largura demais numa tela de celular,
+//            que e onde ela ja falta.
+
+$ldg-navmenu-width: 260px;
+$ldg-navmenu-rail: 68px;
+
+:root {
+    --ldg-navmenu-width: #{$ldg-navmenu-width};
+    --ldg-navmenu-rail: #{$ldg-navmenu-rail};
+}
+
+.ldg-navmenu {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ldg-gutter);
+    height: 100%;
+    padding: var(--ldg-space) 0;
+}
+
+.ldg-navmenu-toggle {
+    align-self: flex-end;
+    border-radius: var(--bs-border-radius);
+    color: var(--ldg-text-muted);
+    margin-right: var(--ldg-space);
+    padding: 0.5rem;
+
+    &:hover,
+    &:focus {
+        background-color: var(--ldg-hover-overlay);
+        color: var(--ldg-text);
+    }
+}
+
+// A coluna do menu e uma so, e cada bloco tem um papel na altura:
+// os grupos ocupam o que precisam, o course index estica e rola, e o rodape
+// fica colado na base pelo margin-top auto. Sem isso, dentro de um curso o
+// rodape aparece no meio da coluna e o resto transborda o drawer.
+.ldg-navmenu-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ldg-gutter);
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.ldg-navmenu-grouptitle {
+    color: var(--ldg-text-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    margin: 0 0 var(--ldg-space);
+    padding: 0 0.75rem;
+    text-transform: uppercase;
+}
+
+.ldg-navmenu-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ldg-navmenu-item {
+    align-items: center;
+    border-radius: var(--bs-border-radius);
+    color: var(--ldg-text);
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    text-decoration: none;
+    white-space: nowrap;
+
+    i {
+        flex: 0 0 1.25rem;
+        font-size: 1rem;
+        text-align: center;
+    }
+
+    &:hover,
+    &:focus {
+        background-color: var(--ldg-hover-overlay);
+        color: var(--ldg-text);
+        text-decoration: none;
+    }
+
+    // O item ativo e uma pilula preenchida, e nao so um texto colorido: no
+    // trilho o texto some, e sem o fundo nao sobraria marca nenhuma de onde
+    // o usuario esta.
+    &.active {
+        background-color: rgba(0, 122, 255, 0.14);
+        color: var(--ldg-accent-text);
+        font-weight: 600;
+    }
+}
+
+.ldg-navmenu-footer {
+    border-top: 1px solid var(--ldg-border);
+    flex: 0 0 auto;
+    margin-top: auto;
+    padding-top: var(--ldg-space);
+}
+
+.ldg-navmenu-user {
+    align-items: center;
+    color: var(--ldg-text-muted);
+    display: flex;
+    gap: 0.75rem;
+    overflow: hidden;
+    padding: 0.5rem 0.75rem;
+
+    img {
+        border-radius: 50%;
+        flex: 0 0 32px;
+        height: 32px;
+        width: 32px;
+    }
+
+    .ldg-navmenu-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+// O course index herda o mesmo respiro do menu, e ganha uma linha acima para
+// ficar claro que e outro bloco - nao mais um grupo do menu.
+.ldg-drawer-courseindex {
+    border-top: 1px solid var(--ldg-border);
+    flex: 1 1 auto;
+    margin-top: var(--ldg-gutter);
+    min-height: 0;
+    overflow-y: auto;
+    padding-top: var(--ldg-gutter);
+}
+
+// ---------------------------------------------------------------------------
+// Desktop: trilho fixo.
+// ---------------------------------------------------------------------------
+@include media-breakpoint-up(md) {
+    body.has-ldg-navmenu {
+        // O drawer esquerdo deixa de ser off-canvas: fica sempre visivel, e a
+        // classe `show` do Boost nao manda mais nele.
+        //
+        // O Boost esconde o drawer com `left: calc(-285px + -10px)`, e nao com
+        // transform. Sem redefinir o `left`, o drawer continuaria fora da tela
+        // com todo o resto certo - a pagina deslocada e um menu invisivel.
+        // O max-width tambem precisa vir junto: ele esta fixado em 285px no
+        // core e travaria a largura do trilho.
+        .drawer.drawer-left {
+            left: 0;
+            max-width: var(--ldg-navmenu-width);
+            transform: none;
+            visibility: visible;
+            width: var(--ldg-navmenu-width);
+        }
+
+        #page.drawers {
+            margin-left: var(--ldg-navmenu-width);
+        }
+
+        // O botao de abrir o drawer some: no desktop ele nunca esta fechado.
+        // Quem recolhe e o botao de dentro do proprio menu.
+        .drawer-toggler.drawer-left-toggle {
+            display: none;
+        }
+    }
+
+    body.has-ldg-navmenu.ldg-navmenu-is-collapsed {
+        .drawer.drawer-left {
+            max-width: var(--ldg-navmenu-rail);
+            width: var(--ldg-navmenu-rail);
+        }
+
+        #page.drawers {
+            margin-left: var(--ldg-navmenu-rail);
+        }
+
+        // No trilho o texto sai do fluxo, e nao so fica invisivel: com
+        // visibility ou opacity ele continuaria ocupando largura e o icone
+        // sairia do centro.
+        .ldg-navmenu-label,
+        .ldg-navmenu-grouptitle,
+        .ldg-drawer-courseindex,
+        #courseindexdrawercontrols {
+            display: none;
+        }
+
+        .ldg-navmenu-toggle {
+            align-self: center;
+            margin-right: 0;
+        }
+
+        .ldg-navmenu-item,
+        .ldg-navmenu-user {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        // Sem o titulo do grupo, a separacao entre grupos passa a ser a linha.
+        .ldg-navmenu-group + .ldg-navmenu-group {
+            border-top: 1px solid var(--ldg-border);
+            padding-top: var(--ldg-gutter);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Mobile: nada de trilho.
+// ---------------------------------------------------------------------------
+@include media-breakpoint-down(md) {
+    body.has-ldg-navmenu {
+        // O drawer volta a ser off-canvas do Boost. E o botao de recolher nao
+        // faz sentido aqui: fechar o drawer inteiro ja e o gesto.
+        .ldg-navmenu-toggle {
+            display: none;
+        }
+
+        // O estado recolhido nao vaza do desktop para o celular. Sem isto,
+        // quem recolheu no desktop abriria o drawer no celular e veria so
+        // icones, sem entender por que.
+        .ldg-navmenu-label,
+        .ldg-navmenu-grouptitle,
+        .ldg-drawer-courseindex {
+            display: revert;
+        }
+
+        // A largura do drawer no mobile continua sendo a do Boost, de
+        // proposito: ele esconde o drawer com um `left` negativo calculado
+        // sobre 285px. Estreitar aqui sem recalcular aquele `left` deixaria
+        // uma tira do menu aparecendo com o drawer fechado.
+    }
+}
+
+// O "X" de fechar a gaveta esquerda so existe no MOBILE.
+//
+// No desktop esta gaveta nao fecha: ela recolhe para o trilho de icones, e quem
+// faz isso e o proprio botao de recolher. O "X" herdado do Boost tentava
+// esconder a gaveta inteira, o trilho permanecia, e o clique parecia nao fazer
+// nada - o pior tipo de controle, porque nao ha como saber se falhou.
+//
+// No celular nao ha trilho: a gaveta cobre a tela e fechar e a unica saida.
+@include media-breakpoint-up(md) {
+    // O cabecalho INTEIRO da gaveta sai, e nao so o botao.
+    //
+    // Esconder apenas o .drawertoggle deixava o .drawerheader vazio no lugar,
+    // ocupando altura: era o vao grande acima do primeiro icone do trilho.
+    #theme_boost-drawers-courseindex .drawerheader {
+        display: none;
+    }
+
+    // O rodape acompanha o deslocamento do trilho.
+    //
+    // O #page recebe margin-left, mas o rodape fica FORA dele no layout - por
+    // isso o trilho passava por cima do rodape e cortava o texto. Deslocar o
+    // rodape junto e o que devolve as duas coisas ao mesmo eixo.
+    body.has-ldg-navmenu {
+        #page-footer,
+        .footer-dark,
+        .footer-light {
+            margin-left: var(--ldg-navmenu-width);
+        }
+    }
+
+    body.has-ldg-navmenu.ldg-navmenu-is-collapsed {
+        #page-footer,
+        .footer-dark,
+        .footer-light {
+            margin-left: var(--ldg-navmenu-rail);
+        }
+    }
+}

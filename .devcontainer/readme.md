@@ -1,7 +1,7 @@
-# Courses Free — infraestrutura
+# LDG Courses  — Infraestrutura
 
-Ambiente Docker do projeto. **Um único ambiente** (`development`), rodando na VPS Oracle
-atrás de nginx. Não há stack de produção separada — o projeto está em fase de teste.
+Ambiente Docker do projeto. **Um único ambiente** (`development`), rodando na VPS
+atrás de nginx.
 
 ---
 
@@ -118,8 +118,11 @@ desconhecido. Por isso o par vem do `mkcert`:
 ```bash
 cd .devcontainer/certs
 mkcert -cert-file develop-local.crt -key-file develop-local.key \
-       courses.leodg.dev localhost 127.0.0.1
+       courses.leodg.localhost localhost courses.leodg.dev 127.0.0.1
 ```
+
+`courses.leodg.localhost` é o nome do stack principal (`.moodev/host`, ver
+`docs/dev/ambiente-local.md`). Sem ele no certificado, o navegador recusa o nome.
 
 Na VPS esses arquivos não existem — `certs/` está no `EXCLUDE` do rsync. Se os
 secrets `ssl_cert`/`ssl_key` estivessem no `dev.yml`, o Docker falharia o bind
@@ -131,7 +134,7 @@ remover secret por override** (o merge é aditivo). Daí o arquivo à parte.
 ```bash
 docker compose exec moodle php admin/cli/install_database.php \
     --agree-license --adminuser=admin --adminpass='...' \
-    --adminemail='...' --fullname="Courses Free" --shortname="courses-free"
+    --adminemail='...' --fullname="LDG Technology & Courses" --shortname="LDG-Courses"
 ```
 
 Os CLI ficam em `admin/cli/` na **raiz**, não em `public/admin/cli/`.
@@ -152,9 +155,15 @@ Definidas no `.env`. Local e VPS divergem porque as portas ocupadas são outras:
 Local: 80/443/3306/9003 estão com o stack do `ivana-academy`.
 VPS: 8080, 8081 e 8082 estão com outros serviços.
 
-`BIND_ADDR` controla em que interface publicar. **Na VPS tem que ser `127.0.0.1`**,
-senão `137.131.141.93:8095` responde direto e contorna o nginx e o TLS — e o
-MariaDB fica acessível de fora.
+`BIND_ADDR` controla a interface do Apache e do Xdebug. **Na VPS tem que ser
+`127.0.0.1`**, senão `137.131.141.93:8095` responde direto e contorna o nginx e o
+TLS, e a porta do Xdebug fica alcançável de fora.
+
+`DB_BIND_ADDR` controla a do banco, e é uma variável separada justamente para
+que liberar o banco não arraste as outras duas. `127.0.0.1` é o padrão; para
+acessar o MariaDB de fora da VPS, use o IP da interface do WireGuard
+(`ip -4 addr show wg0`) — o banco passa a escutar só na VPN e continua invisível
+no IP público.
 
 `MOODLE_URL` tem que bater **exatamente** com a forma de acesso, porta inclusa —
 o Moodle reescreve toda URL absoluta para o `wwwroot`. Local: `https://courses.leodg.dev:8443`.
@@ -169,9 +178,9 @@ pasta conhecida do host, para o backup ser um `tar` da pasta:
 
 | O quê | Variável | Sugestão na VPS |
 |---|---|---|
-| Código | `MOODLE_HOST_WWWROOT` | `/home/ubuntu/courses-free/repo` |
-| moodledata | `MOODLE_HOST_DATA` | `/home/ubuntu/courses-free/moodledata` |
-| Banco | `DB_HOST_DATA` | `/home/ubuntu/courses-free/dbdata` |
+| Código | `MOODLE_HOST_WWWROOT` | `/home/ubuntu/ldg-courses/repo` |
+| moodledata | `MOODLE_HOST_DATA` | `/home/ubuntu/ldg-courses/moodledata` |
+| Banco | `DB_HOST_DATA` | `/home/ubuntu/ldg-courses/dbdata` |
 
 ---
 

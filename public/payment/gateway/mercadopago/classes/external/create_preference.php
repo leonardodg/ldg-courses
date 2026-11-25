@@ -26,11 +26,10 @@ use paygw_mercadopago\payment_processor;
  * Cria a preferencia e devolve para onde redirecionar o aluno.
  *
  * @package    paygw_mercadopago
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class create_preference extends external_api {
-
     /**
      * Parametros.
      *

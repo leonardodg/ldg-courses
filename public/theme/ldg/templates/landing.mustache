@@ -1,0 +1,98 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template theme_ldg/landing
+
+    Pagina inicial quando a landing de captacao toma o lugar dela.
+
+    O tema entrega o CASCO - cabeca do documento, corpo, scripts - e mais nada.
+    Cabecalho e rodape sao do PLUGIN: a landing traz a propria barra de secoes e
+    o proprio rodape, e eram justamente eles que o visitante via em duplicata
+    quando este template ainda montava a navbar e o rodape do tema por cima.
+
+    A mesma pagina servida em /local/partners/index.php e servida aqui, na raiz
+    do dominio, e as duas precisam ser identicas - senao a home da marca e a URL
+    que se divulga mostram coisas diferentes.
+
+    Tambem nao ha `main-inner` nem `region-main-box`: aquilo e o container do
+    Boost, que limita a largura e foi o que espremeu a landing numa coluna
+    central com faixas pretas dos dois lados. O desenho dela e de sangria total.
+
+    Nao ha drawer nem course index: e uma pagina de marketing para visitante
+    anonimo, e o menu lateral e feito de destinos pessoais que ele nao tem.
+
+    NAO escreva chave dupla de mustache dentro deste comentario: ele termina no
+    primeiro fecha-chaves, e o resto do texto vai parar na tela.
+
+    Context variables required for this template:
+    * output - o renderer
+    * bodyattributes - atributos da tag body
+    * landing - html do miolo, ja renderizado pelo local_partners
+
+    Example context (json):
+    {
+        "bodyattributes": "class='ldg-has-landing'",
+        "landing": "<div class='ldgp'></div>"
+    }
+}}
+{{> theme_boost/head }}
+
+<body {{{ bodyattributes }}}>
+<div class="toast-wrapper mx-auto py-0 fixed-top" role="status" aria-live="polite"></div>
+
+{{{ output.standard_top_of_body_html }}}
+
+<div id="page" data-region="mainpage" class="ldg-landing-page">
+    {{{ landing }}}
+
+    {{!
+        O marcador de conteudo principal e OBRIGATORIO: o core_renderer::header()
+        quebra com "page layout file does not contain the main content
+        placeholder" sem ele, porque e aqui que ele corta a pagina entre
+        header() e footer().
+
+        Abaixo da landing sai o que o Moodle monta para a pagina inicial - lista
+        de cursos, categorias, novidades. Quem escolhe isso e a mesma tela de
+        Configuracoes da pagina inicial onde se liga a landing: para ter so a
+        landing, esvazie os itens de conteudo la.
+    }}
+    <div class="ldg-landing-extra">
+        {{{ output.main_content }}}
+    </div>
+</div>
+
+{{{ output.standard_end_of_body_html }}}
+
+</body>
+</html>
+{{!
+    O loader do Boost, que e quem inicializa os componentes JS do Bootstrap.
+
+    SEM ELE O DROPDOWN NAO ABRE. O data-bs-toggle e so um atributo: quem liga o
+    comportamento a ele e este modulo. Como a raiz do dominio nao passa pelo
+    layout do Boost - este template desenha a pagina inteira -, o bloco precisa
+    estar aqui, do mesmo jeito que embedded.mustache, drawers.mustache e
+    columns1.mustache o trazem. Faltando, a landing servida em /
+    perde o seletor de idioma e o alternador de tema, enquanto a MESMA pagina em
+    /local/partners/index.php funciona - porque aquela usa o layout 'embedded'.
+}}
+{{#js}}
+M.util.js_pending('theme_boost/loader');
+require(['theme_boost/loader'], function() {
+  M.util.js_complete('theme_boost/loader');
+});
+{{/js}}

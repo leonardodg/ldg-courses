@@ -1,0 +1,184 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    A lista de aulas, agrupada por modulo.
+
+    E uma <nav> com listas de verdade, e nao uma pilha de <div>: quem usa leitor
+    de tela ouve "lista de 3 itens" e sabe o tamanho do modulo antes de percorrer.
+    O <details> abre e fecha sem uma linha de JavaScript, o que importa no
+    celular, onde a lista precisa comecar recolhida.
+
+    A aula bloqueada e um <span>, nao um link desativado. Link que nao leva a
+    lugar nenhum ainda recebe foco do teclado e ainda e anunciado como link.
+
+    O texto do cadeado vem pronto do core, ja com os links de dentro - inclusive
+    o da vitrine, que o availability_marketplace monta. Por isso sai com tres
+    chaves.
+
+    @template format_ldg/local/content/lessonlist
+    @author    LeoDG <callme@leodg.dev>
+    @copyright 2026 LeoDG <callme@leodg.dev>
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+    Context variables required for this template:
+    * hasmodules - Se ha algum modulo com aula visivel
+    * modules - Os modulos, cada um com as proprias aulas
+
+    Example context (json):
+    {
+        "hasmodules": true,
+        "modules": [
+            {
+                "num": 1,
+                "name": "Modulo 1 - Fundamentos",
+                "hasprogress": true,
+                "complete": 1,
+                "total": 3,
+                "percentage": 33,
+                "progresslabel": "1 de 3",
+                "iscomplete": false,
+                "lessons": [
+                    {
+                        "cmid": 11,
+                        "name": "Aula 1",
+                        "url": "#",
+                        "iconurl": "https://example.com/icon.svg",
+                        "modname": "page",
+                        "trackscompletion": true,
+                        "completed": true,
+                        "locked": false,
+                        "lockinfo": "",
+                        "current": false
+                    },
+                    {
+                        "cmid": 12,
+                        "name": "Aula 2",
+                        "url": "#",
+                        "iconurl": "https://example.com/icon.svg",
+                        "modname": "page",
+                        "trackscompletion": true,
+                        "completed": false,
+                        "locked": true,
+                        "lockinfo": "Disponivel apos a compra",
+                        "current": false
+                    }
+                ]
+            }
+        ]
+    }
+}}
+<nav id="ldg-portal-index" class="ldg-portal__aside ldg-lessonlist" aria-label="{{#str}}lessonlist, format_ldg{{/str}}">
+    <h2 class="ldg-lessonlist__title">{{#str}}lessonlist, format_ldg{{/str}}</h2>
+
+    {{#hasmodules}}
+        {{#modules}}
+            <details class="ldg-lessonlist__module" open>
+                <summary class="ldg-lessonlist__module-head">
+                    <span class="ldg-lessonlist__module-name">{{name}}</span>
+                    {{#hasprogress}}
+                        <span class="ldg-lessonlist__module-progress {{#iscomplete}}is-complete{{/iscomplete}}">
+                            {{progresslabel}}
+                        </span>
+                    {{/hasprogress}}
+                </summary>
+
+                {{#hasprogress}}
+                    <div class="progress ldg-lessonlist__module-bar" role="progressbar"
+                         aria-label="{{progresslabel}}"
+                         aria-valuenow="{{percentage}}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar" style="width: {{percentage}}%"></div>
+                    </div>
+                {{/hasprogress}}
+
+                <ul class="ldg-lessonlist__lessons">
+                    {{#lessons}}
+                        <li class="ldg-lessonlist__lesson
+                                   {{#current}}is-current{{/current}}
+                                   {{#completed}}is-complete{{/completed}}
+                                   {{#locked}}is-locked{{/locked}}">
+                            {{#locked}}
+                                <span class="ldg-lessonlist__link is-locked">
+                                    <span class="ldg-lessonlist__state" aria-hidden="true">
+                                        {{#pix}}t/locked, core{{/pix}}
+                                    </span>
+                                    <span class="ldg-lessonlist__name">
+                                        {{name}}
+                                        <span class="visually-hidden">
+                                            {{#str}}lessonlocked, format_ldg{{/str}}
+                                        </span>
+                                    </span>
+                                </span>
+                                {{#lockinfo}}
+                                    <div class="ldg-lessonlist__lockinfo">{{{lockinfo}}}</div>
+                                {{/lockinfo}}
+                            {{/locked}}
+                            {{^locked}}
+                                <a class="ldg-lessonlist__link" href="{{url}}"
+                                   {{#current}}aria-current="true"{{/current}}>
+                                    <span class="ldg-lessonlist__state" aria-hidden="true">
+                                        {{#trackscompletion}}
+                                            {{#completed}}{{#pix}}i/completion-auto-y, core{{/pix}}{{/completed}}
+                                            {{^completed}}{{#pix}}i/completion-auto-n, core{{/pix}}{{/completed}}
+                                        {{/trackscompletion}}
+                                        {{^trackscompletion}}
+                                            <img src="{{iconurl}}" alt="" class="ldg-lessonlist__icon">
+                                        {{/trackscompletion}}
+                                    </span>
+                                    <span class="ldg-lessonlist__name">
+                                        {{name}}
+                                        {{#trackscompletion}}
+                                            <span class="visually-hidden">
+                                                {{#completed}}{{#str}}lessondone, format_ldg{{/str}}{{/completed}}
+                                                {{^completed}}{{#str}}lessontodo, format_ldg{{/str}}{{/completed}}
+                                            </span>
+                                        {{/trackscompletion}}
+                                    </span>
+                                    {{#hasduration}}
+                                        <span class="ldg-lessonlist__duration">{{durationtext}}</span>
+                                    {{/hasduration}}
+                                </a>
+                            {{/locked}}
+                            {{#canedit}}
+                                <label class="ldg-lessonlist__duration-edit">
+                                    <span class="visually-hidden">
+                                        {{#str}}durationfor, format_ldg, {{name}}{{/str}}
+                                    </span>
+                                    <input type="number" min="0" step="1"
+                                           class="form-control form-control-sm"
+                                           data-region="ldg-duration"
+                                           data-cmid="{{cmid}}"
+                                           value="{{duration}}"
+                                           placeholder="{{#str}}durationseconds, format_ldg{{/str}}">
+                                </label>
+                            {{/canedit}}
+                        </li>
+                    {{/lessons}}
+                </ul>
+            </details>
+        {{/modules}}
+    {{/hasmodules}}
+    {{^hasmodules}}
+        <p class="ldg-lessonlist__empty">{{#str}}nolessons, format_ldg{{/str}}</p>
+    {{/hasmodules}}
+</nav>
+{{#canedit}}
+{{#js}}
+require(['format_ldg/duration'], function(duration) {
+    duration.init();
+});
+{{/js}}
+{{/canedit}}

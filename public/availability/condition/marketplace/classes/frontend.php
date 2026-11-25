@@ -23,11 +23,10 @@ use local_marketplace\offer;
  * Formulario da condicao no editor do curso.
  *
  * @package    availability_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class frontend extends \core_availability\frontend {
-
     /**
      * Strings usadas pelo JS do formulario.
      *
@@ -86,7 +85,6 @@ class frontend extends \core_availability\frontend {
         if (empty($course->category)) {
             return null;
         }
-        $company = company::get_record(['categoryid' => $course->category]);
-        return $company ?: null;
+        return company::for_course((int) $course->id);
     }
 }

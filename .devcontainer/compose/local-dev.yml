@@ -1,0 +1,36 @@
+# =============================================================================
+# EXTRAS DE DESENVOLVIMENTO LOCAL - NAO USE NA VPS
+# =============================================================================
+# Uso (some ao COMPOSE_FILE, so na sua maquina):
+#     .devcontainer/compose/base.yml:...:dev.yml:local-tls.yml:local-dev.yml
+#
+# Mesma regra do local-tls.yml: o COMPOSE_FILE da VPS e apenas
+# base.yml:db.yml:dev.yml (ver .github/workflows/deploy.yml), e nada deste
+# arquivo deve chegar la.
+#
+# Por que isto existe:
+#   O conteudo abaixo morava em build-dev.yml. O devcontainer.json parou de
+#   carregar aquele arquivo - ele traz uma secao "build:", e construir a imagem
+#   a cada worktree e justamente o que se quer evitar. Mas mover para dev.yml
+#   seria empurrar para producao:
+#
+#     uploads.ini  - sobe upload_max_filesize para 200M, contra os 100M de
+#                    defaults.env. Dobrar o limite de upload da VPS nao e efeito
+#                    colateral aceitavel de uma mudanca de fluxo local.
+#     phpu_moodledata - dataroot de TESTE. O caminho nao existe na VPS, entao o
+#                    docker criaria o diretorio com dono root dentro do repo de
+#                    producao.
+#
+#   XDEBUG_CONFIG nao veio junto porque seria redundante: dev.env ja define
+#   XDEBUG_CLIENT_HOST e XDEBUG_CLIENT_PORT.
+# =============================================================================
+
+services:
+  moodle:
+    ports:
+      - "${BIND_ADDR:-0.0.0.0}:${XDEBUG_PORT:-9003}:9003" # Xdebug
+    volumes:
+      # Por worktree de proposito: cada feature roda o PHPUnit com o proprio
+      # dataroot de teste, sem disputar arquivo com as outras.
+      - "../../phpu_moodledata:/var/www/phpu_moodledata"
+      - ../php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro

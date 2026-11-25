@@ -18,7 +18,6 @@ services:
       MARIADB_USER_FILE:          /run/secrets/db_user
       MARIADB_PASSWORD_FILE:      /run/secrets/db_password
       MARIADB_DATABASE:      ${MOODLE_DBNAME:-moodle}
-      MARIADB_ROOT_HOST:     "%"  # opcional: allow connection from any host
     volumes:
       # Bind mount em pasta conhecida do host (nao volume nomeado), para o dado
       # do banco ficar num caminho previsivel na VPS e o backup ser um tar da pasta.
@@ -26,8 +25,18 @@ services:
       - "${DB_HOST_DATA:?defina DB_HOST_DATA no .env}:/var/lib/mysql"
       - ../config/mysql-dev.cnf:/etc/mysql/conf.d/custom.cnf:ro
     ports:
-      # Na VPS BIND_ADDR=127.0.0.1: banco nunca exposto na internet.
-      - "${BIND_ADDR:-0.0.0.0}:${DB_PORT:-3306}:3306/tcp"
+      # Variavel PROPRIA, separada do BIND_ADDR que o dev.yml usa.
+      #
+      # O BIND_ADDR e compartilhado com o Apache (8095) e o Xdebug (9004). Se o
+      # banco usasse ele, liberar o banco numa interface tiraria o Apache do
+      # 127.0.0.1 junto - e o nginx da VPS fala com 127.0.0.1:8095, entao o site
+      # cairia. Xdebug mudaria de interface no mesmo movimento.
+      #
+      # Padrao 127.0.0.1: so quem esta na VPS alcanca.
+      # Para acesso pela VPN, o IP da interface do WireGuard (ex.: 10.8.0.1) -
+      # escuta so na VPN, invisivel no IP publico.
+      # 0.0.0.0 escuta em TODAS as interfaces, a publica inclusive.
+      - "${DB_BIND_ADDR:-127.0.0.1}:${DB_PORT:-3306}:3306/tcp"
     networks:
       - moodle_network
 

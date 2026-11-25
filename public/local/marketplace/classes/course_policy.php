@@ -30,22 +30,21 @@ use lang_string;
  * Enquanto o modelo de "platform" nao for decidido, so "external" e aceito.
  *
  * @package    local_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class course_policy extends persistent {
-
     /** @var string Tabela. */
-    const TABLE = 'local_marketplace_course';
+    public const TABLE = 'local_marketplace_course';
 
     /** @var string Video fora da plataforma. */
-    const HOSTING_EXTERNAL = 'external';
+    public const HOSTING_EXTERNAL = 'external';
 
     /** @var string Video no moodledata. Ainda nao disponivel. */
-    const HOSTING_PLATFORM = 'platform';
+    public const HOSTING_PLATFORM = 'platform';
 
     /** @var float Comissao para conteudo hospedado fora. */
-    const DEFAULT_COMMISSION = 25.00;
+    public const DEFAULT_COMMISSION = 25.00;
 
     /**
      * Define as propriedades.
@@ -68,6 +67,15 @@ class course_policy extends persistent {
             'commissionpct' => [
                 'type' => PARAM_FLOAT,
                 'default' => self::DEFAULT_COMMISSION,
+            ],
+            'commissionbase' => [
+                'type' => PARAM_ALPHA,
+                'null' => NULL_ALLOWED,
+                'default' => null,
+                // O nulo entra na lista de proposito: o validador de choices do
+                // persistent roda mesmo com NULL_ALLOWED, e sem ele "herda a
+                // base do site" seria recusado como valor invalido.
+                'choices' => [null, commission::BASE_GROSS, commission::BASE_NET],
             ],
         ];
     }

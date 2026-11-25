@@ -1,0 +1,1669 @@
+#!/usr/bin/env bash
+# =============================================================================
+# moodev - ambiente de desenvolvimento Moodle: worktrees, devcontainer e devtools
+# =============================================================================
+# Uma feature nova exigia: git worktree add, copiar cinco conjuntos de arquivos
+# gitignored na mao, editar o .env, subir o compose e torcer para o VS Code nao
+# reconstruir a imagem. E, mesmo assim, so um ambiente rodava por vez, porque o
+# nome do projeto e as portas eram fixos.
+#
+#     moodev new paygw-pix
+#
+# Cria a worktree, provisiona o ambiente, clona o banco, sobe um stack isolado
+# e abre o VS Code dentro do container.
+#
+# -----------------------------------------------------------------------------
+# ISOLAMENTO
+# -----------------------------------------------------------------------------
+# Cada worktree recebe um OFFSET inteiro. Dele saem o nome do stack e as quatro
+# portas, por soma:
+#
+#   offset 0 -> ldg-courses              8080 8443 3307 9004  (principal)
+#   offset 1 -> ldg-courses-<worktree>   8090 8453 3317 9014
+#   offset 2 -> ldg-courses-<worktree>   8100 8463 3327 9024
+#
+# O offset 0 e o stack principal. O default de STACK_NAME em base.yml e
+# "ldg-courses", entao ele sobe igual mesmo sem este script.
+#
+# -----------------------------------------------------------------------------
+# O QUE NAO PODE VAZAR PARA A VPS
+# -----------------------------------------------------------------------------
+# O COMPOSE_FILE da VPS e base.yml:db.yml:dev.yml (ver .github/workflows/
+# deploy.yml). local-tls.yml e local-dev.yml sao so locais. Este script sempre
+# monta a lista completa, mas nada do que ele faz altera aqueles tres arquivos.
+# =============================================================================
+
+# -E faz o trap ERR valer DENTRO das funcoes. Sem ele, o cleanup do "moodev new"
+# nunca dispararia, que e justamente onde ele importa.
+set -Eeuo pipefail
+
+# --- Localizacao -------------------------------------------------------------
+# O script vive em <worktree>/.devcontainer/bin/moodev. Subindo tres niveis chega-se
+# na worktree; mais um, na raiz que guarda o bare repo e todas as worktrees.
+# Resolve symlink para que ~/.local/bin/moodev funcione igual.
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+MOODEV_ROOT="$(cd "$(dirname "$SELF")/../../.." && pwd)"
+
+MOODEV_STATE="$MOODEV_ROOT/.moodev"
+MOODEV_REGISTRY="$MOODEV_STATE/registry.tsv"
+# Diretorio de DADOS: guarda banco e moodledata de cada stack secundario.
+# Trocar este caminho NAO move dado nenhum - so muda onde o proximo "moodev new"
+# vai procurar. Quem ja tem stack no ar precisa parar tudo e mover na mao, senao
+# o stack sobe com pasta vazia e o Moodle tenta reinstalar por cima.
+# CF_DATA_ROOT continua aceito: e o nome legado, de quando o projeto se chamava
+# courses-free, e quem ja o exporta nao pode quebrar por causa de um rename.
+MOODEV_DATA_ROOT="${MOODEV_DATA_ROOT:-${CF_DATA_ROOT:-$HOME/localhost/ldg-data}}"
+
+# Worktree de repouso: para onde o stack principal volta DEPOIS DE QUALQUER
+# "moodev rm". Precisa ser permanente (nunca removida por moodev rm) e ter
+# .devcontainer/.
+#
+# E "dev", nao "main": main nao tem .devcontainer/ nenhum e esta 108 commits
+# atras - o stack nao sobe nela. Alem disso dev e a branch de integracao, de
+# onde o moodev new ramifica, entao o repouso e o mesmo ponto de partida.
+MOODEV_BASE_WT="dev"
+
+# Portas base do offset 0. Mudar aqui desloca todos os stacks de uma vez.
+BASE_HTTP=8080; BASE_HTTPS=8443; BASE_DB=3307; BASE_XDEBUG=9004
+
+# Piso de espaco livre. Uma feature custa ~900 MB (worktree ~600, dbdata ~250).
+# Abaixo disto o clone do banco falha no meio e deixa um stack pela metade.
+MIN_FREE_GB=5
+
+# Arquivos que o git ignora e sem os quais o ambiente nao sobe. Esta lista e o
+# que o README mandava copiar na mao.
+readonly IGNORED_FILES=(
+    ".devcontainer/secrets"
+    ".devcontainer/certs/develop-local.crt"
+    ".devcontainer/certs/develop-local.key"
+    ".devcontainer/env/db.env"
+    ".devcontainer/env/dev.env"
+)
+
+# O config.php NAO entra na lista acima, e isso e correcao de um bug real.
+#
+# Ele era copiado da worktree de origem como os demais, e o resultado e que uma
+# mudanca no template versionado NUNCA chegava a maquina de ninguem: a copia ia
+# de worktree em worktree carregando o estado do dia em que nasceu. Em 04/09/2026
+# o config.php local estava parado em 24/08 e tinha PERDIDO o bloco de dominio
+# por vendedor, que o template ganhou depois.
+#
+# O proprio cabecalho do arquivo gerado pedia "se alterar o template, copie de
+# novo" - passo manual que ninguem faz, e que nao aparece quando esquecido.
+#
+# Agora e gerado do template a cada worktree nova, que e o que o deploy ja fazia
+# na VPS.
+gen_config() {
+    local destino="$1" template="$2"
+
+    [ -f "$template" ] || die "template ausente: $template"
+
+    {
+        printf '%s\n' '<?php'
+        cat <<'CABECALHO'
+// GERADO por "moodev" a partir de .devcontainer/config/config-docker.php
+//
+// O dev.yml monta o repo do host sobre /var/www/html, escondendo o config.php
+// que o Dockerfile copiou para a imagem. Por isso ele precisa existir aqui.
+// Nao e symlink: o require final usa __DIR__ e precisa resolver na raiz do repo.
+//
+// NAO EDITE. Mexa no template e rode "moodev config" - editar aqui se perde na
+// proxima worktree, e foi assim que este arquivo ficou semanas desatualizado.
+CABECALHO
+        tail -n +2 "$template"
+    } > "$destino"
+}
+
+# --- Saida -------------------------------------------------------------------
+if [ -t 1 ]; then
+    C_RED=$'\033[31m'; C_GRN=$'\033[32m'; C_YEL=$'\033[33m'
+    C_BLU=$'\033[34m'; C_DIM=$'\033[2m'; C_BLD=$'\033[1m'; C_OFF=$'\033[0m'
+else
+    C_RED=""; C_GRN=""; C_YEL=""; C_BLU=""; C_DIM=""; C_BLD=""; C_OFF=""
+fi
+
+info() { printf '%s==>%s %s\n' "$C_BLU" "$C_OFF" "$*"; }
+ok()   { printf '%s  ok%s %s\n' "$C_GRN" "$C_OFF" "$*"; }
+warn() { printf '%s  !!%s %s\n' "$C_YEL" "$C_OFF" "$*" >&2; }
+die()  { printf '%serro%s %s\n' "$C_RED" "$C_OFF" "$*" >&2; exit 1; }
+
+# =============================================================================
+# REGISTRO
+# =============================================================================
+# TSV com uma linha por worktree. Vive em $MOODEV_ROOT/.moodev/, fora de qualquer
+# worktree: e estado da maquina, nao do codigo, e nao deve ser commitado nem
+# desaparecer quando uma worktree e removida.
+#
+# Colunas: nome  offset  stack  wwwroot  moodledata  dbdata
+#
+# Os caminhos de dado ficam gravados em vez de derivados porque o principal usa
+# caminhos proprios (moodledata-ldg-courses, dbdata-ldg-courses), que nao seguem
+# o padrao das features novas.
+# =============================================================================
+
+registry_init() {
+    [ -f "$MOODEV_REGISTRY" ] && return 0
+
+    # Registro da epoca em que o comando se chamava "cf".
+    #
+    # Migra em vez de recriar: recriar disparava a adocao automatica do offset
+    # 0 abaixo, que ADIVINHA a partir do container no ar. Com varias worktrees
+    # paradas, a adivinhacao acerta uma e esquece as outras - e o "moodev rm"
+    # de uma worktree esquecida responderia "nao esta no registro".
+    if [ -f "$MOODEV_ROOT/.cf/registry.tsv" ]; then
+        mkdir -p "$MOODEV_STATE"
+        mv "$MOODEV_ROOT/.cf/registry.tsv" "$MOODEV_REGISTRY"
+        rmdir "$MOODEV_ROOT/.cf" 2>/dev/null || true
+        info "registro migrado de .cf/ para .moodev/"
+        return 0
+    fi
+
+    mkdir -p "$MOODEV_STATE"
+    printf '# nome\toffset\tstack\twwwroot\tmoodledata\tdbdata\n' > "$MOODEV_REGISTRY"
+
+    # Adota o stack que ja existe como offset 0, lendo o .env dele. Sem isto o
+    # script nao saberia de onde clonar banco nem quais caminhos preservar.
+    local main_wt="" env_file cand
+
+    # Primeiro pergunta ao container que esta no ar qual codigo ele serve. Mais
+    # de uma worktree tem .env (leodg-academy tambem tem), entao varrer o disco
+    # escolheria por ordem alfabetica - o que acerta por acaso, nao por regra.
+    local bound
+    bound="$(docker inspect ldg-courses-moodle-1 \
+                --format '{{range .Mounts}}{{if eq .Destination "/var/www/html"}}{{.Source}}{{end}}{{end}}' \
+                2>/dev/null || true)"
+    if [ -n "$bound" ] && [ -f "$bound/.env" ]; then
+        main_wt="$(basename "$bound")"
+    fi
+
+    # Sem container no ar, cai para a varredura.
+    if [ -z "$main_wt" ]; then
+        for cand in "$MOODEV_ROOT"/*/; do
+            env_file="${cand}.env"
+            [ -f "$env_file" ] || continue
+            grep -q '^MOODLE_HOST_WWWROOT=' "$env_file" 2>/dev/null || continue
+            # So interessa quem NAO define STACK_NAME: quem define ja e um stack
+            # secundario criado por este script, nunca o principal.
+            grep -q '^STACK_NAME=' "$env_file" 2>/dev/null && continue
+            main_wt="$(basename "$cand")"
+            break
+        done
+    fi
+
+    if [ -n "$main_wt" ]; then
+        env_file="$MOODEV_ROOT/$main_wt/.env"
+        local md db
+        md="$(grep -E '^MOODLE_HOST_DATA=' "$env_file" | head -1 | cut -d= -f2-)"
+        db="$(grep -E '^DB_HOST_DATA='     "$env_file" | head -1 | cut -d= -f2-)"
+        printf '%s\t0\tldg-courses\t%s\t%s\t%s\n' \
+            "$main_wt" "$MOODEV_ROOT/$main_wt" "$md" "$db" >> "$MOODEV_REGISTRY"
+        info "registro criado, adotando '$main_wt' como stack principal (offset 0)"
+    fi
+}
+
+# Campo $2 da linha da worktree $1. Vazio se nao registrada.
+registry_get() {
+    local name="$1" field="$2"
+    awk -F'\t' -v n="$name" -v f="$field" \
+        '$1==n {print $f; exit}' "$MOODEV_REGISTRY" 2>/dev/null
+}
+
+registry_has() { [ -n "$(registry_get "$1" 1)" ]; }
+
+registry_add() {
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$@" >> "$MOODEV_REGISTRY"
+}
+
+registry_del() {
+    local name="$1" tmp
+    tmp="$(mktemp)"
+    awk -F'\t' -v n="$name" '$1!=n' "$MOODEV_REGISTRY" > "$tmp"
+    mv "$tmp" "$MOODEV_REGISTRY"
+}
+
+# Menor offset livre. Confere tambem se as portas estao de fato disponiveis:
+# o registro sabe dos stacks do projeto, nao do resto da maquina.
+registry_next_offset() {
+    local off=1
+    while :; do
+        if awk -F'\t' -v o="$off" '$2==o {found=1} END{exit !found}' "$MOODEV_REGISTRY"; then
+            off=$((off + 1)); continue
+        fi
+        if ports_busy "$off"; then
+            warn "offset $off tem porta ocupada na maquina, tentando o proximo"
+            off=$((off + 1)); continue
+        fi
+        echo "$off"; return 0
+    done
+}
+
+# =============================================================================
+# PORTAS
+# =============================================================================
+port_http()   { echo $((BASE_HTTP   + $1 * 10)); }
+port_https()  { echo $((BASE_HTTPS  + $1 * 10)); }
+
+# Host do stack PRINCIPAL (offset 0). Vem de .moodev/host, estado desta maquina
+# e fora do git: o nome e escolha de quem usa o ambiente, nao do projeto.
+# Sem o arquivo, localhost - o comportamento de sempre.
+#
+# So o offset 0 usa o nome. Stack secundario e efemero e continua em localhost,
+# que o certificado sempre cobre.
+#
+# Um nome *.localhost dispensa /etc/hosts: navegador e curl resolvem qualquer
+# subdominio de localhost para 127.0.0.1.
+main_host() {
+    local h=""
+    [ -f "$MOODEV_STATE/host" ] && h="$(tr -d '[:space:]' < "$MOODEV_STATE/host")"
+    # O valor vai para um sed "s#...#...#" e para o MOODLE_URL: so nome de host.
+    # Qualquer outra coisa morre aqui, antes de corromper o dev.env.
+    if [ -n "$h" ] && ! [[ "$h" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]]; then
+        die "$MOODEV_STATE/host tem '$h', que nao e nome de host (so a-z, 0-9, ponto e hifen)"
+    fi
+    echo "${h:-localhost}"
+}
+
+# URL de acesso de um offset. E ela que vira o MOODLE_URL, entao tem que bater
+# exatamente com o endereco digitado, senao o login entra em laco.
+url_of() {
+    local off="$1" host=localhost
+    [ "$off" = "0" ] && host="$(main_host)"
+    echo "https://$host:$(port_https "$off")"
+}
+port_db()     { echo $((BASE_DB     + $1 * 10)); }
+port_xdebug() { echo $((BASE_XDEBUG + $1 * 10)); }
+
+# Alguma das quatro portas do offset ja esta escutando?
+ports_busy() {
+    local off="$1" p listening
+    listening="$(ss -ltnH 2>/dev/null | awk '{print $4}' | sed 's/.*://' || true)"
+    for p in "$(port_http "$off")" "$(port_https "$off")" \
+             "$(port_db "$off")" "$(port_xdebug "$off")"; do
+        grep -qx "$p" <<< "$listening" && return 0
+    done
+    return 1
+}
+
+# =============================================================================
+# COMPOSE
+# =============================================================================
+# COMPOSE_ENV_FILE e obrigatorio: sem ele o compose procura o .env no diretorio
+# do primeiro arquivo da lista (.devcontainer/compose/), nao na raiz do repo.
+compose_env() {
+    local wt_path="$1"
+    export COMPOSE_FILE="$wt_path/.devcontainer/compose/base.yml:$wt_path/.devcontainer/compose/db.yml:$wt_path/.devcontainer/compose/dev.yml:$wt_path/.devcontainer/compose/local-tls.yml:$wt_path/.devcontainer/compose/local-dev.yml"
+    export COMPOSE_ENV_FILE="$wt_path/.env"
+}
+
+# docker compose no contexto de uma worktree.
+dc() {
+    local wt_path="$1"; shift
+    ( cd "$wt_path" && compose_env "$wt_path" && docker compose "$@" )
+}
+
+# Igual ao dc, mas enxergando tambem os servicos OPCIONAIS.
+#
+# Existe para o "down": o selenium vive no behat.yml, que de proposito nao entra
+# no COMPOSE_FILE padrao - se entrasse, todo "up" subiria o Chrome. Sem este
+# helper o compose simplesmente nao sabe que o servico existe, e o resultado e
+# um Chrome sobrevivendo ao stack que o criou.
+#
+# Medido em 04/09/2026: depois de um "moodev rm" o ldg-courses-selenium
+# continuou de pe por 37 minutos, comendo memoria de um ambiente que ja nao
+# existia.
+dc_full() {
+    local wt_path="$1"; shift
+    local extra="$wt_path/.devcontainer/compose/behat.yml"
+
+    # Worktree de branch antiga pode nao ter o behat.yml. Sem a guarda, o
+    # compose aborta com "no such file" e o down nao acontece - trocando um
+    # container orfao por um stack inteiro orfao.
+    [ -f "$extra" ] || { dc "$wt_path" "$@"; return; }
+
+    ( cd "$wt_path" && compose_env "$wt_path" \
+      && COMPOSE_FILE="$COMPOSE_FILE:$extra" docker compose "$@" )
+}
+
+# Nome do container de um servico.
+container_of() {
+    local wt_path="$1" svc="$2"
+    dc "$wt_path" ps -q "$svc" 2>/dev/null | head -1
+}
+
+# =============================================================================
+# RESOLUCAO DE ARGUMENTO
+# =============================================================================
+# Sem nome, usa a worktree do diretorio atual. Trabalhar dentro de uma worktree
+# e digitar "moodev up" deve fazer a coisa obvia.
+resolve_wt() {
+    local name="${1:-}"
+    if [ -n "$name" ]; then echo "$name"; return 0; fi
+    local here; here="$(pwd -P)"
+    case "$here" in
+        "$MOODEV_ROOT"/*)
+            # $MOODEV_ROOT entre aspas dentro da expansao: sem elas o conteudo seria
+            # tratado como padrao glob, e um caminho com [ ou * removeria a
+            # coisa errada do inicio da string.
+            name="${here#"$MOODEV_ROOT"/}"; name="${name%%/*}"
+            [ -n "$name" ] && { echo "$name"; return 0; }
+            ;;
+    esac
+    die "de fora de uma worktree, informe o nome: moodev <comando> <worktree>"
+}
+
+wt_path_of() {
+    local name="$1" p
+    p="$(registry_get "$name" 4)"
+    [ -n "$p" ] || p="$MOODEV_ROOT/$name"
+    echo "$p"
+}
+
+require_registered() {
+    registry_has "$1" || die "worktree '$1' nao esta no registro. Use: moodev ls"
+}
+
+# =============================================================================
+# COMANDOS
+# =============================================================================
+
+cmd_ls() {
+    registry_init
+    printf '%s%-22s %-6s %-26s %-7s %s%s\n' "$C_BLD" \
+        WORKTREE OFFSET STACK STATUS URL "$C_OFF"
+    local name off stack wt_path status url n_up branch
+    while IFS=$'\t' read -r name off stack wt_path _ _; do
+        [[ "$name" =~ ^# ]] && continue
+        [ -z "$name" ] && continue
+
+        if [ ! -d "$wt_path" ]; then
+            status="${C_RED}sumiu${C_OFF}"; branch="-"; url="-"
+        elif [ "$off" = "-" ]; then
+            # Worktree registrada sem stack proprio: existe no disco, mas nao ha
+            # ambiente servindo o codigo dela agora. Nao consultar o compose
+            # aqui - o .env dela aponta para o stack principal, e o "ps" diria
+            # "up" por causa do container de OUTRA worktree.
+            status="${C_DIM}sem stack${C_OFF}"; url="-"
+            branch="$(git -C "$wt_path" branch --show-current 2>/dev/null || echo '?')"
+        else
+            n_up="$(dc "$wt_path" ps -q 2>/dev/null | wc -l)"
+            if [ "$n_up" -ge 2 ]; then status="${C_GRN}up${C_OFF}"
+            elif [ "$n_up" -ge 1 ]; then status="${C_YEL}parcial${C_OFF}"
+            else status="${C_DIM}down${C_OFF}"; fi
+            branch="$(git -C "$wt_path" branch --show-current 2>/dev/null || echo '?')"
+            url="$(url_of "$off")"
+        fi
+
+        printf '%-22s %-6s %-26s %-16s %s\n' "$name" "$off" "$stack" "$status" "$url"
+        printf '  %s%s%s\n' "$C_DIM" "$branch" "$C_OFF"
+    done < "$MOODEV_REGISTRY"
+}
+
+cmd_up() {
+    registry_init
+
+    # --full sobe tambem os servicos opcionais de desenvolvimento. Hoje e so o
+    # Chrome do behat, mas o nome e generico de proposito: se entrar um mailhog
+    # ou um redis amanha, entram aqui sem inventar outro flag.
+    #
+    # NAO existe o "--clear" oposto: subir so moodle e db JA e o padrao, e um
+    # flag cuja unica funcao e pedir o comportamento padrao e peso morto.
+    local full=0 args=()
+    local a
+    for a in "$@"; do
+        case "$a" in
+            --full) full=1 ;;
+            *)      args+=("$a") ;;
+        esac
+    done
+    set -- "${args[@]+"${args[@]}"}"
+
+    local name; name="$(resolve_wt "${1:-}")"
+    require_registered "$name"
+    local wt_path; wt_path="$(wt_path_of "$name")"
+    [ -d "$wt_path" ] || die "worktree '$name' nao existe em $wt_path"
+
+    # Garante o symlink que torna o .env visivel para a extensao do VS Code
+    # (ver cmd_new). Idempotente e barato; fica aqui para valer tambem na
+    # worktree principal, que existe desde antes deste script.
+    [ -e "$wt_path/.env" ] && ln -sfn ../../.env "$wt_path/.devcontainer/compose/.env"
+
+    # Sobe pela CLI do Dev Containers quando ela existe. Nao e preciosismo: se o
+    # stack sobe por "docker compose" puro e depois se faz Reopen in Container, a
+    # extensao gera os proprios arquivos de override, considera a configuracao
+    # diferente e RECRIA os containers que acabaram de subir. Subindo pela mesma
+    # CLI que o VS Code usa, a janela apenas se conecta.
+    if command -v devcontainer >/dev/null 2>&1; then
+        info "subindo '$name' pela CLI do Dev Containers"
+        ( cd "$wt_path" && compose_env "$wt_path" \
+          && devcontainer up --workspace-folder "$wt_path" ) \
+            || die "devcontainer up falhou"
+    else
+        warn "CLI do Dev Containers ausente; subindo com docker compose."
+        warn "O primeiro Reopen in Container vai recriar os containers."
+        warn "Instale com: npm i -g @devcontainers/cli"
+        dc "$wt_path" up -d
+    fi
+
+    # Um "moodev new" com seed clone deixa um dump pendente: o banco de destino so
+    # passa a existir depois deste up. Fica aqui, e nao em cmd_new, para que um
+    # up posterior conclua o restore caso o primeiro tenha sido interrompido.
+    restore_pending "$name" "$wt_path"
+
+    # O selenium vive num compose PROPRIO, que nao entra no COMPOSE_FILE padrao:
+    # se entrasse, o "up" da CLI do Dev Containers subiria o Chrome em toda
+    # sessao, e sao ~700MB por stack para um servico que a maioria das rodadas
+    # nem usa.
+    if [ "$full" -eq 1 ]; then
+        info "subindo os servicos opcionais (--full)"
+        ( cd "$wt_path" && compose_env "$wt_path" \
+          && COMPOSE_FILE="$COMPOSE_FILE:$wt_path/.devcontainer/compose/behat.yml" \
+             docker compose up -d selenium ) \
+            || die "nao subiu o selenium"
+        ok "selenium no ar (cenarios @javascript do behat)"
+    fi
+
+    ok "$name no ar em $(url_of "$(registry_get "$name" 2)")"
+}
+
+cmd_down() {
+    registry_init
+    local name; name="$(resolve_wt "${1:-}")"
+    require_registered "$name"
+    local wt_path; wt_path="$(wt_path_of "$name")"
+    info "parando '$name'"
+    dc_full "$wt_path" down
+    ok "parado"
+}
+
+cmd_restart() {
+    local name; name="$(resolve_wt "${1:-}")"
+    cmd_down "$name"; cmd_up "$name"
+}
+
+cmd_shell() {
+    registry_init
+    local name; name="$(resolve_wt "${1:-}")"
+    require_registered "$name"
+    local wt_path; wt_path="$(wt_path_of "$name")"
+    # -u 1000:33 (uid do host, grupo www-data) e o que o CLAUDE.md documenta:
+    # os arquivos gerados ficam editaveis no host e o PHPUnit escreve no dataroot.
+    dc "$wt_path" exec -u 1000:33 -w /var/www/html moodle bash
+}
+
+cmd_logs() {
+    registry_init
+    local name; name="$(resolve_wt "${1:-}")"
+    require_registered "$name"
+    dc "$(wt_path_of "$name")" logs -f --tail 100
+}
+
+# Caminho de um script de admin/cli DENTRO do container.
+#
+# Nesta base o admin/ fica na RAIZ do repo, nao em public/ - e e assim que o
+# deploy.yml chama em producao ("php admin/cli/upgrade.php"). Mas public/ existe
+# e contem parte da arvore, entao chutar o caminho errado falha com um enganoso
+# "Could not open input file". Procurar antes de chamar custa nada e sobrevive a
+# uma eventual migracao para o layout public/ do Moodle 5.x.
+moodle_cli_path() {
+    local wt_path="$1" script="$2" c p
+    c="$(container_of "$wt_path" moodle)"
+    for p in "/var/www/html/admin/cli/$script" "/var/www/html/public/admin/cli/$script"; do
+        if [ -n "$c" ] && docker exec "$c" test -f "$p" 2>/dev/null; then
+            echo "$p"; return 0
+        fi
+    done
+    return 1
+}
+
+# moodev cli <script.php> [args...] - atalho para admin/cli do Moodle.
+# O "< /dev/null" nao e enfeite: sem ele o exec consome o stdin do shell que
+# chamou e o comando seguinte do script morre. Ja quebrou um deploy.
+cmd_cli() {
+    registry_init
+    local name; name="$(resolve_wt "")"
+    [ $# -ge 1 ] || die "uso: moodev cli <script.php> [args]"
+    local script="$1"; shift
+    local wt_path; wt_path="$(wt_path_of "$name")"
+    case "$script" in
+        /*) ;;
+        *)  script="$(moodle_cli_path "$wt_path" "$script")" \
+                || die "script nao encontrado em admin/cli (o stack esta no ar?)" ;;
+    esac
+    dc "$wt_path" exec -T -u 1000:33 moodle php "$script" "$@" < /dev/null
+}
+
+cmd_build() {
+    registry_init
+    local name; name="$(resolve_wt "${1:-}")"
+    require_registered "$name"
+    local wt_path; wt_path="$(wt_path_of "$name")"
+    info "reconstruindo a imagem a partir de '$name'"
+    ( cd "$wt_path" && compose_env "$wt_path" \
+      && COMPOSE_FILE="$COMPOSE_FILE:$wt_path/.devcontainer/compose/build-dev.yml" \
+         docker compose build moodle )
+    ok "imagem reconstruida"
+}
+
+cmd_code() {
+    registry_init
+    local name; name="$(resolve_wt "${1:-}")"
+    require_registered "$name"
+    local wt_path; wt_path="$(wt_path_of "$name")"
+    command -v code >/dev/null 2>&1 || die "o comando 'code' do VS Code nao esta no PATH"
+
+    # A extensao Dev Containers enderecas a pasta como
+    # vscode-remote://dev-container+<caminho-do-host-em-hex>/<pasta-no-container>
+    local hex
+    hex="$(printf '%s' "$wt_path" | od -An -tx1 | tr -d ' \n')"
+    info "abrindo o VS Code dentro do container de '$name'"
+    code --folder-uri "vscode-remote://dev-container+${hex}/var/www/html" \
+        || { warn "falhou; abrindo a pasta no host"; code "$wt_path"; }
+}
+
+# -----------------------------------------------------------------------------
+# moodev new
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# moodev use - o stack que ja roda passa a servir o codigo de outra worktree
+# -----------------------------------------------------------------------------
+# Alternativa barata ao stack por worktree. Em vez de subir um segundo ambiente
+# (container, banco, portas e ~900 MB), so troca o bind mount do codigo: mesmo
+# container, mesmo banco, mesmas portas, mesma URL.
+#
+# O preco e o outro lado da mesma moeda: passa a ser UM ambiente de novo. As
+# duas worktrees dividem o banco, entao trocar entre branches com versoes
+# diferentes de plugin pede upgrade.php de ida e de volta.
+#
+# Quando usar cada um:
+#   moodev use    - alternar entre features, uma de cada vez. Rapido e leve.
+#   moodev new    - precisa das duas no ar ao mesmo tempo, ou dados separados.
+cmd_use() {
+    registry_init
+    local alvo="${1:-}"
+    [ -n "$alvo" ] || die "uso: moodev use <worktree>"
+
+    local alvo_path="$MOODEV_ROOT/$alvo"
+    [ -d "$alvo_path" ] || die "worktree '$alvo' nao existe em $alvo_path"
+    [ -f "$alvo_path/.devcontainer/devcontainer.json" ] \
+        || die "'$alvo' nao tem .devcontainer/ - nao da para servir esta worktree"
+
+    # A linha do offset 0 e a fonte da verdade sobre o stack principal: nome,
+    # portas e caminhos de dado. So o wwwroot muda.
+    local atual atual_path stack md dbd
+    atual="$(awk -F'\t' '$2==0 {print $1; exit}' "$MOODEV_REGISTRY")"
+    [ -n "$atual" ] || die "nao ha stack principal no registro. Rode 'moodev ls'."
+    atual_path="$(registry_get "$atual" 4)"
+    stack="$(registry_get "$atual" 3)"
+    md="$(registry_get "$atual" 5)"
+    dbd="$(registry_get "$atual" 6)"
+
+    if [ "$atual" = "$alvo" ]; then
+        # Mesmo sem trocar de worktree, o MOODLE_URL acompanha o .moodev/host.
+        # Sem isto, gravar o nome novo so teria efeito na PROXIMA troca.
+        local devenv="$alvo_path/.devcontainer/env/dev.env" url
+        url="$(url_of 0)"
+        if [ -f "$devenv" ] && ! grep -qx "MOODLE_URL=$url" "$devenv"; then
+            sed -i "s#^MOODLE_URL=.*#MOODLE_URL=$url#" "$devenv"
+            info "MOODLE_URL agora e $url"
+            warn "rode 'moodev restart' para o container ler o dev.env novo"
+        fi
+        ok "o stack '$stack' ja serve '$alvo' em $url"
+        return 0
+    fi
+
+    info "stack   : $stack (offset 0, portas inalteradas)"
+    info "de      : $atual"
+    info "para    : $alvo"
+    info "banco   : $dbd  (COMPARTILHADO - nao e copiado)"
+    echo
+
+    # Os arquivos que o git ignora precisam existir na worktree de destino.
+    local f faltando=0
+    for f in "${IGNORED_FILES[@]}"; do
+        [ -e "$alvo_path/$f" ] && continue
+        if [ -e "$atual_path/$f" ]; then
+            mkdir -p "$(dirname "$alvo_path/$f")"
+            cp -a "$atual_path/$f" "$alvo_path/$f"
+            info "copiado: $f"
+        else
+            warn "ausente na origem: $f"; faltando=1
+        fi
+    done
+    [ "$faltando" -eq 1 ] && warn "algum arquivo local faltou; o stack pode nao subir"
+
+    gen_config "$alvo_path/config.php" "$alvo_path/.devcontainer/config/config-docker.php"
+    info "gerado: config.php (do template desta branch)"
+
+    mkdir -p "$alvo_path/phpu_moodledata"
+
+    # O .env do destino recebe os valores do principal, sem STACK_NAME: o
+    # default de base.yml resolve para ldg-courses e o stack continua sendo o
+    # mesmo. So o wwwroot aponta para o novo codigo.
+    local http https db xdebug
+    http="$(port_http 0)"; https="$(port_https 0)"
+    db="$(port_db 0)";     xdebug="$(port_xdebug 0)"
+
+    info "gerando o .env de '$alvo'"
+    cat > "$alvo_path/.env" <<EOF
+# GERADO POR "moodev use $alvo". Este e o stack PRINCIPAL servindo esta worktree.
+#
+# Sem STACK_NAME de proposito: o default de base.yml resolve para
+# "ldg-courses", entao continua sendo o mesmo stack de sempre - o mesmo
+# container, o mesmo banco e as mesmas portas. So o codigo mudou.
+
+MOODLE_HOST_WWWROOT=$alvo_path
+MOODLE_HOST_DATA=$md
+DB_HOST_DATA=$dbd
+
+MOODLE_DOCKER_WWWROOT=/var/www/html
+MOODLE_DOCKER_DATA=/var/www/moodledata
+APACHE_DOCUMENT_ROOT=/var/www/html/public
+
+MOODLE_IMAGE=leodg/ldg-courses:development
+
+MOODLE_HTTP_PORT=$http
+MOODLE_HTTPS_PORT=$https
+DB_PORT=$db
+XDEBUG_PORT=$xdebug
+
+MOODLE_DBNAME=moodle
+EOF
+    ln -sfn ../../.env "$alvo_path/.devcontainer/compose/.env"
+
+    local devenv="$alvo_path/.devcontainer/env/dev.env"
+    [ -f "$devenv" ] && sed -i \
+        -e "s#^MOODLE_URL=.*#MOODLE_URL=$(url_of 0)#" \
+        -e "s#^MOODLE_HOST_WWWROOT=.*#MOODLE_HOST_WWWROOT=$alvo_path#" \
+        -e "s#^MOODLE_HOST_DATA=.*#MOODLE_HOST_DATA=$md#" \
+        "$devenv"
+
+    # Derruba a partir da worktree ANTIGA: e ela que o compose conhece hoje.
+    # Sem -v, que apagaria o volume do cache do composer sem motivo.
+    if [ -d "$atual_path" ]; then
+        info "parando o stack (servia '$atual')"
+        dc "$atual_path" down 2>/dev/null || true
+    fi
+
+    # O offset 0 passa a ser a nova worktree; a anterior fica registrada com
+    # offset "-", que significa "sem stack proprio".
+    #
+    # Tirar a anterior do registro seria mais simples e estava errado: ela
+    # deixava de existir para o moodev, e "moodev rm" respondia "nao esta no registro" -
+    # sem como limpar a worktree pelo proprio comando que a criou.
+    registry_del "$atual"
+    registry_del "$alvo"
+    registry_add "$alvo" 0 "$stack" "$alvo_path" "$md" "$dbd"
+    registry_add "$atual" "-" "-" "$atual_path" "$md" "$dbd"
+
+    echo
+    cmd_up "$alvo"
+
+    # A branch nova pode trazer plugin que o banco compartilhado nao conhece.
+    local cli
+    info "sincronizando o banco com o codigo de '$alvo'"
+    cli="$(moodle_cli_path "$alvo_path" upgrade.php)" \
+        && dc "$alvo_path" exec -T moodle php "$cli" --non-interactive < /dev/null \
+        || warn "upgrade.php reclamou; veja 'moodev logs $alvo'"
+    cli="$(moodle_cli_path "$alvo_path" purge_caches.php)" \
+        && dc "$alvo_path" exec -T moodle php "$cli" < /dev/null || true
+
+    echo
+    ok "'$stack' agora serve '$alvo' em $(url_of 0)"
+}
+
+cmd_new() {
+    registry_init
+    # Por padrao REAPROVEITA o stack que ja roda, so trocando o codigo montado.
+    #
+    # O caro e o stack, nao a worktree: cada um novo custa container, banco,
+    # portas e ~900 MB, e a maior parte do tempo se trabalha numa feature de
+    # cada vez. Stack proprio e a excecao - quando se precisa das duas no ar
+    # junto, ou de bancos separados - e ai vem o --new-stack.
+    local name="" from="" seed="clone" open_code=1 novo_stack=0 branch=""
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --from)   from="${2:-}"; shift 2 ;;
+            --seed)   seed="${2:-}"; shift 2 ;;
+            --branch) branch="${2:-}"; shift 2 ;;
+            --no-code) open_code=0; shift ;;
+            --new-stack|--novo-stack) novo_stack=1; shift ;;
+            --reuse|--use) novo_stack=0; shift ;;   # explicito, mesmo sendo o padrao
+            -*)       die "opcao desconhecida: $1" ;;
+            *)        [ -z "$name" ] && name="$1" || die "nome ja informado"; shift ;;
+        esac
+    done
+    [ -n "$name" ] || die "uso: moodev new <nome|prefixo/nome> [--branch <branch>] [--new-stack] [--from <branch>] [--seed clone|fresh|share] [--no-code]"
+    case "$seed" in clone|fresh|share) ;; *) die "--seed aceita clone, fresh ou share" ;; esac
+
+    # --- nome da PASTA x nome da BRANCH --------------------------------------
+    # Sao duas coisas diferentes e o moodev confundia as duas: cravava "feature/" na
+    # branch, entao "moodev new fix-docs" produzia a branch feature/fix-docs - um
+    # conserto classificado como feature. (Esta branch existe no repo. Foi assim
+    # que o problema apareceu.)
+    #
+    # Regra:
+    #   moodev new paygw-pix                 pasta paygw-pix   branch feature/paygw-pix
+    #   moodev new fix/tls-porta             pasta fix-tls-porta   branch fix/tls-porta
+    #   moodev new x --branch hotfix/y       pasta x           branch hotfix/y
+    #
+    # Ou seja: barra no nome significa "isto e a branch inteira", e a pasta sai
+    # dela trocando barra por hifen. Sem barra, mantem-se o default feature/,
+    # que cobre o caso comum sem obrigar a digitar o prefixo.
+    if [ -z "$branch" ]; then
+        case "$name" in
+            */*) branch="$name"; name="${name//\//-}" ;;
+            *)   branch="feature/$name" ;;
+        esac
+    fi
+
+    git check-ref-format --branch "$branch" >/dev/null 2>&1 \
+        || die "'$branch' nao e um nome de branch valido"
+    git -C "$MOODEV_ROOT" show-ref --verify --quiet "refs/heads/$branch" \
+        && die "a branch '$branch' ja existe"
+
+    # --seed so faz sentido criando banco proprio; reaproveitando, o banco e o
+    # que ja esta la. Avisar em vez de aceitar em silencio algo que nao ocorre.
+    [ "$novo_stack" -eq 0 ] && [ "$seed" != "clone" ] \
+        && warn "--seed $seed ignorado: sem --new-stack o banco e o do stack atual"
+
+    local wt_path="$MOODEV_ROOT/$name"
+    [ -e "$wt_path" ] && die "'$wt_path' ja existe"
+    registry_has "$name" && die "'$name' ja esta no registro"
+
+    # --- origem: de onde vem branch base e arquivos gitignored ---------------
+    local src_name src_path
+    src_name="$(awk -F'\t' '$2==0 {print $1; exit}' "$MOODEV_REGISTRY")"
+    [ -n "$src_name" ] || die "nao ha stack principal no registro. Rode 'moodev ls'."
+    src_path="$(wt_path_of "$src_name")"
+    [ -d "$src_path" ] || die "worktree principal '$src_name' nao existe em $src_path"
+
+    # Default: a branch de integracao. E de onde o fluxo do projeto manda
+    # ramificar (feature -> dev -> deploy), e desde que .devcontainer/ chegou na
+    # dev ela tem o ambiente completo.
+    #
+    # Antes o default era a branch da worktree principal. Era o unico jeito
+    # quando so as branches de feature tinham .devcontainer/, mas virou uma
+    # armadilha: a principal fica em qualquer branch, inclusive uma ja merjeada,
+    # e a feature nova nasceria de uma base arbitraria sem ninguem notar.
+    if [ -z "$from" ]; then
+        if git -C "$src_path" cat-file -e "origin/dev:.devcontainer/devcontainer.json" 2>/dev/null; then
+            from="origin/dev"
+        else
+            from="$(git -C "$src_path" branch --show-current)"
+            warn "origin/dev sem .devcontainer/; usando '$from' como base"
+        fi
+    fi
+
+    # --- espaco em disco -----------------------------------------------------
+    local free_gb
+    free_gb="$(df -BG --output=avail "$MOODEV_ROOT" | tail -1 | tr -dc '0-9')"
+    [ "$free_gb" -ge "$MIN_FREE_GB" ] \
+        || die "so ha ${free_gb}GB livres; uma feature custa ~1GB (piso: ${MIN_FREE_GB}GB)"
+
+    # --- a base tem ambiente? ------------------------------------------------
+    # Falha AQUI, antes de criar qualquer coisa. Uma worktree sem .devcontainer/
+    # nao tem ambiente nenhum, e o erro so apareceria varios passos adiante, com
+    # ela ja criada pela metade - o que e pior que nao criar, porque parece
+    # pronta.
+    #
+    # Hoje a 'dev' tem o ambiente, entao isto so dispara com um --from explicito
+    # apontando para uma base antiga: 'main' (que segue sem .devcontainer/) ou
+    # uma tag/branch anterior a promocao da infraestrutura.
+    if ! git -C "$src_path" cat-file -e "$from:.devcontainer/devcontainer.json" 2>/dev/null; then
+        die "a branch '$from' nao tem .devcontainer/, ou seja, nao tem ambiente.
+
+  Ramifique da branch de integracao, que e o default:
+
+      moodev new $name
+
+  'main' nao serve como base: esta fora do fluxo do projeto
+  (feature -> dev -> deploy) e nao recebeu a infraestrutura."
+    fi
+
+    # --- a base combina com o banco? -----------------------------------------
+    # Mesma regra do bloco acima, pelo mesmo motivo: falha AQUI, antes de criar
+    # qualquer coisa.
+    #
+    # Vale para os dois caminhos, porque nos dois o banco vem da origem: sem
+    # --new-stack ele E o banco do principal, e com --seed clone e uma copia
+    # dele. So o "fresh" nasce vazio e escapa; o "share" e o mais exposto de
+    # todos, porque um upgrade la mexe no banco que o principal usa.
+    if [ "$novo_stack" -eq 0 ] || [ "$seed" != "fresh" ]; then
+        local src_branch seed_ref atrasados sug
+        src_branch="$(git -C "$src_path" branch --show-current)"
+        seed_ref="$(git -C "$src_path" rev-parse HEAD)"
+
+        # A comparacao le o HEAD da origem. Um bump de versao ainda nao
+        # commitado la ja esta no banco e nao aparece aqui.
+        git -C "$src_path" diff --quiet -- '*/version.php' \
+            || warn "'$src_name' tem version.php modificado e nao commitado; a checagem olha so o HEAD"
+
+        atrasados="$(plugins_a_frente "$from" "$seed_ref")"
+        if [ -n "$atrasados" ]; then
+            sug="moodev new $name --branch $branch"
+            [ "$novo_stack" -eq 1 ] && sug="$sug --new-stack"
+            die "a base '$from' esta atras do banco que seria semeado.
+
+  O codigo viria de '$from', mas o banco vem de '$src_name', que serve
+  '${src_branch:-$seed_ref}'. Estes plugins nasceriam com o banco na frente do
+  codigo, e o upgrade recusa (cannotdowngrade):
+
+$atrasados
+
+  Duas saidas:
+
+      $sug --from ${src_branch:-$seed_ref}
+          nasce da branch que a origem serve, e o banco bate.
+
+      moodev new $name --branch $branch --new-stack --seed fresh
+          banco proprio instalado do zero - sem os cursos de teste."
+        fi
+    fi
+
+    # ---------------------------------------------------------------------
+    # Caminho padrao: worktree nova, stack existente.
+    # ---------------------------------------------------------------------
+    if [ "$novo_stack" -eq 0 ]; then
+        info "worktree : $name"
+        info "branch   : $branch  a partir de $from"
+        info "stack    : reaproveitando o que ja roda (use --new-stack para um proprio)"
+        echo
+        info "criando a worktree"
+        git -C "$MOODEV_ROOT" worktree add "$wt_path" -b "$branch" "$from" \
+            || die "git worktree add falhou"
+
+        # O moodev use faz o resto: copia os arquivos ignorados, gera o .env com as
+        # portas e os dados do stack atual, troca o bind do codigo e sobe.
+        cmd_use "$name"
+        [ "$open_code" -eq 1 ] && cmd_code "$name"
+        return 0
+    fi
+
+    # ---------------------------------------------------------------------
+    # Caminho --new-stack: ambiente isolado, para rodar em paralelo.
+    # ---------------------------------------------------------------------
+    local offset; offset="$(registry_next_offset)"
+    local http https db xdebug
+    http="$(port_http "$offset")";  https="$(port_https "$offset")"
+    db="$(port_db "$offset")";      xdebug="$(port_xdebug "$offset")"
+    local stack="ldg-courses-$name"
+    local data_root="$MOODEV_DATA_ROOT/$name"
+
+    info "worktree : $name  (offset $offset)"
+    info "branch   : $branch  a partir de $from"
+    info "stack    : $stack  (proprio, roda junto com os outros)"
+    info "portas   : http $http | https $https | db $db | xdebug $xdebug"
+    info "dados    : $data_root"
+    echo
+
+    # --- 1. worktree ---------------------------------------------------------
+    info "criando a worktree"
+    git -C "$MOODEV_ROOT" worktree add "$wt_path" -b "$branch" "$from" \
+        || die "git worktree add falhou"
+
+    # A partir daqui, qualquer falha deve desfazer o que foi criado: uma worktree
+    # meio provisionada e pior que nenhuma, porque parece pronta.
+    local cleanup_done=0
+    cleanup_new() {
+        [ "$cleanup_done" -eq 1 ] && return
+        cleanup_done=1
+        warn "desfazendo o que foi criado para '$name'"
+        git -C "$MOODEV_ROOT" worktree remove --force "$wt_path" 2>/dev/null || true
+        git -C "$MOODEV_ROOT" branch -D "$branch" 2>/dev/null || true
+        rm -rf "$data_root"
+    }
+    trap cleanup_new ERR INT TERM
+
+    # --- 2. arquivos gitignored ---------------------------------------------
+    info "copiando a configuracao local (o que o git ignora)"
+    local f
+    for f in "${IGNORED_FILES[@]}"; do
+        if [ -e "$src_path/$f" ]; then
+            mkdir -p "$(dirname "$wt_path/$f")"
+            cp -a "$src_path/$f" "$wt_path/$f"
+            printf '     %s\n' "$f"
+        else
+            warn "ausente na origem, pulando: $f"
+        fi
+    done
+
+    gen_config "$wt_path/config.php" "$wt_path/.devcontainer/config/config-docker.php"
+    printf '     %s (gerado do template)\n' "config.php"
+
+    # --- 3. .env -------------------------------------------------------------
+    # Gerado, nao copiado com sed. O README mandava fazer
+    #   sed "s#feature-marketplace#$(basename $PWD)#" ../feature-marketplace/.env
+    # que troca a string em QUALQUER linha - inclusive em MOODLE_HOST_DATA, se um
+    # dia esse caminho contiver o nome da worktree.
+    info "gerando o .env"
+    cat > "$wt_path/.env" <<EOF
+# GERADO POR "moodev new $name". Reescrito por "moodev" quando o offset muda.
+#
+# Variaveis de INTERPOLACAO do docker compose (\${VAR} dentro dos YAML).
+# Diferente de env_file, que so define variaveis DENTRO do container.
+# Gitignored: contem caminhos da maquina local.
+
+# Nome do projeto compose. E isto que permite este stack coexistir com os
+# outros; sem ele, subir daqui recriaria o container do stack principal.
+STACK_NAME=$stack
+
+# Caminhos no host
+MOODLE_HOST_WWWROOT=$wt_path
+MOODLE_HOST_DATA=$data_root/moodledata
+DB_HOST_DATA=$data_root/dbdata
+
+# Caminhos no container
+MOODLE_DOCKER_WWWROOT=/var/www/html
+MOODLE_DOCKER_DATA=/var/www/moodledata
+APACHE_DOCUMENT_ROOT=/var/www/html/public
+
+# Imagem
+MOODLE_IMAGE=leodg/ldg-courses:development
+
+# Portas: base do offset 0 mais $offset * 10.
+MOODLE_HTTP_PORT=$http
+MOODLE_HTTPS_PORT=$https
+DB_PORT=$db
+XDEBUG_PORT=$xdebug
+
+# Banco (precisa bater com env/db.env e com os secrets)
+MOODLE_DBNAME=moodle
+EOF
+
+    # --- 3b. o .env visivel para o VS Code -----------------------------------
+    # A extensao Dev Containers monta o proprio "docker compose -f ..." e NAO
+    # passa --env-file; COMPOSE_ENV_FILE tambem nao a alcanca. O compose entao
+    # procura o .env no diretorio do PRIMEIRO arquivo compose - .devcontainer/
+    # compose/ - e nao na raiz do repo. Sem isto o Reopen in Container morre em
+    # "required variable DB_HOST_DATA is missing a value".
+    #
+    # Um symlink relativo resolve para os dois caminhos ao mesmo tempo: o
+    # compose rodado da raiz continua lendo o .env de la, e o rodado pela
+    # extensao encontra o mesmo arquivo pelo link. Gitignored.
+    ln -sfn ../../.env "$wt_path/.devcontainer/compose/.env"
+
+    # --- 4. dev.env ----------------------------------------------------------
+    # O dev.env copiado traz o MOODLE_URL e o MOODLE_HOST_WWWROOT da ORIGEM. O
+    # wwwroot do Moodle tem que bater exatamente com a URL de acesso, senao a
+    # sessao nao fecha e o login entra em laco.
+    info "ajustando o dev.env para a porta $https"
+    local devenv="$wt_path/.devcontainer/env/dev.env"
+    if [ -f "$devenv" ]; then
+        sed -i \
+            -e "s#^MOODLE_URL=.*#MOODLE_URL=https://localhost:$https#" \
+            -e "s#^MOODLE_HOST_WWWROOT=.*#MOODLE_HOST_WWWROOT=$wt_path#" \
+            -e "s#^MOODLE_HOST_DATA=.*#MOODLE_HOST_DATA=$data_root/moodledata#" \
+            "$devenv"
+    fi
+
+    # --- 5. dados ------------------------------------------------------------
+    mkdir -p "$data_root/moodledata" "$data_root/dbdata"
+
+    # phpu_moodledata precisa existir ANTES do up. E um bind de local-dev.yml, e
+    # o docker cria o caminho ausente como root - dentro da worktree, onde o
+    # usuario precisa escrever. Criado aqui, nasce com o dono certo.
+    mkdir -p "$wt_path/phpu_moodledata"
+    case "$seed" in
+        clone) seed_clone "$src_name" "$src_path" "$name" "$data_root" ;;
+        fresh) info "seed 'fresh': o banco sera instalado do zero no primeiro up" ;;
+        share)
+            warn "seed 'share': este stack usa os dados do principal."
+            warn "Os dois disputam o mesmo schema; um upgrade num afeta o outro."
+            rm -rf "$data_root"
+            sed -i \
+                -e "s#^MOODLE_HOST_DATA=.*#MOODLE_HOST_DATA=$(registry_get "$src_name" 5)#" \
+                -e "s#^DB_HOST_DATA=.*#DB_HOST_DATA=$(registry_get "$src_name" 6)#" \
+                "$wt_path/.env"
+            ;;
+    esac
+
+    # --- 6. registro ---------------------------------------------------------
+    registry_add "$name" "$offset" "$stack" "$wt_path" \
+        "$data_root/moodledata" "$data_root/dbdata"
+
+    trap - ERR INT TERM
+
+    # --- 7. sobe -------------------------------------------------------------
+    echo
+    cmd_up "$name"
+
+    local cli
+    if [ "$seed" = "fresh" ]; then
+        info "instalando o banco do zero (pode demorar)"
+        cli="$(moodle_cli_path "$wt_path" install_database.php)" \
+            && dc "$wt_path" exec -T moodle php "$cli" \
+                 --agree-license --adminpass=admin --adminemail=admin@example.com < /dev/null \
+            || warn "install_database falhou; rode a mao com 'moodev cli install_database.php'"
+    else
+        # A branch nova pode trazer plugin que a base clonada nao conhece.
+        info "rodando o upgrade do Moodle"
+        cli="$(moodle_cli_path "$wt_path" upgrade.php)" \
+            && dc "$wt_path" exec -T moodle php "$cli" --non-interactive < /dev/null \
+            || warn "upgrade.php reclamou; verifique com 'moodev logs $name'"
+        cli="$(moodle_cli_path "$wt_path" purge_caches.php)" \
+            && dc "$wt_path" exec -T moodle php "$cli" < /dev/null || true
+    fi
+
+    echo
+    ok "'$name' pronta em https://localhost:$https"
+
+    # "if" e nao "[ ... ] && ...": esta e a ULTIMA linha da funcao, entao o
+    # retorno dela e o retorno de cmd_new. Com --no-code o teste da falso, a
+    # lista && devolve 1, e o comando reportava falha depois de ter funcionado -
+    # a mensagem acima dizia "pronta" e o $? dizia erro. Quem chama moodev em
+    # script confia no codigo de saida.
+    if [ "$open_code" -eq 1 ]; then
+        cmd_code "$name"
+    fi
+}
+
+# Lista os plugins que a ref do BANCO tem em versao maior que a ref do CODIGO.
+#
+# O "moodev new" resolve duas origens diferentes, e nada obrigava as duas a
+# combinarem: o CODIGO nasce de --from (default origin/dev) e o BANCO vem do
+# stack de origem, que serve a branch que estiver la - as vezes uma a frente da
+# dev. Quando esta a frente, o banco chega com plugin mais novo que o codigo e o
+# Moodle recusa: "Cannot downgrade format_ldg from 2026090304 to 2026090301".
+# Sem esta checagem o erro so aparecia no ULTIMO passo do moodev new, com a worktree
+# criada, o dump restaurado e o stack no ar.
+#
+# So compara os version.php que MUDARAM entre as duas refs: sao poucos, e um
+# plugin identico nos dois lados nao tem como estar a frente. O version.php do
+# core entra na lista e sai sozinho - ele declara $version, nao $plugin->version.
+plugins_a_frente() {
+    local base_ref="$1" seed_ref="$2"
+    local arq base_php seed_php v_base v_seed comp
+
+    while IFS= read -r arq; do
+        [ -n "$arq" ] || continue
+        base_php="$(git -C "$MOODEV_ROOT" show "$base_ref:$arq" 2>/dev/null || true)"
+        seed_php="$(git -C "$MOODEV_ROOT" show "$seed_ref:$arq" 2>/dev/null || true)"
+
+        v_base="$(printf '%s\n' "$base_php" | version_php_num)"
+        v_seed="$(printf '%s\n' "$seed_php" | version_php_num)"
+
+        # Plugin que existe so de um lado nao e downgrade: se so o banco o
+        # conhece, o Moodle avisa que sobrou e segue; se so o codigo tem, e
+        # instalacao normal.
+        [ -n "$v_base" ] && [ -n "$v_seed" ] || continue
+        [ "$v_seed" -gt "$v_base" ] || continue
+
+        comp="$(printf '%s\n' "$seed_php" | version_php_comp)"
+        printf '      %s: banco em %s, codigo em %s\n' "${comp:-$arq}" "$v_seed" "$v_base"
+    done < <(git -C "$MOODEV_ROOT" diff --name-only "$base_ref" "$seed_ref" -- '*/version.php')
+
+    return 0
+}
+
+# O ponto no lugar da aspa evita ter que escapar aspa dentro de aspa no sed.
+version_php_num()  { sed -n 's/^[[:space:]]*\$plugin->version[[:space:]]*=[[:space:]]*\([0-9]\{1,\}\).*/\1/p' | tail -1; }
+version_php_comp() { sed -n 's/^[[:space:]]*\$plugin->component[[:space:]]*=[[:space:]]*.\([a-z0-9_]\{1,\}\).*/\1/p' | tail -1; }
+
+# Clona banco e moodledata do stack de origem.
+seed_clone() {
+    local src_name="$1" src_path="$2" dst_name="$3" data_root="$4"
+
+    local src_db; src_db="$(container_of "$src_path" db)"
+    [ -n "$src_db" ] || die "o stack '$src_name' precisa estar no ar para clonar o banco (moodev up $src_name)"
+
+    info "clonando o moodledata de '$src_name'"
+    local src_md; src_md="$(registry_get "$src_name" 5)"
+    if [ -d "$src_md" ]; then
+        # Caches e sessoes nao vao junto: sao do outro wwwroot e do outro dominio.
+        # Copiar sessao ativa faria o novo site tentar validar um login que nao e dele.
+        sudo -n true 2>/dev/null \
+            && sudo cp -a "$src_md/." "$data_root/moodledata/" \
+            || cp -a "$src_md/." "$data_root/moodledata/" 2>/dev/null \
+            || warn "copia parcial do moodledata (permissoes); o Moodle recria o que faltar"
+        rm -rf "$data_root/moodledata"/{cache,localcache,sessions,temp,trashdir} 2>/dev/null || true
+    else
+        warn "moodledata da origem nao encontrado em $src_md"
+    fi
+
+    info "exportando o banco de '$src_name'"
+    local root_pw dump
+    root_pw="$(cat "$src_path/.devcontainer/secrets/db_root_password" 2>/dev/null || true)"
+    [ -n "$root_pw" ] || die "nao consegui ler .devcontainer/secrets/db_root_password"
+    dump="$MOODEV_STATE/seed-$dst_name.sql"
+
+    docker exec -i "$src_db" mariadb-dump \
+        -u root -p"$root_pw" \
+        --single-transaction --routines --triggers --events \
+        moodle > "$dump" 2>/dev/null \
+        || die "mariadb-dump falhou"
+    ok "dump com $(du -h "$dump" | cut -f1)"
+
+    # O restore acontece depois do "up", porque o banco de destino ainda nao
+    # existe. Fica marcado para cmd_up nao precisar saber disto.
+    printf '%s\n' "$dump" > "$MOODEV_STATE/pending-restore-$dst_name"
+}
+
+# Restaura o dump pendente, se houver. Chamado depois que o stack sobe.
+restore_pending() {
+    local name="$1" wt_path="$2"
+    local marker="$MOODEV_STATE/pending-restore-$name"
+    [ -f "$marker" ] || return 0
+    local dump; dump="$(cat "$marker")"
+    [ -f "$dump" ] || { rm -f "$marker"; return 0; }
+
+    info "restaurando o banco em '$name'"
+    local root_pw dst_db
+    root_pw="$(cat "$wt_path/.devcontainer/secrets/db_root_password")"
+    dst_db="$(container_of "$wt_path" db)"
+    [ -n "$dst_db" ] || { warn "container de banco de '$name' nao encontrado"; return 1; }
+
+    # Espera o banco aceitar conexao. O healthcheck do compose ja cobre isto no
+    # caminho normal, mas o restore vem logo apos o up e a corrida e real.
+    for _ in $(seq 1 60); do
+        docker exec "$dst_db" mariadb -u root -p"$root_pw" -e 'SELECT 1' >/dev/null 2>&1 && break
+        sleep 2
+    done
+
+    docker exec -i "$dst_db" mariadb -u root -p"$root_pw" moodle < "$dump" \
+        || { warn "restore falhou; o dump esta em $dump"; return 1; }
+    rm -f "$marker" "$dump"
+    ok "banco restaurado"
+}
+
+# Apaga um diretorio de dados de stack.
+#
+# Nao da para fazer so com "rm -rf": o dbdata pertence ao uid 999 (o mysql do
+# container do MariaDB) e o moodledata ao 33 (www-data), ambos criados pelo
+# docker. O usuario do host nao tem escrita nesses diretorios e o rm falha no
+# meio, deixando ~175 MB orfaos - foi o que aconteceu na primeira versao.
+#
+# Um container descartavel monta o diretorio PAI e apaga de dentro, como root.
+# Sem sudo, sem pedir senha, e usando algo que ja precisa estar instalado.
+remove_data_dir() {
+    local dir="$1"
+    [ -n "$dir" ] && [ -d "$dir" ] || return 0
+
+    rm -rf "$dir" 2>/dev/null && [ ! -d "$dir" ] && return 0
+
+    local parent base
+    parent="$(dirname "$dir")"; base="$(basename "$dir")"
+    # --rm e um nome fixo evitam deixar lixo se algo falhar no meio.
+    docker run --rm -v "$parent:/target" alpine:latest \
+        rm -rf "/target/$base" >/dev/null 2>&1 || true
+
+    [ -d "$dir" ] && warn "sobrou dado em $dir" || ok "dados apagados"
+}
+
+# -----------------------------------------------------------------------------
+# moodev rm
+# -----------------------------------------------------------------------------
+cmd_rm() {
+    registry_init
+    local name="${1:-}" force=0
+    [ "${2:-}" = "--force" ] && force=1
+    [ -n "$name" ] || die "uso: moodev rm <worktree> [--force]"
+    require_registered "$name"
+
+    local offset; offset="$(registry_get "$name" 2)"
+
+    [ "$name" = "$MOODEV_BASE_WT" ] \
+        && die "'$name' e a worktree de repouso; nao removo por aqui"
+
+    # Todo "moodev rm" termina com o stack principal servindo a worktree de repouso.
+    #
+    # Quando a removida E a servida, isto e obrigatorio: o codigo montado no
+    # container vai sumir do disco. Nos demais casos e uma escolha - volta-se ao
+    # ponto de partida conhecido depois de qualquer remocao, em vez de o estado
+    # final depender de qual worktree se removeu.
+    [ -f "$MOODEV_ROOT/$MOODEV_BASE_WT/.devcontainer/devcontainer.json" ] \
+        || die "a worktree de repouso '$MOODEV_BASE_WT' nao tem .devcontainer/.
+  Sem ela nao ha para onde apontar o stack depois de remover."
+
+    local wt_path data_md branch_prevista=""
+    wt_path="$(wt_path_of "$name")"
+    data_md="$(registry_get "$name" 5)"
+    # Lida da worktree, nao deduzida do nome: com "moodev new fix/tls" a pasta e
+    # fix-tls e a branch e fix/tls.
+    [ -d "$wt_path" ] && branch_prevista="$(git -C "$wt_path" branch --show-current 2>/dev/null || true)"
+
+    # Se o moodev do PATH for um symlink para DENTRO desta worktree, remove-la
+    # deixaria o link pendurado e o comando sumiria do PATH - inclusive o
+    # "moodev doctor" que diagnosticaria o problema. Repontar antes de apagar.
+    if command -v moodev >/dev/null 2>&1; then
+        local no_path alvo principal
+        no_path="$(command -v moodev)"
+        alvo="$(readlink -f "$no_path" 2>/dev/null || true)"
+        case "$alvo" in
+            "$wt_path"/*)
+                # A worktree de REPOUSO, e nao a de offset 0.
+                #
+                # O offset 0 pode ser justamente a worktree sendo removida - e
+                # ai o link seria reapontado para o que vai deixar de existir,
+                # quebrando o comando exatamente como este bloco existe para
+                # evitar. Aconteceu em 04/09/2026, e so nao quebrou porque o
+                # link tinha sido movido a mao antes.
+                #
+                # A de repouso e permanente por definicao: o moodev rm recusa
+                # remove-la, logo o link nunca fica pendurado.
+                principal="$MOODEV_ROOT/$MOODEV_BASE_WT"
+                if [ -n "$principal" ] && [ -x "$principal/.devcontainer/bin/moodev" ]; then
+                    info "o moodev do PATH vinha desta worktree; repontando para '$principal'"
+                    ln -sfn "$principal/.devcontainer/bin/moodev" "$no_path"
+                else
+                    die "o moodev do PATH ($no_path) aponta para dentro de '$name'.
+  Remover agora deixaria o comando quebrado. Reaponte antes:
+      ln -sfn <outra-worktree>/.devcontainer/bin/moodev $no_path"
+                fi
+                ;;
+        esac
+    fi
+
+    # Trabalho nao salvo e o unico dado insubstituivel aqui.
+    #
+    # O aviso e sobre ESTA worktree, entao a contagem parte de HEAD e nao de
+    # --branches. Com --branches o git varre TODAS as branches do repositorio -
+    # num bare repo compartilhado por varias worktrees, isso acusava commits
+    # pendentes de outra branch qualquer e assustava a toa na hora de remover.
+    if [ -d "$wt_path" ]; then
+        local dirty unpushed
+        dirty="$(git -C "$wt_path" status --porcelain | wc -l)"
+        unpushed="$(git -C "$wt_path" log --oneline HEAD --not --remotes 2>/dev/null | wc -l)"
+        [ "$dirty"    -gt 0 ] && warn "$dirty arquivo(s) com alteracao nao commitada"
+        [ "$unpushed" -gt 0 ] \
+            && warn "$unpushed commit(s) de '$branch_prevista' fora do remoto"
+    fi
+
+    # ARQUIVO IGNORADO PELO GIT E O QUE MAIS SE PERDE AQUI.
+    #
+    # "git status --porcelain" NAO lista ignorado. O aviso acima, portanto,
+    # nunca enxergou o docs/private/ - que existe justamente para guardar o que
+    # nao pode ser versionado, e por isso so existe no disco de UMA worktree.
+    #
+    # Em 04/09/2026 um "moodev rm" apagou docs/private/ inteiro: ~19 KB de
+    # planos comerciais, precificacao e margem, sem copia em lugar nenhum. O
+    # git nao ajuda a recuperar o que nunca versionou.
+    #
+    # A guarda so vale se for PRECISA. Recusar em qualquer ignorado tornaria o
+    # --force obrigatorio sempre - config.php, .env e secrets aparecem em toda
+    # worktree - e um aviso que aparece sempre nao e lido. Por isso a lista
+    # abaixo: o que o proprio moodev recria ou copia. Tudo fora dela e tratado
+    # como insubstituivel ate prova em contrario.
+    if [ -d "$wt_path" ] && [ "$force" -eq 0 ]; then
+        local descartaveis=(
+            ".env"
+            "config.php"
+            ".devcontainer/secrets/"
+            ".devcontainer/certs/"
+            ".devcontainer/env/"
+            ".devcontainer/compose/.env"
+            # Nao aparecem hoje - vivem dentro do container - mas aparecem na
+            # hora em que alguem rodar npm ou composer no host, e ai a guarda
+            # passaria a gritar por dependencia que se reinstala.
+            "phpu_moodledata/"
+            "node_modules/"
+            "vendor/"
+        )
+
+        local insubstituiveis=() entrada d conhecido
+        while IFS= read -r entrada; do
+            [ -z "$entrada" ] && continue
+            conhecido=0
+            for d in "${descartaveis[@]}"; do
+                case "$entrada" in "$d"*) conhecido=1; break ;; esac
+            done
+            [ "$conhecido" -eq 0 ] && insubstituiveis+=("$entrada")
+        done < <(git -C "$wt_path" status --porcelain --ignored 2>/dev/null \
+                 | sed -n 's/^!! //p')
+
+        if [ "${#insubstituiveis[@]}" -gt 0 ]; then
+            echo
+            warn "esta worktree tem arquivo IGNORADO pelo git que so existe aqui:"
+            for entrada in "${insubstituiveis[@]}"; do
+                printf '     %s\n' "$entrada"
+            done
+            echo
+            die "removendo, isso some e nao ha de onde recuperar - o git nunca versionou.
+  Copie para outro lugar, ou repita com --force se for mesmo descartavel:
+      moodev rm $name --force"
+        fi
+    fi
+
+    # Os dados so sao desta worktree se estiverem sob MOODEV_DATA_ROOT, que e onde
+    # o --new-stack cria banco proprio.
+    #
+    # Uma worktree que apenas foi SERVIDA pelo stack principal tem, na linha do
+    # registro, os caminhos do principal - moodledata-ldg-courses e
+    # dbdata-ldg-courses. Apagar por ali destruiria o banco principal a partir
+    # de um "moodev rm" numa worktree secundaria. E o pior tipo de bug: o comando
+    # parece local e o estrago e global.
+    local dados_proprios=0 dados_dir=""
+    dados_dir="$(dirname "$data_md")"
+    case "$dados_dir" in
+        "$MOODEV_DATA_ROOT"/*) dados_proprios=1 ;;
+    esac
+
+    echo
+    warn "isto remove, sem volta:"
+    printf '     worktree : %s\n' "$wt_path"
+    printf '     branch   : %s\n' "${branch_prevista:-<lida da worktree>}"
+    if [ "$dados_proprios" -eq 1 ]; then
+        printf '     dados    : %s\n' "$dados_dir"
+        printf '     stack    : %s (containers e volumes)\n' "$(registry_get "$name" 3)"
+    else
+        printf '     dados    : %s\n' "PRESERVADOS (sao do stack principal)"
+        printf '     stack    : %s\n' "nenhum proprio"
+    fi
+    echo
+
+    if [ "$force" -eq 0 ]; then
+        local answer
+        read -r -p "digite o nome da worktree para confirmar: " answer
+        [ "$answer" = "$name" ] || die "cancelado"
+    fi
+
+    # Se o stack principal esta servindo ESTA worktree, ele precisa passar a
+    # servir outra antes de o codigo sumir do disco - senao fica montado num
+    # caminho que deixou de existir.
+    #
+    # So neste caso. Worktree com stack proprio nao encosta no principal: o
+    # container dela e outro, e o principal segue rodando o que ja rodava.
+    # Mexer nele seria interromper trabalho sem necessidade.
+    if [ "$offset" = "0" ]; then
+        echo
+        info "o stack principal serve '$name'; movendo para '$MOODEV_BASE_WT' antes de remover"
+        cmd_use "$MOODEV_BASE_WT"
+        echo
+        # A troca reclassificou esta worktree para offset "-".
+        offset="$(registry_get "$name" 2)"
+    fi
+
+    # So derruba stack se esta worktree TIVER um proprio.
+    #
+    # Numa worktree com offset "-", o .env carrega as portas e o nome do stack
+    # PRINCIPAL - foi ele que a serviu. Um "compose down -v" ali derrubaria o
+    # ambiente principal e apagaria os volumes dele, a partir de um comando que
+    # so deveria mexer numa worktree secundaria.
+    if [ "$dados_proprios" -eq 1 ] && [ -d "$wt_path" ]; then
+        info "derrubando o stack"
+        dc_full "$wt_path" down -v 2>/dev/null || true
+    fi
+
+    local branch="$branch_prevista"
+    info "removendo a worktree"
+    git -C "$MOODEV_ROOT" worktree remove --force "$wt_path" 2>/dev/null || rm -rf "$wt_path"
+    if [ -n "$branch" ]; then
+        if git -C "$MOODEV_ROOT" branch -D "$branch" 2>/dev/null; then
+            info "branch '$branch' removida"
+        else
+            warn "branch '$branch' nao removida (talvez tenha commit nao merjeado)"
+        fi
+    else
+        warn "nao identifiquei a branch da worktree; confira com 'git branch'"
+    fi
+    if [ "$dados_proprios" -eq 1 ]; then
+        info "apagando os dados"
+        remove_data_dir "$dados_dir"
+    else
+        info "dados preservados: sao do stack principal, nao desta worktree"
+    fi
+    registry_del "$name"
+    rm -f "$MOODEV_STATE/pending-restore-$name" "$MOODEV_STATE/seed-$name.sql"
+    ok "'$name' removida; offset $offset liberado"
+}
+
+# -----------------------------------------------------------------------------
+# moodev doctor
+# -----------------------------------------------------------------------------
+cmd_config() {
+    registry_init
+    local name; name="$(resolve_wt "${1:-}")"
+    require_registered "$name"
+
+    local wt_path; wt_path="$(wt_path_of "$name")"
+    local tpl="$wt_path/.devcontainer/config/config-docker.php"
+
+    gen_config "$wt_path/config.php" "$tpl"
+    ok "config.php de '$name' regerado a partir do template"
+    info "o container le no proximo request; behat e phpunit so enxergam depois de reinicializar (init.php)"
+}
+
+cmd_doctor() {
+    registry_init
+    local problems=0
+    note() { warn "$*"; problems=$((problems + 1)); }
+
+    # O doctor tem que conferir a si mesmo antes de conferir o resto: o jeito
+    # normal de instalar e um symlink em ~/.local/bin apontando para
+    # <worktree>/.devcontainer/bin/moodev. Se aquela worktree for removida, o link
+    # fica pendurado e o comando some do PATH sem explicacao.
+    info "instalacao do proprio moodev"
+    printf '  %s  script : %s\n' "$C_DIM$C_OFF" "$SELF"
+    if command -v moodev >/dev/null 2>&1; then
+        local no_path; no_path="$(command -v moodev)"
+        ok "no PATH como $no_path"
+        if [ -L "$no_path" ]; then
+            # Nao ha checagem de link pendurado aqui: "command -v" ja falha
+            # nesse caso (o alvo nao existe, logo nao e executavel), e a
+            # situacao cai no else abaixo.
+            #
+            # O que interessa avisar: o link resolve para dentro de uma worktree
+            # que o "moodev rm" pode APAGAR. Sao exatamente as registradas com
+            # offset diferente de 0. Worktree permanente (dev, main) nao esta no
+            # registro, e a principal (offset 0) o proprio moodev rm recusa remover -
+            # nos dois casos o link e estavel.
+            # "Removivel" = o que o moodev rm de fato apaga. Ele recusa duas: a que o
+            # stack principal serve (offset 0) e a worktree de repouso. Esta
+            # ultima aparece no registro com offset "-" depois de uma troca, e
+            # sem esta excecao o doctor reclamaria de um link apontando para
+            # dev - que e justamente o alvo recomendado.
+            local alvo removivel=""
+            alvo="$(readlink -f "$no_path")"
+            while IFS=$'\t' read -r r_nome r_off _ r_path _ _; do
+                [[ "$r_nome" =~ ^# ]] && continue
+                [ -z "$r_nome" ] && continue
+                [ "$r_off" = "0" ] && continue
+                [ "$r_nome" = "$MOODEV_BASE_WT" ] && continue
+                case "$alvo" in "$r_path"/*) removivel="$r_nome" ;; esac
+            done < "$MOODEV_REGISTRY"
+
+            if [ -n "$removivel" ]; then
+                note "aponta para dentro da worktree '$removivel', que e removivel."
+                note "  se ela sair, o moodev some do PATH. Prefira uma permanente:"
+                note "  ln -sfn $MOODEV_ROOT/.devcontainer/bin/moodev $no_path"
+            else
+                printf '  %sok%s alvo estavel: %s\n' "$C_GRN" "$C_OFF" "$alvo"
+            fi
+        fi
+    else
+        # Cobre os dois casos: nunca instalado, e symlink pendurado porque a
+        # worktree que ele apontava foi removida.
+        note "nao responde no PATH (nao instalado, ou symlink pendurado)."
+        note "  instale/conserte com:"
+        note "  ln -sfn $SELF ~/.local/bin/moodev"
+    fi
+
+    info "ferramentas"
+    for t in docker git code; do
+        command -v "$t" >/dev/null 2>&1 && ok "$t" || note "$t nao esta no PATH"
+    done
+    if command -v devcontainer >/dev/null 2>&1; then
+        ok "devcontainer CLI"
+    else
+        note "devcontainer CLI ausente: o Reopen in Container vai recriar containers. npm i -g @devcontainers/cli"
+    fi
+
+    info "disco"
+    local free_gb; free_gb="$(df -BG --output=avail "$MOODEV_ROOT" | tail -1 | tr -dc '0-9')"
+    [ "$free_gb" -ge "$MIN_FREE_GB" ] && ok "${free_gb}GB livres" \
+        || note "so ${free_gb}GB livres (piso ${MIN_FREE_GB}GB)"
+
+    info "certificado local"
+    local cert; cert="$(awk -F'\t' '$2==0 {print $4"/.devcontainer/certs/develop-local.crt"; exit}' "$MOODEV_REGISTRY")"
+    if [ -f "$cert" ]; then
+        if openssl x509 -in "$cert" -checkend 604800 -noout >/dev/null 2>&1; then
+            ok "valido ate $(openssl x509 -in "$cert" -enddate -noout | cut -d= -f2)"
+        else
+            note "vence em menos de 7 dias. Regenere com mkcert (ver compose/local-tls.yml)"
+        fi
+        # O host do principal precisa estar no SAN, senao o navegador recusa
+        # o certificado no nome novo e aceita so em localhost.
+        local host; host="$(main_host)"
+        if openssl x509 -in "$cert" -noout -ext subjectAltName 2>/dev/null \
+            | tr ',' '\n' | sed 's/^ *DNS://' | grep -qx "$host"; then
+            ok "cobre $host"
+        else
+            note "nao cobre $host. Regenere com mkcert incluindo o nome (ver .devcontainer/readme.md)"
+        fi
+    else
+        note "certificado nao encontrado em $cert"
+    fi
+
+    info "worktrees"
+    local name off stack wt_path md
+    while IFS=$'\t' read -r name off stack wt_path md _; do
+        [[ "$name" =~ ^# ]] && continue; [ -z "$name" ] && continue
+        [ -d "$wt_path" ] || { note "$name: worktree sumiu de $wt_path (moodev rm $name)"; continue; }
+        [ -f "$wt_path/.env" ] || { note "$name: sem .env"; continue; }
+
+        local env_stack env_http
+        env_stack="$(grep -E '^STACK_NAME=' "$wt_path/.env" | cut -d= -f2- || true)"
+        env_http="$(grep -E '^MOODLE_HTTP_PORT=' "$wt_path/.env" | cut -d= -f2- || true)"
+
+        # As checagens de stack e porta valem por offset:
+        #
+        #   0    stack principal. STACK_NAME tem que estar AUSENTE - e o default
+        #        de base.yml que resolve para ldg-courses - e as portas sao as
+        #        da base.
+        #   N>0  stack proprio. STACK_NAME tem que bater com o registro, e as
+        #        portas saem do offset.
+        #   -    sem stack proprio. Foi servida pelo principal, entao herda o
+        #        mesmo arranjo do offset 0: sem STACK_NAME, portas da base.
+        #        Comparar com o registro aqui nao faz sentido, e "port_http -"
+        #        e conta invalida.
+        local off_efetivo="$off"
+        [ "$off" = "-" ] && off_efetivo=0
+
+        if [ "$off" = "0" ] || [ "$off" = "-" ]; then
+            [ -z "$env_stack" ] \
+                || note "$name: nao deveria definir STACK_NAME ('$env_stack'); usa o stack principal"
+        else
+            [ "$env_stack" = "$stack" ] \
+                || note "$name: STACK_NAME do .env ('$env_stack') difere do registro ('$stack')"
+        fi
+
+        [ "$env_http" = "$(port_http "$off_efetivo")" ] \
+            || note "$name: porta http do .env ($env_http) nao bate com o offset $off ($(port_http "$off_efetivo"))"
+
+        for f in "${IGNORED_FILES[@]}"; do
+            [ -e "$wt_path/$f" ] || note "$name: falta $f"
+        done
+
+        # O config.php desatualizado nao quebra nada na hora - ele so deixa de
+        # trazer o que o template ganhou depois. Foi assim que uma worktree
+        # rodou semanas sem o mapa de dominio por vendedor.
+        #
+        # A conferencia e por regeracao: gera num temporario e compara o arquivo
+        # inteiro. Comparar so o miolo exigiria adivinhar onde o cabecalho
+        # termina, e isso quebra na primeira vez que o cabecalho mudar.
+        local tpl="$wt_path/.devcontainer/config/config-docker.php"
+        if [ ! -e "$wt_path/config.php" ]; then
+            note "$name: falta config.php (rode 'moodev config')"
+        elif [ -f "$tpl" ]; then
+            local tmpcfg; tmpcfg="$(mktemp)"
+            gen_config "$tmpcfg" "$tpl"
+            diff -q "$tmpcfg" "$wt_path/config.php" >/dev/null 2>&1 \
+                || note "$name: config.php difere do template (rode 'moodev config')"
+            rm -f "$tmpcfg"
+        fi
+        ok "$name"
+    done < "$MOODEV_REGISTRY"
+
+    info "colisao de porta entre stacks registrados"
+    local dup
+    dup="$(awk -F'\t' '!/^#/ && NF {print $2}' "$MOODEV_REGISTRY" | sort | uniq -d)"
+    [ -z "$dup" ] && ok "offsets unicos" || note "offset repetido: $dup"
+
+    echo
+    [ "$problems" -eq 0 ] && ok "nenhum problema" || warn "$problems problema(s)"
+}
+
+usage() {
+    cat <<'EOF'
+moodev - ambiente de desenvolvimento Moodle
+
+Worktrees, devcontainer e ferramentas de desenvolvimento num comando so.
+
+Notacao: <obrigatorio>, [opcional]. "worktree" e o NOME da worktree, a mesma
+coluna WORKTREE que o "moodev ls" mostra - por exemplo: paygw-pix.
+
+  moodev new <nome|prefixo/nome> [--branch <branch>] [--new-stack]
+                [--from <branch>] [--seed clone|fresh|share] [--no-code]
+        Cria worktree e branch a partir de origin/dev, copia a configuracao
+        local e abre o VS Code dentro do container.
+
+        A PASTA e a BRANCH sao coisas diferentes. Barra no nome quer dizer
+        "isto e a branch inteira", e a pasta sai dela com hifen no lugar da
+        barra. Sem barra, a branch ganha o prefixo feature/:
+
+            moodev new paygw-pix         pasta paygw-pix      branch feature/paygw-pix
+            moodev new fix/tls-porta     pasta fix-tls-porta  branch fix/tls-porta
+            moodev new x --branch hotfix/y   pasta x          branch hotfix/y
+
+        Por padrao REAPROVEITA o stack que ja roda: mesmo container, mesmo
+        banco, mesmas portas - so o codigo montado muda. Barato e instantaneo,
+        mas e um ambiente de cada vez.
+
+        Com --new-stack, sobe um ambiente proprio (container, banco e portas
+        separados, ~900 MB) que roda em PARALELO com os outros. Use quando
+        precisar das duas features no ar ao mesmo tempo, ou de bancos
+        separados. --seed so tem efeito neste modo.
+
+        O banco vem da origem, mas o codigo vem de --from. Se a base estiver
+        atras da branch que a origem serve, o banco chega com plugin mais novo
+        que o codigo e o upgrade recusa - o moodev confere antes e recusa primeiro,
+        dizendo qual --from usar (ou --seed fresh, para banco vazio).
+
+  moodev use <worktree>          o stack atual passa a servir esta worktree
+                             (mesmo banco e portas; so troca o codigo)
+
+  moodev ls                      worktrees, offsets, stacks, status e URLs
+  moodev up      [worktree] [--full]  sobe o stack; --full inclui o Chrome do behat
+  moodev down    [worktree]      para o stack
+  moodev restart [worktree]      down e up
+  moodev code    [worktree]      abre o VS Code dentro do container
+  moodev shell   [worktree]      bash no container, como 1000:33
+  moodev logs    [worktree]      segue os logs
+  moodev cli <script.php> [...]  roda um admin/cli do Moodle
+  moodev build   [worktree]      reconstroi a imagem (carrega o build-dev.yml)
+  moodev rm <worktree> [--force] remove worktree, branch, dados e stack
+  moodev config  [worktree]      regera o config.php a partir do template versionado
+  moodev doctor                  confere ferramentas, disco, cert, .env e portas
+
+Omitindo o nome, o comando age sobre a worktree do diretorio atual. Dentro de
+paygw-pix/, "moodev up" sobe aquele ambiente; de fora, seria "moodev up paygw-pix".
+
+Offset N -> stack ldg-courses-<nome>, portas 8080+N*10 (http), 8443+N*10
+(https), 3307+N*10 (banco) e 9004+N*10 (xdebug). O offset 0 e o stack
+principal, que se chama "ldg-courses" e usa as portas da base.
+EOF
+}
+
+main() {
+    local cmd="${1:-}"; [ $# -gt 0 ] && shift || true
+    case "$cmd" in
+        new)      cmd_new "$@" ;;
+        use)      cmd_use "$@" ;;
+        ls|list)  cmd_ls "$@" ;;
+        up)       cmd_up "$@" ;;
+        down)     cmd_down "$@" ;;
+        restart)  cmd_restart "$@" ;;
+        code)     cmd_code "$@" ;;
+        shell|sh) cmd_shell "$@" ;;
+        logs)     cmd_logs "$@" ;;
+        cli)      cmd_cli "$@" ;;
+        build)    cmd_build "$@" ;;
+        rm|remove) cmd_rm "$@" ;;
+        config)   cmd_config "$@" ;;
+        doctor)   cmd_doctor "$@" ;;
+        ""|-h|--help|help) usage ;;
+        *)        die "comando desconhecido: $cmd (use 'moodev --help')" ;;
+    esac
+}
+
+main "$@"

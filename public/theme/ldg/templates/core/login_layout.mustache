@@ -1,0 +1,61 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    Layout da tela de login.
+
+    OVERRIDE sobre core/login_layout. O mustache_template_finder procura em
+    theme/ldg/templates/ antes do core, entao este arquivo substitui o de la sem
+    tocar em nada do Moodle.
+
+    Por que sobrescrever: o painel esquerdo do core traz a marca do MOODLE -
+    "Welcome to Moodle", numeros de usuarios e sites, e uma imagem generica. E o
+    pitch errado numa plataforma comercial: quem chega para comprar curso le
+    aquilo como se fosse nosso.
+
+    O painel esquerdo e sempre escuro, nos dois modos de cor, e por isso leva
+    .ldg-on-dark - a classe que faz a logo escolher a variante branca sozinha.
+
+    @template theme_ldg/core/login_layout
+    @author    LeoDG <callme@leodg.dev>
+    @copyright 2026 LeoDG <callme@leodg.dev>
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div id="page-content" class="min-vh-100 row g-0 ldg-login">
+    <aside class="login-layout-left ldg-on-dark col-lg-6 d-none d-lg-flex">
+        <div class="ldg-login-brand">
+            {{# output.should_display_logo }}
+                <div class="ldg-login-logo">
+                    <img src="{{output.get_logo}}" class="logo light" alt="{{sitename}}">
+                    {{#output.get_logo_dark}}
+                        <img src="{{.}}" class="logo dark" alt="{{sitename}}">
+                    {{/output.get_logo_dark}}
+                </div>
+            {{/ output.should_display_logo }}
+
+            <h2 class="ldg-login-headline">{{#str}}loginheadline, theme_ldg{{/str}}</h2>
+            <p class="ldg-login-lead">{{#str}}loginlead, theme_ldg{{/str}}</p>
+        </div>
+    </aside>
+
+    <div id="region-main" class="login-layout-right col-12 col-lg-6">
+        <div id="region-main-box" class="login-layout-right-content">
+            <div class="login-container">
+                {{{ output.main_content }}}
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,334 @@
+/* This file is part of Moodle - http://moodle.org/
+ *
+ * Moodle is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Moodle is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * ESTRUTURA do portal do aluno. Nao ha marca aqui: nada de cor, fonte, sombra
+ * ou raio - isso e do tema, em theme/ldg/scss/ldg/_format.scss.
+ *
+ * A divisao existe por um motivo concreto: outras empresas usam este formato com
+ * o tema DELAS. O Moodle carrega o styles.css do plugin para qualquer tema,
+ * entao a grade chega junto com o formato e o portal fica cinza mas usavel. Com
+ * o theme_ldg por cima, fica o desenho.
+ *
+ * GRID, e nao flex. As tres superficies de navegacao - menu, abas e barra de
+ * baixo - sao IRMAS do miolo e da lista, porque desenhar a mesma navegacao tres
+ * vezes em lugares diferentes do DOM daria tres fontes de verdade sobre onde o
+ * aluno esta. Sendo irmas, so o grid consegue por cada uma no seu lugar por
+ * largura, sem mover nada no HTML.
+ *
+ * @package    format_ldg
+ * @copyright  2026 LeoDG <callme@leodg.dev>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+/* O respiro lateral da pagina.
+ *
+ * O layout do portal nao tem container do Moodle em volta - foi isso que tirou a
+ * navbar e os drawers -, entao sem isto o conteudo encosta na borda da janela.
+ * Visivel na primeira captura em 1280px: o menu comecava no pixel zero. */
+.ldg-portal {
+    padding-inline: 1.5rem;
+}
+
+/* Mobile primeiro: uma coluna. As abas em cima, o miolo, a lista embaixo e a
+   barra fixa no rodape - a ordem em que se usa no celular. */
+.ldg-portal__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "student"
+        "tabs"
+        "main"
+        "index";
+    gap: 1rem;
+}
+
+.ldg-portal__nav {
+    display: none;
+    grid-area: nav;
+}
+
+/* O cartao do aluno e a primeira coisa da coluna esquerda no desktop, e a
+   primeira da pagina no celular - onde ele funciona como cabecalho de contexto,
+   ja que ali nao ha coluna. */
+.ldg-portal__student {
+    grid-area: student;
+}
+
+/* Esconder as laterais.
+ *
+ * Os botoes so aparecem quando o modulo AMD carregou - e ele que poe a classe
+ * ldg-portal--can-hide. Sem JavaScript nao ha botao, e as laterais ficam
+ * visiveis, que e o estado util.
+ *
+ * O que garante que ninguem fica sem saida com tudo escondido e o atalho entre
+ * aulas, que e grudado no topo do miolo e nao depende de lateral nenhuma. */
+.ldg-portal__asidetoggles {
+    display: none;
+}
+
+.ldg-portal__studenthead {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Os botoes descem para BAIXO da saudacao, e nao ao lado dela.
+ *
+ * Ao lado, numa coluna de 280px, "Indice de aulas" quebrava em tres linhas de
+ * uma palavra cada e o cartao virava um bloco alto e torto. Visto na captura. */
+.ldg-portal--can-hide .ldg-portal__asidetoggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.ldg-portal__asidetoggle {
+    white-space: nowrap;
+}
+
+.ldg-portal--hide-nav .ldg-portal__nav,
+.ldg-portal--hide-index .ldg-lessonlist {
+    display: none;
+}
+
+/* Escondida uma lateral, a coluna dela some da grade - senao fica uma faixa
+   vazia de 280px no meio da tela. */
+@media (min-width: 992px) {
+    .ldg-portal--hide-nav .ldg-portal__body {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "student"
+            "main"
+            "index";
+    }
+}
+
+@media (min-width: 1200px) {
+    .ldg-portal--hide-nav .ldg-portal__body {
+        grid-template-columns: minmax(0, 1fr) 360px;
+        grid-template-areas:
+            "student index"
+            "main index";
+    }
+
+    .ldg-portal--hide-index .ldg-portal__body {
+        grid-template-columns: 280px minmax(0, 1fr);
+        grid-template-areas:
+            "student main"
+            "nav main";
+    }
+
+    .ldg-portal--hide-nav.ldg-portal--hide-index .ldg-portal__body {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "student"
+            "main";
+    }
+}
+
+/* O item ocupa a LINHA inteira, e nao a largura do texto.
+ *
+ * Ancora e inline por padrao, entao sem isto o item media a largura do proprio
+ * rotulo - de 96px a 142px, conforme a lingua - e o fundo do estado ativo
+ * cobriria so as letras, no meio de uma coluna de 280px. Medido no Chrome.
+ *
+ * Aqui e estrutura, e nao marca: o que o tema pinta e a cor do fundo; qual e a
+ * area pintada e o layout que decide. */
+.ldg-portal__nav .ldg-portal__navitem {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ldg-portal__tabs {
+    display: flex;
+    grid-area: tabs;
+    overflow-x: auto;
+}
+
+.ldg-portal__main {
+    grid-area: main;
+    min-width: 0;
+}
+
+.ldg-lessonlist {
+    grid-area: index;
+}
+
+/* A barra de baixo sai do fluxo: fica colada no rodape da janela. */
+.ldg-portal__bottomnav {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 1030;
+    display: flex;
+    height: 60px;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.ldg-portal__bottomitem {
+    display: flex;
+    min-width: 44px;
+    min-height: 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+/* O rodape fixo cobriria o fim da pagina. O respiro tem que ser maior que a
+   barra, senao o ultimo item fica inalcancavel. */
+.ldg-portal {
+    padding-bottom: 5rem;
+}
+
+/* O atalho entre aulas.
+ *
+ * GRUDADO no topo do miolo, e isso e o requisito e nao enfeite: quando o aluno
+ * esconde as laterais, esta barra e a unica navegacao que sobra. Se ela rolasse
+ * para fora da tela, esconder a lateral deixaria o aluno sem saida.
+ *
+ * As pontas ocupam a mesma largura para o indicador do meio nao pular de lugar
+ * ao trocar de aula - na primeira nao ha "anterior", e o espaco fica vazio. */
+.ldg-lessonnav {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.ldg-lessonnav__side {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0;
+    flex-direction: column;
+}
+
+.ldg-lessonnav__side--next {
+    align-items: flex-end;
+    text-align: end;
+}
+
+.ldg-lessonnav__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ldg-lessonnav__position {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* No celular o nome das aulas vizinhas some: em 390px, tres textos lado a lado
+   viram tres colunas de uma palavra cada. Ficam a direcao e o indicador. */
+@media (max-width: 575.98px) {
+    .ldg-lessonnav__name {
+        display: none;
+    }
+}
+
+/* NAO ponha aspect-ratio aqui. A altura do quadro e escrita pelo player.js, que
+   mede o conteudo depois do JavaScript rodar - e foi um ciclo de realimentacao
+   nessa medida que fez o quadro crescer sem parar, de 420px para 12084px, em
+   02/09/2026. Proporcao fixa brigaria com aquela medida e ainda cortaria um
+   quiz, que nao tem cara de video. Os 16/9 do desenho chegam com o mod_video,
+   quando houver video de verdade para caber neles. */
+.ldg-portal__main .ldg-lesson__frame {
+    width: 100%;
+    border: 0;
+}
+
+/* Cadeado do quadro da aula em foco (Forum/Certificado sem lista propria).
+   Estrutura so: empilha icone, nome e motivo. A marca fica no tema. */
+.ldg-lesson__locked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--ldg-space);
+    padding: var(--ldg-gutter) var(--ldg-space);
+    text-align: center;
+}
+
+.ldg-lesson__lockicon {
+    display: flex;
+    line-height: 0;
+}
+
+.ldg-lesson__lockname {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.ldg-lesson__lockinfo {
+    max-width: 36rem;
+}
+
+/* A partir de lg entra o menu lateral, e as abas e a barra saem. */
+@media (min-width: 992px) {
+    .ldg-portal__body {
+        grid-template-columns: 280px minmax(0, 1fr);
+        grid-template-areas:
+            "student main"
+            "nav main"
+            "nav index";
+
+        /* A primeira linha tem a altura do CARTAO. Sem isto o navegador
+           distribui a altura do miolo entre as duas linhas e abre um vao de
+           centenas de pixels entre o cartao e o menu - visto na captura. */
+        grid-template-rows: auto auto 1fr;
+        align-items: start;
+    }
+
+    .ldg-portal__nav {
+        display: block;
+        position: sticky;
+        top: 56px;
+    }
+
+    .ldg-portal__tabs,
+    .ldg-portal__bottomnav {
+        display: none;
+    }
+
+    .ldg-portal {
+        padding-bottom: 0;
+    }
+}
+
+/* A partir de xl a lista de aulas vira a terceira coluna. */
+@media (min-width: 1200px) {
+    .ldg-portal__body {
+        grid-template-columns: 280px minmax(0, 1fr) 360px;
+        grid-template-areas:
+            "student main index"
+            "nav main index";
+        grid-template-rows: auto 1fr;
+    }
+
+    .ldg-lessonlist {
+        position: sticky;
+        top: 56px;
+    }
+}

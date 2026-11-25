@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="course/format/ldg/db" VERSION="20260902" COMMENT="Tabelas do format_ldg."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="format_ldg_lesson" COMMENT="Duracao de cada aula, por modulo do curso. Guarda o tempo do VIDEO, nao o tempo que alguem assistiu - por isso nao ha campo de usuario NENHUM aqui, nem userid nem usermodified, e o plugin segue sendo null_provider de privacidade. O usermodified existiu ate 03/09/2026 e foi removido: nunca foi lido nem escrito, e uma referencia a user numa tabela reprova o teste de privacidade do core, que cobra metadata de quem tem campo de usuario.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Id do course module. Nao ha chave estrangeira para course_modules de proposito: a atividade pode ser apagada, e a linha orfa aqui nao pode impedir nem a exclusao nem a troca de formato."/>
+        <FIELD NAME="duration" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Duracao em segundos. Nulo significa desconhecida, e a lista simplesmente nao mostra nada - diferente de zero, que seria uma aula de duracao nenhuma."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="cmid" UNIQUE="true" FIELDS="cmid"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

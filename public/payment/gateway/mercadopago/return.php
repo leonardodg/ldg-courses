@@ -25,7 +25,7 @@
  * a URL a mao para liberar acesso sem pagar.
  *
  * @package    paygw_mercadopago
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -65,8 +65,20 @@ echo $OUTPUT->header();
 if ($record->status === 'rejected' || $record->status === 'cancelled') {
     echo $OUTPUT->notification(get_string('paymentrejected', 'paygw_mercadopago'), 'error');
 } else {
-    // Caso comum no Pix: o aluno volta antes de o Mercado Pago avisar.
-    echo $OUTPUT->notification(get_string('paymentpending', 'paygw_mercadopago'), 'info');
+    // A fatura por Pix ou boleto NAO foi paga ainda - e diferente do Checkout
+    // Pro, onde o aluno ja viu o QR code la no Mercado Pago antes de voltar.
+    // Aqui a pagina e nossa, entao o QR/boleto so existe se mostrarmos.
+    $invoice = \paygw_mercadopago\payment_processor::invoice_details($record);
+
+    if ($invoice) {
+        echo $OUTPUT->render_from_template('paygw_mercadopago/pay_invoice', $invoice + [
+            'waitingmessage' => get_string('subscribeinvoicewaiting', 'paygw_mercadopago'),
+        ]);
+    } else {
+        // Caso comum no cartao aprovado por analise, ou num Checkout Pro
+        // ainda nao confirmado: o aluno volta antes de o Mercado Pago avisar.
+        echo $OUTPUT->notification(get_string('paymentpending', 'paygw_mercadopago'), 'info');
+    }
 }
 
 echo $OUTPUT->continue_button(new moodle_url('/my/courses.php'));

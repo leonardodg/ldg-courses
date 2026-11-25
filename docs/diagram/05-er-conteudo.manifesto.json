@@ -1,0 +1,53 @@
+{
+ "indices": {
+  "format_ldg_lesson": [
+   "cmid (unique)"
+  ],
+  "ldgvideo": [
+   "course"
+  ],
+  "local_partners_application": [
+   "status-timecreated",
+   "confirmtoken"
+  ]
+ },
+ "tabelas": {
+  "course_modules": [
+   "id",
+   "course",
+   "module",
+   "instance",
+   "availability"
+  ],
+  "format_ldg_lesson": [
+   "id",
+   "cmid",
+   "duration",
+   "timecreated",
+   "timemodified"
+  ],
+  "ldgvideo": [
+   "id",
+   "course",
+   "name",
+   "videourl",
+   "aspectratio"
+  ],
+  "local_marketplace_course": [
+   "id",
+   "courseid",
+   "companyid",
+   "hostingtype",
+   "commissionpct"
+  ],
+  "local_partners_application": [
+   "id",
+   "companyname",
+   "contactemail",
+   "status",
+   "planid",
+   "companyid",
+   "userid"
+  ]
+ }
+}

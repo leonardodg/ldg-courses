@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="payment/gateway/asaas/db" VERSION="20260827" COMMENT="Transacoes do gateway Asaas."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="paygw_asaas" COMMENT="Uma linha por cobranca criada no Asaas. Nasce antes da chamada a API: uma cobranca criada la que o Moodle nunca soube que existiu nao teria como ser conciliada.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="asaaspaymentid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Id da cobranca no Asaas, ex.: pay_lumzx8nkxdrrf4rh. Vazio ate a API responder."/>
+        <FIELD NAME="externalreference" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="Nosso identificador, mandado no externalReference. E por ele que uma cobranca orfa e reencontrada."/>
+        <FIELD NAME="subscriptionid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Assinatura do Asaas que gerou esta cobranca, ex.: sub_ofeimt1sxi8zjh9y. Vazio na cobranca avulsa. Cada ciclo vira uma LINHA propria, porque cada um e um pagamento com a sua comissao - o que liga as linhas do mesmo aluno e este campo."/>
+        <FIELD NAME="customerid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Cliente do Asaas correspondente ao aluno, na conta do vendedor."/>
+        <FIELD NAME="component" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="paymentarea" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="itemid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="accountid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="amount" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="BRL" SEQUENCE="false"/>
+        <FIELD NAME="feepercent" TYPE="number" LENGTH="5" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Percentual resolvido pelo marketplace no momento da compra. Guardado porque a comissao da empresa pode mudar depois, e a venda antiga tem que continuar explicavel."/>
+        <FIELD NAME="feeamount" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Comissao em moeda efetivamente enviada no split. Calculada sobre a base em feebase."/>
+        <FIELD NAME="feebase" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="gross" SEQUENCE="false" COMMENT="Base APLICADA: gross|net. Decide o campo do split - gross vai como fixedValue calculado por nos, net vai como percentualValue para o Asaas dividir o liquido dele."/>
+        <FIELD NAME="feesource" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="site" SEQUENCE="false" COMMENT="De onde os termos vieram: policy|company|plan|site. Viaja ate a venda no marketplace."/>
+        <FIELD NAME="billingtype" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="UNDEFINED" SEQUENCE="false" COMMENT="UNDEFINED|PIX|BOLETO|CREDIT_CARD."/>
+        <FIELD NAME="environment" TYPE="char" LENGTH="16" NOTNULL="true" DEFAULT="sandbox" SEQUENCE="false" COMMENT="sandbox|production. Guardado na linha porque uma cobranca criada em homologacao NAO pode ser consultada com a chave de producao: as bases nao compartilham dados."/>
+        <FIELD NAME="status" TYPE="char" LENGTH="30" NOTNULL="true" DEFAULT="PENDING" SEQUENCE="false" COMMENT="Status cru do Asaas: PENDING, RECEIVED, CONFIRMED, OVERDUE, REFUNDED."/>
+        <FIELD NAME="paymentid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="payments.id do core, gravado so na confirmacao. E o que impede entrega dupla."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="externalreference" UNIQUE="true" FIELDS="externalreference"/>
+        <INDEX NAME="asaaspaymentid" UNIQUE="false" FIELDS="asaaspaymentid"/>
+        <INDEX NAME="subscriptionid" UNIQUE="false" FIELDS="subscriptionid" COMMENT="O webhook do ciclo 2 em diante chega com uma cobranca que nunca vimos: o caminho de volta e por aqui."/>
+        <INDEX NAME="status-timecreated" UNIQUE="false" FIELDS="status, timecreated" COMMENT="A tarefa de conciliacao varre as pendentes antigas."/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

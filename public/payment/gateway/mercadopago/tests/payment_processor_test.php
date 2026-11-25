@@ -1,0 +1,1130 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace paygw_mercadopago;
+
+use PHPUnit\Framework\Attributes\CoversClass;
+
+/**
+ * A comissao e o corpo da preferencia.
+ *
+ * O marketplace_fee e o unico numero deste plugin que move dinheiro, e ficou
+ * sem teste enquanto so existia dentro do start_payment(), que precisa de
+ * banco, sessao e rede. Aqui ele e exercitado sozinho.
+ *
+ * @package    paygw_mercadopago
+ * @copyright  2026 LeoDG <callme@leodg.dev>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+#[CoversClass(\paygw_mercadopago\payment_processor::class)]
+final class payment_processor_test extends \advanced_testcase {
+    /**
+     * A comissao incide sobre o bruto, e sai em moeda.
+     *
+     * Nao ha escolha de base aqui: o marketplace_fee e valor absoluto, e a taxa
+     * do Mercado Pago so e conhecida depois do pagamento. Ver docs/adr/0007.
+     *
+     * @return void
+     */
+    public function test_comissao_e_absoluta_sobre_o_bruto(): void {
+        $this->assertSame(25.0, payment_processor::fee_for(100.0, 25.0));
+        $this->assertSame(12.5, payment_processor::fee_for(50.0, 25.0));
+    }
+
+    /**
+     * A comissao para em centavos.
+     *
+     * Mandar mais de duas casas faz o Mercado Pago recusar a preferencia
+     * inteira, e a recusa apareceria no checkout, diante do aluno.
+     *
+     * @return void
+     */
+    public function test_comissao_arredonda_para_centavos(): void {
+        $this->assertSame(9.9, payment_processor::fee_for(100.0, 9.9));
+        $this->assertSame(8.33, payment_processor::fee_for(33.33, 25.0));
+        $this->assertSame(0.25, payment_processor::fee_for(1.0, 25.0));
+    }
+
+    /**
+     * A comissao nao passa do bruto.
+     *
+     * Percentual acima de 100 e configuracao errada, e produziria uma
+     * preferencia que o Mercado Pago recusa. E a mesma trava do
+     * asaas_client::build_split().
+     *
+     * @return void
+     */
+    public function test_comissao_nao_passa_do_bruto(): void {
+        $this->assertSame(100.0, payment_processor::fee_for(100.0, 150.0));
+    }
+
+    /**
+     * Sem comissao a cobrar, o valor e zero e nao um numero inventado.
+     *
+     * @return void
+     */
+    public function test_sem_comissao_o_valor_e_zero(): void {
+        $this->assertSame(0.0, payment_processor::fee_for(100.0, 0.0));
+        $this->assertSame(0.0, payment_processor::fee_for(100.0, -5.0));
+        $this->assertSame(0.0, payment_processor::fee_for(0.0, 25.0));
+    }
+
+    /**
+     * O marketplace_fee chega ao corpo da preferencia.
+     *
+     * No nivel raiz, e nao dentro de items: o Mercado Pago ignora a chave fora
+     * do lugar, e o resultado seria uma venda sem comissao que nao acusa erro.
+     *
+     * @return void
+     */
+    public function test_marketplace_fee_vai_na_preferencia(): void {
+        $body = payment_processor::build_preference_body(
+            100.0,
+            'BRL',
+            'mdl-1-2-abc',
+            25.0,
+            'https://exemplo.test',
+            false
+        );
+
+        $this->assertArrayHasKey('marketplace_fee', $body);
+        $this->assertSame(25.0, $body['marketplace_fee']);
+    }
+
+    /**
+     * O item carrega valor e moeda como o Mercado Pago espera.
+     *
+     * @return void
+     */
+    public function test_o_item_carrega_valor_e_moeda(): void {
+        $body = payment_processor::build_preference_body(
+            100.0,
+            'BRL',
+            'mdl-1-2-abc',
+            25.0,
+            'https://exemplo.test',
+            false
+        );
+
+        $this->assertCount(1, $body['items']);
+        $this->assertSame(100.0, $body['items'][0]['unit_price']);
+        $this->assertSame('BRL', $body['items'][0]['currency_id']);
+        $this->assertSame(1, $body['items'][0]['quantity']);
+    }
+
+    /**
+     * As quatro URLs saem do wwwroot, e a referencia viaja com elas.
+     *
+     * Endereco escrito a mao aqui mandaria o aluno de volta para outro site, e
+     * o webhook para um endpoint que nao existe - o pagamento aconteceria sem
+     * ninguem receber a confirmacao.
+     *
+     * @return void
+     */
+    public function test_as_urls_saem_do_wwwroot(): void {
+        $body = payment_processor::build_preference_body(
+            100.0,
+            'BRL',
+            'mdl-7-9-xyz',
+            25.0,
+            'https://exemplo.test',
+            false
+        );
+
+        $esperada = 'https://exemplo.test/payment/gateway/mercadopago/return.php?ref=mdl-7-9-xyz';
+
+        $this->assertSame($esperada, $body['back_urls']['success']);
+        $this->assertSame($esperada, $body['back_urls']['pending']);
+        $this->assertSame($esperada, $body['back_urls']['failure']);
+        $this->assertSame(
+            'https://exemplo.test/payment/gateway/mercadopago/webhook.php',
+            $body['notification_url']
+        );
+        $this->assertSame('mdl-7-9-xyz', $body['external_reference']);
+    }
+
+    /**
+     * O wallet_purchase fica preso ao modo de teste.
+     *
+     * Em teste ele existe porque um visitante nao e usuario de teste, e o
+     * Mercado Pago recusa a compra. Em producao ele cortaria pagamento sem
+     * cadastro, boleto e dinheiro - ou seja, conversao real, para resolver um
+     * problema que so existe no sandbox.
+     *
+     * @return void
+     */
+    public function test_purpose_so_em_modo_teste(): void {
+        $teste = payment_processor::build_preference_body(
+            100.0,
+            'BRL',
+            'mdl-1-2-abc',
+            25.0,
+            'https://exemplo.test',
+            true
+        );
+        $producao = payment_processor::build_preference_body(
+            100.0,
+            'BRL',
+            'mdl-1-2-abc',
+            25.0,
+            'https://exemplo.test',
+            false
+        );
+
+        $this->assertSame('wallet_purchase', $teste['purpose']);
+        $this->assertArrayNotHasKey('purpose', $producao);
+    }
+
+    /**
+     * A cobranca do ciclo leva a comissao no application_fee.
+     *
+     * E o numero que move dinheiro na assinatura. Medido em 16/09/2026: este
+     * campo e HONRADO pelo /v1/payments - volta em fee_details do pagamento
+     * aprovado -, ao contrario do preapproval, que aceita cinco formatos do
+     * mesmo campo e descarta todos.
+     *
+     * @return void
+     */
+    public function test_a_cobranca_do_ciclo_leva_a_comissao(): void {
+        $body = payment_processor::build_cycle_payment_body(
+            100.0,
+            'BRL',
+            'mdlsub-1-2-abc',
+            25.0,
+            ['token' => 'tok', 'customerid' => 'cus_1', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertEquals(100.0, $body['transaction_amount']);
+        $this->assertEquals(25.0, $body['application_fee']);
+        $this->assertSame('tok', $body['token']);
+        $this->assertSame('mdlsub-1-2-abc', $body['external_reference']);
+    }
+
+    /**
+     * Sem comissao, o campo nao e enviado.
+     *
+     * Mandar application_fee zero nao e o mesmo que nao mandar: e pedir ao
+     * Mercado Pago que reparta nada, e uma empresa isenta viraria uma cobranca
+     * com repasse de valor zero no extrato. Ausente e mais honesto, e e o que o
+     * fee_for() ja sinaliza ao devolver zero.
+     *
+     * @return void
+     */
+    public function test_sem_comissao_o_campo_nao_vai_no_corpo(): void {
+        $body = payment_processor::build_cycle_payment_body(
+            100.0,
+            'BRL',
+            'ref',
+            0.0,
+            ['token' => 'tok', 'customerid' => 'cus_1', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertArrayNotHasKey('application_fee', $body);
+    }
+
+    /**
+     * Cartao NOVO cobra so com o e-mail, sem o cliente junto.
+     *
+     * Medido em 16/09/2026, variando apenas o payer na mesma chamada:
+     *
+     *   payer: {email}                      -> approved
+     *   payer: {type: customer, id, email}  -> REJECTED cc_rejected_other_reason
+     *   payer: {id, email}                  -> REJECTED cc_rejected_other_reason
+     *
+     * Mandar o cliente junto de um token recem-criado faz a cobranca ser
+     * RECUSADA, e a recusa chega disfarcada de problema com o cartao - o tipo
+     * de defeito que se descobre com o aluno na tela.
+     *
+     * @return void
+     */
+    public function test_cartao_novo_cobra_so_com_o_email(): void {
+        $body = payment_processor::build_cycle_payment_body(
+            50.0,
+            'BRL',
+            'ref',
+            5.0,
+            ['token' => 'tok', 'paymentmethod' => 'visa'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame(['email' => 'aluno@exemplo.test'], $body['payer']);
+        $this->assertArrayNotHasKey('type', $body['payer']);
+        $this->assertSame('visa', $body['payment_method_id']);
+    }
+
+    /**
+     * Cartao JA GUARDADO cobra com o cliente junto.
+     *
+     * Do ciclo 2 em diante o token nasce do card_id, e ai o vinculo com o
+     * cliente e o que alcanca o cartao guardado.
+     *
+     * @return void
+     */
+    public function test_cartao_guardado_cobra_com_o_cliente(): void {
+        $body = payment_processor::build_cycle_payment_body(
+            50.0,
+            'BRL',
+            'ref',
+            5.0,
+            ['token' => 'tok', 'customerid' => 'cus_9', 'paymentmethod' => 'visa'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame('customer', $body['payer']['type']);
+        $this->assertSame('cus_9', $body['payer']['id']);
+    }
+
+    /**
+     * Pix so exige CPF - sem cliente, sem endereco.
+     *
+     * Nao ha customer aqui porque Pix nao deixa instrumento guardado: cada
+     * ciclo e uma cobranca nova, sem vinculo nenhum com a anterior no
+     * Mercado Pago.
+     *
+     * @return void
+     */
+    public function test_pix_so_exige_cpf(): void {
+        $body = payment_processor::build_invoice_payment_body(
+            5.0,
+            'BRL',
+            'ref',
+            4.0,
+            'pix',
+            ['cpf' => '19119119100'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame('pix', $body['payment_method_id']);
+        $this->assertSame('19119119100', $body['payer']['identification']['number']);
+        $this->assertArrayNotHasKey('address', $body['payer']);
+        $this->assertArrayNotHasKey('type', $body['payer'], 'Pix nao tem cliente guardado');
+    }
+
+    /**
+     * Boleto exige endereco completo - sem ele, o Mercado Pago recusa.
+     *
+     * Medido em 16/09/2026: criar um boleto sem os seis campos de endereco
+     * devolve 400 pedindo exatamente eles. O Pix nunca pediu nenhum.
+     *
+     * @return void
+     */
+    public function test_boleto_exige_endereco(): void {
+        $body = payment_processor::build_invoice_payment_body(
+            20.0,
+            'BRL',
+            'ref',
+            16.0,
+            'bolbradesco',
+            [
+                'cpf' => '19119119100',
+                'zipcode' => '01310100',
+                'street' => 'Av Paulista',
+                'number' => '1000',
+                'neighborhood' => 'Bela Vista',
+                'city' => 'Sao Paulo',
+                'state' => 'SP',
+            ],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame([
+            'zip_code' => '01310100',
+            'street_name' => 'Av Paulista',
+            'street_number' => '1000',
+            'neighborhood' => 'Bela Vista',
+            'city' => 'Sao Paulo',
+            'federal_unit' => 'SP',
+        ], $body['payer']['address']);
+    }
+
+    /**
+     * O ciclo nunca e parcelado.
+     *
+     * Parcelar uma cobranca que se repete todo mes empilha parcelas em cima de
+     * parcelas, e o aluno passa a dever mais do que assinou. Nao ha
+     * configuracao para isso de proposito.
+     *
+     * @return void
+     */
+    public function test_o_ciclo_nao_e_parcelado(): void {
+        $body = payment_processor::build_cycle_payment_body(
+            100.0,
+            'BRL',
+            'ref',
+            0.0,
+            ['token' => 'tok', 'customerid' => 'c', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame(1, $body['installments']);
+    }
+
+    /**
+     * O webhook sai do wwwroot, e nao escrito a mao.
+     *
+     * @return void
+     */
+    public function test_o_webhook_do_ciclo_sai_do_wwwroot(): void {
+        $body = payment_processor::build_cycle_payment_body(
+            10.0,
+            'BRL',
+            'ref',
+            1.0,
+            ['token' => 'tok', 'customerid' => 'c', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://outro.exemplo',
+            'Assinatura'
+        );
+
+        $this->assertStringStartsWith('https://outro.exemplo/', $body['notification_url']);
+        $this->assertStringEndsWith('/payment/gateway/mercadopago/webhook.php', $body['notification_url']);
+    }
+
+    /**
+     * A referencia da assinatura se distingue da avulsa pelo prefixo.
+     *
+     * O webhook chega sem contexto e precisa saber que linha procurar. Duas
+     * familias de referencia com o mesmo formato obrigariam a consultar o banco
+     * so para descobrir de que tipo era.
+     *
+     * @return void
+     */
+    public function test_a_referencia_da_assinatura_tem_prefixo_proprio(): void {
+        $oneoff = payment_processor::build_reference(7, 3, false);
+        $subscription = payment_processor::build_reference(7, 3, true);
+
+        $this->assertStringStartsWith('mdl-7-3-', $oneoff);
+        $this->assertStringStartsWith('mdlsub-7-3-', $subscription);
+        $this->assertNotSame($subscription, payment_processor::build_reference(7, 3, true));
+    }
+
+    /**
+     * Cria uma linha do gateway para os testes de estorno e cancelamento.
+     *
+     * @param array $fields
+     * @return \stdClass
+     */
+    protected function row(array $fields = []): \stdClass {
+        global $DB;
+
+        $record = (object) array_merge([
+            'preferenceid' => '',
+            'externalreference' => 'ref-' . random_string(8),
+            'component' => 'local_marketplace',
+            'paymentarea' => 'offer',
+            'itemid' => 1,
+            'userid' => 2,
+            'accountid' => 3,
+            'amount' => 100.0,
+            'currency' => 'BRL',
+            'feeamount' => 25.0,
+            'feepercent' => 25.0,
+            'feebase' => 'gross',
+            'feesource' => 'site',
+            'status' => 'approved',
+            'apptype' => 'bricks',
+            'cycles' => 1,
+            'subscriptionstatus' => 'active',
+            // Assinatura normal tem cartao guardado; quem testa a ausencia
+            // sobrescreve. O padrao e o caso comum, senao cada teste teria de
+            // repetir o que nao esta testando.
+            'mpcustomerid' => 'cus_padrao',
+            'mpcardid' => 'card_padrao',
+            'paymentmethod' => 'master',
+            'timecreated' => time(),
+            'timemodified' => time(),
+        ], $fields);
+
+        $record->id = $DB->insert_record(payment_processor::TABLE, $record);
+
+        return $record;
+    }
+
+    /**
+     * Venda aprovada e estornavel.
+     *
+     * @return void
+     */
+    public function test_venda_aprovada_pode_ser_estornada(): void {
+        $this->resetAfterTest();
+
+        $this->assertSame('', payment_processor::refund_blocker($this->row()));
+    }
+
+    /**
+     * O que nao foi pago nao se estorna.
+     *
+     * @return void
+     */
+    public function test_o_que_nao_foi_pago_nao_se_estorna(): void {
+        $this->resetAfterTest();
+
+        $this->assertSame(
+            'errorrefundnotpaid',
+            payment_processor::refund_blocker($this->row(['status' => 'pending']))
+        );
+        $this->assertSame(
+            'errorrefundalready',
+            payment_processor::refund_blocker($this->row(['status' => 'refunded']))
+        );
+    }
+
+    /**
+     * Ciclo do meio de uma assinatura nao se estorna.
+     *
+     * Estorno parcial NAO reduz o split - o que ja foi repassado a plataforma
+     * continua repassado -, entao estornar um ciclo do meio devolveria ao aluno
+     * o bruto e deixaria o vendedor no prejuizo da comissao. O bloqueio faz o
+     * botao sumir em vez de aparecer e falhar depois do clique.
+     *
+     * @return void
+     */
+    public function test_ciclo_do_meio_nao_se_estorna(): void {
+        $this->resetAfterTest();
+
+        $subscription = 'mdlsub-2-1-abc';
+
+        $primeiro = $this->row(['subscriptionid' => $subscription, 'cycles' => 1, 'paymentid' => 10]);
+        $segundo = $this->row(['subscriptionid' => $subscription, 'cycles' => 2, 'paymentid' => 11]);
+
+        $this->assertSame('', payment_processor::refund_blocker($primeiro), 'o primeiro ciclo pode');
+        $this->assertSame('errorrefundnotfirstcycle', payment_processor::refund_blocker($segundo));
+    }
+
+    /**
+     * Cancelar marca a ASSINATURA, e nao a cobranca.
+     *
+     * Aqui quem cobra o ciclo somos nos, entao cancelar e parar de disparar. No
+     * Asaas seria pedir ao gateway que pare - e a diferenca esta na tabela, no
+     * comentario da coluna.
+     *
+     * @return void
+     */
+    public function test_cancelar_marca_todas_as_linhas_da_assinatura(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $subscription = 'mdlsub-2-1-xyz';
+        $this->row(['subscriptionid' => $subscription, 'cycles' => 1]);
+        $this->row(['subscriptionid' => $subscription, 'cycles' => 2]);
+        $outra = $this->row(['subscriptionid' => 'mdlsub-9-9-zzz', 'cycles' => 1]);
+
+        $this->assertTrue(payment_processor::cancel_subscription($subscription));
+
+        $marked = $DB->get_records(payment_processor::TABLE, ['subscriptionid' => $subscription]);
+        $this->assertCount(2, $marked);
+        foreach ($marked as $record) {
+            $this->assertSame('cancelled', $record->subscriptionstatus);
+        }
+
+        $intacta = $DB->get_record(payment_processor::TABLE, ['id' => $outra->id]);
+        $this->assertSame('active', $intacta->subscriptionstatus, 'a assinatura de outro aluno nao e tocada');
+    }
+
+    /**
+     * Cancelar o que ja esta cancelado nao mente dizendo que fez algo.
+     *
+     * @return void
+     */
+    public function test_cancelar_duas_vezes_nao_inventa_cancelamento(): void {
+        $this->resetAfterTest();
+
+        $subscription = 'mdlsub-3-3-aaa';
+        $this->row(['subscriptionid' => $subscription, 'subscriptionstatus' => 'cancelled']);
+
+        $this->assertFalse(payment_processor::cancel_subscription($subscription));
+    }
+
+    /**
+     * O ciclo so vence depois do intervalo combinado.
+     *
+     * @return void
+     */
+    public function test_o_ciclo_vence_depois_do_intervalo(): void {
+        $this->resetAfterTest();
+
+        $now = 1789000000;
+        $record = $this->row(['timecreated' => $now, 'cycles' => 1]);
+
+        $this->assertFalse(payment_processor::is_due($record, 30, 0, $now + (29 * DAYSECS)));
+        $this->assertTrue(payment_processor::is_due($record, 30, 0, $now + (30 * DAYSECS)));
+    }
+
+    /**
+     * Assinatura com teto de ciclos para de cobrar ao chegar nele.
+     *
+     * Sem esta trava a assinatura de 12 meses cobraria para sempre - e o aluno
+     * so descobriria no extrato do decimo terceiro mes.
+     *
+     * @return void
+     */
+    public function test_o_teto_de_ciclos_para_a_cobranca(): void {
+        $this->resetAfterTest();
+
+        $now = 1789000000;
+        $due = $now + (60 * DAYSECS);
+
+        $this->assertTrue(
+            payment_processor::is_due($this->row(['timecreated' => $now, 'cycles' => 11]), 30, 12, $due)
+        );
+        $this->assertFalse(
+            payment_processor::is_due($this->row(['timecreated' => $now, 'cycles' => 12]), 30, 12, $due),
+            'chegou ao teto: nao cobra o decimo terceiro'
+        );
+        $this->assertTrue(
+            payment_processor::is_due($this->row(['timecreated' => $now, 'cycles' => 99]), 30, 0, $due),
+            'sem teto configurado, nao ha limite'
+        );
+    }
+
+    /**
+     * Ciclo que nao foi pago nao puxa o seguinte.
+     *
+     * Cobrar o ciclo 3 com o 2 em aberto empilha divida no cartao de quem ja
+     * esta com problema de pagamento - e a segunda cobranca so apareceria no
+     * extrato.
+     *
+     * @return void
+     */
+    public function test_ciclo_nao_pago_nao_puxa_o_seguinte(): void {
+        $this->resetAfterTest();
+
+        $now = 1789000000;
+        $due = $now + (60 * DAYSECS);
+
+        $pending = $this->row(['timecreated' => $now, 'status' => 'pending']);
+        $rejected = $this->row(['timecreated' => $now, 'status' => 'rejected']);
+
+        $this->assertFalse(payment_processor::is_due($pending, 30, 0, $due));
+        $this->assertFalse(payment_processor::is_due($rejected, 30, 0, $due));
+    }
+
+    /**
+     * Assinatura cancelada nao cobra mais, por mais vencida que esteja.
+     *
+     * @return void
+     */
+    public function test_assinatura_cancelada_nao_cobra(): void {
+        $this->resetAfterTest();
+
+        $now = 1789000000;
+        $record = $this->row(['timecreated' => $now, 'subscriptionstatus' => 'cancelled']);
+
+        $this->assertFalse(payment_processor::is_due($record, 30, 0, $now + (90 * DAYSECS)));
+    }
+
+    /**
+     * Sem cartao guardado nao ha o que cobrar sozinho.
+     *
+     * @return void
+     */
+    public function test_sem_cartao_guardado_nao_cobra(): void {
+        $this->resetAfterTest();
+
+        $now = 1789000000;
+        $record = $this->row(['timecreated' => $now, 'mpcardid' => null, 'mpcustomerid' => null]);
+
+        $this->assertFalse(payment_processor::is_due($record, 30, 0, $now + (60 * DAYSECS)));
+    }
+
+    /**
+     * A fatura por Pix/boleto vence pelo MESMO calendario do cartao, mas a
+     * guarda de instrumento e outra: aqui e a bandeira que decide, nao o
+     * card_id - uma linha de Pix nunca tem card_id para comecar.
+     *
+     * @return void
+     */
+    public function test_fatura_vence_pela_bandeira_nao_pelo_cartao(): void {
+        $this->resetAfterTest();
+
+        $now = 1789000000;
+        $due = $now + (60 * DAYSECS);
+
+        $pix = $this->row([
+            'timecreated' => $now,
+            'mpcardid' => null,
+            'mpcustomerid' => null,
+            'paymentmethod' => 'pix',
+        ]);
+        $this->assertTrue(payment_processor::is_due_for_invoice($pix, 30, 0, $due));
+        $this->assertFalse(
+            payment_processor::is_due($pix, 30, 0, $due),
+            'is_due() e do cartao - uma linha de Pix nao tem card_id para cobrar sozinha'
+        );
+
+        $cartao = $this->row(['timecreated' => $now]);
+        $this->assertFalse(
+            payment_processor::is_due_for_invoice($cartao, 30, 0, $due),
+            'a bandeira padrao da fixture e cartao, nao pix/bolbradesco'
+        );
+    }
+
+    /**
+     * O lembrete vale SO para Pix/boleto - cartao cobra sozinho, e um aviso
+     * de "sua cobranca automatica esta chegando" nao muda a acao de
+     * ninguem, porque nao ha acao nenhuma para o aluno tomar.
+     *
+     * @return void
+     */
+    public function test_lembrete_e_so_para_pix_e_boleto(): void {
+        $this->resetAfterTest();
+
+        $now = 1789000000;
+        // Vencimento em 30 dias, lembrete 3 dias antes: a janela abre no
+        // dia 27.
+        $dentrodajanela = $now + (28 * DAYSECS);
+
+        $pix = $this->row(['timecreated' => $now, 'paymentmethod' => 'pix']);
+        $this->assertTrue(payment_processor::needs_reminder($pix, 30, 3, 0, $dentrodajanela));
+
+        $cartao = $this->row(['timecreated' => $now]);
+        $this->assertFalse(
+            payment_processor::needs_reminder($cartao, 30, 3, 0, $dentrodajanela),
+            'cartao cobra sozinho, o lembrete nao se aplica'
+        );
+    }
+
+    /**
+     * O lembrete so vale DENTRO da janela - antes dela e cedo demais, no
+     * vencimento em diante e tarde demais (charge_due_cycles ja cuida).
+     *
+     * @return void
+     */
+    public function test_lembrete_so_vale_dentro_da_janela(): void {
+        $this->resetAfterTest();
+
+        $now = 1789000000;
+        $vencimento = $now + (30 * DAYSECS);
+
+        $pix = $this->row(['timecreated' => $now, 'paymentmethod' => 'pix']);
+
+        $this->assertFalse(
+            payment_processor::needs_reminder($pix, 30, 3, 0, $vencimento - (4 * DAYSECS)),
+            'quatro dias antes ainda e cedo, a janela e de tres'
+        );
+        $this->assertTrue(
+            payment_processor::needs_reminder($pix, 30, 3, 0, $vencimento - (2 * DAYSECS)),
+            'dois dias antes esta dentro da janela de tres'
+        );
+        $this->assertFalse(
+            payment_processor::needs_reminder($pix, 30, 3, 0, $vencimento),
+            'no proprio vencimento quem avisa e charge_due_cycles, nao o lembrete'
+        );
+    }
+
+    /**
+     * Ja lembrado nao lembra de novo - senao o mesmo aviso repetiria a cada
+     * execucao diaria da tarefa, enquanto a linha estiver na janela.
+     *
+     * @return void
+     */
+    public function test_ja_lembrado_nao_lembra_de_novo(): void {
+        $this->resetAfterTest();
+
+        $now = 1789000000;
+        $dentrodajanela = $now + (28 * DAYSECS);
+
+        $jalembrado = $this->row([
+            'timecreated' => $now,
+            'paymentmethod' => 'pix',
+            'reminderat' => $now,
+        ]);
+
+        $this->assertFalse(payment_processor::needs_reminder($jalembrado, 30, 3, 0, $dentrodajanela));
+    }
+
+    /**
+     * send_reminder() marca a linha - e a marca que impede mandar o mesmo
+     * aviso de novo amanha.
+     *
+     * O message_send() do proprio Moodle emite um debugging() aqui porque o
+     * usuario gerado pelo teste nao tem preferencia de mensagem cacheada
+     * ainda - verificado a mao contra a conta real (message_get_providers_
+     * for_user() encontra os dois providers deste plugin sem problema), e e
+     * um artefato deste ambiente de teste, nao um defeito do envio.
+     *
+     * @return void
+     */
+    public function test_send_reminder_marca_a_linha(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $user = $this->getDataGenerator()->create_user();
+        $record = $this->row(['userid' => $user->id, 'paymentmethod' => 'pix']);
+
+        $this->assertEmpty($record->reminderat ?? null);
+
+        payment_processor::send_reminder($record);
+        $this->assertDebuggingCalled();
+
+        $updated = $DB->get_record(payment_processor::TABLE, ['id' => $record->id]);
+        $this->assertNotEmpty($updated->reminderat);
+    }
+
+    /**
+     * A linha do ciclo novo copia os TERMOS da anterior.
+     *
+     * Nunca resolve a comissao de novo: entre um ciclo e outro a configuracao
+     * da empresa pode ter mudado, e o ciclo seguinte tem que cobrar o que foi
+     * combinado - nao o que passou a valer. E o ADR-0007 aplicado ao tempo.
+     *
+     * @return void
+     */
+    public function test_o_ciclo_novo_copia_os_termos_do_anterior(): void {
+        $this->resetAfterTest();
+
+        $previous = $this->row([
+            'subscriptionid' => 'mdlsub-2-1-termos',
+            'cycles' => 1,
+            'feepercent' => 12.5,
+            'feebase' => 'gross',
+            'feesource' => 'company',
+            'mpcustomerid' => 'cus_1',
+            'mpcardid' => 'card_1',
+            'paymentmethod' => 'master',
+        ]);
+
+        $new = payment_processor::build_next_cycle($previous);
+
+        $this->assertSame(2, $new->cycles);
+        $this->assertEquals(12.5, $new->feepercent);
+        $this->assertSame('company', $new->feesource);
+        $this->assertSame('mdlsub-2-1-termos', $new->subscriptionid);
+        $this->assertSame('cus_1', $new->mpcustomerid);
+        $this->assertSame('card_1', $new->mpcardid);
+        $this->assertSame('pending', $new->status);
+        $this->assertEmpty($new->mppaymentid ?? '');
+        $this->assertEmpty($new->paymentid ?? null);
+        $this->assertNotSame(
+            $previous->externalreference,
+            $new->externalreference,
+            'cada ciclo precisa da propria referencia, senao o webhook nao sabe qual linha e'
+        );
+    }
+
+    /**
+     * O `payerinfo` tambem e copiado para o ciclo seguinte.
+     *
+     * E um fato sobre o ALUNO (CPF, e no boleto o endereco), nao sobre a
+     * cobranca anterior - Pix e boleto nao tem card_id para reaproveitar, e
+     * sem copiar isto o ciclo 2 teria que pedir os dados de novo, sem
+     * ninguem na tela para digita-los.
+     *
+     * @return void
+     */
+    public function test_o_ciclo_novo_copia_o_payerinfo(): void {
+        $this->resetAfterTest();
+
+        $json = json_encode(['cpf' => '19119119100', 'city' => 'Sao Paulo']);
+        $previous = $this->row([
+            'subscriptionid' => 'mdlsub-2-1-payerinfo',
+            'paymentmethod' => 'pix',
+            'payerinfo' => $json,
+        ]);
+
+        $new = payment_processor::build_next_cycle($previous);
+
+        $this->assertSame($json, $new->payerinfo);
+    }
+
+    /**
+     * Sem bandeira conhecida, o campo NAO vai vazio - ele nao vai.
+     *
+     * Medido em 16/09/2026, na primeira compra real:
+     *
+     *   payment_method_id ausente -> approved, e o MP preenche "master" sozinho
+     *   payment_method_id = ""    -> 400 Invalid payment_method_id
+     *
+     * O token de cartao NAO devolve a bandeira - o campo volta nulo -, entao
+     * mandar o que se tem era garantia de recusa. E a mesma regra do
+     * application_fee: ausente e diferente de vazio.
+     *
+     * @return void
+     */
+    public function test_sem_bandeira_o_campo_nao_vai_no_corpo(): void {
+        $body = payment_processor::build_cycle_payment_body(
+            5.0,
+            'BRL',
+            'ref',
+            4.0,
+            ['token' => 'tok', 'paymentmethod' => ''],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertArrayNotHasKey('payment_method_id', $body);
+    }
+
+    /**
+     * Com bandeira conhecida, ela vai.
+     *
+     * @return void
+     */
+    public function test_com_bandeira_conhecida_o_campo_vai(): void {
+        $body = payment_processor::build_cycle_payment_body(
+            5.0,
+            'BRL',
+            'ref',
+            4.0,
+            ['token' => 'tok', 'paymentmethod' => 'master'],
+            'aluno@exemplo.test',
+            'https://exemplo.test',
+            'Assinatura'
+        );
+
+        $this->assertSame('master', $body['payment_method_id']);
+    }
+
+    /**
+     * A linha digitavel so e buscada para Pix/boleto - no cartao ela sempre
+     * ficava vazia, e continua vazia, sem chamar o Mercado Pago a toa.
+     *
+     * @return void
+     */
+    public function test_pending_invoice_sem_linha_no_cartao(): void {
+        $this->resetAfterTest();
+
+        $record = $this->row([
+            'subscriptionid' => 'mdlsub-1-2-invoice1',
+            'status' => 'pending',
+            'mppaymentid' => '999',
+            'paymentmethod' => 'master',
+        ]);
+
+        $invoice = payment_processor::pending_invoice($record);
+
+        $this->assertSame('', $invoice['line']);
+    }
+
+    /**
+     * Um ciclo de cartao recem-emitido por issue_card_cycle() (sem
+     * mppaymentid ainda) manda para confirm_cycle.php, que pede so o CVV -
+     * nao para subscribe.php, que pediria o cartao inteiro de novo.
+     *
+     * @return void
+     */
+    public function test_pending_invoice_manda_ciclo_de_cartao_para_confirmar_cvv(): void {
+        $this->resetAfterTest();
+
+        $record = $this->row([
+            'subscriptionid' => 'mdlsub-1-2-invoice5',
+            'status' => 'pending',
+            'mppaymentid' => null,
+            'paymentmethod' => 'visa',
+        ]);
+
+        $invoice = payment_processor::pending_invoice($record);
+
+        $this->assertStringContainsString('confirm_cycle.php', $invoice['url']);
+        $this->assertStringNotContainsString('subscribe.php', $invoice['url']);
+    }
+
+    /**
+     * Sem mppaymentid ainda nao ha o que consultar - a linha fica vazia sem
+     * tentar bater no Mercado Pago com um id que nao existe.
+     *
+     * @return void
+     */
+    public function test_pending_invoice_sem_pagamento_ainda_nao_consulta(): void {
+        $this->resetAfterTest();
+
+        $record = $this->row([
+            'subscriptionid' => 'mdlsub-1-2-invoice2',
+            'status' => 'pending',
+            'paymentmethod' => 'pix',
+            'mppaymentid' => null,
+        ]);
+
+        $invoice = payment_processor::pending_invoice($record);
+
+        $this->assertSame('', $invoice['line']);
+    }
+
+    /**
+     * Aprovada ou cancelada, nao ha fatura pendente nenhuma.
+     *
+     * @return void
+     */
+    public function test_pending_invoice_nula_quando_aprovada_ou_cancelada(): void {
+        $this->resetAfterTest();
+
+        $aprovada = $this->row(['subscriptionid' => 'mdlsub-1-2-invoice3', 'status' => 'approved']);
+        $this->assertNull(payment_processor::pending_invoice($aprovada));
+
+        $cancelada = $this->row([
+            'subscriptionid' => 'mdlsub-1-2-invoice4',
+            'status' => 'pending',
+            'subscriptionstatus' => 'cancelled',
+        ]);
+        $this->assertNull(payment_processor::pending_invoice($cancelada));
+    }
+
+    /**
+     * So oferece "trocar para cartao" para quem ja paga por Pix/boleto, na
+     * assinatura ainda ativa - quem ja paga com cartao nao tem para onde
+     * trocar, e quem cancelou nao tem ciclo futuro para mudar.
+     *
+     * @return void
+     */
+    public function test_so_troca_para_cartao_quem_paga_por_fatura(): void {
+        $this->resetAfterTest();
+
+        $pix = $this->row(['subscriptionid' => 'mdlsub-1-2-switch1', 'paymentmethod' => 'pix']);
+        $this->assertTrue(payment_processor::can_switch_to_card($pix));
+
+        $cartao = $this->row(['subscriptionid' => 'mdlsub-1-2-switch2', 'paymentmethod' => 'visa']);
+        $this->assertFalse(
+            payment_processor::can_switch_to_card($cartao),
+            'quem ja paga com cartao nao tem para onde trocar'
+        );
+
+        $cancelada = $this->row([
+            'subscriptionid' => 'mdlsub-1-2-switch3',
+            'paymentmethod' => 'pix',
+            'subscriptionstatus' => 'cancelled',
+        ]);
+        $this->assertFalse(
+            payment_processor::can_switch_to_card($cancelada),
+            'assinatura cancelada nao tem ciclo futuro para trocar'
+        );
+    }
+
+    /**
+     * Empresa que desligou cartao nao oferece "trocar para cartao".
+     *
+     * Sem esta guarda, o botao levaria o aluno a uma pagina de captura de
+     * cartao que a propria empresa decidiu nao aceitar - uma escolha da
+     * empresa que o codigo do gateway estaria ignorando.
+     *
+     * @return void
+     */
+    public function test_nao_troca_para_cartao_quando_a_empresa_desligou_cartao(): void {
+        $this->resetAfterTest();
+
+        set_config('methodcard', 0, 'paygw_mercadopago');
+
+        $pix = $this->row(['subscriptionid' => 'mdlsub-1-2-switch4', 'paymentmethod' => 'pix']);
+
+        $this->assertFalse(
+            payment_processor::can_switch_to_card($pix),
+            'a empresa desligou cartao no proprio padrao (aqui, o do site)'
+        );
+    }
+
+    /**
+     * O rotulo do meio de pagamento e o que a tela de gerenciamento (admin) e
+     * a de assinaturas (aluno) mostram - so o MEIO, nunca a bandeira nem os
+     * ultimos digitos do cartao.
+     *
+     * @return void
+     */
+    public function test_payment_method_label_distingue_os_tres_meios(): void {
+        $this->resetAfterTest();
+
+        $pix = $this->row(['subscriptionid' => 'mdlsub-1-2-label1', 'paymentmethod' => 'pix']);
+        $this->assertSame(
+            get_string('subscribepix', 'paygw_mercadopago'),
+            payment_processor::payment_method_label($pix)
+        );
+
+        $boleto = $this->row(['subscriptionid' => 'mdlsub-1-2-label2', 'paymentmethod' => 'bolbradesco']);
+        $this->assertSame(
+            get_string('subscribeboleto', 'paygw_mercadopago'),
+            payment_processor::payment_method_label($boleto)
+        );
+
+        // Qualquer bandeira de cartao (visa, master, elo...) cai no mesmo
+        // rotulo generico: a bandeira nao muda nada que a tela decida.
+        $cartao = $this->row(['subscriptionid' => 'mdlsub-1-2-label3', 'paymentmethod' => 'visa']);
+        $this->assertSame(
+            get_string('subscribecard', 'paygw_mercadopago'),
+            payment_processor::payment_method_label($cartao)
+        );
+    }
+
+    /**
+     * Confirmar com CVV so faz sentido para um ciclo de CARTAO ja criado
+     * por issue_card_cycle() e AINDA NAO cobrado - confirmar de novo um
+     * ciclo ja pago cobraria duas vezes.
+     *
+     * @return void
+     */
+    public function test_so_confirma_com_cvv_ciclo_de_cartao_nao_cobrado(): void {
+        $this->resetAfterTest();
+
+        $pending = $this->row([
+            'subscriptionid' => 'mdlsub-1-2-confirm1',
+            'status' => 'pending',
+            'mppaymentid' => null,
+            'paymentmethod' => 'visa',
+        ]);
+        $this->assertTrue(payment_processor::can_confirm_card_cycle($pending));
+
+        $jacobrado = $this->row([
+            'subscriptionid' => 'mdlsub-1-2-confirm2',
+            'status' => 'approved',
+            'mppaymentid' => '123',
+            'paymentmethod' => 'visa',
+        ]);
+        $this->assertFalse(
+            payment_processor::can_confirm_card_cycle($jacobrado),
+            'ciclo ja pago nao pode ser confirmado de novo'
+        );
+
+        $pix = $this->row([
+            'subscriptionid' => 'mdlsub-1-2-confirm3',
+            'status' => 'pending',
+            'mppaymentid' => null,
+            'paymentmethod' => 'pix',
+        ]);
+        $this->assertFalse(
+            payment_processor::can_confirm_card_cycle($pix),
+            'Pix/boleto nao tem CVV para confirmar'
+        );
+
+        $semcartao = $this->row([
+            'subscriptionid' => 'mdlsub-1-2-confirm4',
+            'status' => 'pending',
+            'mppaymentid' => null,
+            'mpcardid' => null,
+            'mpcustomerid' => null,
+            'paymentmethod' => 'visa',
+        ]);
+        $this->assertFalse(
+            payment_processor::can_confirm_card_cycle($semcartao),
+            'sem cartao guardado nao ha o que confirmar'
+        );
+    }
+}

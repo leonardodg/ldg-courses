@@ -1,0 +1,136 @@
+#accessibilitybar {
+    display: none;
+    padding: .2rem;
+    height: 30px;
+    // Segue o modo de cor, e nao um cinza fixo.
+    //
+    // No Moove a barra era sempre clara porque o tema tambem era. Aqui o
+    // $gray-100 herdado deixava barra clara com texto claro em cima no modo
+    // escuro - as legendas "Font size" e "Site color" sumiam.
+    background-color: var(--ldg-chrome-bg-soft);
+    color: var(--ldg-chrome-text);
+
+    .container-fluid {
+        max-width: 100%;
+        padding: 0 1rem;
+    }
+
+    .bars {
+        display: -ms-flexbox;
+        display: flex;
+        margin-left: auto;
+        margin-right: .5rem;
+
+        .fontsize,
+        .sitecolor {
+            display: flex;
+        }
+
+        .fontsize {
+            margin-left: auto;
+            margin-right: .5rem;
+        }
+
+        ul {
+            padding-left: 0;
+            margin-bottom: 0;
+            list-style: none;
+            display: flex;
+
+            li {
+                display: list-item;
+                text-align: -webkit-match-parent;
+                margin-left: .5rem;
+
+                .btn {
+                    padding: 0 .5rem;
+                    border-radius: 4px;
+                    color: var(--ldg-chrome-text);
+                    cursor: pointer;
+
+                    &:hover,
+                    &:focus-visible {
+                        background-color: rgba(255, 255, 255, .12);
+                    }
+
+                    &.disabled {
+                        opacity: .4;
+                        cursor: default;
+                    }
+                }
+            }
+        }
+
+        // As amostras mantem cor literal: elas sao a previa do contraste que
+        // aplicam. So o texto precisa contrastar com o proprio fundo.
+        #sitecolor_color2 {
+            color: #212529;
+            background-color: #ffffcc;
+        }
+
+        #sitecolor_color3 {
+            color: #212529;
+            background-color: #99ccff;
+        }
+
+        #sitecolor_color4 {
+            color: #ffff00;
+            background-color: #000000;
+        }
+    }
+}
+
+// Alturas do chrome quando a barra de acessibilidade esta no ar.
+//
+// Os valores eram FIXOS - 100px, 110px, 160px, 170px - herdados de um tema cuja
+// navbar tinha outra altura. Com a nossa em 64px (50px no mobile) sobrava uma
+// faixa vazia entre a navbar e o conteudo, e no mobile o calculo errava para o
+// outro lado.
+//
+// Agora tudo deriva de --ldg-navbar-height, entao mudar a altura da navbar num
+// lugar so continua fechando a conta.
+$ldg-a11y-bar-height: 30px;
+$ldg-a11y-secondary-height: 60px;
+
+body.hasaccessibilitybar {
+    --ldg-chrome-offset: calc(#{$ldg-a11y-bar-height} + var(--ldg-navbar-height));
+
+    #page,
+    #page.drawers {
+        margin-top: var(--ldg-chrome-offset);
+    }
+
+    .navbar.fixed-top {
+        top: $ldg-a11y-bar-height;
+    }
+
+    #accessibilitybar {
+        display: block;
+    }
+
+    .secondary-navigation {
+        margin-top: $ldg-a11y-bar-height;
+    }
+}
+
+@include media-breakpoint-up(md) {
+    body.hasaccessibilitybar:not(.notloggedin) {
+        .drawer-toggles .drawer-toggler {
+            top: calc(var(--ldg-chrome-offset) + 10px);
+            position: fixed;
+        }
+
+        .drawer-left,
+        .drawer-right {
+            top: calc(var(--ldg-chrome-offset) + 1px);
+            height: calc(100vh - var(--ldg-chrome-offset));
+        }
+    }
+
+    // Com a navegacao secundaria no ar, ela entra na conta do offset.
+    body.has-secondarynavigation.hasaccessibilitybar:not(.notloggedin) {
+        --ldg-chrome-offset: calc(
+            #{$ldg-a11y-bar-height} + var(--ldg-navbar-height) + #{$ldg-a11y-secondary-height}
+        );
+    }
+}

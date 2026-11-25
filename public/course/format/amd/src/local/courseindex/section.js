@@ -41,8 +41,11 @@ export default class Component extends DndSection {
             SECTION: `[data-for='section']`,
             SECTION_ITEM: `[data-for='section_item']`,
             SECTION_TITLE: `[data-for='section_title']`,
+            SECTION_COLLAPSE: `[data-for='section_collapse']`,
             CM_LAST: `[data-for="cm"]:last-child`,
             DND_ALLOWED: `[data-courseindexdndallowed='true']`,
+            COLLAPSE: `[data-bs-toggle="collapse"]`,
+            TREE_ITEM: `[role="treeitem"]`,
         };
         // Default classes to toggle on refresh.
         this.classes = {
@@ -52,6 +55,7 @@ export default class Component extends DndSection {
             RESTRICTIONS: 'restrictions',
             PAGEITEM: 'pageitem',
             OVERLAYBORDERS: 'overlay-preview-borders',
+            SHOW: 'show',
         };
 
         // We need our id to watch specific events.
@@ -86,6 +90,7 @@ export default class Component extends DndSection {
      */
     stateReady(state) {
         this.configState(state);
+        this._setupExpandedState();
         const sectionItem = this.getElement(this.selectors.SECTION_ITEM);
         // Drag and drop is only available for components compatible course formats.
         if (this.reactive.isEditing && this.reactive.supportComponents && document.querySelector(this.selectors.DND_ALLOWED)) {
@@ -100,6 +105,41 @@ export default class Component extends DndSection {
             this.reactive.dispatch('setPageItem', 'section', this.id);
             sectionItem.scrollIntoView();
         }
+    }
+
+    /**
+     * Keep the section tree item aria-expanded attribute in sync with its collapsible content.
+     *
+     * The tree item and the Bootstrap collapsible are not the same element, so the expanded
+     * state must be replicated on the tree item to expose it to assistive technologies.
+     * For delegated sections the tree item is the activity element wrapping the section.
+     */
+    _setupExpandedState() {
+        const treeItem = this.element.closest(this.selectors.TREE_ITEM);
+        const toggler = this.getElement(this.selectors.COLLAPSE);
+        const collapsibleId = toggler?.dataset.target ?? toggler?.getAttribute('href');
+        if (!treeItem || !collapsibleId) {
+            return;
+        }
+        const collapsible = document.getElementById(collapsibleId.replace('#', ''));
+        if (!collapsible) {
+            return;
+        }
+        // The section can be expanded before this component is ready, so the initial
+        // value is taken from the collapsible itself instead of the state.
+        this._refreshExpandedState(treeItem, collapsible);
+        this.addEventListener(collapsible, 'shown.bs.collapse', () => this._refreshExpandedState(treeItem, collapsible));
+        this.addEventListener(collapsible, 'hidden.bs.collapse', () => this._refreshExpandedState(treeItem, collapsible));
+    }
+
+    /**
+     * Update the tree item aria-expanded attribute using the collapsible current state.
+     *
+     * @param {Element} treeItem the section tree item element
+     * @param {Element} collapsible the section collapsible element
+     */
+    _refreshExpandedState(treeItem, collapsible) {
+        treeItem.setAttribute('aria-expanded', collapsible.classList.contains(this.classes.SHOW));
     }
 
     /**
@@ -125,6 +165,7 @@ export default class Component extends DndSection {
         return [
             {watch: `section[${this.id}]:deleted`, handler: this.remove},
             {watch: `section[${this.id}]:updated`, handler: this._refreshSection},
+            {watch: `section[${this.id}].number:updated`, handler: this._refreshNumberDependentIds},
             {watch: `course.pageItem:updated`, handler: this._refreshPageItem},
         ];
     }
@@ -154,7 +195,55 @@ export default class Component extends DndSection {
         this.element.classList.toggle(this.classes.LOCKED, element.locked ?? false);
         this.locked = element.locked;
         // Update title.
-        this.getElement(this.selectors.SECTION_TITLE).innerHTML = element.title;
+        const titleElement = this.getElement(this.selectors.SECTION_TITLE);
+        titleElement.innerHTML = element.title;
+        // Section links use positional anchors, so they must be refreshed after a move too.
+        if (titleElement.tagName === 'A' && element.sectionurl) {
+            titleElement.setAttribute('href', element.sectionurl);
+        }
+    }
+
+    /**
+     * Update the section number and every id and aria attribute derived from it.
+     *
+     * Several ids (the collapsible region, the section item and its title) and aria
+     * attributes (aria-owns, aria-labelledby, aria-controls) are built from the section
+     * number. Leaving any of them stale after a move or a delete lets a later section reuse
+     * the same number, so its own freshly rendered elements would share the same ids, and
+     * assistive technologies or the browser could target the wrong section.
+     *
+     * @param {Object} param the watcher details
+     * @param {Object} param.element the section state data
+     */
+    _refreshNumberDependentIds({element}) {
+        const number = element.number;
+        const previousNumber = this.element.dataset.number;
+        this.element.dataset.number = number;
+        if (previousNumber == number) {
+            return;
+        }
+        const toggler = this.getElement(this.selectors.COLLAPSE);
+        const collapsible = this.getElement(this.selectors.SECTION_COLLAPSE);
+        const sectionItem = this.getElement(this.selectors.SECTION_ITEM);
+        const titleElement = this.getElement(this.selectors.SECTION_TITLE);
+        if (!toggler || !collapsible || !sectionItem || !titleElement) {
+            return;
+        }
+        const newCollapseId = `courseindexcollapse${number}`;
+        const newTitleId = `courseindexsection${number}-title`;
+        collapsible.id = newCollapseId;
+        collapsible.setAttribute('aria-labelledby', newTitleId);
+        toggler.setAttribute('href', `#${newCollapseId}`);
+        toggler.setAttribute('aria-controls', newCollapseId);
+        sectionItem.id = `courseindexsection${number}`;
+        titleElement.id = newTitleId;
+        // A delegated section's own wrapper has no treeitem role; the activity element
+        // wrapping it owns that role instead (see cm.mustache), so find whichever applies.
+        const treeItem = this.element.closest(this.selectors.TREE_ITEM);
+        if (treeItem) {
+            treeItem.setAttribute('aria-owns', newCollapseId);
+            treeItem.setAttribute('aria-labelledby', newTitleId);
+        }
     }
 
     /**

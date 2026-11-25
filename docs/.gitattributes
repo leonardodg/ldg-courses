@@ -1,0 +1,20 @@
+# Fim de linha da documentacao.
+#
+# O git global tem core.autocrlf=true (ajuste de Windows numa maquina Linux):
+# o checkout escreve CRLF no working tree mesmo com LF gravado no repositorio.
+#
+# Para markdown isso e so ruido de diff. Para man/cf.1 e defeito real: o roff
+# trata o CR como caractere, e a pagina renderiza com ^M espalhado.
+#
+# O atributo eol=lf tem precedencia sobre core.autocrlf, entao vale para
+# qualquer clone, em qualquer maquina, sem depender de configuracao do usuario.
+#
+# Existe um .gitattributes irmao em .devcontainer/, pelo mesmo motivo e com o
+# mesmo raciocinio - ali o alvo era o ENTRYPOINT da imagem, que com CRLF nao
+# executa. O da RAIZ do repo e do Moodle upstream e nao deve ser tocado: este
+# projeto faz merge de upstream/MOODLE_502_STABLE com frequencia.
+
+*.md        text eol=lf
+*.txt       text eol=lf
+*.svg       text eol=lf
+man/*       text eol=lf

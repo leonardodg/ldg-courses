@@ -1,0 +1,70 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template paygw_mercadopago/pay_invoice
+
+    O QR code do Pix ou a linha digitavel do boleto - a fatura de um ciclo
+    que o aluno ainda nao pagou. Mostrado em return.php, porque esta pagina
+    e NOSSA: diferente do Checkout Pro, o aluno nunca viu isto no Mercado
+    Pago antes de chegar aqui.
+
+    Context variables required for this template:
+    * pix bool
+    * boleto bool
+    * qrcode string
+    * qrcodeimage string
+    * barcode string
+    * ticketurl string
+    * waitingmessage string
+
+    Example context (json):
+    {
+        "pix": true,
+        "boleto": false,
+        "qrcode": "00020126...",
+        "qrcodeimage": "data:image/png;base64,iVBORw0K...",
+        "barcode": "",
+        "ticketurl": "https://www.mercadopago.com.br/payments/123/ticket",
+        "waitingmessage": "Esperando o pagamento."
+    }
+}}
+<div class="paygw-mercadopago-invoice text-center">
+    {{#pix}}
+        {{#qrcodeimage}}
+            <img src="{{qrcodeimage}}" alt="" class="img-fluid mb-3" style="max-width: 260px;">
+        {{/qrcodeimage}}
+        {{#qrcode}}
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" readonly value="{{qrcode}}">
+            </div>
+        {{/qrcode}}
+    {{/pix}}
+
+    {{#boleto}}
+        {{#barcode}}
+            <p class="font-monospace">{{barcode}}</p>
+        {{/barcode}}
+    {{/boleto}}
+
+    {{#ticketurl}}
+        <p><a href="{{ticketurl}}" target="_blank" rel="noopener" class="btn btn-outline-primary">
+            {{#str}} subscribeviewboleto, paygw_mercadopago {{/str}}
+        </a></p>
+    {{/ticketurl}}
+
+    <p class="text-muted small">{{waitingmessage}}</p>
+</div>

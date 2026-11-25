@@ -15,22 +15,27 @@ services:
         - ENVIRONMENT=development
         - TZ=America/Sao_Paulo
       cache_from:
-        - leodg/courses-free:development
+        - leodg/ldg-courses:development
     environment:
       # MOODLE_URL nao vai aqui: vem do dev.env, senao sobrescreve o dominio real.
       PHP_OPCACHE_VALIDATE_TIMESTAMPS: 1
       XDEBUG_MODE: debug
-      XDEBUG_CONFIG: client_host=host.docker.internal
-    volumes:
-      - "../../phpu_moodledata:/var/www/phpu_moodledata"
-      - "../php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini"
-      - composer_cache:/root/.composer
     # Portas nao vao aqui: o dev.yml ja declara 80/443/9003 e o compose SOMA as
     # listas em vez de sobrescrever, o que duplicaria o bind da 9003.
+    #
+    # Volumes tambem nao: phpu_moodledata, uploads.ini e composer_cache moraram
+    # aqui ate este arquivo deixar de ser carregado pelo devcontainer.json.
+    # Agora vivem em dev.yml, que vale em qualquer forma de subir. Repetir aqui
+    # arriscaria bind duplicado no mesmo destino, pelo mesmo motivo das portas.
+    #
+    # XDEBUG_CONFIG saiu junto: quem depura pelo VS Code nao carrega este arquivo.
 
 # =============================================================================
 #                      DEVELOPMENT-ONLY RESOURCES
 # =============================================================================
 volumes:
-  # Sem "name:" fixo: evita colidir com o volume homonimo de outro projeto.
+  # Repete a declaracao de base.yml. O "name:" precisa ser igual nos dois: se um
+  # arquivo declarasse sem nome, o merge do compose poderia resolver para o nome
+  # prefixado pelo projeto e cada stack acabaria com um cache separado.
   composer_cache:
+    name: ldg-courses_composer_cache

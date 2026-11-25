@@ -1,0 +1,704 @@
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// O formato de curso LDG - portal do aluno.
+//
+// A MARCA mora aqui; a ESTRUTURA mora no formato, em course/format/ldg/
+// styles.css. A divisao mudou em 03/09/2026 e o motivo e concreto: outras
+// empresas usam o format_ldg com o tema delas, e o Moodle carrega o styles.css
+// do plugin para QUALQUER tema. Assim a grade chega junto com o formato - o
+// portal fica cinza mas usavel - e este arquivo poe cor, fonte, raio e sombra
+// por cima.
+//
+// NAO ESCREVA GRADE AQUI. O CSS do tema entra DEPOIS do styles.css do plugin no
+// arquivo servido - conferido: o do plugin em ~207k e o do tema em ~1,19M -,
+// entao qualquer regra de layout daqui vence a de la em silencio. Foi
+// exatamente o que aconteceu: este arquivo tinha um grid de duas colunas de
+// antes dos destinos, e ele sobrescrevia a grade de tres do formato sem que
+// nada quebrasse na tela.
+//
+// Se precisar mexer em coluna, breakpoint ou sticky, o arquivo e o outro.
+
+// O curso no formato portal ocupa a largura toda.
+//
+// O course/view.php do core acrescenta `limitedwidth` ao body, sempre, e o Boost
+// traduz isso num max-width de largura de LEITURA. Faz sentido num curso que e
+// uma coluna de texto; aqui espreme duas colunas em 760px, e a aula - que e o
+// ponto da tela - fica com 420px de largura.
+//
+// Nao da para resolver no formato: quem poe a classe e o core, e quem a
+// interpreta e o tema. Mesmo caminho ja usado pela landing, logo abaixo.
+// So o max-width do .main-inner, e nada mais.
+//
+// A primeira tentativa zerou tambem o #page.drawers, o #region-main-box e o
+// #region-main, copiando o que a landing faz. Errado: aqueles elementos e que
+// carregam o recuo do trilho de icones a esquerda, e sem ele o conteudo passa
+// POR BAIXO do trilho - o titulo aparecia cortado, "oas-vindas". So se ve isso
+// em navegador.
+body.format-ldg #page.drawers .main-inner {
+    max-width: none;
+}
+
+// A pagina do curso.
+.ldg-portal {
+    // O cartao do aluno: saudacao e progresso, no alto da coluna esquerda.
+    // Nao ha selo de plano - ver o comentario no content.php.
+    &__student {
+        padding: var(--ldg-gutter);
+        border: 1px solid var(--ldg-border);
+        border-radius: 12px;
+        background-color: var(--ldg-surface);
+    }
+
+    &__greeting {
+        margin: 0 0 var(--ldg-space);
+        color: var(--ldg-text);
+        font-size: 0.9375rem;
+        font-weight: 600;
+    }
+
+    // Os botoes de esconder lateral sao discretos de proposito: sao ajuste de
+    // tela, e nao navegacao. Quem manda na hierarquia aqui e a saudacao.
+    &__asidetoggle {
+        padding: 0.125rem 0.5rem;
+        border: 1px solid var(--ldg-border);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--ldg-text-label);
+        font-family: var(--ldg-font-mono);
+        font-size: 0.6875rem;
+
+        &:hover {
+            background-color: var(--ldg-surface-raised);
+            color: var(--ldg-text);
+        }
+
+        &[aria-expanded="false"] {
+            border-color: var(--ldg-accent);
+            color: var(--ldg-accent-text);
+        }
+    }
+
+    &__progress {
+        margin-bottom: 0;
+    }
+
+    &__progress-label {
+        color: var(--ldg-text-muted);
+        font-size: var(--ldg-fs-caption);
+        margin-bottom: calc(var(--ldg-space) * 0.5);
+    }
+
+    // A grade saiu daqui: ela e do styles.css do formato. O que sobra e cor.
+
+    // ---------------------------------------------------------------------
+    // O chrome do portal, servido pelo layout ldgportal.
+    // ---------------------------------------------------------------------
+    // O cabecalho e do TEMA - quem o desenha e o layout ldgportal -, entao a
+    // estrutura dele mora aqui mesmo. A regra "estrutura no formato" vale para o
+    // MIOLO, que e o que o formato entrega; o chrome e outra coisa.
+    //
+    // Sem estas quatro linhas o cabecalho media 122px em vez dos 56 do desenho:
+    // sem display:flex os filhos empilham. Medido no Chrome, nao suposto.
+    &__header {
+        align-items: center;
+        background-color: var(--ldg-surface);
+        border-bottom: 1px solid var(--ldg-border);
+        display: flex;
+        gap: var(--ldg-gutter);
+        height: 56px;
+        justify-content: space-between;
+        padding: 0 var(--ldg-gutter);
+    }
+
+    // Marca e acoes nao encolhem; quem cede espaco e o nome do curso, no meio.
+    // Sem isto o "Fechar aula" quebrava para BAIXO do cabecalho de 56px e ficava
+    // solto sobre o conteudo - a medida dizia 56px e a tela dizia outra coisa.
+    &__brand,
+    &__actions {
+        align-items: center;
+        display: flex;
+        flex: 0 0 auto;
+        gap: var(--ldg-space);
+    }
+
+    &__brand-name {
+        color: var(--ldg-text);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    // O nome do curso nao pode empurrar o menu de usuario para fora da tela num
+    // titulo longo - por isso ele encolhe e corta, e nao o contrario.
+    &__course {
+        color: var(--ldg-text-muted);
+        font-family: var(--ldg-font-mono);
+        font-size: 0.8125rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__exit {
+        border: 1px solid var(--ldg-border);
+        border-radius: 8px;
+        color: var(--ldg-text-muted);
+        font-size: 0.8125rem;
+        padding: 0.375rem 0.75rem;
+        text-decoration: none;
+
+        &:hover {
+            background-color: var(--ldg-surface-raised);
+            color: var(--ldg-text);
+        }
+    }
+
+    // A navegacao do curso do gestor. Fica discreta de proposito: ela e
+    // ferramenta de quem administra, e nao a navegacao do aluno - que e o
+    // assunto da tela.
+    &__coursenav {
+        padding-inline: var(--ldg-gutter);
+        border-bottom: 1px solid var(--ldg-border);
+        background-color: var(--ldg-surface);
+    }
+
+    // ---------------------------------------------------------------------
+    // A navegacao, nas tres superficies.
+    // ---------------------------------------------------------------------
+    // O marcador de estado e a barra de 4px no acento, e ela se repete no item
+    // de aula. Nao e so cor: quem nao distingue as cores continua vendo a barra.
+    //
+    // border-inline-start, e nao border-left: em portugues, ingles e espanhol da
+    // no mesmo, e num idioma que le da direita para a esquerda a barra troca de
+    // lado sozinha. Custa zero escrever assim.
+    &__navitem {
+        border-inline-start: 4px solid transparent;
+        border-radius: 8px;
+        color: var(--ldg-text-muted);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        padding: 0.65rem 0.85rem;
+        text-decoration: none;
+
+        &:hover {
+            background-color: var(--ldg-surface-raised);
+            color: var(--ldg-text);
+        }
+
+        &.is-active {
+            background-color: var(--ldg-surface-raised);
+            border-inline-start-color: var(--ldg-accent);
+            color: var(--ldg-text);
+            font-weight: 600;
+        }
+    }
+
+    &__tabs {
+        background-color: var(--ldg-surface);
+        border: 1px solid var(--ldg-border);
+        border-radius: 12px;
+        gap: 0.25rem;
+        padding: 0.375rem;
+    }
+
+    // Aba ativa e PILULA preenchida, e nao sublinhado - e o que o desenho pede.
+    &__tab {
+        border-radius: 8px;
+        color: var(--ldg-text-muted);
+        font-size: 0.8125rem;
+        padding: 0.5rem 0.85rem;
+        text-decoration: none;
+        white-space: nowrap;
+
+        &.is-active {
+            background-color: var(--ldg-accent-fill);
+            color: var(--ldg-on-accent);
+            font-weight: 600;
+        }
+    }
+
+    &__bottomnav {
+        backdrop-filter: blur(10px);
+        background-color: color-mix(in srgb, var(--ldg-surface) 96%, transparent);
+        border-top: 1px solid var(--ldg-border);
+        padding: 0 var(--ldg-space);
+    }
+
+    &__bottomitem {
+        color: var(--ldg-text-label);
+        font-size: 0.65rem;
+        gap: 3px;
+        text-decoration: none;
+
+        &.is-active {
+            color: var(--ldg-accent);
+            font-weight: 600;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// O atalho entre aulas.
+// ---------------------------------------------------------------------------
+.ldg-lessonnav {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--ldg-border);
+    border-radius: 12px;
+
+    // Grudado no topo, entao precisa de fundo OPACO - com fundo transparente o
+    // conteudo passaria por baixo da barra ao rolar.
+    background-color: var(--ldg-surface);
+    box-shadow: var(--ldg-shadow-card);
+
+    &__dir {
+        color: var(--ldg-text-label);
+        font-family: var(--ldg-font-mono);
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    &__name {
+        color: var(--ldg-text);
+        font-size: 0.8125rem;
+        font-weight: 500;
+    }
+
+    &__side {
+        border-radius: 8px;
+        padding: 0.25rem 0.5rem;
+        text-decoration: none;
+
+        &:hover {
+            background-color: var(--ldg-surface-raised);
+        }
+    }
+
+    // A proxima aula e a acao principal da tela, e o desenho a destaca. A
+    // anterior fica discreta de proposito: sao pesos diferentes.
+    &__side--next:hover {
+        background-color: transparent;
+
+        .ldg-lessonnav__name {
+            color: var(--ldg-accent-text);
+        }
+    }
+
+    &__count {
+        color: var(--ldg-accent-text);
+        font-family: var(--ldg-font-mono);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    &__module {
+        color: var(--ldg-text-label);
+        font-family: var(--ldg-font-mono);
+        font-size: 0.6875rem;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// A lista de materiais.
+// ---------------------------------------------------------------------------
+.ldg-materiallist {
+    &__items {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ldg-space);
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    &__link {
+        align-items: center;
+        background-color: var(--ldg-surface);
+        border: 1px solid var(--ldg-border);
+        border-radius: 12px;
+        color: var(--ldg-text);
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        text-decoration: none;
+
+        &:hover {
+            background-color: var(--ldg-surface-raised);
+            border-color: var(--ldg-accent);
+        }
+    }
+
+    &__icon {
+        height: 24px;
+        width: 24px;
+    }
+
+    &__section,
+    &__hint {
+        color: var(--ldg-text-label);
+        font-family: var(--ldg-font-mono);
+        font-size: 0.75rem;
+    }
+
+    // O aviso de "baixa o arquivo" vai para a ponta, longe do nome: e
+    // informacao de consequencia, e nao parte do titulo.
+    &__hint {
+        margin-inline-start: auto;
+    }
+
+    &__empty {
+        color: var(--ldg-text-muted);
+    }
+}
+
+// A aula em foco.
+.ldg-lesson {
+    &__head {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--ldg-space);
+        justify-content: space-between;
+        margin-bottom: var(--ldg-space);
+    }
+
+    &__title {
+        font-size: 1.5rem;
+        margin: 0;
+    }
+
+    &__open {
+        font-size: var(--ldg-fs-caption);
+        white-space: nowrap;
+    }
+
+    &__description {
+        color: var(--ldg-text-muted);
+        margin-bottom: var(--ldg-gutter);
+    }
+
+    // A moldura do desenho: raio de 14px, o preto mais fundo da pilha e a
+    // sombra que separa o quadro do resto. E so isso que a moldura e por
+    // enquanto - a proporcao 16/9 chega com o mod_video, porque hoje o que esta
+    // dentro do quadro e uma atividade qualquer, e quiz nao tem cara de video.
+    &__frame-wrap {
+        background-color: #0e0e0e;
+        border: 1px solid var(--ldg-border);
+        border-radius: 14px;
+        box-shadow: var(--ldg-shadow-raised);
+        overflow: hidden;
+    }
+
+    &__frame {
+        border: 0;
+        display: block;
+        // A altura real quem escreve e o player.js. Este valor e so o ponto de
+        // partida, para o quadro nao piscar em zero na primeira carga.
+        min-height: 420px;
+        width: 100%;
+    }
+
+    &__completion {
+        margin-top: var(--ldg-gutter);
+    }
+
+    // O cadeado do quadro: Forum/Certificado sem lista propria, so o primeiro
+    // item do balde - e ele pode estar bloqueado. Mesma linguagem visual do
+    // is-locked da lista ao lado.
+    &__locked {
+        background-color: var(--ldg-surface);
+        border: 1px solid var(--ldg-border);
+        border-radius: 14px;
+        box-shadow: var(--ldg-shadow-raised);
+        color: var(--ldg-text-muted);
+        min-height: 240px;
+        justify-content: center;
+    }
+
+    &__lockicon .icon {
+        width: 2rem;
+        height: 2rem;
+        color: var(--ldg-text-muted);
+        margin: 0;
+    }
+
+    &__lockname {
+        color: var(--ldg-text);
+    }
+
+    &__lockinfo {
+        color: var(--ldg-text-muted);
+        font-size: var(--ldg-fs-caption);
+        margin: 0;
+    }
+
+    &__empty {
+        color: var(--ldg-text-muted);
+        padding: var(--ldg-gutter) 0;
+    }
+}
+
+// A lista de aulas.
+.ldg-lessonlist {
+    background-color: var(--ldg-surface);
+    border: 1px solid var(--ldg-border);
+    border-radius: 0.5rem;
+    padding: var(--ldg-gutter);
+
+    &__title {
+        font-size: 1rem;
+        margin: 0 0 var(--ldg-space);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--ldg-text-muted);
+    }
+
+    &__module {
+        border-top: 1px solid var(--ldg-border);
+        padding: var(--ldg-space) 0;
+
+        &:first-of-type {
+            border-top: 0;
+        }
+    }
+
+    &__module-head {
+        align-items: center;
+        cursor: pointer;
+        display: flex;
+        gap: var(--ldg-space);
+        justify-content: space-between;
+        // O marcador padrao do details fica desalinhado do texto em flex.
+        list-style: none;
+
+        &::-webkit-details-marker {
+            display: none;
+        }
+
+        &::after {
+            content: "";
+            border-right: 2px solid currentcolor;
+            border-bottom: 2px solid currentcolor;
+            flex: 0 0 auto;
+            height: 0.5rem;
+            width: 0.5rem;
+            transform: rotate(45deg);
+            transition: transform 0.15s ease;
+        }
+    }
+
+    &__module[open] &__module-head::after {
+        transform: rotate(-135deg);
+    }
+
+    &__module-name {
+        font-weight: 600;
+    }
+
+    &__module-progress {
+        color: var(--ldg-text-muted);
+        font-size: var(--ldg-fs-caption);
+        white-space: nowrap;
+
+        &.is-complete {
+            color: var(--ldg-accent-text);
+        }
+    }
+
+    &__module-bar {
+        height: 4px;
+        margin: var(--ldg-space) 0;
+    }
+
+    &__lessons {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    &__link {
+        align-items: center;
+        border-radius: 0.375rem;
+        color: inherit;
+        display: flex;
+        gap: var(--ldg-space);
+        padding: calc(var(--ldg-space) * 0.75) var(--ldg-space);
+        text-decoration: none;
+
+        &:hover,
+        &:focus-visible {
+            background-color: var(--ldg-hover-overlay);
+            color: var(--ldg-accent-text);
+        }
+
+        // Aula bloqueada e um span, e nao um link: nao recebe foco e nao reage
+        // ao passar o mouse, porque nao ha para onde ir.
+        &.is-locked {
+            color: var(--ldg-text-muted);
+            cursor: default;
+        }
+    }
+
+    &__state {
+        flex: 0 0 auto;
+        line-height: 1;
+
+        .icon {
+            margin: 0;
+        }
+    }
+
+    &__icon {
+        height: 1rem;
+        width: 1rem;
+    }
+
+    &__name {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    &__duration {
+        color: var(--ldg-text-muted);
+        flex: 0 0 auto;
+        font-size: var(--ldg-fs-caption);
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__lockinfo {
+        color: var(--ldg-text-muted);
+        font-size: var(--ldg-fs-caption);
+        padding: 0 var(--ldg-space) calc(var(--ldg-space) * 0.75) 1.75rem;
+    }
+
+    &__lesson.is-current > &__link {
+        background-color: var(--ldg-hover-overlay);
+        box-shadow: inset 2px 0 0 var(--ldg-accent);
+        font-weight: 600;
+    }
+
+    &__duration-edit {
+        display: block;
+        padding: 0 var(--ldg-space) calc(var(--ldg-space) * 0.75) 1.75rem;
+
+        input {
+            max-width: 8rem;
+        }
+    }
+
+    &__empty {
+        color: var(--ldg-text-muted);
+        margin: 0;
+    }
+}
+
+// LIMITACAO CONHECIDA: no celular os modulos comecam ABERTOS.
+//
+// Este bloco ja dizia que eles comecavam recolhidos, e era falso - conferido no
+// navegador, com viewport de 390px: `details.open` era `true`. O template emite
+// <details open>, e CSS nao remove atributo. O que havia aqui escondia o
+// conteudo de um <details> FECHADO, que e o que o navegador ja faz sozinho -
+// logo, nao fazia nada.
+//
+// Nao chega a machucar, porque a ordem do HTML poe a AULA antes da lista e isso
+// esta conferido: no celular a pessoa ve o video primeiro e a lista depois. O
+// custo e so uma lista longa embaixo.
+//
+// Resolver de verdade pede JavaScript - fechar os modulos abaixo do breakpoint
+// no carregamento, deixando o controle com a pessoa depois. Nao entrou aqui
+// para nao acrescentar um modulo AMD so por isto.
+
+// A pagina servida DENTRO do quadro da aula.
+//
+// A classe entra pelo body_attributes() do tema, a partir do cabecalho
+// Sec-Fetch-Dest. Sem isto, a atividade embutida vem com o site inteiro de novo
+// dentro dela: navbar, menu lateral e rodape, tudo em miniatura.
+//
+// So esconde o chrome. Nada aqui muda permissao ou revela conteudo - o que a
+// pessoa nao pode ver, ela continua nao vendo.
+// O link do User Tours nao pertence ao portal.
+//
+// E um <a id="resetpagetour"> dentro de .usertour, que o tool_usertours poe pelo
+// standard_after_main_region_html. Nao da para tirar o bloco inteiro do layout:
+// e o mesmo que traz o painel de mensagens, que FICA - o aluno chega nas
+// mensagens pelo menu de usuario. Entao esconde-se o elemento.
+//
+// So no portal: nas outras paginas do site o tour continua com o link dele.
+body.format-ldg .usertour {
+    display: none;
+}
+
+body.ldg-embedded {
+    // Os requisitos de conclusao e a navegacao da atividade FICAM: e por eles
+    // que o aluno sabe o que falta e para onde ir. O que muda e a cara - eles
+    // chegam com o desenho do Boost, dentro de uma tela que nao e o Boost.
+    //
+    // Sao classes do CORE, e nao nossas: activity-header, completion-info,
+    // automatic-completion-conditions e activity-navigation. Por isso o seletor
+    // e escopado em .ldg-embedded, e nada disso vaza para o resto do site.
+    .activity-header {
+        margin-bottom: var(--ldg-gutter);
+    }
+
+    .completion-info,
+    .automatic-completion-conditions {
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--ldg-border);
+        border-radius: 12px;
+        background-color: var(--ldg-surface);
+        font-size: 0.8125rem;
+    }
+
+    .activity-navigation {
+        margin-top: var(--ldg-gutter);
+        padding-top: var(--ldg-gutter);
+        border-top: 1px solid var(--ldg-border);
+    }
+
+    #page-header,
+    .navbar,
+    .secondary-navigation,
+    #page-footer,
+    footer,
+    .drawer,
+    .drawer-toggles,
+    .ldg-accessibilitybar {
+        display: none !important;
+    }
+
+    // Nada aqui pode se esticar ate a altura do quadro.
+    //
+    // O player.js mede o conteudo para decidir a altura do quadro; se o
+    // conteudo acompanhar o quadro, os dois se puxam e a altura cresce sem
+    // parar. Ja aconteceu: 420px viraram 12084px em poucos segundos.
+    min-height: 0 !important;
+
+    #page,
+    #page.drawers,
+    .main-inner {
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+    }
+
+    #page.drawers {
+        // O Boost reserva a altura da navbar no topo do conteudo. Sem navbar,
+        // essa reserva vira uma faixa vazia no comeco de toda aula.
+        padding-top: 0 !important;
+    }
+
+    background-color: var(--ldg-bg);
+}

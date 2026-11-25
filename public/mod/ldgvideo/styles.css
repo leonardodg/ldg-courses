@@ -1,0 +1,83 @@
+/* This file is part of Moodle - http://moodle.org/
+ *
+ * Moodle is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Moodle is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * O TAMANHO DO VIDEO. E a razao de este arquivo existir.
+ *
+ * O core_media_manager desenha o player, e desenha bem - menos o tamanho: o
+ * template dele emite width e height em PIXEL FIXO, os mesmos 560x315 que o
+ * botao Incorporar do YouTube entrega. Num portal de curso, onde a coluna do
+ * meio muda de largura conforme o dispositivo e conforme o aluno esconde as
+ * laterais, pixel fixo e exatamente o defeito.
+ *
+ * A troca e: a LARGURA vem sempre da coluna, e a ALTURA sai da proporcao. Nao
+ * ha deteccao de dispositivo, nao ha JavaScript, e nao ha media query - as tres
+ * situacoes do pedido (desktop, celular, laterais escondidas) caem da mesma
+ * regra, porque as tres so mudam a largura disponivel.
+ *
+ * @package    mod_ldgvideo
+ * @copyright  2026 LeoDG <callme@leodg.dev>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+.ldgvideo__frame {
+    width: 100%;
+}
+
+/* NADA DE vh AQUI DENTRO, nem em qualquer coisa que caia neste quadro.
+ *
+ * O player.js do format_ldg ENCOLHE O QUADRO PARA ZERO antes de medir a altura
+ * da atividade embutida - foi assim que ele saiu de um ciclo de realimentacao
+ * que levou o quadro de 420px a 12084px em 02/09/2026. Com o quadro em zero,
+ * qualquer 100vh aqui dentro vira zero e o video some da tela.
+ *
+ * O aspect-ratio e imune porque deriva da LARGURA, que a medida nao mexe. */
+.ldgvideo--16-9 {
+    aspect-ratio: 16 / 9;
+}
+
+.ldgvideo--4-3 {
+    aspect-ratio: 4 / 3;
+}
+
+/* O vertical precisa de teto: numa coluna larga, 9:16 pediria uma altura maior
+   que a janela e o aluno teria que rolar para achar os controles do player. */
+.ldgvideo--9-16 {
+    max-width: min(100%, 28rem);
+    margin-inline: auto;
+    aspect-ratio: 9 / 16;
+}
+
+/* O core embrulha a midia num <span>, que e INLINE. Sem isto a caixa nao tem
+   altura para dar ao filho, e o aspect-ratio acima nao vale nada. */
+.ldgvideo__frame .mediaplugin {
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+/* O iframe cobre o <video> tambem, e isso nao e zelo excessivo: o media_videojs
+   desenha um elemento <video> de verdade, e nao um quadro. Uma plataforma que
+   caia naquele player ignoraria a caixa se a regra so falasse de iframe.
+ *
+ * Os width e height do core vem como ATRIBUTO do elemento, e atributo perde
+ * para CSS - por isso nao ha !important aqui. */
+.ldgvideo__frame iframe,
+.ldgvideo__frame video,
+.ldgvideo__frame .video-js {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}

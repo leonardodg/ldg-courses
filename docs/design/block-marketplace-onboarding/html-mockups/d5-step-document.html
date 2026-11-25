@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-br" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D5 — Documento CNPJ/CPF — mockup (corrigido)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="_tokens.css" rel="stylesheet">
+</head>
+<body>
+<div class="mockup-topbar">block_marketplace &middot; mockup D5 &middot; /blocks/marketplace/document.php</div>
+<div class="mockup-shell" style="max-width:560px;">
+  <div class="viewport-note">Viewport: 412px e 1280px (mesma coluna única)</div>
+  <h2 class="h4">Documento <span class="optional-flag">(opcional)</span></h2>
+  <div class="alert alert-info small">
+    Corrigido na revisão: <code>company::cnpj</code> já é opcional no código
+    (ADR-0010 — vendedor não precisa ser pessoa jurídica). Esta etapa nunca
+    bloqueia o avanço do cadastro.
+  </div>
+  <form>
+    <div class="mb-3">
+      <label class="form-label">Tipo de documento</label>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="doctype" id="cnpj" checked>
+        <label class="form-check-label" for="cnpj">CNPJ (pessoa jurídica)</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="doctype" id="cpf">
+        <label class="form-check-label" for="cpf">CPF (pessoa física — pode vender curso)</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="doctype" id="none">
+        <label class="form-check-label" for="none">Prefiro não informar agora</label>
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Número</label>
+      <input type="text" class="form-control form-control-lg" placeholder="00.000.000/0000-00">
+    </div>
+    <button class="btn btn-primary btn-lg w-100" type="button">Salvar e continuar</button>
+  </form>
+</div>
+</body>
+</html>

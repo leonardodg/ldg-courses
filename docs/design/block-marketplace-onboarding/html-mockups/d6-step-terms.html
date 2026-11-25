@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-br" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D6 — Termos de contrato — mockup (corrigido)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="_tokens.css" rel="stylesheet">
+</head>
+<body>
+<div class="mockup-topbar">block_marketplace &middot; mockup D6 &middot; /blocks/marketplace/terms.php</div>
+<div class="mockup-shell" style="max-width:560px;">
+  <div class="viewport-note">Viewport: 412px e 1280px (mesma coluna única)</div>
+  <h2 class="h4">Termos de contrato</h2>
+  <div class="alert alert-info small">
+    Corrigido na revisão: o carimbo de aceite (<code>termsaccepted</code>) já
+    existe em <code>local_partners\application</code> — esta tela reaproveita
+    o campo da candidatura, não cria coluna nova em <code>company</code>.
+  </div>
+  <div class="card p-3 mb-3" style="max-height:280px; overflow-y:auto;">
+    <h3 class="h6 text-muted">1. Objeto</h3>
+    <p class="small text-muted">A LDG Courses licencia o uso da plataforma para venda de cursos, com split automático de pagamento...</p>
+    <h3 class="h6 text-muted">2. Comissão</h3>
+    <p class="small text-muted">A comissão aplicada depende do plano contratado, conforme tabela vigente...</p>
+  </div>
+  <div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" id="aceite" style="width:1.5em;height:1.5em;">
+    <label class="form-check-label" for="aceite">Li e aceito os termos acima</label>
+  </div>
+  <button class="btn btn-primary btn-lg w-100 disabled">Aceitar e continuar</button>
+</div>
+</body>
+</html>

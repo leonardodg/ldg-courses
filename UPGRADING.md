@@ -6,15 +6,157 @@ More detailed information on key changes can be found in the [Developer update n
 
 The format of this change log follows the advice given at [Keep a CHANGELOG](https://keepachangelog.com).
 
-## 5.2.2+
+## 5.2.5+
+
+### core_course
+
+#### Changed
+
+- `core_course_get_contents` no longer returns an empty `activitybadge` for modules whose badge has no content. The key is now omitted.
+
+  For more information see [MDL-90249](https://tracker.moodle.org/browse/MDL-90249)
+
+### smsgateway_aws
+
+#### Changed
+
+- The AWS SMS gateway now uses its configured default country code for phone numbers in local format. Before, these numbers were always sent with the country code 1, whatever was configured. Sites that relied on this, for example in the United States or Canada, must set the gateway's default country code to 1, otherwise local numbers are sent without a country code and fail.
+
+  For more information see [MDL-84943](https://tracker.moodle.org/browse/MDL-84943)
+
+## 5.2.5
 
 ### core
 
 #### Added
 
+- The behat steps `following "..." should download a file that:` and `following "..." in the "..." "..." should download a file that:` now accept an optional selector type, so a download can be triggered from any element, not just a link. For example: `following "Export as Moodle XML" "button" in the "#bulkactionsui-container" "css_element" should download a file that:`. Anything that submits a form is supported, and the form data is sent with the request as the browser would send it.
+
+  For more information see [MDL-86636](https://tracker.moodle.org/browse/MDL-86636)
+- Added `theme_build_editor_css_for_themes()` to `lib/outputlib.php` to build and cache the editor content CSS for themes without changing the theme revisions. The editor content CSS is now cached in the `core/postprocessedcss` cache, using the new `theme_config::get_editor_css_cache_key()`, `theme_config::get_editor_css_cached_content()` and `theme_config::set_editor_css_content_cache()` methods.
+
+  For more information see [MDL-90110](https://tracker.moodle.org/browse/MDL-90110)
+
+### core_completion
+
+#### Fixed
+
+- update_state() now accepts COMPLETION_COMPLETE_PASS when overriding, and a later automatic call (e.g. a grade change) recomputes the complete/complete-pass substate for an overridden activity instead of leaving it frozen.
+
+  For more information see [MDL-87084](https://tracker.moodle.org/browse/MDL-87084)
+
+### enrol_database
+
+#### Deprecated
+
+- The protected `db_get_sql()` method of `enrol_database_plugin` has been deprecated in favour of the new protected `db_get_query()` method. It takes the external database `ADOConnection` as its first parameter and returns an array of `[$sql, $params]`, so condition values are bound by the driver instead of being escaped and concatenated into the statement. The placeholders are generated with the connection's `Param()` method, so each ADOdb driver (including Oracle `oci8`) gets the syntax it binds natively. The plugin itself no longer calls `db_get_sql()`.
+
+  For more information see [MDL-90353](https://tracker.moodle.org/browse/MDL-90353)
+- The `db_addslashes()` method of `enrol_database_plugin` has been deprecated, because external database queries now use parameterised statements instead.
+
+  For more information see [MDL-90353](https://tracker.moodle.org/browse/MDL-90353)
+
+#### Removed
+
+- The `dbsybasequoting` admin setting has been removed, since it was only ever used by the now-deprecated `db_addslashes()` method. Any stored value is deleted on upgrade.
+
+  For more information see [MDL-90353](https://tracker.moodle.org/browse/MDL-90353)
+
+## 5.2.4
+
+### core
+
+#### Added
+
+- Closes an operational-visibility gap: available-updates check requests could not previously be attributed to a specific registered site, which limited abuse detection and support diagnostics on the hub side. \core\update\checker now sends two optional parameters with the available updates check: siteidentifier, the md5() of the site's registration secret, sent only when the site is registered with the sites directory, and countrycode, the configured $CFG->country, sent whenever it is set. Either parameter is omitted when it cannot be determined and the update check is never blocked by them.
+
+  For more information see [MDL-89513](https://tracker.moodle.org/browse/MDL-89513)
+
+#### Fixed
+
+- Fixes an operational-visibility gap: a registered site whose reporting to the hub silently stopped previously gave administrators no indication of the failure. This is now surfaced to administrators. A new scheduled task core\task\registration_reporting_check_task runs daily and sends a notification through the new registrationreportingpaused message provider when reporting pauses, either because new registration fields await confirmation or because the Site registration scheduled task is disabled. \core\hub\registration gains get_reporting_paused_reason(), get_registration_page_notification() and check_reporting_paused_notification(); registration_reminder() is now also called from /my/index.php and /my/courses.php; and core_admin_renderer::registration_warning() renders a warning for a registered site whose reporting is paused because the task is disabled.
+
+  For more information see [MDL-89463](https://tracker.moodle.org/browse/MDL-89463)
+
+### core_customfield
+
+#### Changed
+
+- MDL-88176 changed `\core_customfield\handler::create()` to cache every handler instance and advised extending handlers to remove their own `create()` implementations. That advice is superseded. The inherited `create()` method again returns a new handler instance by default. Handlers that removed their `create()` implementation following MDL-88176 and require caching can opt in by declaring `protected const CACHE_HANDLER_INSTANCES = true;`.
+
+  For more information see [MDL-89238](https://tracker.moodle.org/browse/MDL-89238)
+
+### core_form
+
+#### Changed
+
+- The `duration` form element type now more strictly enforces units as defined by the caller, to avoid undefined behaviour during submission. An exception will be thrown where `defaultunit` is not part of the element `units` array
+
+  For more information see [MDL-89434](https://tracker.moodle.org/browse/MDL-89434)
+
+### core_hub
+
+#### Fixed
+
+- Fixes a data-integrity bug: adding a new site registration field previously stopped ALL registration updates from being sent while that field awaited administrator confirmation, including fields the administrator had already confirmed. \core\hub\registration::update_cron() no longer returns early in that case; it now sends the previously confirmed field set, omitting only the fields returned by get_new_registration_fields(), until the administrator confirms them on the registration form. \core\hub\registration::get_site_info() accepts a new optional $excludefields parameter listing site info keys to omit from the payload, used to implement this.
+
+  For more information see [MDL-89464](https://tracker.moodle.org/browse/MDL-89464)
+- Fixes a data-integrity bug: initial site registration truncated at 2000 characters when the site info was spread across the redirect to the hub, silently dropping the remainder. \core\hub\registration::register() now sends only the token, site URL, privacy policy agreement, contact email and language, and \core\hub\registration::confirm_registration() always sends the full site info afterwards. confirm_registration() now returns a bool indicating whether that full payload reached the hub; when it did not, a new \core\task\complete_hub_registration_task adhoc task is queued to retry it. \core\hub\api::call_rest() now throws a moodle_exception when the hub responds with a non-200 status, an empty body or a body that is not valid JSON, instead of silently treating such responses as success and losing the update.
+
+  For more information see [MDL-89474](https://tracker.moodle.org/browse/MDL-89474)
+- Fixes a security gap: previously a registration secret alone was sufficient to submit registration updates for a site, so a leaked or stolen secret could be replayed by anyone holding it. \core\hub\api::update_registration() now signs each registration update: it sends additional timestamp and signature parameters with hub_update_site_info, where the signature is an HMAC-SHA256 over the site URL and timestamp keyed on md5() of the site's registration secret, proving control of the site rather than just possession of the secret. Signing is best effort; if a signature cannot be computed the update is still sent unsigned.
+
+  For more information see [MDL-89512](https://tracker.moodle.org/browse/MDL-89512)
+
+## 5.2.3
+
+### core
+
+#### Added
+
+- A new Behat step `I set the focus on the "<element>" "<selector>"` has been added to move keyboard focus onto an element without activating it.
+
+  For more information see [MDL-84065](https://tracker.moodle.org/browse/MDL-84065)
 - New `flexible_table::set_columnheadersattributes(...)` method for tables to define additional attributes ('class', 'data-X', etc.) for column headers
 
   For more information see [MDL-89384](https://tracker.moodle.org/browse/MDL-89384)
+
+#### Changed
+
+- The title of a modal dialogue rendered by the `core/modal` template is now an `<h2>` element instead of an `<h5>`, so that dialogue titles no longer break the page's heading hierarchy for assistive technology users.
+
+  The element carries the Bootstrap `fs-5` font size utility class, so the title's appearance is unchanged.
+
+  If your plugin renders headings inside modal dialogue content, set their levels relative to this `<h2>` (i.e. start at `<h3>`) so that the heading structure remains correctly nested. Headings that were previously nested beneath the old `<h5>` will now skip levels. If your plugin renders its own modal header markup, or overrides the `header` block of the `core/modal` template, apply the same `<h2 class="modal-title fs-5">` pattern.
+
+  For more information see [MDL-75699](https://tracker.moodle.org/browse/MDL-75699)
+- Uninstalling a block plugin no longer deletes its instances synchronously. \core\plugininfo\block::uninstall_cleanup() now queues the new \core\task\delete_block_instances_task ad-hoc task, which deletes the instances and their related data (contexts, positions, user preferences and search index entries) in batches. This makes block removal upgrade steps and plugin uninstallation effectively instant on large sites. Remaining instances are not displayed anywhere once the block record has been deleted.
+
+  For more information see [MDL-89289](https://tracker.moodle.org/browse/MDL-89289)
+
+### core_courseformat
+
+#### Changed
+
+- The course index tree semantics for subsections have moved from the delegated section wrapper to the activity that delegates it.
+
+  * The `li[role="treeitem"]` in `core_courseformat/local/courseindex/cm` should add the following attributes when the activity has a delegated section:
+    * `aria-owns`, set to the id of that section's collapsible content, `courseindexcollapse{{number}}`
+    * `aria-labelledby`, set to the id of that section's title element, `courseindexsection{{number}}-title`
+    * `aria-expanded`, set to `false` when the section's `indexcollapsed` is set and `true` otherwise
+  * In `core_courseformat/local/courseindex/section`, `role="treeitem"` and those same three attributes should no longer be set when the section is delegated, and the section title element needs `id="courseindexsection{{number}}-title"` so the tree item can reference it.
+
+  Note that the `core_courseformat/local/courseindex/section` JS keeps `aria-expanded` up to date by writing to the closest `[role="treeitem"]` ancestor, so the element carrying the role is the one that receives the state. Plugins overriding either template should update both, as the two are no longer independent.
+
+  For more information see [MDL-88949](https://tracker.moodle.org/browse/MDL-88949)
+
+### core_grades
+
+#### Changed
+
+- Courses containing a grade with a penalty deducted from it are now frozen on upgrade to prevent existing grades from being changed unexpectedly by a regrade (see MDL-88407). Courses with no grades identified as affected are not frozen. The pre-MDL-88407 calculation is retained until a user with the `moodle/grade:manage` capability reviews the affected grades and chooses whether to keep the existing grades or apply the fix. When the fix is applied, Assignment grades are used as the authoritative source to restore the affected `rawgrade` values before normal gradebook processing recalculates the final grades. Grades from other activity modules cannot be confidently identified as affected but are still recalculated with the fixed formula once the fix is applied, as every grade item in the course is regraded at that point.
+
+  For more information see [MDL-89497](https://tracker.moodle.org/browse/MDL-89497)
 
 ### core_reportbuilder
 
@@ -23,6 +165,20 @@ The format of this change log follows the advice given at [Keep a CHANGELOG](htt
 - New `add_header_attributes(...)` method on column class instances for defining additional header attributes for the column when rendered in a report
 
   For more information see [MDL-89384](https://tracker.moodle.org/browse/MDL-89384)
+
+### aiprovider_gemini
+
+#### Added
+
+- A new `gemini31flashimage` model class has been added to support `gemini-3.1-flash-image`, the model Google recommends as the migration path for the retiring Imagen 4 endpoints (`imagen-4.0-generate-001`, `-ultra`, `-fast`), and it is now the default model for the "Generate image" action.
+
+  For more information see [MDL-89431](https://tracker.moodle.org/browse/MDL-89431)
+
+#### Changed
+
+- `process_generate_image` now branches its request and response handling on the configured endpoint's method (`:predict` for Imagen vs `:generateContent` for Gemini's native image generation), instead of assuming the Imagen protocol. This is determined from the endpoint URL rather than the model name, so it also applies to any custom model an admin configures.
+
+  For more information see [MDL-89431](https://tracker.moodle.org/browse/MDL-89431)
 
 ### mod_assign
 

@@ -1,0 +1,16 @@
+# O COPY . . da imagem nao pode levar segredo, historico nem dado local.
+.git
+.github
+.env
+.devcontainer/secrets
+.devcontainer/certs
+.devcontainer/env/*.env
+!.devcontainer/env/defaults.env
+config.php
+config-local.php
+docs
+node_modules
+phpu_moodledata
+vendor
+database.db*
+graphify-out

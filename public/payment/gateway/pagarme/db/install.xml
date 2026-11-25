@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="payment/gateway/pagarme/db" VERSION="20260909" COMMENT="Tabelas do paygw_pagarme."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="paygw_pagarme" COMMENT="Uma linha por cobranca. Assinatura tem uma linha por ciclo, ligadas pelo subscriptionid.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="orderid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="or_... Vazio em cobranca de assinatura, que nasce sem order."/>
+        <FIELD NAME="chargeid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="ch_... Vazio ate a API responder."/>
+        <FIELD NAME="subscriptionid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="sub_... Vazio em venda avulsa."/>
+        <FIELD NAME="customerid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="cus_... na conta do vendedor."/>
+        <FIELD NAME="externalreference" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="Nossa referencia, enviada como code. Unica."/>
+        <FIELD NAME="component" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="paymentarea" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="itemid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="accountid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="amount" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="BRL" SEQUENCE="false"/>
+        <FIELD NAME="feepercent" TYPE="number" LENGTH="5" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Percentual resolvido na hora da compra."/>
+        <FIELD NAME="feeamount" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Comissao LIDA DE VOLTA do split. Zero quando o split nao pegou."/>
+        <FIELD NAME="feebase" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="gross" SEQUENCE="false" COMMENT="Base aplicada. Decide o tipo do split: gross vira flat, net vira percentage."/>
+        <FIELD NAME="feesource" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="site" SEQUENCE="false" COMMENT="policy|company|plan|site"/>
+        <FIELD NAME="paymentmethod" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pix" SEQUENCE="false" COMMENT="pix|boleto|credit_card"/>
+        <FIELD NAME="environment" TYPE="char" LENGTH="16" NOTNULL="true" DEFAULT="sandbox" SEQUENCE="false" COMMENT="Na linha porque uma cobranca de teste nao pode ser consultada com chave de producao."/>
+        <FIELD NAME="status" TYPE="char" LENGTH="30" NOTNULL="true" DEFAULT="pending" SEQUENCE="false" COMMENT="Status cru do Pagar.me."/>
+        <FIELD NAME="qrcode" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Copia-e-cola do Pix. Guardado para a pagina propria nao depender de nova chamada."/>
+        <FIELD NAME="checkouturl" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Pagina do boleto ou imagem do QR Code."/>
+        <FIELD NAME="paymentid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="payments.id do core, escrito so na confirmacao. E o que impede entrega dupla."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="externalreference" UNIQUE="true" FIELDS="externalreference"/>
+        <INDEX NAME="chargeid" UNIQUE="false" FIELDS="chargeid"/>
+        <INDEX NAME="subscriptionid" UNIQUE="false" FIELDS="subscriptionid"/>
+        <INDEX NAME="status-timecreated" UNIQUE="false" FIELDS="status, timecreated"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

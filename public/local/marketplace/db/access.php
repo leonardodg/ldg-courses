@@ -28,7 +28,7 @@
  *      capabilities de upload de arquivo. Ver db/install.php.
  *
  * @package    local_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -36,13 +36,20 @@ defined('MOODLE_INTERNAL') || die();
 
 $capabilities = [
 
-    // Criar a propria empresa. Self-service: todo usuario autenticado pode.
+    // Criar empresa. NAO e concedida a ninguem por padrao, e NAO e
+    // auto-atendimento: nenhum usuario autenticado ganha isto sozinho.
+    //
+    // Criar empresa cria uma CATEGORIA, que e objeto global: aparece na arvore
+    // que todos os usuarios veem. Dar isso a quem acabou de se cadastrar seria
+    // entregar a estrutura do site a desconhecidos.
+    //
+    // A parceria e fechada fora do sistema e o administrador provisiona a
+    // empresa. O site admin passa por aqui de qualquer forma.
     'local/marketplace:createcompany' => [
+        'riskbitmask' => RISK_CONFIG | RISK_SPAM,
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
-        'archetypes' => [
-            'user' => CAP_ALLOW,
-        ],
+        'archetypes' => [],
     ],
 
     // Administrar a empresa: dados cadastrais, membros, tema, dominio.
@@ -76,6 +83,38 @@ $capabilities = [
     'local/marketplace:viewreport' => [
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
+        'contextlevel' => CONTEXT_COURSECAT,
+        'archetypes' => [],
+    ],
+
+    // Gerir as vendas e assinaturas da empresa: cancelar a assinatura de um
+    // aluno, reenviar fatura, acompanhar ciclo.
+    //
+    // Separada da viewreport de proposito, e a diferenca e AGIR versus OLHAR.
+    // Ver quem assinou e leitura; cancelar a assinatura de outra pessoa mexe
+    // no dinheiro dela e no acesso dela. Quem so acompanha numero nao precisa
+    // do segundo.
+    'local/marketplace:managesales' => [
+        'riskbitmask' => RISK_PERSONAL | RISK_DATALOSS,
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_COURSECAT,
+        'archetypes' => [],
+    ],
+
+    // Estornar uma venda: devolve o dinheiro no gateway e revoga o acesso.
+    //
+    // NAO VAI PARA NENHUM PAPEL POR PADRAO, nem para o gerente da empresa.
+    // Estorno e irreversivel do lado de fora - o dinheiro sai da conta do
+    // vendedor, a comissao volta da plataforma, e nao ha "desfazer". Fica com
+    // o administrador da plataforma, que a concede por empresa quando confiar
+    // em quem vai usar.
+    //
+    // O caminho normal e o aluno procurar o responsavel da empresa, e ele
+    // decidir. Se a empresa for madura para operar isto sozinha, basta
+    // atribuir esta capability ao papel dela no contexto da categoria.
+    'local/marketplace:refundsale' => [
+        'riskbitmask' => RISK_PERSONAL | RISK_DATALOSS,
+        'captype' => 'write',
         'contextlevel' => CONTEXT_COURSECAT,
         'archetypes' => [],
     ],

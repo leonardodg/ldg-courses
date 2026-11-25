@@ -1,0 +1,370 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Paridade com a landing de captacao.
+//
+// A landing publica (local_partners) tem desenho proprio, e o visitante que vem
+// dela para o site nao deveria sentir que trocou de produto. Este arquivo
+// aproxima as duas superficies onde a diferenca aparecia mais: o BOTAO DE
+// ENTRAR da navbar e o RODAPE.
+//
+// Nao ha duplicacao de paleta: os tokens do tema (`--ldg-*`) e os da landing
+// (`--ldgp-*`) ja tem os mesmos valores de origem - #007aff de acento, #3a3b3c
+// de borda, #1e1e1e de superficie escura. O que faltava era a FORMA.
+//
+// Fica num arquivo proprio, e nao espalhado, para ser facil de achar e de
+// remover se um dia as duas superficies divergirem de proposito.
+
+// -----------------------------------------------------------------------------
+// O botao de entrar
+//
+// Deslogado, o menu de usuario do core sai como um link solto: `.usermenu .login
+// a`. Ao lado do resto do cromo isso parece um link esquecido, enquanto a
+// landing tem um botao. Aqui ele ganha a MESMA caixa.
+// -----------------------------------------------------------------------------
+.usermenu .login {
+    align-items: center;
+    display: inline-flex;
+    gap: var(--ldg-space);
+    padding-left: 0;
+
+    a {
+        align-items: center;
+        background-color: var(--ldg-btn-fill);
+        border: 1px solid transparent;
+        border-radius: var(--bs-border-radius);
+        color: #fff;
+        display: inline-flex;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        justify-content: center;
+        // 36px de alvo, igual ao botao da barra da landing. Por padding e nao
+        // por altura fixa: o texto precisa poder crescer com a fonte do
+        // usuario sem estourar a caixa.
+        min-height: 2.25rem;
+        padding: 0.375rem 0.875rem;
+        text-decoration: none;
+        transition: background-color 0.15s ease;
+        white-space: nowrap;
+
+        &:hover,
+        &:focus-visible {
+            background-color: var(--ldg-btn-fill-hover);
+            color: #fff;
+            text-decoration: none;
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--ldg-accent);
+            outline-offset: 2px;
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// O alternador de modo de cor
+//
+// UM BOTAO DE UM ICONE, igual ao da barra da landing, no lugar do interruptor
+// de sol-chave-lua. O interruptor mostrava os dois estados ao mesmo tempo e
+// gastava tres elementos numa barra onde ele disputa espaco com sino, mensagem,
+// perfil e modo de edicao.
+//
+// A navbar e ESCURA nos dois modos - decisao ja tomada, e que fica -, entao as
+// cores aqui sao fixas e nao seguem os tokens de superficie.
+// -----------------------------------------------------------------------------
+.ldg-modetoggle {
+    align-items: center;
+    align-self: center;
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: var(--bs-border-radius);
+    color: rgba(255, 255, 255, 0.72);
+    display: inline-flex;
+    height: 2.25rem;
+    justify-content: center;
+    padding: 0;
+    width: 2.25rem;
+
+    &:hover,
+    &:focus-visible {
+        background-color: rgba(255, 255, 255, 0.08);
+        color: #fff;
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--ldg-accent);
+        outline-offset: 2px;
+    }
+
+    svg {
+        height: 1.125rem;
+        width: 1.125rem;
+    }
+}
+
+// Sol no escuro (o clique leva ao claro), lua no claro. O atributo e o do
+// Bootstrap, e nao uma classe nossa: e a mesma fonte de verdade que o
+// JavaScript escreve.
+[data-bs-theme="dark"] .ldg-modetoggle .ldg-i-moon,
+[data-bs-theme="light"] .ldg-modetoggle .ldg-i-sun {
+    display: none;
+}
+
+// -----------------------------------------------------------------------------
+// O menu de idiomas
+//
+// O core ja entrega o gesto certo - um suspenso que mostra so o idioma em uso e
+// abre os outros para baixo, com aria-current no escolhido. O que faltava era a
+// MARCA DE SELECAO visivel: `aria-current` fala com leitor de tela, e nao com
+// quem enxerga. Aqui ele ganha o mesmo sinal do seletor da landing, para as duas
+// superficies nao ensinarem dois gestos diferentes.
+// -----------------------------------------------------------------------------
+.langmenu {
+    align-items: center;
+    display: flex;
+
+    // A mesma pilula da landing: moldura fina, sigla em maiuscula, seta. A
+    // navbar e escura nos dois modos, entao as cores sao fixas - o token de
+    // borda clarearia no modo claro e a pilula sumiria no fundo escuro.
+    .dropdown-toggle {
+        align-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: var(--bs-border-radius);
+        color: rgba(255, 255, 255, 0.72);
+        display: inline-flex;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        gap: 0.25rem;
+        letter-spacing: 0.04em;
+        min-height: 2.25rem;
+        padding: 0.25rem 0.5rem;
+
+        &:hover,
+        &[aria-expanded="true"] {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--ldg-accent);
+            outline-offset: 2px;
+        }
+    }
+
+    // Estreito porque o item agora e a sigla: com o nome por extenso a caixa
+    // precisava de 12rem, e ficava um retangulo vazio ao lado de "EN".
+    .dropdown-menu {
+        border: 1px solid var(--ldg-border);
+        border-radius: var(--bs-border-radius);
+        min-width: 6rem;
+        padding: 0.25rem;
+    }
+
+    // A marca de selecao NAO e escrita aqui: o core ja desenha um check em
+    // `.dropdown-item[aria-current="true"]::before`, com a fonte de icones dele.
+    // Acrescentar outra produz dois checks lado a lado - aconteceu na landing, e
+    // so a captura ampliada mostrou. Aqui fica a caixa e a cor.
+    .dropdown-item {
+        border-radius: var(--bs-border-radius);
+        display: flex;
+        gap: var(--ldg-space);
+        min-height: 2.5rem;
+        padding-left: 0.625rem;
+        white-space: normal;
+
+        &[aria-current="true"] {
+            color: var(--ldg-accent-text);
+            font-weight: 600;
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// O rodape
+//
+// Refeito no formato do rodape da landing: marca a esquerda, colunas de links a
+// direita, e uma linha final com razao social, CNPJ e credito. O de antes eram
+// tres colunas de peso igual, com o "Get the mobile app" flutuando no meio.
+// -----------------------------------------------------------------------------
+// O rodape do site fica ESCURO nos dois modos, como o da landing e como a
+// navbar. Sao superficies de moldura: a identidade nao muda de cor porque o
+// usuario prefere tela clara.
+#page-footer.ldg-footer {
+    background-color: var(--ldg-navy);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.72);
+    padding: calc(var(--ldg-gutter) * 1.5) 0 var(--ldg-gutter);
+
+    a {
+        color: rgba(255, 255, 255, 0.72);
+
+        &:hover,
+        &:focus-visible {
+            color: #fff;
+        }
+    }
+
+    h2,
+    strong {
+        color: #fff;
+    }
+}
+
+// Tres colunas, e a primeira vale por duas - a mesma proporcao do rodape da
+// landing. A divisao e em dois niveis pelo mesmo motivo de la: `display:
+// contents` no <nav> resolveria num nivel so, mas apaga o landmark de navegacao
+// em parte dos navegadores.
+.ldg-footer-top {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ldg-gutter);
+    margin-bottom: var(--ldg-gutter);
+}
+
+.ldg-footer-name {
+    align-items: center;
+    display: flex;
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: var(--ldg-space);
+}
+
+.ldg-footer-logo {
+    max-height: 2rem;
+    width: auto;
+}
+
+// A logo tem duas versoes, e aqui vale sempre a do fundo escuro: o rodape e
+// escuro mesmo com o site em claro, e a marca preta sumiria nele.
+.ldg-footer-logo--light {
+    display: none;
+}
+
+.ldg-footer-tagline {
+    font-size: 0.875rem;
+    margin: 0 0 var(--ldg-space);
+    max-width: 34rem;
+}
+
+// A faixa de depuracao: existe so com debug ligado, e nao pode disputar atencao
+// com a assinatura da empresa logo abaixo dela.
+.ldg-footer-debug {
+    font-size: 0.8125rem;
+    margin-bottom: var(--ldg-space);
+    opacity: 0.7;
+}
+
+// Os icones de contato e de rede: linha, sem a caixa de botao do Bootstrap, que
+// os deixava com peso de acao primaria.
+.ldg-footer-icons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ldg-space);
+    list-style: none;
+    margin: 0 0 var(--ldg-space);
+    padding: 0;
+
+    a {
+        align-items: center;
+        border: 1px solid var(--ldg-border);
+        border-radius: var(--bs-border-radius);
+        display: inline-flex;
+        height: 2.25rem;
+        justify-content: center;
+        text-decoration: none;
+        width: 2.25rem;
+    }
+}
+
+.ldg-footer-cols {
+    display: grid;
+    gap: var(--ldg-gutter);
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.ldg-footer-col {
+    h2 {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        margin-bottom: var(--ldg-space);
+        text-transform: uppercase;
+    }
+
+    ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    // O core devolve os proprios itens como <div>, e nao como lista. Os dois
+    // caminhos recebem o mesmo tratamento para o "Get the mobile app" parecer
+    // um link da coluna, e nao um paragrafo perdido.
+    a {
+        align-items: center;
+        display: inline-flex;
+        font-size: 0.875rem;
+        // 44px de alvo no celular; no desktop nao precisa, e a coluna fica mais
+        // curta.
+        min-height: 2.75rem;
+        text-decoration: none;
+
+        &:hover,
+        &:focus-visible {
+            text-decoration: underline;
+        }
+    }
+}
+
+// A ultima linha: a empresa a esquerda, o credito a direita, e nada no meio.
+// Eram tres itens, e o do meio - o "You are not logged in. (Log in)" - empurrava
+// os outros dois para fora do lugar.
+.ldg-footer-legal {
+    align-items: baseline;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem var(--ldg-gutter);
+    justify-content: space-between;
+    padding-top: var(--ldg-gutter);
+
+    p {
+        font-size: 0.8125rem;
+        margin: 0;
+    }
+}
+
+.ldg-footer-taxid {
+    margin-left: var(--ldg-space);
+}
+
+@media (min-width: 768px) {
+    .ldg-footer-top {
+        display: grid;
+        flex-direction: row;
+        gap: calc(var(--ldg-gutter) * 2);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ldg-footer-col a {
+        min-height: 2rem;
+    }
+}

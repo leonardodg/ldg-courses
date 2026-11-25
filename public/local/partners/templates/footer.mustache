@@ -1,0 +1,145 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_partners/footer
+
+    Rodape das paginas publicas de captacao, em DUAS variantes.
+
+    Os mockups traziam tres rodapes diferentes - um de uma linha so, um medio e
+    um de quatro colunas. Aqui viraram dois, escolhidos pelo que a pagina pede:
+
+      completa  na landing, onde o visitante esta decidindo e pode querer ler os
+                termos, ver os planos ou saber de quem e a empresa;
+      simples   no cadastro, uma linha so, porque ali a atencao pertence ao
+                formulario e um rodape grande so disputa com ele.
+
+    Os links legais NAO sao escritos aqui. Cada um so aparece quando alguem
+    configurou o destino: link legal que nao leva a lugar nenhum e pior que link
+    ausente, porque ele PROMETE um documento.
+
+    NAO escreva chave dupla de mustache dentro deste comentario: ele termina no
+    primeiro fecha-chaves, e o resto do texto vai parar na tela.
+
+    Context variables required for this template:
+    * issimple - true para a variante de uma linha
+    * sitename, landingurl, applyurl, loginurl, logouturl, isloggedin
+    * brand - a mesma marca da barra: name, logolight, logodark, haslogo
+    * sections - as mesmas ancoras da barra
+    * legal / haslegal - array de { label, url }, so os configurados
+    * legalname - razao social, ou false
+    * taxid - identificador fiscal, ou false
+    * creatorname / creatorurl - o credito de quem assina
+    * year - ano corrente
+
+    Example context (json):
+    {
+        "issimple": false,
+        "sitename": "LeoDG",
+        "isloggedin": false,
+        "brand": {"name": "LeoDG", "logolight": "/logo.svg", "logodark": "/logo-dark.svg", "haslogo": true},
+        "landingurl": "/local/partners/index.php",
+        "applyurl": "/local/partners/apply.php",
+        "loginurl": "/login/index.php",
+        "sections": [{"id": "ldgp-pricing", "label": "Plans"}],
+        "haslegal": true,
+        "legal": [{"label": "Terms of use", "url": "/terms"}],
+        "legalname": "LDG Tecnologia Ltda",
+        "taxid": "68.976.131/0001-42",
+        "creatorname": "LeoDG",
+        "creatorurl": "https://leodg.dev",
+        "year": "2026"
+    }
+}}
+<footer class="ldgp-footer{{#issimple}} ldgp-footer--simple{{/issimple}}">
+    <div class="ldgp-inner">
+
+        {{^issimple}}
+            {{! Tres colunas, e a primeira vale por duas: a marca e a frase que
+                explica o produto precisam de linha larga, e as duas colunas de
+                link sao listas curtas que ficavam com meia palavra por linha
+                quando as tres tinham o mesmo peso. }}
+            <div class="ldgp-footer-top">
+                <div class="ldgp-footer-brand">
+                    <a href="{{landingurl}}" class="ldgp-footer-name">
+                        {{#brand}}
+                            {{#haslogo}}
+                                <img src="{{logolight}}" alt="{{name}}" class="ldgp-brand-logo ldgp-brand-logo--light">
+                                <img src="{{logodark}}" alt="{{name}}" class="ldgp-brand-logo ldgp-brand-logo--dark">
+                            {{/haslogo}}
+                            {{^haslogo}}
+                                {{! Sem imagem, a marca continua existindo como palavra. }}
+                                <span class="ldgp-brand-word">{{name}}</span>
+                            {{/haslogo}}
+                        {{/brand}}
+                    </a>
+                    <p>{{#str}}footertagline, local_partners{{/str}}</p>
+                </div>
+
+                <nav class="ldgp-footer-cols" aria-label="{{#str}}footernavlabel, local_partners{{/str}}">
+                    <div class="ldgp-footer-col">
+                        <h2>{{#str}}footerplatform, local_partners{{/str}}</h2>
+                        <ul>
+                            {{#sections}}
+                                <li><a href="{{landingurl}}#{{id}}">{{label}}</a></li>
+                            {{/sections}}
+                            {{^isloggedin}}<li><a href="{{loginurl}}">{{#str}}login{{/str}}</a></li>{{/isloggedin}}
+                            {{#isloggedin}}<li><a href="{{logouturl}}">{{#str}}logout{{/str}}</a></li>{{/isloggedin}}
+                        </ul>
+                    </div>
+
+                    {{#haslegal}}
+                        <div class="ldgp-footer-col">
+                            <h2>{{#str}}footerlegal, local_partners{{/str}}</h2>
+                            <ul>
+                                {{#legal}}
+                                    <li><a href="{{url}}">{{label}}</a></li>
+                                {{/legal}}
+                            </ul>
+                        </div>
+                    {{/haslegal}}
+                </nav>
+            </div>
+        {{/issimple}}
+
+        <div class="ldgp-footer-legal">
+            <p class="ldgp-footer-company">
+                {{! A razao social e o CNPJ so aparecem quando declarados. }}
+                {{#legalname}}<strong>{{legalname}}</strong>{{/legalname}}
+                {{^legalname}}<strong>{{sitename}}</strong>{{/legalname}}
+                {{#taxid}}<span class="ldgp-footer-taxid">CNPJ {{taxid}}</span>{{/taxid}}
+            </p>
+
+            {{#issimple}}
+                {{#haslegal}}
+                    <nav class="ldgp-footer-inline" aria-label="{{#str}}footerlegal, local_partners{{/str}}">
+                        {{#legal}}<a href="{{url}}">{{label}}</a>{{/legal}}
+                    </nav>
+                {{/haslegal}}
+            {{/issimple}}
+
+            <p class="ldgp-footer-credit">
+                &copy; {{year}}
+                {{#creatorname}}
+                    &middot;
+                    <a href="{{creatorurl}}" rel="noopener noreferrer" target="_blank">
+                        {{#str}}footercredit, local_partners, {{creatorname}}{{/str}}
+                    </a>
+                {{/creatorname}}
+            </p>
+        </div>
+    </div>
+</footer>

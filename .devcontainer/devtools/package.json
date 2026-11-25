@@ -1,0 +1,9 @@
+{
+    "name": "ldg-courses-devtools",
+    "description": "Ferramentas npm de desenvolvimento. NAO e o package.json do Moodle.",
+    "private": true,
+    "license": "GPL-3.0-or-later",
+    "dependencies": {
+        "grunt-cli": "^1.5.0"
+    }
+}

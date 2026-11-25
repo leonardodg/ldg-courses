@@ -1,0 +1,199 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Tokens do design system LDG.
+//
+// Aqui vao CUSTOM PROPERTIES, e nao variaveis SCSS. As variaveis do Bootstrap
+// ($primary, $body-bg, $body-bg-dark, $border-radius) sao trabalho do
+// theme_ldg_get_pre_scss, que roda ANTES de tudo isto.
+//
+// O tema tem DOIS modos de verdade, e os componentes nao sabem em qual estao:
+// todo parcial le token, e os tokens e que mudam de valor. Regra escopada em
+// [data-bs-theme] so existe onde o efeito e mesmo exclusivo de um modo, como o
+// vidro fosco da navbar.
+
+// ---------------------------------------------------------------------------
+// Valores que NAO mudam entre os modos.
+// ---------------------------------------------------------------------------
+:root {
+    // Azul escuro da marca, amostrado do band_LDG.png. E o mesmo nos dois
+    // modos: no claro ele e o cromo (navbar, rodape, navegacao secundaria) e a
+    // cor do texto; no escuro ele so aparece em detalhe.
+    --ldg-navy: #0e192b;
+    --ldg-navy-soft: #16273f;
+
+    // Acento. O azul cheio e para SUPERFICIE (botao, barra de progresso). Para
+    // TEXTO ha um tom por modo, mais abaixo, porque #007AFF nao passa no
+    // contraste da WCAG AA nem sobre #121212 nem sobre #f4f6fa.
+    --ldg-accent: #007aff;
+    --ldg-accent-hover: #3394ff;
+    --ldg-secondary: #8e24aa;
+
+    // Escala tipografica de marketing. Usada pela landing e pelas paginas
+    // institucionais - NAO pelo corpo do Moodle, que mantem a escala do
+    // Bootstrap. Um h1 de 48px dentro de um curso competiria com o conteudo.
+    --ldg-fs-hero: 4rem;
+    --ldg-fs-h1: 3rem;
+    --ldg-fs-h2: 2.25rem;
+    --ldg-fs-h3: 1.5rem;
+    --ldg-fs-body: 1rem;
+    --ldg-fs-caption: 0.875rem;
+
+    // Ritmo de 8px, gutter de 24px, container de 1440px.
+    --ldg-space: 0.5rem;
+    --ldg-gutter: 1.5rem;
+    --ldg-container: 1440px;
+
+    // Altura da navbar. E token porque o drawer, o course index e o sticky do
+    // cabecalho de atividade dependem dela para nao se sobreporem.
+    --ldg-navbar-height: 64px;
+
+    // As familias do desenho, empacotadas em theme/ldg/fonts e declaradas em
+    // _fonts.scss. Ficam em token porque o portal usa as DUAS, e a monoespacada
+    // nao e enfeite: rotulo, duracao e contador vao nela para alinharem em
+    // coluna e porque e ela que da o sotaque da marca.
+    --ldg-font-sans: "Inter", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, sans-serif;
+    --ldg-font-mono: "JetBrains Mono", sfmono-regular, menlo, monaco, consolas, monospace;
+}
+
+// ---------------------------------------------------------------------------
+// Modo claro. Padrao do :root para o caso de o atributo nao chegar ao HTML.
+// ---------------------------------------------------------------------------
+:root,
+[data-bs-theme="light"] {
+    --ldg-bg: #f4f6fa;
+    --ldg-surface: #ffffff;
+    --ldg-surface-raised: #ffffff;
+    --ldg-border: #d5dce6;
+    --ldg-text: #0e192b;
+    --ldg-text-muted: #5a6b82;
+    --ldg-accent-text: #0062cc;
+    --ldg-field-bg: #ffffff;
+
+    // Os mesmos papeis do escuro, com os valores que passam sobre fundo claro.
+    // O verde do desenho (#30D158) sobre branco da 1,8:1 e seria ilegivel; o
+    // acento do portal (#4B8EFF) da 3,18:1 e tambem reprova. Cada modo tem o
+    // seu tom, e o papel e que e o mesmo.
+    --ldg-status-success: #1a7f37;
+
+    // #5c6a80, e nao o #6b7a90 que eu tinha escolhido de olho: aquele dava
+    // 4,36:1 sobre branco e 4,03:1 sobre o fundo, e REPROVAVA nos dois. Este da
+    // 5,49:1 e 5,07:1.
+    --ldg-text-label: #5c6a80;
+
+    // O PREENCHIMENTO do acento e separado do acento de superficie, e so por
+    // causa do contraste: branco sobre o #007AFF do tema da 4,02:1 e reprova
+    // para texto. Sobre este da 5,80:1. No escuro nao ha esse problema, e o
+    // preenchimento e o proprio acento.
+    --ldg-accent-fill: #0062cc;
+
+    // Preenchimento do BOTAO, separado do acento de texto e IGUAL NOS DOIS
+    // MODOS. Medido: branco sobre #0062cc da 5,80:1 e passa em AA; sobre o
+    // #4b8eff que o modo escuro usa como acento daria 3,18:1 e reprovaria. O
+    // mesmo par que a landing usa, para as duas superficies nao divergirem.
+    --ldg-btn-fill: #0062cc;
+    --ldg-btn-fill-hover: #007aff;
+    --ldg-on-accent: #ffffff;
+
+    // O cromo e navy nos DOIS modos. E o que da identidade ao modo claro sem
+    // transformar o conteudo em texto branco sobre azul, que seria ilegivel
+    // para leitura longa de curso.
+    --ldg-chrome-bg: var(--ldg-navy);
+    --ldg-chrome-bg-soft: var(--ldg-navy-soft);
+    --ldg-chrome-text: #ffffff;
+    --ldg-chrome-border: rgba(255, 255, 255, 0.12);
+
+    // No fundo claro a sombra volta a ter funcao, e e o azul da marca
+    // diluido - sombra cinza sobre fundo azulado suja a cor.
+    --ldg-shadow-card: 0 2px 8px rgba(14, 25, 43, 0.08);
+    --ldg-shadow-raised: 0 8px 24px rgba(14, 25, 43, 0.16);
+    --ldg-hover-overlay: rgba(14, 25, 43, 0.05);
+}
+
+// ---------------------------------------------------------------------------
+// Modo escuro. E o padrao do site, definido em theme_ldg/defaultcolormode.
+// ---------------------------------------------------------------------------
+[data-bs-theme="dark"] {
+    --ldg-bg: #121212;
+    --ldg-surface: #1e1e1e;
+
+    // #252525 e o "Carvao Ativo" do design system: item de menu ativo, cabecalho
+    // de modulo aberto, hover. Era #2a2a2a - a diferenca e pequena de proposito,
+    // porque a hierarquia do desenho e feita de degraus CURTOS, e nao de sombra.
+    --ldg-surface-raised: #252525;
+
+    --ldg-border: #3a3b3c;
+    --ldg-text: #ffffff;
+    --ldg-text-muted: #b0b3b8;
+
+    // O acento do desenho, e nao o #007AFF que serve ao modo claro. Medido:
+    // 5,90:1 sobre #121212 e 5,25:1 sobre #1E1E1E - passa em AA para texto nos
+    // dois. O #007AFF dava 4,66:1, que passa raspando, e e por isso que existia
+    // um tom separado so para texto aqui.
+    //
+    // ALCANCE: isto vale para o site inteiro no escuro - botao, barra de
+    // progresso e link da landing -, e nao so para o portal. E o que foi pedido
+    // quando o escopo passou de "o portal" para "o tema tambem".
+    --ldg-accent: #4b8eff;
+    --ldg-accent-hover: #65a1ff;
+    --ldg-accent-text: #4b8eff;
+
+    // No escuro o preenchimento e o proprio acento: #00285c por cima dele da
+    // 4,54:1 e passa. E o par que o design system define.
+    --ldg-accent-fill: #4b8eff;
+
+    // Verde de conclusao do design system. 8,25:1 sobre a superficie, medido.
+    --ldg-status-success: #30d158;
+
+    // Cinza de ROTULO, que nao e o de texto. O desenho pede #6C7075, e ele
+    // REPROVA: 3,34:1 sobre #1E1E1E, para rotulo de 12px, que e exatamente onde
+    // o mockup o usa. Este da 5,11:1.
+    --ldg-text-label: #8a8f94;
+
+    // A cor que vai SOBRE o acento - aba ativa, botao primario. Fica em token
+    // porque hex solto no _format.scss e o tipo de cor que ninguem acha depois.
+    --ldg-on-accent: #00285c;
+    // #1E1E1E, e nao #121212: o design system pede "Input Field: Background
+    // #1E1E1E" - o campo e uma superficie elevada, nao o fundo da pagina. Com o
+    // mesmo tom do fundo ele deixa de parecer um campo.
+    --ldg-field-bg: #1e1e1e;
+
+    --ldg-chrome-bg: #1e1e1e;
+    --ldg-chrome-bg-soft: #2a2a2a;
+    --ldg-chrome-text: #ffffff;
+    --ldg-chrome-border: #3a3b3c;
+
+    // No fundo quase preto a sombra quase nao aparece: quem separa as camadas
+    // e o tom da superficie, e nao a sombra.
+    --ldg-shadow-card: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --ldg-shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --ldg-hover-overlay: rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 767.98px) {
+    :root {
+        --ldg-navbar-height: 50px;
+        --ldg-gutter: 1rem;
+        --ldg-fs-hero: 2.5rem;
+        --ldg-fs-h1: 2rem;
+    }
+}
+

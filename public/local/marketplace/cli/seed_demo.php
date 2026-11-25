@@ -26,7 +26,7 @@
  *   php local/marketplace/cli/seed_demo.php --company=teste --clean
  *
  * @package    local_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -46,10 +46,11 @@ use local_marketplace\offer;
         'help' => false,
         'company' => 'teste',
         'seller' => 'vendedor1',
+        'password' => '',
         'courses' => 3,
         'clean' => false,
     ],
-    ['h' => 'help', 'c' => 'company', 's' => 'seller']
+    ['h' => 'help', 'c' => 'company', 's' => 'seller', 'p' => 'password']
 );
 
 if ($options['help']) {
@@ -59,6 +60,7 @@ Opcoes:
   -h, --help              Esta ajuda
   -c, --company=NOME      Nome curto da empresa (padrao: teste)
   -s, --seller=USUARIO    Username do vendedor (padrao: vendedor1)
+  -p, --password=SENHA    Senha do vendedor. Sem ela, uma e sorteada e exibida
       --courses=N         Quantos cursos criar (padrao: 3)
       --clean             Remove o cenario em vez de criar
 ");
@@ -67,7 +69,7 @@ Opcoes:
 
 $shortname = $options['company'];
 
-// ------------------------------------------------------------------ limpeza --
+// Limpeza.
 if ($options['clean']) {
     $existing = company::get_record(['shortname' => $shortname]);
     if (!$existing) {
@@ -105,7 +107,7 @@ if ($options['clean']) {
     exit(0);
 }
 
-// ------------------------------------------------------------------- criacao --
+// Criacao.
 if (company::get_record(['shortname' => $shortname])) {
     cli_error("Empresa '$shortname' ja existe. Use --clean para remover antes.");
 }
@@ -122,9 +124,18 @@ if (!$seller) {
         'confirmed' => 1,
         'mnethostid' => $CFG->mnet_localhost_id,
     ];
-    $new->id = user_create_user($new, false, false);
+    // A senha e obrigatoria aqui. user_create_user() sem senha produz um
+    // usuario que ninguem consegue usar - e o vendedor precisa entrar para
+    // vincular a conta Mercado Pago dele.
+    $new->password = $options['password'] !== ''
+        ? $options['password']
+        : 'Teste@' . random_int(100000, 999999);
+    $plain = $new->password;
+
+    $new->id = user_create_user($new, true, false);
     $seller = $DB->get_record('user', ['id' => $new->id]);
     cli_writeln("Vendedor criado: {$seller->username} (id {$seller->id})");
+    cli_writeln("  senha: {$plain}");
 } else {
     cli_writeln("Vendedor existente: {$seller->username} (id {$seller->id})");
 }
@@ -138,10 +149,16 @@ $company = api::create_company((object) [
     'hostname' => null,
 ], (int) $seller->id);
 
-$account = $company->get_payment_account();
+$accounts = $company->get_payment_accounts();
+$accountpairs = [];
+foreach ($accounts as $countrycode => $account) {
+    $accountpairs[] = $countrycode . ':' . $account->get('id');
+}
 cli_writeln(sprintf(
-    "Empresa criada: id %d | categoria %d | conta de pagamento %d",
-    $company->get('id'), $company->get('categoryid'), $account ? $account->get('id') : 0
+    "Empresa criada: id %d | categoria %d | contas por pais %s",
+    $company->get('id'),
+    $company->get('categoryid'),
+    $accountpairs ? implode(', ', $accountpairs) : 'nenhuma'
 ));
 
 // Cursos.
@@ -169,8 +186,15 @@ for ($i = 1; $i <= (int) $options['courses']; $i++) {
  * @param int[] $courses
  * @return offer
  */
-function seed_offer(company $company, string $name, string $type, string $mode,
-        int $days, float $price, array $courses): offer {
+function seed_offer(
+    company $company,
+    string $name,
+    string $type,
+    string $mode,
+    int $days,
+    float $price,
+    array $courses
+): offer {
     $o = new offer();
     $o->set('companyid', (int) $company->get('id'));
     $o->set('name', $name);
@@ -188,21 +212,26 @@ function seed_offer(company $company, string $name, string $type, string $mode,
 }
 
 // Uma oferta de cada formato, para exercitar todos os caminhos.
-$ofertas = [
+$offers = [
     seed_offer($company, 'Curso 1 - avulso', 'single', 'lifetime', 0, 49.90, [$courseids[0]]),
     seed_offer($company, 'Curso 1 - 30 dias', 'single', 'days', 30, 19.90, [$courseids[0]]),
     seed_offer($company, 'Combo completo', 'bundle', 'lifetime', 0, 99.90, $courseids),
     seed_offer($company, 'Gratuito', 'single', 'lifetime', 0, 0.00, [$courseids[count($courseids) - 1]]),
 ];
 // Assinatura do catalogo: nao lista cursos, segue a categoria.
-$ofertas[] = seed_offer($company, 'Assinatura mensal', 'catalog', 'recurring', 30, 29.90, []);
+$offers[] = seed_offer($company, 'Assinatura mensal', 'catalog', 'recurring', 30, 29.90, []);
 
 cli_writeln('');
 cli_heading('Ofertas publicadas');
-foreach ($ofertas as $o) {
-    cli_writeln(sprintf('  %-24s %-8s %-9s %8.2f  libera %d curso(s)',
-        $o->get('name'), $o->get('offertype'), $o->get('accessmode'),
-        $o->get('price'), count($o->get_course_ids())));
+foreach ($offers as $o) {
+    cli_writeln(sprintf(
+        '  %-24s %-8s %-9s %8.2f  libera %d curso(s)',
+        $o->get('name'),
+        $o->get('offertype'),
+        $o->get('accessmode'),
+        $o->get('price'),
+        count($o->get_course_ids())
+    ));
 }
 
 cli_writeln('');

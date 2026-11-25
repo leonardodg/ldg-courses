@@ -1,0 +1,95 @@
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Copia-e-cola do Pix, e a pergunta periodica sobre o pagamento.
+ *
+ * Perguntar aqui nao substitui o webhook: quem entrega o curso e sempre o
+ * process_notification no servidor. Isto so decide quando a tela para de
+ * esperar.
+ *
+ * ATENCAO: nao ha transpilador neste projeto. Escreva AMD de verdade.
+ *
+ * @module     paygw_pagarme/pixpoll
+ * @copyright  2026 LeoDG <callme@leodg.dev>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+define(['paygw_pagarme/repository', 'core/str'], function(Repository, Str) {
+
+    // Cinco segundos, e nao um: o Pix cai em segundos, mas cada pergunta gasta
+    // uma chamada a API do Pagar.me na conta do vendedor.
+    var INTERVAL = 5000;
+
+    // Meia hora. Passa disso, o QR Code ja expirou de qualquer jeito.
+    var MAX_TRIES = 360;
+
+    return {
+        /**
+         * Liga a pagina.
+         *
+         * @param {String} reference
+         */
+        init: function(reference) {
+            var button = document.getElementById('paygw-pagarme-copy');
+            var code = document.getElementById('paygw-pagarme-code');
+            var status = document.getElementById('paygw-pagarme-status');
+            var tries = 0;
+
+            if (button && code) {
+                button.addEventListener('click', function() {
+                    code.select();
+                    document.execCommand('copy');
+                    Str.get_string('pixcopied', 'paygw_pagarme').then(function(text) {
+                        button.textContent = text;
+                        return text;
+                    }).catch(function() {
+                        return;
+                    });
+                });
+            }
+
+            var ask = function() {
+                tries++;
+                if (tries > MAX_TRIES) {
+                    return;
+                }
+
+                Repository.chargeStatus(reference).then(function(result) {
+                    if (result.paid && result.redirecturl) {
+                        Str.get_string('pixpaid', 'paygw_pagarme').then(function(text) {
+                            if (status) {
+                                status.textContent = text;
+                            }
+                            return text;
+                        }).catch(function() {
+                            return;
+                        });
+                        window.location.href = result.redirecturl;
+                        return result;
+                    }
+
+                    window.setTimeout(ask, INTERVAL);
+                    return result;
+                }).catch(function() {
+                    // Erro de rede nao pode matar a espera: o aluno pode estar
+                    // no meio do pagamento.
+                    window.setTimeout(ask, INTERVAL);
+                });
+            };
+
+            window.setTimeout(ask, INTERVAL);
+        }
+    };
+});

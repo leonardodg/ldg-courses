@@ -1,0 +1,145 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    O chrome do portal do aluno.
+
+    Substitui navbar, drawers e breadcrumb por um cabecalho proprio. O miolo
+    continua sendo o que o formato desenha - este template nao sabe nada sobre
+    aula, modulo ou progresso, e nao deve saber.
+
+    O que ele NAO pode perder: o menu de usuario. Tirar a navbar tiraria junto
+    perfil, notificacoes, trocar idioma e SAIR, e o aluno ficaria preso no
+    curso. Por isso o usermenu do core vem no contexto.
+
+    ARMADILHA: nao escreva chaves duplas de mustache dentro deste comentario. O
+    bloco termina no PRIMEIRO fecha-chaves duplo, e o que vier depois vira tag
+    de verdade, sem fechamento. Ja quebrou o drawers.mustache deste tema.
+
+    @template theme_ldg/ldgportal
+    @author    LeoDG <callme@leodg.dev>
+    @copyright 2026 LeoDG <callme@leodg.dev>
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+    Context variables required for this template:
+    * sitename - Nome curto do site, usado como marca
+    * output - O renderer do core
+    * bodyattributes - Atributos da tag body
+    * usermenu - Menu de usuario do core, ja renderizado
+    * langmenu - Menu de idiomas do core, ja renderizado
+    * coursename - Nome do curso, para o cabecalho
+    * exiturl - Para onde vai o botao de fechar
+    * exitlabel - Texto do botao de fechar
+
+    Example context (json):
+    {
+        "sitename": "LeoDG",
+        "output": {
+            "doctype": "<!DOCTYPE html>",
+            "page_title": "Curso",
+            "favicon": "favicon.ico",
+            "main_content": "<h1>O curso</h1>"
+        },
+        "bodyattributes": "class=\"ldg-portal\"",
+        "usermenu": "",
+        "langmenu": "",
+        "coursename": "Curso de demonstracao",
+        "exiturl": "/my/",
+        "exitlabel": "Fechar aula"
+    }
+}}
+{{> theme_boost/head }}
+
+<body {{{ bodyattributes }}}>
+<div class="toast-wrapper mx-auto py-0 fixed-top" role="status" aria-live="polite"></div>
+
+{{{ output.standard_top_of_body_html }}}
+
+<div id="page" data-region="mainpage" class="ldg-portal__wrapper">
+
+    <header class="ldg-portal__header">
+        <a class="ldg-portal__brand" href="{{{ exiturl }}}">
+            <span class="ldg-portal__brand-name">{{ sitename }}</span>
+        </a>
+
+        <div class="ldg-portal__course">{{ coursename }}</div>
+
+        <div class="ldg-portal__actions">
+            {{!
+                O interruptor de edicao mora na navbar, e a navbar nao existe
+                aqui - sem esta linha o professor entra no portal e NAO TEM
+                COMO ligar a edicao, ficando preso na visao de aluno. Foi o
+                behat que mostrou, ao nao achar o campo "Edit mode".
+
+                O edit_switch do core ja se protege sozinho: para quem nao pode
+                editar, ele devolve vazio.
+            }}
+            {{{ output.edit_switch }}}
+
+            {{!
+                usermenu e langmenu sao CONTEXTOS, nao HTML pronto: quem
+                desenha e o parcial do core, entrando na secao. Interpolar
+                direto derruba a pagina com "Array to string conversion" no
+                mustache compilado - erro que aponta para o cache em
+                moodledata, e nao para este arquivo.
+            }}
+            {{#langmenu}}
+                {{> theme_boost/language_menu }}
+            {{/langmenu}}
+
+            <div class="d-flex align-items-stretch usermenu-container" data-region="usermenu">
+                {{#usermenu}}
+                    {{> core/user_menu }}
+                {{/usermenu}}
+            </div>
+
+            <a class="ldg-portal__exit" href="{{{ exiturl }}}">{{ exitlabel }}</a>
+        </div>
+    </header>
+
+    {{!
+        A navegacao do curso, para quem pode gerenciar.
+
+        Quem decide o que entra aqui e o CORE, pelas permissoes - para o aluno a
+        lista vem vazia e nada e desenhado. Sem isto o professor precisava LIGAR
+        A EDICAO para chegar nas notas, porque a navegacao do curso mora na
+        navbar, e o portal nao tem navbar.
+    }}
+    {{#secondarymoremenu}}
+        <div class="ldg-portal__coursenav secondary-navigation d-print-none">
+            {{> core/moremenu}}
+        </div>
+    {{/secondarymoremenu}}
+
+    <div id="region-main-box">
+        <section id="region-main" aria-label="{{#str}}content{{/str}}">
+            {{!
+                O marcador de conteudo principal e OBRIGATORIO: o
+                core_renderer::header() quebra com "page layout file does not
+                contain the main content placeholder" sem ele, porque e aqui
+                que ele corta a pagina entre header() e footer().
+            }}
+            {{{ output.main_content }}}
+        </section>
+    </div>
+
+    {{{ output.standard_after_main_region_html }}}
+</div>
+
+{{{ output.standard_end_of_body_html }}}
+
+</body>
+</html>

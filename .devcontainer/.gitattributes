@@ -1,0 +1,33 @@
+# Fim de linha dos arquivos que entram na IMAGEM. Nao e preferencia de estilo:
+# script com CRLF nao executa no Linux.
+#
+# O problema real: core.autocrlf=true no git global (ajuste de Windows) faz o
+# checkout escrever CRLF no working tree, mesmo com LF gravado no repositorio.
+# O bin/moodle-entrypoint e o ENTRYPOINT da imagem; com CRLF o shebang vira
+# "#!/bin/bash\r", o kernel procura um interpretador com \r no nome e o
+# container morre no exec, sem subir.
+#
+# Isso passou despercebido porque a imagem em uso vem do CI (Linux, LF) por
+# docker compose pull. So um "docker build" na maquina local exporia a falha -
+# exatamente o que o "moodev build" faz.
+#
+# O atributo eol=lf tem precedencia sobre core.autocrlf, entao vale para
+# qualquer clone, em qualquer maquina, sem depender de configuracao do usuario.
+#
+# Fica em .devcontainer/ e nao na raiz de proposito: o .gitattributes da raiz e
+# do Moodle upstream, e este projeto faz merge de upstream/MOODLE_502_STABLE com
+# frequencia. Editar aquele arquivo criaria conflito a cada atualizacao.
+
+bin/*           text eol=lf
+*.sh            text eol=lf
+nginx/*.sh      text eol=lf
+
+# Entram em container ou sao lidos por ferramenta que nao tolera CR.
+*.yml           text eol=lf
+*.env           text eol=lf
+*.env.example   text eol=lf
+*.ini           text eol=lf
+*.conf          text eol=lf
+*.template      text eol=lf
+Dockerfile      text eol=lf
+*.Dockerfile    text eol=lf

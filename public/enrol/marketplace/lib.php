@@ -18,11 +18,9 @@
  * Matricula guiada pelos direitos de acesso.
  *
  * @package    enrol_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
 
 use local_marketplace\entitlement;
 
@@ -37,7 +35,6 @@ use local_marketplace\entitlement;
  * primeiro aluno adquire direito a ele.
  */
 class enrol_marketplace_plugin extends enrol_plugin {
-
     /**
      * O admin nao adiciona instancia manualmente: quem cria e o sincronizador.
      *
@@ -102,11 +99,30 @@ class enrol_marketplace_plugin extends enrol_plugin {
             return $instance;
         }
 
+        // A tabela enrol do core nao tem indice unico em (courseid, enrol),
+        // so um indice nao-unico em 'enrol' sozinho - entao duas compras
+        // quase simultaneas de um curso NUNCA vendido antes liam ambas "nao
+        // existe" e cada uma criava a propria instancia, deixando o curso com
+        // duas instancias de matricula 'marketplace' (allow_manage() bloqueia
+        // remover a duplicata pela UI depois). Trava a linha do CURSO (que ja
+        // existe) ate o commit, serializando as duas.
+        $transaction = $DB->start_delegated_transaction();
+        $DB->get_record_sql('SELECT id FROM {course} WHERE id = ? FOR UPDATE', [$courseid]);
+
+        // Reconfere DEPOIS de travar: se a outra compra ja criou a instancia
+        // enquanto esta esperava a trava, usa a dela em vez de criar uma segunda.
+        $instance = $DB->get_record('enrol', ['courseid' => $courseid, 'enrol' => 'marketplace']);
+        if ($instance) {
+            $transaction->allow_commit();
+            return $instance;
+        }
+
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
         $instanceid = $this->add_instance($course, [
             'status' => ENROL_INSTANCE_ENABLED,
             'roleid' => $this->get_config('roleid', 0) ?: $this->get_student_roleid(),
         ]);
+        $transaction->allow_commit();
 
         return $DB->get_record('enrol', ['id' => $instanceid], '*', MUST_EXIST);
     }
@@ -141,15 +157,47 @@ class enrol_marketplace_plugin extends enrol_plugin {
     public function sync_user(int $userid): array {
         global $DB;
 
+        // Trava a linha do USUARIO ate o commit no fim da funcao: esta funcao
+        // e chamada tanto pelo cron horario quanto por todo webhook de
+        // pagamento, sem mutex entre eles. Cada escrita por curso e
+        // individualmente idempotente hoje, mas sem isolamento nenhum uma
+        // mudanca futura que tornasse a logica por curso multi-etapa herdaria
+        // essa corrida em silencio.
+        $transaction = $DB->start_delegated_transaction();
+        $DB->get_record_sql('SELECT id FROM {user} WHERE id = ? FOR UPDATE', [$userid]);
+
+        // Curso => ate quando o acesso vale. Zero e vitalicio.
+        //
+        // O prazo vai para a MATRICULA, e nao so para o direito. Sem isso o
+        // acesso dependia inteiramente desta tarefa rodar: entre o vencimento
+        // e a proxima passada o aluno continuava entrando, e com o cron parado
+        // continuava indefinidamente - falha silenciosa, porque o sintoma e
+        // aluno acessando de graca, e disso ninguem reclama.
+        //
+        // Nao vira segunda fonte da verdade: e PROJECAO do direito, escrita
+        // sempre por aqui. O sync trabalha por diferenca, entao qualquer
+        // divergencia se conserta sozinha na passada seguinte.
         $shouldhave = [];
         foreach (entitlement::get_active_for_user($userid) as $ent) {
             $offer = new \local_marketplace\offer($ent->get('offerid'));
+            $end = (int) $ent->get('timeend');
             foreach ($offer->get_course_ids() as $courseid) {
-                $shouldhave[$courseid] = true;
+                if (!array_key_exists($courseid, $shouldhave)) {
+                    $shouldhave[$courseid] = $end;
+                    continue;
+                }
+                // Dois direitos podem liberar o mesmo curso - um combo e uma
+                // assinatura, por exemplo. Vale o mais generoso, e vitalicio
+                // ganha de qualquer data.
+                if ($shouldhave[$courseid] === 0 || $end === 0) {
+                    $shouldhave[$courseid] = 0;
+                } else {
+                    $shouldhave[$courseid] = max($shouldhave[$courseid], $end);
+                }
             }
         }
 
-        $sql = "SELECT e.courseid, ue.status, e.id AS enrolid
+        $sql = "SELECT e.courseid, ue.status, ue.timeend, e.id AS enrolid
                   FROM {user_enrolments} ue
                   JOIN {enrol} e ON e.id = ue.enrolid
                  WHERE ue.userid = :userid AND e.enrol = 'marketplace'";
@@ -157,14 +205,28 @@ class enrol_marketplace_plugin extends enrol_plugin {
 
         $enrolled = $suspended = $reactivated = 0;
 
-        foreach (array_keys($shouldhave) as $courseid) {
+        foreach ($shouldhave as $courseid => $end) {
             if (!isset($current[$courseid])) {
                 $instance = $this->get_or_create_instance($courseid);
-                $this->enrol_user($instance, $userid, null, 0, 0, ENROL_USER_ACTIVE);
+                $this->enrol_user($instance, $userid, null, 0, $end, ENROL_USER_ACTIVE);
                 $enrolled++;
-            } else if ((int) $current[$courseid]->status !== ENROL_USER_ACTIVE) {
-                $instance = $DB->get_record('enrol', ['id' => $current[$courseid]->enrolid], '*', MUST_EXIST);
-                $this->update_user_enrol($instance, $userid, ENROL_USER_ACTIVE);
+                continue;
+            }
+
+            $suspensa = (int) $current[$courseid]->status !== ENROL_USER_ACTIVE;
+            $prazomudou = (int) $current[$courseid]->timeend !== $end;
+
+            if (!$suspensa && !$prazomudou) {
+                continue;
+            }
+
+            $instance = $DB->get_record('enrol', ['id' => $current[$courseid]->enrolid], '*', MUST_EXIST);
+            $this->update_user_enrol($instance, $userid, ENROL_USER_ACTIVE, null, $end);
+
+            // So conta reativacao quando havia suspensao. Renovar estende o
+            // prazo de uma matricula que ja estava ativa, e isso nao e
+            // reativar - misturar os dois faria o log do cron mentir.
+            if ($suspensa) {
                 $reactivated++;
             }
         }
@@ -176,6 +238,8 @@ class enrol_marketplace_plugin extends enrol_plugin {
                 $suspended++;
             }
         }
+
+        $transaction->allow_commit();
 
         return [$enrolled, $suspended, $reactivated];
     }

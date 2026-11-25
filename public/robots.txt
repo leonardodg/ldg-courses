@@ -1,0 +1,52 @@
+# robots.txt de courses.leodg.dev
+#
+# O Moodle nao traz este arquivo. Ele existe aqui por dois motivos: apontar o
+# sitemap, e manter o rastreador longe do que so devolve tela de login ou
+# conteudo sem valor de busca.
+#
+# NAO E CONTROLE DE ACESSO. Um caminho listado aqui continua acessivel a quem
+# souber o endereco - robots.txt e um pedido, e ele proprio e publico. O que
+# protege dado e a permissao do Moodle.
+#
+# Tambem NAO E o jeito de tirar uma pagina do indice: uma pagina bloqueada aqui
+# pode continuar aparecendo no resultado, sem descricao, porque o buscador nao
+# consegue ler o noindex dela. Para desindexar, use o meta robots - no Moodle,
+# a configuracao "Permitir indexacao por buscadores".
+
+User-agent: *
+
+# Areas do LMS que exigem sessao. Anunciar endereco que devolve login gasta o
+# orcamento de rastreamento com porta fechada.
+Disallow: /login/
+Disallow: /admin/
+Disallow: /user/
+Disallow: /message/
+Disallow: /calendar/
+Disallow: /grade/
+Disallow: /mod/
+Disallow: /my/
+Disallow: /report/
+Disallow: /backup/
+Disallow: /question/
+Disallow: /enrol/
+Disallow: /badges/
+
+# Endpoints de servico: nao sao paginas, e alguns respondem a qualquer um.
+Disallow: /webservice/
+Disallow: /lib/ajax/
+Disallow: /theme/styles.php
+Disallow: /theme/javascript.php
+Disallow: /lib/requirejs.php
+
+# Parametros que geram infinitas variacoes da MESMA pagina. O `lang` fica de
+# fora desta lista de proposito: as versoes por idioma sao conteudo legitimo, e
+# estao declaradas em hreflang.
+Disallow: /*?redirect=
+Disallow: /*&redirect=
+Disallow: /*?sesskey=
+Disallow: /*&sesskey=
+
+Allow: /local/partners/
+Allow: /pluginfile.php
+
+Sitemap: https://courses.leodg.dev/sitemap.xml

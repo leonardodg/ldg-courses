@@ -1,0 +1,83 @@
+Searched the web, created a file, read a file
+
+Montei o fluxo geral no diagrama acima e detalhei tudo no documento: como estruturar multi-tenant (empresa/tema/link por professor), como fechar o split de pagamento no Mercado Pago, e onde ainda faltam decisões de negócio.
+
+Alguns pontos técnicos que fundamentam o plano, direto da documentação do Mercado Pago: cada vendedor precisa autorizar o marketplace a processar pagamentos em nome dele através de um fluxo OAuth, que gera um access_token identificando o recebedor em cada transação. A divisão pode ser percentual, valor fixo por transação, ou um modelo híbrido combinando os dois, e no checkout a taxa do próprio Mercado Pago é descontada primeiro, e só depois é aplicada a comissão do marketplace sobre o valor restante. Um detalhe operacional importante: esse access_token tem validade de cerca de seis meses e precisa ser renovado antes do vencimento, ou o vínculo expira — por isso o plano já prevê um job de renovação. 
+GitHub + 3
+
+Para o multi-tenant (empresa + tema + link), pesquisei as opções reais em Moodle: o IOMAD é gratuito e já modela "empresa" quase do jeito que você descreveu, mas por padrão o Moodle assume uma única URL, então para ter branding customizado por link antes do login é preciso configurar URLs específicas por tenant — não é automático. O Moodle Workplace já entrega isso pronto, mas é uma edição paga, diferente da versão gratuita do Moodle LMS. Recomendei começar com IOMAD e tratar o subdomínio customizado como uma etapa técnica separada. 
+GitHub
+GitHub
+
+Uma coisa importante: eu não tenho acesso ao seu computador — trabalho num ambiente isolado, então não consigo abrir /home/leodg/ivana-academy para ver o que já está implementado (plugins, devcontainer etc). Para eu aproveitar isso de verdade no plano, você pode:
+
+subir aqui os arquivos-chave (composer.json, lista de plugins, config do devcontainer, versão do Moodle); ou
+continuar a implementação prática com o Claude Code, que roda localmente e tem acesso direto aos seus arquivos — eu sigo ajudando no planejamento e nas decisões de arquitetura por aqui.
+Recommended apps and extensions
+Browse all
+Claude Code for desktop
+Continue direto no seu worktree do ivana-academy — escreve e testa o plugin local_mpsplit e a config do IOMAD nos arquivos reais.
+
+Assim que você mandar mais contexto do ivana-academy (ou migrar pro Claude Code), eu ajusto o plano e já podemos começar a esqueletar o plugin local_mpsplit de verdade.
+
+Plano plataforma cursos
+Document · MD 
+
+Preciso de mais detalhes sobre as versões IOMAD e multi-tenant para decidir qual é a melhor opção que vai me atender. 
+
+Minha plataforma vai ficar em um servidor vps na Oracle em docker onde vou ter um Proxy reverso que gerencia dos domínio. Preciso saber como funciona as tabelas, qual a diferença entre as duas versões, quais prós e contras. E como se aplica para minha ideia.
+
+Searched the web, used visualize integration
+Resposta direta primeiro
+
+Para o seu cenário (VPS Oracle único, Docker, reverse proxy seu cuidando dos domínios), a resposta é IOMAD. Não é só "porque é grátis" — a arquitetura de container único do IOMAD bate exatamente com o jeito que reverse proxy + Docker funcionam. Deixa eu detalhar o porquê.
+
+(A propósito: o widget de diagrama deu erro aqui do meu lado agora — sigo só em texto/tabela mesmo, sem perder detalhe.)
+
+Como cada solução guarda os dados
+	Modelo de dados
+IOMAD	É uma "distro" do Moodle (core levemente alterado + plugins), não um plugin puro. Adiciona tabelas próprias — mdl_company, mdl_company_users, mdl_department, mdl_companytheme, mdl_iomad_courses, entre outras — que referenciam os IDs padrão do Moodle (userid, courseid). O isolamento entre empresas é aplicado no código do IOMAD (as queries filtram por companyid), não é uma trava estrutural do banco.
+Moodle Workplace (tool_tenant)	A tenancy é nativa do core: o campo tenantid é adicionado diretamente nas tabelas centrais (usuários, categorias de curso, etc). O isolamento é imposto num nível mais baixo — qualquer ferramenta "tenant-aware" da Workplace já respeita isso automaticamente.
+MuTMS (tool_mutenancy)	Também exige um patch no core (não é plugin puro), com uma abordagem parecida com a da Workplace, mas os próprios mantenedores dizem que não vão implementar domínio próprio por tenant — Moodle "não foi desenhado pra isso", segundo eles mesmos. Isso já elimina essa opção pro seu caso.
+Prós e contras
+	IOMAD	Moodle Workplace	MuTMS
+Custo	Grátis	Licença paga (Moodle HQ)	Grátis
+Instalação	Distro própria (core + plugins)	Core Moodle + módulo comercial	Patch de core + plugin
+Isolamento de dados	Por código/query (companyid)	Nativo (tenantid no core)	Nativo, mas rotulado experimental
+Domínio próprio por empresa	Sim — mas exige configurar "per-tenant URLs" manualmente, não é o padrão de fábrica	Sim, nativo, pronto	Não — descartado pelos mantenedores
+Tema por empresa	Sim, nativo (fora dos 3 temas prontos do IOMAD, exige ajuste manual de CSS/logo)	Sim, nativo, branding completo	Sim
+Ecommerce/pagamento nativo	Sim — bloco próprio com conta de pagamento por tenant, funciona com qualquer gateway suportado pelo Moodle	Focado em treinamento corporativo, não em venda	Não
+Maturidade	+10 anos, comunidade ativa	Produto oficial, mas pago	"Experimental" na diretoria de plugins
+Risco no upgrade do core	Médio — depende da distro IOMAD acompanhar o Moodle oficial	Baixo — mantido pela própria Moodle HQ	Alto — patch manual a cada versão
+Como isso cai no seu Docker + reverse proxy
+
+O ponto central, independente de IOMAD ou Workplace: é um único container Moodle rodando — não um container por professor. Seu reverse proxy não precisa saber nada sobre "empresa", ele só faz duas coisas:
+
+Resolve DNS wildcard (*.suaplataforma.com) + os domínios próprios dos professores (meuscursos.joao.com), todos apontando pro IP do seu VPS.
+Termina TLS e encaminha a requisição pro container Moodle, preservando o header Host.
+
+Dentro do Moodle, o IOMAD lê esse Host e decide qual empresa/tema mostrar — isso é configurado por empresa na tela de edição da empresa (campo de URL customizada), não no proxy. Resultado: 1 VPS, 1 container Moodle, 1 banco, N domínios roteados só pelo cabeçalho Host. É leve, barato, e é literalmente o que proxies como Traefik/nginx-proxy/Nginx Proxy Manager já fazem bem (mapear host → upstream), sem duplicar a aplicação.
+
+Compare com a alternativa "um Moodle inteiro por professor": mais isolado, mas cada professor vira container + banco próprio, multiplicando custo de VPS e manutenção. Nenhuma das três opções trabalha assim — todas assumem uma instalação compartilhada.
+
+Onde entra o Mercado Pago nisso
+
+O bloco de ecommerce do IOMAD já lida com conta de pagamento por tenant e "qualquer gateway suportado pelo Moodle" — vale investigar se dá pra plugar um gateway Mercado Pago ali em vez de escrever o local_mpsplit 100% do zero. Mas a lógica de split (marketplace_fee/application_fee, OAuth por vendedor) é uma feature específica do Mercado Pago que dificilmente um plugin genérico de gateway Moodle já resolve pronta — isso continua sendo trabalho customizado, independente de você escolher IOMAD ou Workplace.
+
+Expandir a seção 3 com comparação técnica detalhada entre IOMAD, Moodle Workplace e MuTMS, incluindo tabelas de dados e mapeamento para VPS/Docker/reverse proxy
+
+Documento atualizado com essa comparação. Quando você definir a stack do reverse proxy (Traefik, Nginx Proxy Manager, nginx puro), posso detalhar a config exata de roteamento por Host + onde fica o campo de URL customizada dentro do IOMAD.
+
+Searched the web
+
+Boa pergunta — isso esclarece uma imprecisão que deixei passar na resposta anterior. Depende de qual caminho você seguir:
+
+Se você clonar o repo completo iomad/iomad (o que recomendei) — já vem tudo pronto. Esse repo é a distro inteira: blocks/iomad_company_admin, blocks/iomad_commerce, local/iomad, auth/iomadoidc etc. já estão dentro da árvore de pastas, no lugar certo. Você clona, configura o config.php, roda o instalador do Moodle e os blocos já aparecem disponíveis pra ativar — não precisa buscar nada separado.
+
+Os repositórios separados que te mostrei (iomad/moodle-block_iomad_company_admin, iomad/moodle-block_iomad_commerce, etc.) existem pra um segundo caminho: quem já tem um Moodle vanilla rodando e quer adicionar IOMAD nele sem trocar de fork. Nesse caso sim, você:
+
+Aplica o patch de core de iomad/moodle-core_patch no seu Moodle existente;
+Baixa cada plugin individualmente e coloca na pasta certa (blocks/iomad_company_admin, blocks/iomad_commerce, local/iomad...);
+Roda a atualização do Moodle pra instalar tudo.
+
+Pro seu caso — começando do zero, com worktree novo — não faz sentido usar esse segundo caminho. Clone o iomad/iomad direto e pronto, os blocos já estão lá.

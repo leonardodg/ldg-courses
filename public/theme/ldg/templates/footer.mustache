@@ -1,0 +1,240 @@
+{{!
+This file is part of Moodle - http://moodle.org/
+
+Moodle is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Moodle is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    Rodape do site.
+
+    @template theme_ldg/footer
+    @author    LeoDG <callme@leodg.dev>
+    @copyright 2026 LeoDG <callme@leodg.dev>
+    @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+{{!
+    @template theme_ldg/footer
+
+    Page footer.
+
+    Rodape do tema.
+
+    Nasceu como override sobre o rodape de um tema de terceiro e hoje e proprio
+    - o tema nao depende mais dele.
+
+    Em 10/09/2026 ele foi REFEITO no formato do rodape da landing de captacao:
+    marca a esquerda, colunas de links a direita, e uma linha final com a razao
+    social, o CNPJ e o credito. Os links legais, a razao social e o credito vem
+    do local_partners por class_exists - a dependencia continua sendo daqui para
+    la, e continua opcional.
+
+    O "Get the mobile app", que vem do output.standard_footer_html do core,
+    deixou de flutuar solto no meio do rodape e virou um link da coluna de
+    suporte, como os outros.
+
+    Tres mudancas em relacao ao original de terceiro, que continuam valendo:
+
+    1. Saiu o bloco .copyright - a faixa laranja "This theme was proudly
+       developed by conecti.me". E marca de terceiro no rodape de uma
+       plataforma comercial: o visitante le como se fosse nossa.
+    2. Saiu o conteudo da coluna .column-right - os selos "Get it on Google
+       Play" e "Download on the App Store". So apareciam com o webservice movel
+       ligado, e mandam o usuario para um app que nao e o nosso produto.
+    3. A coluna direita passou a ser o credito da LDG, com a logo da marca.
+       Mesmo desenho adotado no ivana.academy, mas aqui por override em vez de
+       fork: la o tema de terceiro foi editado no lugar.
+
+    MANUTENCAO: este arquivo e uma copia do footer do Moove. Ao atualizar o
+    Moodle, comparar com o footer do Boost e trazer o que mudou - senao o
+    rodape congela na versao antiga sem ninguem perceber.
+
+    Example context (json):
+    {
+        "output": {
+            "page_doc_link": "Help and documentation",
+            "supportemail": "<a href=\"#\">Contact site support</a>",
+            "has_popover_links": true,
+            "services_support": "Services and support",
+            "login_info": "You are logged in as cute kitten",
+            "moodle_release": "90210"
+        }
+    }
+}}
+
+<footer id="page-footer" class="footer-popover ldg-footer">
+    <div class="ldg-container-fluid ldg-footer-inner">
+
+        <div class="ldg-footer-top">
+            <div class="ldg-footer-brand">
+                {{! A marca e a MESMA da landing: a logo da casa, e nao o nome
+                    curto do site em negrito. Sem imagem configurada, ou sem o
+                    local_partners instalado, ela volta a ser a palavra. }}
+                <p class="ldg-footer-name">
+                    {{#brand}}
+                        {{#haslogo}}
+                            <img src="{{logolight}}" alt="{{name}}" class="ldg-footer-logo ldg-footer-logo--light">
+                            <img src="{{logodark}}" alt="{{name}}" class="ldg-footer-logo ldg-footer-logo--dark">
+                        {{/haslogo}}
+                        {{^haslogo}}{{name}}{{/haslogo}}
+                    {{/brand}}
+                    {{^brand}}{{sitename}}{{/brand}}
+                </p>
+
+                {{#tagline}}<p class="ldg-footer-tagline">{{tagline}}</p>{{/tagline}}
+
+                {{#hasfootercontact}}
+                    <ul class="ldg-footer-icons" aria-label="{{#str}}contactus, theme_ldg{{/str}}">
+                        {{#website}}
+                            <li><a href="{{{website}}}" target="_blank" rel="noopener" class="website"
+                                   aria-label="{{#str}}contactus, theme_ldg{{/str}}"><i class="fa fa-globe"></i></a></li>
+                        {{/website}}
+                        {{#mobile}}
+                            <li><a href="tel:{{{mobile}}}" class="mobile"><i class="fa fa-phone"></i></a></li>
+                        {{/mobile}}
+                        {{#mail}}
+                            <li><a href="mailto:{{{mail}}}" class="mail"><i class="fa fa-envelope"></i></a></li>
+                        {{/mail}}
+                    </ul>
+                {{/hasfootercontact}}
+
+                {{#hasfootersocial}}
+                    <ul class="ldg-footer-icons" aria-label="{{#str}}followus, theme_ldg{{/str}}">
+                        {{#tiktok}}<li><a href="{{{tiktok}}}" target="_blank" rel="noopener" class="tiktok"><i class="fab fa-tiktok"></i></a></li>{{/tiktok}}
+                        {{#facebook}}<li><a href="{{{facebook}}}" target="_blank" rel="noopener" class="facebook"><i class="fab fa-facebook"></i></a></li>{{/facebook}}
+                        {{#instagram}}<li><a href="{{{instagram}}}" target="_blank" rel="noopener" class="instagram"><i class="fab fa-instagram"></i></a></li>{{/instagram}}
+                        {{#linkedin}}<li><a href="{{{linkedin}}}" target="_blank" rel="noopener" class="linkedin"><i class="fab fa-linkedin"></i></a></li>{{/linkedin}}
+                        {{#youtube}}<li><a href="{{{youtube}}}" target="_blank" rel="noopener" class="youtube"><i class="fab fa-youtube"></i></a></li>{{/youtube}}
+                        {{#whatsapp}}<li><a href="{{{whatsapp}}}" target="_blank" rel="noopener" class="whatsapp"><i class="fab fa-whatsapp"></i></a></li>{{/whatsapp}}
+                        {{#telegram}}<li><a href="{{{telegram}}}" target="_blank" rel="noopener" class="telegram"><i class="fab fa-telegram"></i></a></li>{{/telegram}}
+                    </ul>
+                {{/hasfootersocial}}
+            </div>
+
+            {{! DUAS colunas de link, e nao tres.
+
+                Com a marca ocupando metade, tres colunas de link na outra
+                metade davam meia palavra por linha. "Ajuda e suporte" deixou de
+                ser coluna propria: o e-mail de suporte, o "Data retention
+                summary" e o "Get the mobile app" que o core acrescenta sao links
+                de plataforma como os outros, e passaram para a coluna
+                Plataforma. }}
+            <nav class="ldg-footer-cols" aria-label="{{#str}}footerlinks, theme_ldg{{/str}}">
+                <div class="ldg-footer-col ldg-footer-col--platform">
+                    <h2>{{#str}}footerplatform, theme_ldg{{/str}}</h2>
+                    <ul>
+                        <li><a href="{{config.wwwroot}}">{{#str}}home, core{{/str}}</a></li>
+                        {{#haspartnersfooter}}
+                            {{#landingenabled}}
+                                <li><a href="{{landingurl}}">{{#str}}footerpartner, theme_ldg{{/str}}</a></li>
+                            {{/landingenabled}}
+                        {{/haspartnersfooter}}
+                    </ul>
+
+                    {{# output.supportemail }}
+                        <div class="supportemail">{{{ output.supportemail }}}</div>
+                    {{/ output.supportemail }}
+                    {{{ output.standard_footer_html }}}
+                    <div class="tool_usertours-resettourcontainer"></div>
+                </div>
+
+                {{#haspartnersfooter}}
+                    {{#haslegal}}
+                        <div class="ldg-footer-col">
+                            <h2>{{#str}}footerlegal, theme_ldg{{/str}}</h2>
+                            <ul>
+                                {{#legal}}<li><a href="{{url}}">{{label}}</a></li>{{/legal}}
+                            </ul>
+                        </div>
+                    {{/haslegal}}
+                {{/haspartnersfooter}}
+            </nav>
+        </div>
+
+        {{! O bloco de depuracao vem ANTES da linha legal, e nao depois.
+
+            Ele so existe para quem tem debug ligado - administrador e
+            desenvolvedor -, e traz "Purge all caches" e a contagem de instancias
+            reativas. Enquanto ele fechava o rodape, a razao social e o CNPJ, que
+            sao a assinatura da empresa, ficavam no meio da pagina com uma faixa
+            de ferramenta embaixo. }}
+        <div class="footer-content-debugging ldg-footer-debug">
+            {{{ output.debug_footer_html }}}
+        </div>
+
+        {{! Duas colunas, e so duas: a empresa a esquerda, o credito a direita.
+            O terceiro item, o "You are not logged in. (Log in)" do
+            output.login_info, saiu - ele empurrava as outras duas para fora do
+            lugar e repetia, em texto miudo no rodape, o que o botao de entrar
+            no alto da pagina ja diz. }}
+        <div class="ldg-footer-legal">
+            <p class="ldg-footer-company">
+                {{#haspartnersfooter}}
+                    {{#legalname}}<strong>{{legalname}}</strong>{{/legalname}}
+                    {{^legalname}}<strong>{{sitename}}</strong>{{/legalname}}
+                    {{#taxid}}<span class="ldg-footer-taxid">CNPJ {{taxid}}</span>{{/taxid}}
+                {{/haspartnersfooter}}
+                {{^haspartnersfooter}}<strong>{{sitename}}</strong>{{/haspartnersfooter}}
+            </p>
+
+            <p class="ldg-footer-credit">
+                &copy; {{year}}
+                {{#haspartnersfooter}}
+                    {{#creatorname}}
+                        &middot; <a href="{{creatorurl}}" target="_blank" rel="noopener noreferrer">{{#str}}footercredit, theme_ldg, {{creatorname}}{{/str}}</a>
+                    {{/creatorname}}
+                {{/haspartnersfooter}}
+            </p>
+        </div>
+    </div>
+
+    <div data-region="footer-container-popover">
+        {{#output.has_communication_links}}
+            <button onclick="window.open('{{output.communication_url}}', '_blank', 'noreferrer')" class="btn btn-icon rounded-circle bg-primary text-white btn-footer-communication" aria-label="{{#str}}communicationroomlink, course{{/str}}">
+                {{#pix}}t/messages-o, core{{/pix}}
+            </button>
+        {{/output.has_communication_links}}
+        <button class="btn btn-icon rounded-circle bg-secondary btn-footer-popover" data-action="footer-popover" aria-label="{{#str}}showfooter, theme_boost{{/str}}">
+            {{#pix}}e/question, core{{/pix}}
+        </button>
+    </div>
+    <div class="footer-content-popover container" data-region="footer-content-popover">
+        {{# output.has_popover_links }}
+            <div class="footer-section p-3 border-bottom">
+                {{# output.page_doc_link }}
+                    <div>{{{ output.page_doc_link }}}</div>
+                {{/ output.page_doc_link }}
+
+                {{# output.services_support_link }}
+                    <div>{{{ output.services_support_link }}}</div>
+                {{/ output.services_support_link }}
+            </div>
+        {{/ output.has_popover_links }}
+        <div class="footer-section p-3">
+            <div>{{#str}}poweredbymoodle, core{{/str}}</div>
+            {{#output.moodle_release}}
+                <div>
+                    {{#str}}version, core{{/str}} {{{ output.moodle_release }}}
+                </div>
+            {{/output.moodle_release}}
+        </div>
+    </div>
+
+</footer>
+
+{{{ output.standard_end_of_body_html }}}
+
+{{#js}}
+    require(['theme_boost/footer-popover'], function(FooterPopover) {
+    FooterPopover.init();
+    });
+{{/js}}

@@ -18,14 +18,14 @@
  * Condicao de disponibilidade por direito de acesso do marketplace.
  *
  * @package    availability_marketplace
- * @copyright  2026 Leonardo Della Giustina
+ * @copyright  2026 LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'availability_marketplace';
-$plugin->version   = 2026082400;
+$plugin->version   = 2026091600;
 $plugin->requires  = 2026042000; // Moodle 5.2.
 $plugin->maturity  = MATURITY_ALPHA;
 $plugin->release   = '0.1.0';

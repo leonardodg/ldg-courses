@@ -1,12 +1,53 @@
 # core (subsystem) Upgrade notes
 
-## 5.2.2+
+## 5.2.5
 
 ### Added
 
+- The behat steps `following "..." should download a file that:` and `following "..." in the "..." "..." should download a file that:` now accept an optional selector type, so a download can be triggered from any element, not just a link. For example: `following "Export as Moodle XML" "button" in the "#bulkactionsui-container" "css_element" should download a file that:`. Anything that submits a form is supported, and the form data is sent with the request as the browser would send it.
+
+  For more information see [MDL-86636](https://tracker.moodle.org/browse/MDL-86636)
+- Added `theme_build_editor_css_for_themes()` to `lib/outputlib.php` to build and cache the editor content CSS for themes without changing the theme revisions. The editor content CSS is now cached in the `core/postprocessedcss` cache, using the new `theme_config::get_editor_css_cache_key()`, `theme_config::get_editor_css_cached_content()` and `theme_config::set_editor_css_content_cache()` methods.
+
+  For more information see [MDL-90110](https://tracker.moodle.org/browse/MDL-90110)
+
+## 5.2.4
+
+### Added
+
+- Closes an operational-visibility gap: available-updates check requests could not previously be attributed to a specific registered site, which limited abuse detection and support diagnostics on the hub side. \core\update\checker now sends two optional parameters with the available updates check: siteidentifier, the md5() of the site's registration secret, sent only when the site is registered with the sites directory, and countrycode, the configured $CFG->country, sent whenever it is set. Either parameter is omitted when it cannot be determined and the update check is never blocked by them.
+
+  For more information see [MDL-89513](https://tracker.moodle.org/browse/MDL-89513)
+
+### Fixed
+
+- Fixes an operational-visibility gap: a registered site whose reporting to the hub silently stopped previously gave administrators no indication of the failure. This is now surfaced to administrators. A new scheduled task core\task\registration_reporting_check_task runs daily and sends a notification through the new registrationreportingpaused message provider when reporting pauses, either because new registration fields await confirmation or because the Site registration scheduled task is disabled. \core\hub\registration gains get_reporting_paused_reason(), get_registration_page_notification() and check_reporting_paused_notification(); registration_reminder() is now also called from /my/index.php and /my/courses.php; and core_admin_renderer::registration_warning() renders a warning for a registered site whose reporting is paused because the task is disabled.
+
+  For more information see [MDL-89463](https://tracker.moodle.org/browse/MDL-89463)
+
+## 5.2.3
+
+### Added
+
+- A new Behat step `I set the focus on the "<element>" "<selector>"` has been added to move keyboard focus onto an element without activating it.
+
+  For more information see [MDL-84065](https://tracker.moodle.org/browse/MDL-84065)
 - New `flexible_table::set_columnheadersattributes(...)` method for tables to define additional attributes ('class', 'data-X', etc.) for column headers
 
   For more information see [MDL-89384](https://tracker.moodle.org/browse/MDL-89384)
+
+### Changed
+
+- The title of a modal dialogue rendered by the `core/modal` template is now an `<h2>` element instead of an `<h5>`, so that dialogue titles no longer break the page's heading hierarchy for assistive technology users.
+
+  The element carries the Bootstrap `fs-5` font size utility class, so the title's appearance is unchanged.
+
+  If your plugin renders headings inside modal dialogue content, set their levels relative to this `<h2>` (i.e. start at `<h3>`) so that the heading structure remains correctly nested. Headings that were previously nested beneath the old `<h5>` will now skip levels. If your plugin renders its own modal header markup, or overrides the `header` block of the `core/modal` template, apply the same `<h2 class="modal-title fs-5">` pattern.
+
+  For more information see [MDL-75699](https://tracker.moodle.org/browse/MDL-75699)
+- Uninstalling a block plugin no longer deletes its instances synchronously. \core\plugininfo\block::uninstall_cleanup() now queues the new \core\task\delete_block_instances_task ad-hoc task, which deletes the instances and their related data (contexts, positions, user preferences and search index entries) in batches. This makes block removal upgrade steps and plugin uninstallation effectively instant on large sites. Remaining instances are not displayed anywhere once the block record has been deleted.
+
+  For more information see [MDL-89289](https://tracker.moodle.org/browse/MDL-89289)
 
 ## 5.2.2
 

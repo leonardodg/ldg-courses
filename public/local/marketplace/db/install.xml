@@ -14,6 +14,13 @@
         <FIELD NAME="themename" TYPE="char" LENGTH="50" NOTNULL="false" SEQUENCE="false" COMMENT="Tema aplicado na categoria (allowcategorythemes)."/>
         <FIELD NAME="hostname" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Dominio proprio. Fase 3: alimenta o mapa Host->wwwroot do config.php."/>
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="active" SEQUENCE="false" COMMENT="active|suspended. Nao ha aprovacao manual: os portoes sao a payment account configurada e o papel restrito."/>
+        <FIELD NAME="commissionpct" TYPE="number" LENGTH="5" DECIMALS="2" NOTNULL="false" SEQUENCE="false" COMMENT="Comissao negociada com esta empresa, de 0 a 100. NULO herda o padrao do site - e a diferenca entre 'nao negociamos nada' e 'negociamos zero', que sem NULL seriam indistinguiveis."/>
+        <FIELD NAME="commissionbase" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Base da comissao negociada com esta empresa: gross|net. NULO herda a base do site. So e lida quando commissionpct tambem esta preenchida - a base sai do mesmo degrau que deu a taxa."/>
+        <FIELD NAME="planid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Plano contratado. NULO = empresa provisionada antes de existirem planos, ou fora de plano. Continua funcionando: a cadeia de comissao pula este degrau quando e nulo."/>
+        <FIELD NAME="planexpiry" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Vencimento da mensalidade do plano. NULO = nunca cobrado (plano gratis ou sem plano). Inadimplente e so planexpiry no passado - sem status separado, de proposito."/>
+        <FIELD NAME="pagetitle" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Titulo da vitrine. Vazio usa o nome da empresa."/>
+        <FIELD NAME="pageintro" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Texto de abertura da vitrine, em HTML filtrado pelo Moodle."/>
+        <FIELD NAME="pageaccent" TYPE="char" LENGTH="7" NOTNULL="false" SEQUENCE="false" COMMENT="Cor de destaque em hexadecimal, tipo #B85410. Guardada como cor e nao como CSS solto para nao virar vetor de injecao."/>
         <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
@@ -21,6 +28,7 @@
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="categoryid" TYPE="foreign" FIELDS="categoryid" REFTABLE="course_categories" REFFIELDS="id"/>
+        <KEY NAME="planid" TYPE="foreign" FIELDS="planid" REFTABLE="local_marketplace_plan" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
         <INDEX NAME="shortname" UNIQUE="true" FIELDS="shortname"/>
@@ -56,9 +64,12 @@
         <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="offertype" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="single" SEQUENCE="false" COMMENT="single=um curso · bundle=combo · catalog=tudo da empresa (nao usa offer_course)."/>
         <FIELD NAME="price" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="BRL" SEQUENCE="false"/>
+        <FIELD NAME="country" TYPE="char" LENGTH="2" NOTNULL="true" DEFAULT="BR" SEQUENCE="false" COMMENT="Pais em que esta oferta vende, em ISO-3166 alpha-2. Decide a conta que recebe, a moeda e quais gateways aparecem no checkout. Vive na OFERTA e nao na empresa porque core_payment::get_payable() resolve valor, moeda e conta a partir do itemid, sem saber quem compra: uma oferta so nao consegue ser BRL para um aluno e ARS para outro. Plano por pais e oferta separada."/>
+        <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="BRL" SEQUENCE="false" COMMENT="Derivada do country. Guardada tambem aqui porque a venda historica precisa saber em que moeda foi cobrada, mesmo que a tabela de paises mude depois."/>
         <FIELD NAME="accessmode" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="lifetime" SEQUENCE="false" COMMENT="lifetime=vitalicio · days=prazo em accessdays · recurring=assinatura."/>
-        <FIELD NAME="accessdays" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Usado so quando accessmode=days. Em recurring e o intervalo de cobranca."/>
+        <FIELD NAME="accessdays" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Quantos dias de acesso cada pagamento libera. 0 em lifetime."/>
+        <FIELD NAME="billingdays" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Intervalo entre cobrancas, em dias. So em recurring. Separado de accessdays porque permitem carencia: cobrar a cada 30 dias liberando 35 da margem para o pagamento atrasar sem cortar o aluno."/>
+        <FIELD NAME="maxcycles" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Quantas cobrancas a assinatura admite. 0 = sem limite. E o que distingue 'mensal por 12 meses' de 'mensal enquanto quiser'."/>
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="draft" SEQUENCE="false" COMMENT="draft|published|archived. Arquivar nao revoga direito ja vendido."/>
         <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
@@ -71,6 +82,52 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="companyid-status" UNIQUE="false" FIELDS="companyid, status"/>
+        <INDEX NAME="companyid-country" UNIQUE="false" FIELDS="companyid, country"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_marketplace_account" COMMENT="Conta de pagamento da empresa em cada pais. Uma empresa que vende no Brasil e na Argentina precisa de DUAS contas, porque uma conta e presa a um pais e so recebe na moeda dele - nao ha cambio no caminho do split. As contas do core vivem todas no contexto da categoria da empresa; e esta tabela que diz qual e de qual pais. Sem ela, account::get_record(['contextid' => ...]) devolveria a primeira que aparecesse.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="companyid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="country" TYPE="char" LENGTH="2" NOTNULL="true" SEQUENCE="false" COMMENT="ISO-3166 alpha-2. Ver local_marketplace\country::CURRENCIES."/>
+        <FIELD NAME="accountid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="payment_accounts.id do core."/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="companyid" TYPE="foreign" FIELDS="companyid" REFTABLE="local_marketplace_company" REFFIELDS="id"/>
+        <KEY NAME="accountid" TYPE="foreign-unique" FIELDS="accountid" REFTABLE="payment_accounts" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="companyid-country" UNIQUE="true" FIELDS="companyid, country"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_marketplace_library" COMMENT="Library da Bunny de cada empresa, dentro da conta UNICA da plataforma. Uma empresa, uma library - o vendedor nunca ve a Bunny nem gera chave propria (isso e a Frente A, BYOS). Provisionada automaticamente na criacao da empresa. ADR-0014.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="companyid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="bunnylibraryid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Id da library devolvido pela Bunny na criacao."/>
+        <FIELD NAME="apikey" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Chave da LIBRARY (nao a chave de conta da plataforma), cifrada com core\encryption. E o unico campo que a Bunny devolve na criacao - verificado ao vivo em 25/09/2026."/>
+        <FIELD NAME="securitykey" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Chave de autenticacao por token do player, cifrada. NULO ate o proximo sub-passo habilitar PlayerTokenAuthenticationEnabled na library - a Bunny nao devolve isto na criacao (verificado ao vivo em 25/09/2026: o campo nem existe na resposta)."/>
+        <FIELD NAME="cdnhostname" TYPE="char" LENGTH="191" NOTNULL="false" SEQUENCE="false" COMMENT="Ex.: vz-xxxxxxxx-xxx.b-cdn.net. NULO ate o proximo sub-passo resolver a pull zone (PullZoneId) - a Bunny nao devolve hostname na criacao da library, so o id numerico da pull zone associada."/>
+        <FIELD NAME="maxresolution" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Cache do ultimo teto aplicado no perfil de encoding da library (720p|1080p|1440p|4k). NULO = nunca aplicado. So existe para evitar rechamar a API da Bunny sem necessidade - a fonte da verdade continua plan::max_resolution_for()."/>
+        <FIELD NAME="webhooksecret" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="Segredo do webhook desta library, gerado na criacao. E como mod_bunnystream identifica de qual empresa veio um POST em /mod/bunnystream/webhook.php - nao ha vinculo por dominio ou IP."/>
+        <FIELD NAME="origin" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="platform" SEQUENCE="false" COMMENT="platform (Frente B, na conta da plataforma) ou byos (Frente A, na conta do produtor). Decide se sync_video_library_resolution() tem autoridade para mexer na library - nao basta olhar o plano ATUAL da empresa, porque o plano pode ter mudado depois da conexao."/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="companyid" TYPE="foreign-unique" FIELDS="companyid" REFTABLE="local_marketplace_company" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="webhooksecret" UNIQUE="true" FIELDS="webhooksecret"/>
+        <INDEX NAME="bunnylibraryid" UNIQUE="true" FIELDS="bunnylibraryid"/>
       </INDEXES>
     </TABLE>
 
@@ -99,6 +156,8 @@
         <FIELD NAME="timestart" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timeend" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="0 = vitalicio."/>
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="active" SEQUENCE="false" COMMENT="active|expired|cancelled. Cancelamento revoga NA HORA, por decisao de negocio."/>
+        <FIELD NAME="cycles" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Quantas cobrancas ja foram pagas deste direito. Contado aqui, e nao na tabela do gateway, porque o limite de ciclos e regra do marketplace: trocar de meio de pagamento nao pode zerar a contagem."/>
+        <FIELD NAME="norenew" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="O aluno cancelou a assinatura. NAO revoga: o acesso corre ate timeend, porque ele pagou por aquele periodo. So interrompe os avisos de vencimento. Revogacao imediata e status=cancelled, coisa diferente."/>
         <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
@@ -115,6 +174,33 @@
       </INDEXES>
     </TABLE>
 
+    <TABLE NAME="local_marketplace_sale" COMMENT="O que o marketplace precisa saber de uma venda e o core_payment nao guarda: a comissao efetivamente retida e o id da transacao no gateway. Valor, moeda, gateway, comprador e data ficam em {payments}, que e a fonte da verdade - duplicar daria duas versoes do mesmo numero financeiro. Existe porque antes disto o relatorio lia a tabela do paygw_mercadopago direto, e com um segundo gateway ele passaria a mentir por omissao.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="paymentid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="payments.id do core. Uma venda por pagamento."/>
+        <FIELD NAME="offerid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="companyid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Desnormalizado de proposito: o relatorio filtra por empresa a cada pagina, e chegar la pela oferta custaria um join em toda consulta."/>
+        <FIELD NAME="feeamount" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Comissao da plataforma efetivamente enviada ao gateway, em moeda. NAO recalcule a partir do percentual: estorno parcial e split recusado mudam este valor depois da criacao, e o relatorio tem que seguir o extrato."/>
+        <FIELD NAME="feepercent" TYPE="number" LENGTH="5" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Percentual APLICADO nesta venda. Fotografado aqui porque a taxa da empresa, o plano dela e o padrao do site mudam - e sem a foto uma venda antiga so poderia ser explicada pela configuracao de hoje."/>
+        <FIELD NAME="feebase" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="gross" SEQUENCE="false" COMMENT="Base de calculo APLICADA: gross|net. E o que foi de fato usado, e nao o que estava configurado - o Mercado Pago nao consegue cobrar sobre o liquido, entao ali a venda registra gross mesmo com net configurado."/>
+        <FIELD NAME="feesource" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="site" SEQUENCE="false" COMMENT="De onde os termos vieram: policy|company|plan|site. Sem isto o relatorio mostra 9,9% sem permitir conferir se foi negociado, herdado do plano ou padrao."/>
+        <FIELD NAME="externalid" TYPE="char" LENGTH="128" NOTNULL="false" SEQUENCE="false" COMMENT="Id da transacao no gateway, para conciliar com o extrato dele."/>
+        <FIELD NAME="refundedat" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Timestamp do estorno feito por aqui. Nulo = nunca estornada. Guarda de idempotencia de refund_sale(): so chama o gateway quando ainda esta nula."/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="paymentid" TYPE="foreign-unique" FIELDS="paymentid" REFTABLE="payments" REFFIELDS="id"/>
+        <KEY NAME="offerid" TYPE="foreign" FIELDS="offerid" REFTABLE="local_marketplace_offer" REFFIELDS="id"/>
+        <KEY NAME="companyid" TYPE="foreign" FIELDS="companyid" REFTABLE="local_marketplace_company" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="companyid-timecreated" UNIQUE="false" FIELDS="companyid, timecreated"/>
+      </INDEXES>
+    </TABLE>
+
     <TABLE NAME="local_marketplace_course" COMMENT="Politica de hospedagem e comissao por curso.">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -122,6 +208,7 @@
         <FIELD NAME="companyid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="hostingtype" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="external" SEQUENCE="false" COMMENT="external|platform. Hoje so 'external' e permitido."/>
         <FIELD NAME="commissionpct" TYPE="number" LENGTH="5" DECIMALS="2" NOTNULL="true" DEFAULT="25.00" SEQUENCE="false" COMMENT="Percentual retido pela plataforma."/>
+        <FIELD NAME="commissionbase" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Base da comissao desta politica: gross|net. NULO herda a base do site."/>
         <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
@@ -131,6 +218,54 @@
         <KEY NAME="courseid" TYPE="foreign-unique" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
         <KEY NAME="companyid" TYPE="foreign" FIELDS="companyid" REFTABLE="local_marketplace_company" REFFIELDS="id"/>
       </KEYS>
+    </TABLE>
+
+    <TABLE NAME="local_marketplace_plan" COMMENT="Plano comercial da plataforma: quanto a empresa paga por mes, que comissao pratica e como o video dela e hospedado. Vive AQUI, e nao no plugin da landing, porque a comissao e resolvida por local_marketplace\api e o nucleo nao pode depender de um satelite para calcular dinheiro.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="shortname" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="Chave estavel usada em codigo e no seed: starter|pro|scale. O name muda com o marketing, este nao."/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Nome comercial, editavel na tela."/>
+        <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Descricao curta exibida na comparacao de planos."/>
+        <FIELD NAME="monthlyfee" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Mensalidade. NAO e cobrada por este codigo ainda: o gancho e a paymentarea 'plan' do service_provider."/>
+        <FIELD NAME="commissionpct" TYPE="number" LENGTH="5" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Comissao do plano, de 0 a 100. NOT NULL aqui, ao contrario da empresa: o NULO da empresa significa 'nao negociamos nada', e um plano sempre negociou."/>
+        <FIELD NAME="commissionbase" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Base da comissao do plano: gross|net. NULO herda a base do site, que e o caso do plano que so define a taxa e aceita a politica geral da plataforma."/>
+        <FIELD NAME="country" TYPE="char" LENGTH="2" NOTNULL="true" DEFAULT="BR" SEQUENCE="false" COMMENT="Mesma razao da oferta: valor tem pais. Plano em outro pais e OUTRA linha, e nao um cambio."/>
+        <FIELD NAME="currency" TYPE="char" LENGTH="3" NOTNULL="true" DEFAULT="BRL" SEQUENCE="false" COMMENT="Derivada do pais, guardada para o historico nao mudar quando a derivacao mudar."/>
+        <FIELD NAME="hostingmodel" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="native" SEQUENCE="false" COMMENT="native = a plataforma hospeda e paga a banda; byos = o produtor conecta a chave da conta dele."/>
+        <FIELD NAME="ispublic" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Aparece na landing. Um plano negociado sob medida existe no banco sem estar na vitrine."/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="active" SEQUENCE="false" COMMENT="active|archived. Plano NUNCA e apagado: ha empresa apontando para ele, e o historico de comissao depende disso."/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Ordem de exibicao na comparacao."/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="shortname" UNIQUE="true" FIELDS="shortname" COMMENT="O seed e idempotente por este campo."/>
+        <INDEX NAME="status-sortorder" UNIQUE="false" FIELDS="status, sortorder"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_marketplace_plan_tier" COMMENT="Trava de resolucao de video por faixa de ticket. E tabela, e nao JSON numa coluna do plano, por tres motivos: a base nao usa JSON em coluna nenhuma; a landing precisa iterar as faixas ordenadas; e um dia alguem vai perguntar ao banco qual plano libera 4K.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="planid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="maxprice" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="false" SEQUENCE="false" COMMENT="Teto do ticket, inclusive. NULO e a ULTIMA faixa, a que nao tem teto - guardar um numero enorme no lugar transformaria 'sem limite' num limite que alguem escolheu."/>
+        <FIELD NAME="maxresolution" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="720p" SEQUENCE="false" COMMENT="720p|1080p|1440p|4k."/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="planid" TYPE="foreign" FIELDS="planid" REFTABLE="local_marketplace_plan" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="planid-sortorder" UNIQUE="false" FIELDS="planid, sortorder"/>
+      </INDEXES>
     </TABLE>
   </TABLES>
 </XMLDB>

@@ -1,5 +1,5 @@
 # =============================================================================
-# Ivana Academy - Moodle 4.5
+# LDG Courses - Moodle 5.2
 # Multi-stage build: composer → base → production | development
 #
 # Build production:
@@ -63,9 +63,9 @@ FROM moodlehq/moodle-php-apache:8.4 AS base
 
 # Metadata
 LABEL maintainer="LeoDG <callme@leodg.dev>" \
-      org.opencontainers.image.title="Ivana Academy - Moodle 4.5" \
-      org.opencontainers.image.source="https://github.com/leonardodg/ivana-academy" \
-      org.opencontainers.image.version="4.5"
+      org.opencontainers.image.title="LDG Courses - Moodle 5.2" \
+      org.opencontainers.image.source="https://github.com/leonardodg/ldg-courses" \
+      org.opencontainers.image.version="5.2"
 
 ENV MOODLE_DBTYPE=mariadb \
     MOODLE_DBLIB=native \
@@ -81,27 +81,48 @@ ENV MOODLE_DBTYPE=mariadb \
 
 WORKDIR /var/www/html
 
+# A tag da base e movel, e nada garante que a publicacao dela trouxe a correcao.
+# O build falha em vez de publicar imagem abaixo do minimo de seguranca. O mesmo
+# arquivo e conferido de novo no deploy, ja no container que subiu.
+COPY .devcontainer/build/min-php-version /etc/ldg-min-php-version
+RUN php -r 'exit(version_compare(PHP_VERSION, trim(file_get_contents("/etc/ldg-min-php-version")), ">=") ? 0 : 1);' \
+    || { echo "PHP $(php -r 'echo PHP_VERSION;') abaixo do minimo $(cat /etc/ldg-min-php-version)"; exit 1; }
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        gettext-base  \
        cron \
        libpng-dev \
-    && apt-get install -y --no-install-recommends --only-upgrade \
-       openssl \
-       libssl-dev \
-       libssl3 \
-       apache2 \
-       apache2-bin \
-       apache2-data \
-       libapache2-mod-php8.2 \
-       libpam-runtime \
-       libpam0g \
-       gnutls-bin \
-       libgnutls30 \
-       libxml2 \
-       libtiff6 \
+    # A base da moodlehq demora a ser republicada, e o bookworm-security anda
+    # antes dela: em 20/11/2026 ela trazia 21 pacotes atrasados, entre eles o
+    # Apache 2.4.68 (CVE-2026-119618) e a libbrotli1 1.0.9-2+b6
+    # (CVE-2026-111497, HTTP2Shell, no KEV). Lista fixa de --only-upgrade
+    # deixava a libbrotli1 de fora; o upgrade inteiro nao deixa nada. O PHP
+    # vem compilado em /usr/local e nao e tocado pelo apt.
+    #
+    # Excecao: o driver de SQL Server da Microsoft (msodbcsql*), que a base
+    # traz no amd64. Versao nova dele so instala com ACCEPT_EULA=Y, e em
+    # 25/11/2026 a 17.12.1.1 derrubou o build amd64 no meio do upgrade. O
+    # banco aqui e MariaDB, o driver nao e usado, e aceitar licenca da
+    # Microsoft dentro do build nao e decisao do Dockerfile: fica na versao
+    # da base. O dpkg-query pega so o que estiver instalado, entao no arm64
+    # (onde o pacote nao existe) o hold e vazio.
+    && dpkg-query -W -f='${Package}\n' 'msodbcsql*' 2>/dev/null | xargs -r apt-mark hold \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Mesmo raciocinio do PHP: o build falha em vez de publicar pacote vulneravel.
+# - apache2-bin >= 2.4.71-1~deb12u1: CVE-2026-119618 (mod_http2, RCE)
+# - libbrotli1 >= 1.0.9-2+deb12u1: CVE-2026-111497. O curl do PHP decodifica
+#   brotli, e o Moodle busca URL de terceiro (RSS, repositorio por URL, oEmbed)
+# - mod_http2 desligado: o TLS e o HTTP/2 terminam no nginx da VPS, e o
+#   Apache so fala HTTP/1.1 com ele. Modulo carregado e superficie sem uso.
+RUN dpkg --compare-versions "$(dpkg-query -W -f='${Version}' apache2-bin)" ge '2.4.71-1~deb12u1' \
+    || { echo "apache2-bin $(dpkg-query -W -f='${Version}' apache2-bin) vulneravel a CVE-2026-119618"; exit 1; } \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge '1.0.9-2+deb12u1' \
+    || { echo "libbrotli1 $(dpkg-query -W -f='${Version}' libbrotli1) vulneravel a CVE-2026-111497"; exit 1; } \
+    && if a2query -q -m http2; then a2dismod -q http2; fi
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
@@ -114,6 +135,7 @@ RUN mkdir -p /etc/ssl/certs \
 COPY --from=composer-base /usr/bin/composer /usr/bin/composer
 COPY .devcontainer/php/opcache.ini \
      .devcontainer/php/uploads.ini \
+     .devcontainer/php/zzzz-security.ini \
      /usr/local/etc/php/conf.d/
 
 # Apache: módulos e configuração via template (URL vem em runtime)
@@ -157,6 +179,12 @@ RUN apt-get remove --purge -y \
 COPY .devcontainer/php/php.ini-production /usr/local/etc/php/php.ini
 COPY .devcontainer/php/opcache-prod.ini /usr/local/etc/php/conf.d/moodle-opcache.ini
 
+# O php.ini-production deixa session.upload_progress comentado, e no PHP 8.4.27
+# o padrao e ligado (CVE-2026-115560). Quem desliga e o zzzz-security.ini da base;
+# esta linha prova que nenhum ini deste target o religou.
+RUN php -r 'exit(ini_get("session.upload_progress.enabled") ? 1 : 0);' \
+    || { echo "session.upload_progress ligado no target production"; exit 1; }
+
 # Copia vendor otimizado do stage composer
 COPY --from=composer-prod --chown=www-data:www-data /app/vendor/ /var/www/html/vendor/
 
@@ -196,28 +224,97 @@ RUN apt-get update \
        gnupg2 \
        gpg \
     # Node.js LTS oficial (requerido pelo Grunt, que e o bundler JS do Moodle):
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    # Xdebug ja embutido na imagem moodlehq/moodle-php-apache:8.2:
+    # Xdebug ja embutido na imagem moodlehq/moodle-php-apache:
     && docker-php-ext-enable xdebug \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Grunt CLI global (build JS/LESS/SCSS do Moodle e seus temas)
-RUN npm install -g grunt-cli \
-    && grunt --version
+# O grunt-cli saiu daqui: a versao dele agora e declarada em
+# .devcontainer/devtools/package.json, junto das demais ferramentas de
+# desenvolvimento, e instalada mais abaixo. Um "npm install -g <pacote>" solto
+# nao tem versao, nao aparece em code review e muda sozinho a cada rebuild.
+
+# -----------------------------------------------------------------------
+# Historico de shell persistente.
+#
+# Isto substitui a feature "stuartleeks/dev-container-features/shell-history"
+# que estava no devcontainer.json. O motivo nao e economia: TODA feature
+# declarada faz a CLI do Dev Containers construir uma IMAGEM DERIVADA para
+# injeta-la, e ela refaz esse build para cada pasta nova. Com worktrees, isso
+# significa um rebuild a cada feature que se comeca - o incomodo que este
+# trabalho existe para eliminar.
+#
+# As outras duas features sairam sem substituto:
+#   git:1          - redundante, o apt-get acima ja instala git e git-man.
+#   common-utils:2 - traz zsh/oh-my-zsh e mexe em usuario. O devcontainer.json
+#                    fixa remoteUser www-data e terminal bash; nao agregava.
+#
+# O diretorio vira ponto de montagem de um volume nomeado (ver devcontainer.json),
+# entao o historico sobrevive a recriacao do container. Antes era um bind em
+# ../../moodle-academy-bashhistory, pasta do projeto anterior.
+# -----------------------------------------------------------------------
+ENV HISTFILE=/commandhistory/.bash_history \
+    PROMPT_COMMAND="history -a"
+RUN mkdir -p /commandhistory \
+    && touch /commandhistory/.bash_history \
+    && chown -R www-data:www-data /commandhistory
 
 COPY .devcontainer/php/opcache-dev.ini /usr/local/etc/php/conf.d/moodle-opcache.ini
 
 # -----------------------------------------------------------------------
-# Vendor com pacotes de DEV (inclui phpunit, moodle-cs, phpcs do composer-dev)
-# NOTA: para phpcs + moodle-cs aparecerem aqui, adicionar ao composer.json:
-#   "require-dev": {
-#     "squizlabs/php_codesniffer": "^3.0",
-#     "moodlehq/moodle-cs": "^3.0"
-#   }
+# Vendor com pacotes de DEV (phpunit e behat vem daqui)
+#
+# O phpcs NAO vem: o comentario que estava aqui pedia para acrescentar
+# moodlehq/moodle-cs ao composer.json da raiz, e isso e uma armadilha. Aquele
+# composer.json e do UPSTREAM do Moodle, byte a byte - conferido em 04/09/2026,
+# os ultimos commits nele sao MDL-86462 e MDL-86460. Mexer ali criaria conflito
+# em TODA sincronizacao com o upstream, que e exatamente o que ja acontece com o
+# .gitattributes da raiz.
+#
+# As ferramentas do projeto vao para /opt/devtools, logo abaixo.
 # -----------------------------------------------------------------------
 COPY --from=composer-dev --chown=www-data:www-data /app/vendor/ /var/www/html/vendor/
+
+# -----------------------------------------------------------------------
+# Ferramentas de desenvolvimento, fora do vendor do Moodle.
+#
+# Ficam na IMAGEM, e nao instaladas a mao no container: container recriado
+# perdia tudo, e cada worktree nova comecava sem phpcs. A imagem e a mesma para
+# todos os stacks, entao instalar uma vez atende todo mundo.
+#
+# /opt/devtools tem composer.json PROPRIO, sem relacao com o do Moodle - e o que
+# permite ter phpcs sem tocar em arquivo do upstream.
+# -----------------------------------------------------------------------
+# A LISTA NAO FICA AQUI. Ela vive em .devcontainer/devtools/, em manifesto de
+# verdade - versao de ferramenta e dependencia, e dependencia se declara onde da
+# para revisar e fixar faixa. O porque de cada escolha esta no README de la.
+ENV COMPOSER_ALLOW_SUPERUSER=1
+COPY .devcontainer/devtools/ /opt/devtools/
+
+RUN composer install -n --no-dev -d /opt/devtools \
+    && ln -sf /opt/devtools/vendor/bin/phpcs   /usr/local/bin/phpcs \
+    && ln -sf /opt/devtools/vendor/bin/phpcbf  /usr/local/bin/phpcbf \
+    # Falha o build se o padrao moodle nao registrar. Sem isto a imagem sai com
+    # um phpcs que roda e nao conhece o padrao do projeto - e o erro so aparece
+    # na primeira vez que alguem tenta conferir codigo.
+    && phpcs -i | grep -q moodle \
+    && npm install --prefix /opt/devtools \
+    && ln -sf /opt/devtools/node_modules/.bin/grunt /usr/local/bin/grunt
+
+# moosh e clonado, e nao requerido por composer. Nao e preguica: ele declara
+# TREZE repositories inline para dependencias que so existem no GitHub, e o
+# composer ignora "repositories" de pacote transitivo - requere-lo daqui exigiria
+# copiar as treze para o nosso manifesto e ve-las apodrecer. O projeto dele se
+# trata como raiz, e clonar e a forma suportada.
+#
+# A versao NAO esta hardcoded nesta linha: sai de devtools/moosh.version.
+RUN git clone -q --branch "$(cat /opt/devtools/moosh.version)" --depth 1 \
+        https://github.com/tmuras/moosh.git /opt/moosh \
+    && composer install -n --no-dev -d /opt/moosh \
+    && ln -sf /opt/moosh/moosh.php /usr/local/bin/moosh \
+    && chmod +x /opt/moosh/moosh.php
 
 # Copia todo o codigo (em dev geralmente sera sobrescrito por bind-mount do dev.yml)
 COPY --chown=www-data:www-data . .

@@ -1,0 +1,61 @@
+// Tema LDG.
+//
+// @author    LeoDG <callme@leodg.dev>
+// @copyright 2026 LeoDG <callme@leodg.dev>
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// Entrypoint do SCSS deste tema. So imports, sem regra propria.
+//
+// Os import paths do compilador sao [ldg/scss, boost/scss], nesta ordem.
+// NUNCA criar um diretorio scss/boost/ aqui dentro: um arquivo com nome igual
+// ao de um parcial do Boost sombrearia o dele em silencio.
+//
+// A ordem abaixo importa: navbar antes de surfaces porque a altura da navbar e
+// o offset dos drawers, e drawer e superficie.
+
+// As fontes vem primeiro: o @font-face precisa existir antes de qualquer regra
+// que peca a familia, e o body daqui define a do site inteiro.
+@import "ldg/fonts";
+
+// O mixin vem antes de quem o usa - o sass nao resolve para tras.
+@import "ldg/mixins/accessibilityfontsize";
+@import "ldg/accessibilitystyles";
+@import "ldg/accessibilitybar";
+
+@import "ldg/navbar";
+@import "ldg/components";
+@import "ldg/surfaces";
+@import "ldg/forms";
+@import "ldg/course";
+@import "ldg/login";
+@import "ldg/navmenu";
+// A landing do local_partners NAO tem import aqui, e a excecao e deliberada: o
+// estilo dela mora em local/partners/styles.css. O requisito e que a pagina
+// renderize igual sob theme_boost e theme_moove, e estilo de tema so vale no
+// tema. Ver o README do local_partners.
+// O estilo do format_ldg mora aqui, e nao no plugin: o formato entrega marcacao
+// e quem pinta e o tema. Ver o README do format_ldg.
+@import "ldg/format";
+
+// Paridade com a landing de captacao: o botao de entrar e o rodape. Vem DEPOIS
+// de components e surfaces, que e quem poe a base que este arquivo refina.
+@import "ldg/landingparity";
+
+// Por ULTIMO, sempre: sao correcoes que dependem de vir depois do core para
+// vencer em empate de especificidade.
+@import "ldg/corefixes";
