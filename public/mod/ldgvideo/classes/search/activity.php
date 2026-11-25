@@ -25,7 +25,6 @@
 
 namespace mod_ldgvideo\search;
 
-
 /**
  * O que a busca do site enxerga desta atividade.
  *

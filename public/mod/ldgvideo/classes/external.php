@@ -32,7 +32,6 @@ use core_external\external_value;
 use core_external\external_warnings;
 use core_external\util;
 
-
 /**
  * As funcoes que o aplicativo movel e outros clientes chamam.
  *

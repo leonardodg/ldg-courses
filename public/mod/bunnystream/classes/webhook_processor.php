@@ -17,6 +17,7 @@
 namespace mod_bunnystream;
 
 use local_marketplace\library_account;
+
 /**
  * Recebe o webhook de status da Bunny e atualiza o video.
  *

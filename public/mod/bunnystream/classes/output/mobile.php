@@ -19,6 +19,7 @@ namespace mod_bunnystream\output;
 use mod_bunnystream\config;
 use mod_bunnystream\not_configured_exception;
 use mod_bunnystream\token;
+
 /**
  * Integracao com o Moodle Mobile App - iframe assinado dentro do webview.
  *

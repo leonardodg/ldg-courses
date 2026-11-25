@@ -22,8 +22,8 @@
  * @author     LeoDG <callme@leodg.dev>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-namespace mod_ldgvideo\privacy;
 
+namespace mod_ldgvideo\privacy;
 
 /**
  * The mod_ldgvideo module does not store any data.
