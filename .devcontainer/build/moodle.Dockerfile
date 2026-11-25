@@ -59,7 +59,7 @@ FROM composer-base AS composer-dev
 # =============================================================================
 # Moodle 5.2 exige PHP >= 8.3.0 (admin/environment.xml, bloco MOODLE version="5.2").
 # 8.4 e a maior tag publicada pela moodlehq; nao existe 8.5.
-FROM moodlehq/moodle-php-apache:8.4 AS base
+FROM moodlehq/moodle-php-apache:8.6 AS base
 
 # Metadata
 LABEL maintainer="LeoDG <callme@leodg.dev>" \
